@@ -1,4 +1,4 @@
-import React, { useEffect, useState, createContext, useContext, ReactNode } from 'react';
+import { useEffect, useState, createContext, useContext, ReactNode } from 'react';
 import WebApp from '@twa-dev/sdk';
 
 interface TelegramUser {
