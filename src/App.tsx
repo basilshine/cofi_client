@@ -1,18 +1,21 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, BrowserRouter } from 'react-router-dom';
 import { useTelegram } from './hooks/useTelegram';
-import { AuthProvider, useTelegramAuth } from '@hooks/useTelegramAuth';
+import { AuthProvider, useAuth } from '@contexts/AuthContext';
 import { Layout } from './layouts/Layout';
 import { Promo } from './pages/Promo';
 import { Home } from './pages/Home';
 import { Expenses } from '@pages/Expenses';
 import { Analytics } from '@pages/Analytics';
 import { Settings } from '@pages/Settings';
-import { Button } from '@components/ui/button';
+import { Login } from '@pages/auth/Login';
+import { Register } from '@pages/auth/Register';
+import { ForgotPassword } from '@pages/auth/ForgotPassword';
+import { ResetPassword } from '@pages/auth/ResetPassword';
 import './i18n/config';
 
 function AppContent() {
   const { isWebApp, error } = useTelegram();
-  const { isAuthenticated, isLoading, error: authError } = useTelegramAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (error) {
     return (
@@ -40,6 +43,14 @@ function AppContent() {
       {/* Public routes */}
       <Route path="/" element={<Promo />} />
       
+      {/* Auth routes */}
+      <Route path="/auth">
+        <Route path="login" element={!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />} />
+        <Route path="register" element={!isAuthenticated ? <Register /> : <Navigate to="/dashboard" replace />} />
+        <Route path="forgot-password" element={!isAuthenticated ? <ForgotPassword /> : <Navigate to="/dashboard" replace />} />
+        <Route path="reset-password" element={!isAuthenticated ? <ResetPassword /> : <Navigate to="/dashboard" replace />} />
+      </Route>
+      
       {/* Protected routes */}
       <Route
         path="/dashboard/*"
@@ -58,65 +69,17 @@ function AppContent() {
           )
         }
       />
-
-      {/* Auth routes */}
-      <Route
-        path="/login"
-        element={
-          !isAuthenticated ? (
-            <div className="flex min-h-screen items-center justify-center">
-              <div className="text-center space-y-4">
-                <h1 className="text-2xl font-bold text-red-500">Authentication Required</h1>
-                <p className="mt-2 text-muted-foreground">
-                  {authError || 'Please login with Telegram to continue'}
-                </p>
-                <div className="space-y-2">
-                  {isWebApp ? (
-                    <Button
-                      onClick={() => {
-                        if (window.Telegram?.WebApp) {
-                          window.Telegram.WebApp.expand();
-                          window.Telegram.WebApp.ready();
-                        }
-                      }}
-                      className="w-full"
-                    >
-                      Open in Telegram
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => {
-                        const botId = '7148755509'; // Your bot ID
-                        const redirectUrl = window.location.href;
-                        window.location.href = `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${encodeURIComponent(redirectUrl)}`;
-                      }}
-                      className="w-full"
-                    >
-                      Login with Telegram
-                    </Button>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    {isWebApp
-                      ? 'This app works best when opened in Telegram'
-                      : 'You will be redirected to Telegram for authentication'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <Navigate to="/dashboard" replace />
-          )
-        }
-      />
     </Routes>
   );
 }
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

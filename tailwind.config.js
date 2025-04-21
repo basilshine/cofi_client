@@ -16,6 +16,10 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ['DM Sans', 'system-ui', '-apple-system', 'sans-serif'],
+        heading: ['Outfit', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -50,6 +54,13 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        cofi: {
+          orange: "hsl(28, 90%, 55%)", // Bright fox orange
+          brown: "hsl(25, 40%, 30%)", // Sweater brown
+          cream: "hsl(36, 50%, 90%)", // Background cream
+          coffee: "hsl(25, 45%, 25%)", // Dark coffee brown
+          latte: "hsl(33, 35%, 85%)", // Light cream for highlights
+        }
       },
       borderRadius: {
         lg: "var(--radius)",
