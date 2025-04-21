@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import WebApp from '@twa-dev/sdk';
-
+import { apiService } from '@services/api';
 interface User {
   id: string;
   email: string;
@@ -70,22 +70,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await apiService.auth.login({ email, password });
 
-      if (!response.ok) {
-        throw new Error('Invalid credentials');
-      }
-
-      const data = await response.json();
-      localStorage.setItem('token', data.token);
+      localStorage.setItem('token', response.data.token);
       setState({
         ...state,
-        user: data.user,
-        token: data.token,
+        user: response.data.user,
+        token: response.data.token,
         isAuthenticated: true,
         isLoading: false,
         error: null,
@@ -103,22 +94,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (email: string, password: string, firstName: string, lastName?: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, firstName, lastName }),
-      });
+      const response = await apiService.auth.register({ email, password, firstName, lastName: lastName || '' });
 
-      if (!response.ok) {
-        throw new Error('Registration failed');
-      }
-
-      const data = await response.json();
-      localStorage.setItem('token', data.token);
+      localStorage.setItem('token', response.data.token);
       setState({
         ...state,
-        user: data.user,
-        token: data.token,
+        user: response.data.user,
+        token: response.data.token,
         isAuthenticated: true,
         isLoading: false,
         error: null,
@@ -149,11 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const requestPasswordReset = async (email: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      const response = await fetch('/api/auth/request-password-reset', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+      const response = await apiService.auth.requestPasswordReset({ email });
 
       if (!response.ok) {
         throw new Error('Failed to request password reset');
@@ -170,11 +148,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const resetPassword = async (token: string, newPassword: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      const response = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, newPassword }),
-      });
+      const response = await apiService.auth.resetPassword({ token, newPassword });
 
       if (!response.ok) {
         throw new Error('Failed to reset password');

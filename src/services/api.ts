@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '@store/useStore';
 
 const api = axios.create({
-  baseURL: '/api/v1',
+  baseURL: import.meta.env.VITE_BASE_URL + '/api/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -18,10 +18,19 @@ api.interceptors.request.use((config) => {
 
 export const apiService = {
   auth: {
-    login: (data: { email: string; password: string }) =>
-      api.post('/auth/login', data),
-    register: (data: { email: string; password: string; name: string }) =>
-      api.post('/auth/register', data),
+    login: (data: { email: string; password: string }) => { 
+      console.log('data', data);
+      return api.post('/auth/login', data);
+    },
+    register: (data: { email: string; password: string; firstName: string; lastName: string }) => {
+      return api.post('/auth/register', data);
+    },
+    requestPasswordReset: (data: { email: string }) => {
+      return api.post('/auth/request-password-reset', data);
+    },
+    resetPassword: (data: { token: string; newPassword: string }) => {
+      return api.post('/auth/reset-password', data);
+    },
   },
   expenses: {
     list: () => api.get('/expenses'),
