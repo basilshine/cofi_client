@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+		"gen:types": "sh scripts/gen_types.sh"
   },
   "keywords": [],
   "author": "",
