@@ -22,7 +22,7 @@ export const apiService = {
       console.log('data', data);
       return api.post('/auth/login', data);
     },
-    register: (data: { email: string; password: string; firstName: string; lastName: string }) => {
+    register: (data: { email: string; password: string; name: string }) => {
       return api.post('/auth/register', data);
     },
     requestPasswordReset: (data: { email: string }) => {
@@ -39,6 +39,7 @@ export const apiService = {
       category: string;
       description: string;
       date: string;
+      userId: string;
     }) => api.post('/expenses', data),
     update: (id: string, data: any) => api.put(`/expenses/${id}`, data),
     delete: (id: string) => api.delete(`/expenses/${id}`),

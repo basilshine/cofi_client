@@ -94,7 +94,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (email: string, password: string, firstName: string, lastName?: string) => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      const response = await apiService.auth.register({ email, password, firstName, lastName: lastName || '' });
+      const response = await apiService.auth.register({ email, password, name: firstName + ' ' + lastName });
 
       localStorage.setItem('token', response.data.token);
       setState({

@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@components/ui/button';
 import { House, ChartLineUp, Wallet, Gear, Globe, User } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { useTelegramAuth } from '@hooks/useTelegramAuth';
+import { useAuth } from '@contexts/AuthContext';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,7 @@ import {
 export const Navbar = () => {
   const location = useLocation();
   const { t, i18n } = useTranslation();
-  const { user } = useTelegramAuth();
+  const { user } = useAuth();
 
   const navItems = [
     { label: t('nav.home'), path: '/', icon: House },
@@ -72,10 +72,10 @@ export const Navbar = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
-                {user?.photo_url ? (
+                {user?.telegramPhotoUrl ? (
                   <img
-                    src={user.photo_url}
-                    alt={user.first_name}
+                    src={user.telegramPhotoUrl}
+                    alt={user.firstName}
                     className="h-6 w-6 rounded-full"
                   />
                 ) : (
@@ -86,9 +86,9 @@ export const Navbar = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <div className="px-2 py-1.5">
-                <p className="text-sm font-medium">{user?.first_name}</p>
-                {user?.username && (
-                  <p className="text-xs text-muted-foreground">@{user.username}</p>
+                <p className="text-sm font-medium">{user?.firstName}</p>
+                {user?.telegramUsername && (
+                  <p className="text-xs text-muted-foreground">@{user.telegramUsername}</p>
                 )}
               </div>
             </DropdownMenuContent>

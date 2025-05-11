@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, BrowserRouter } from 'react-router-dom';
 import { useTelegram } from './hooks/useTelegram';
 import { AuthProvider, useAuth } from '@contexts/AuthContext';
+import { QueryProvider } from './providers/QueryProvider';
 import { Layout } from './layouts/Layout';
 import { Promo } from './pages/Promo';
 import { Home } from './pages/Home';
@@ -59,10 +60,23 @@ function AppContent() {
             <Layout>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/expenses" element={<Expenses />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
+            </Layout>
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+
+      {/* Protected standalone routes */}
+      <Route
+        path="/expenses"
+        element={
+          isAuthenticated ? (
+            <Layout>
+              <Expenses />
             </Layout>
           ) : (
             <Navigate to="/" replace />
@@ -76,9 +90,11 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <QueryProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </QueryProvider>
     </BrowserRouter>
   );
 }
