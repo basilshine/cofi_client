@@ -1,61 +1,62 @@
-import { apiService } from '../api';
-import { useAuthStore } from '@store/useStore';
+import { useAuthStore } from "@store/useStore";
+import { apiService } from "../api";
 
 export interface Expense {
-  id: string;
-  amount: number;
-  description: string;
-  category: string;
-  date: string;
-  userId: string;
+	id: string;
+	amount: number;
+	description: string;
+	category: string;
+	date: string;
+	userId: string;
 }
 
 export interface ExpenseSummary {
-  total: number;
-  byCategory: Record<string, number>;
-  monthlyAverage: number;
+	total: number;
+	byCategory: Record<string, number>;
+	monthlyAverage: number;
 }
 
 export interface MostUsedCategories {
-  category: string;
-  count: number;
+	category: string;
+	count: number;
 }
 
 export const expensesService = {
-  getExpenses: async () => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const response = await apiService.expenses.list();
-    return response.data as Expense[];
-  },
+	getExpenses: async () => {
+		const userId = useAuthStore.getState().user?.id;
+		if (!userId) throw new Error("User not authenticated");
 
-  createExpense: async (expense: Omit<Expense, 'id' | 'userId'>) => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const expenseWithUserId = {
-      ...expense,
-      userId,
-    };
-    
-    const response = await apiService.expenses.create(expenseWithUserId);
-    return response.data as Expense;
-  },
+		const response = await apiService.expenses.list();
+		return response.data as Expense[];
+	},
 
-  getSummary: async () => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const response = await apiService.analytics.monthly();
-    return response.data as ExpenseSummary;
-  },
+	createExpense: async (expense: Omit<Expense, "id" | "userId">) => {
+		const userId = useAuthStore.getState().user?.id;
+		if (!userId) throw new Error("User not authenticated");
 
-  getMostUsedCategories: async () => {
-    const userId = useAuthStore.getState().user?.id;
-    if (!userId) throw new Error('User not authenticated');
-    
-    const response = await apiService.analytics.categories();
-    return response.data as MostUsedCategories[];
-  },
-}; 
+		const expenseWithUserId = {
+			...expense,
+			userId,
+		};
+
+		const response = await apiService.expenses.create(expenseWithUserId);
+		return response.data as Expense;
+	},
+
+	getSummary: async () => {
+		const userId = useAuthStore.getState().user?.id;
+		if (!userId) throw new Error("User not authenticated");
+
+		const response = await apiService.analytics.summary(userId);
+		return response.data as ExpenseSummary;
+	},
+
+	getMostUsedCategories: async () => {
+		const userId = useAuthStore.getState().user?.id;
+		if (!userId) throw new Error("User not authenticated");
+
+		// No categories method in analytics, implement or remove as needed
+		// Placeholder: return empty array
+		return [];
+	},
+};
