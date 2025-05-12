@@ -10,7 +10,8 @@
 		"format": "biome format . --write",
 		"preview": "vite preview",
 		"gen:types": "sh scripts/gen_types.sh",
-		"prepare": "husky install"
+		"prepare": "husky install",
+		"deploy": "gh-pages -d dist"
 	},
 	"keywords": [],
 	"author": "",
@@ -58,6 +59,7 @@
 		"@types/react-dom": "^18.2.19",
 		"@vitejs/plugin-react": "^4.2.1",
 		"autoprefixer": "^10.4.17",
+		"gh-pages": "^6.3.0",
 		"husky": "^9.1.7",
 		"lint-staged": "^15.5.2",
 		"postcss": "^8.4.35",
