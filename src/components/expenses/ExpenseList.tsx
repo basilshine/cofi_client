@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
-import { format } from 'date-fns';
-import { useTranslation } from 'react-i18next';
-import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
+import type { components } from "@/types/api-types";
+import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import {
 	Table,
 	TableBody,
@@ -9,29 +7,30 @@ import {
 	TableHead,
 	TableHeader,
 	TableRow,
-} from '@components/ui/table';
-import type { components } from '@/types/api-types';
+} from "@components/ui/table";
+import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
-type Expense = components['schemas']['Expense'];
+type Expense = components["schemas"]["Expense"];
 
 const mockExpenses: Expense[] = [
 	{
-		id: '1',
+		id: "1",
 		amount: 25.5,
-		description: 'Lunch at Cafe',
-		categoryId: 'food',
-		createdAt: '2024-03-15T00:00:00Z',
-		updatedAt: '2024-03-15T00:00:00Z',
-		userId: 'user1',
+		description: "Lunch at Cafe",
+		categoryId: "food",
+		createdAt: "2024-03-15T00:00:00Z",
+		updatedAt: "2024-03-15T00:00:00Z",
+		userId: "user1",
 	},
 	{
-		id: '2',
+		id: "2",
 		amount: 45.0,
-		description: 'Monthly Metro Pass',
-		categoryId: 'transport',
-		createdAt: '2024-03-14T00:00:00Z',
-		updatedAt: '2024-03-14T00:00:00Z',
-		userId: 'user1',
+		description: "Monthly Metro Pass",
+		categoryId: "transport",
+		createdAt: "2024-03-14T00:00:00Z",
+		updatedAt: "2024-03-14T00:00:00Z",
+		userId: "user1",
 	},
 ];
 
@@ -41,17 +40,17 @@ export const ExpenseList = () => {
 	return (
 		<Card>
 			<CardHeader>
-				<CardTitle>{t('expenses.title')}</CardTitle>
+				<CardTitle>{t("expenses.title")}</CardTitle>
 			</CardHeader>
 			<CardContent>
 				<Table>
 					<TableHeader>
 						<TableRow>
-							<TableHead>{t('expenses.date')}</TableHead>
-							<TableHead>{t('expenses.description')}</TableHead>
-							<TableHead>{t('expenses.category')}</TableHead>
+							<TableHead>{t("expenses.date")}</TableHead>
+							<TableHead>{t("expenses.description")}</TableHead>
+							<TableHead>{t("expenses.category")}</TableHead>
 							<TableHead className="text-right">
-								{t('expenses.amount')}
+								{t("expenses.amount")}
 							</TableHead>
 						</TableRow>
 					</TableHeader>
@@ -59,7 +58,7 @@ export const ExpenseList = () => {
 						{mockExpenses.map((expense) => (
 							<TableRow key={expense.id}>
 								<TableCell>
-									{format(new Date(expense.createdAt ?? ''), 'MMM dd, yyyy')}
+									{format(new Date(expense.createdAt ?? ""), "MMM dd, yyyy")}
 								</TableCell>
 								<TableCell>{expense.description}</TableCell>
 								<TableCell>{expense.categoryId}</TableCell>
