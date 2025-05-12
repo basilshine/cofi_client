@@ -67,6 +67,13 @@ export const apiService = {
 			user: TelegramUser;
 		}): Promise<AxiosResponse<TelegramLoginResponse>> =>
 			api.post<TelegramLoginResponse>("/api/v1/auth/telegram", data),
+		telegramOAuthCallback: (
+			data: Record<string, string>,
+		): Promise<AxiosResponse<TelegramLoginResponse>> =>
+			api.post<TelegramLoginResponse>(
+				"/api/v1/auth/telegram/oauth-callback",
+				data,
+			),
 	},
 	expenses: {
 		list: () => api.get<components["schemas"]["Expense"][]>(ENDPOINTS.expenses),

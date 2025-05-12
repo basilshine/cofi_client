@@ -1,18 +1,19 @@
-import { Routes, Route, Navigate, BrowserRouter } from 'react-router-dom';
-import { useTelegram } from './hooks/useTelegram';
-import { AuthProvider, useAuth } from '@contexts/AuthContext';
-import { QueryProvider } from './providers/QueryProvider';
-import { Layout } from './layouts/Layout';
-import { Promo } from './pages/Promo';
-import { Home } from './pages/Home';
-import { Expenses } from '@pages/Expenses';
-import { Analytics } from '@pages/Analytics';
-import { Settings } from '@pages/Settings';
-import { Login } from '@pages/auth/Login';
-import { Register } from '@pages/auth/Register';
-import { ForgotPassword } from '@pages/auth/ForgotPassword';
-import { ResetPassword } from '@pages/auth/ResetPassword';
-import './i18n/config';
+import { AuthProvider, useAuth } from "@contexts/AuthContext";
+import { Analytics } from "@pages/Analytics";
+import { Expenses } from "@pages/Expenses";
+import { Settings } from "@pages/Settings";
+import { ForgotPassword } from "@pages/auth/ForgotPassword";
+import { Login } from "@pages/auth/Login";
+import { Register } from "@pages/auth/Register";
+import { ResetPassword } from "@pages/auth/ResetPassword";
+import { TelegramCallback } from "@pages/auth/TelegramCallback";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useTelegram } from "./hooks/useTelegram";
+import { Layout } from "./layouts/Layout";
+import { Home } from "./pages/Home";
+import { Promo } from "./pages/Promo";
+import { QueryProvider } from "./providers/QueryProvider";
+import "./i18n/config";
 
 function AppContent() {
 	const { error } = useTelegram();
@@ -82,6 +83,7 @@ function AppContent() {
 						)
 					}
 				/>
+				<Route path="telegram/callback" element={<TelegramCallback />} />
 			</Route>
 
 			{/* Protected routes */}

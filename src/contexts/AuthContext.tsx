@@ -38,6 +38,8 @@ interface AuthContextType extends AuthState {
 	requestPasswordReset: (email: string) => Promise<void>;
 	resetPassword: (token: string, newPassword: string) => Promise<void>;
 	handleTelegramAuth: () => void;
+	setUser: (user: User | null) => void;
+	setToken: (token: string | null) => void;
 }
 
 interface TelegramLoginResponse {
@@ -303,6 +305,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		}
 	};
 
+	const setUser = (user: User | null) => {
+		setState((prev) => ({ ...prev, user }));
+	};
+
+	const setToken = (token: string | null) => {
+		setState((prev) => ({ ...prev, token }));
+		if (token) {
+			localStorage.setItem("token", token);
+		} else {
+			localStorage.removeItem("token");
+		}
+	};
+
 	return (
 		<AuthContext.Provider
 			value={{
@@ -313,6 +328,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				requestPasswordReset,
 				resetPassword,
 				handleTelegramAuth,
+				setUser,
+				setToken,
 			}}
 		>
 			{children}
