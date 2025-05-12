@@ -1,5 +1,3 @@
-import { apiService } from "../api";
-
 export interface PromoFeature {
 	id: string;
 	title: string;
