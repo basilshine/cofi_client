@@ -1,2 +1,3 @@
 #!/bin/sh
+npx biome format . --write
 npx biome check .

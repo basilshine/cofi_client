@@ -1,5 +1,5 @@
-import { User, Bell, CreditCard, Lock } from '@phosphor-icons/react';
-import { Card, CardContent, CardHeader, CardTitle } from '@components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { Bell, CreditCard, Lock, User } from "@phosphor-icons/react";
 
 export const Settings = () => {
 	return (

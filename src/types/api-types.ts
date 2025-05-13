@@ -4,654 +4,661 @@
  */
 
 export interface paths {
-    "/api/v1/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** User login */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["LoginRequest"];
-                };
-            };
-            responses: {
-                /** @description Auth response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AuthResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** User registration */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RegisterRequest"];
-                };
-            };
-            responses: {
-                /** @description Auth response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AuthResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/expenses": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get expenses */
-        get: {
-            parameters: {
-                query: {
-                    /** @description User ID */
-                    user_id: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of expenses */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Expense"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create expense */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Expense"];
-                };
-            };
-            responses: {
-                /** @description Expense created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Expense"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/categories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get categories */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of categories */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Category"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create category */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Category"];
-                };
-            };
-            responses: {
-                /** @description Category created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Category"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/goals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get goals */
-        get: {
-            parameters: {
-                query: {
-                    /** @description User ID */
-                    user_id: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of goals */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Goal"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create goal */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Goal"];
-                };
-            };
-            responses: {
-                /** @description Goal created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Goal"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/recurring": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get recurring expenses */
-        get: {
-            parameters: {
-                query: {
-                    /** @description User ID */
-                    user_id: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of recurring expenses */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create recurring expense */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RecurringExpense"];
-                };
-            };
-            responses: {
-                /** @description Recurring expense created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get notifications */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Notification status */
-                    status?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of notifications */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Notification"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create notification */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-            responses: {
-                /** @description Notification created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Notification"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/notifications/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update notification status */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Notification ID */
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        status?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Notification updated */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reminders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get reminders */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Reminder time (HH:MM) */
-                    time?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of reminders */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Reminder"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create reminder */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Reminder"];
-                };
-            };
-            responses: {
-                /** @description Reminder created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Reminder"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/analytics/stats/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get analytics summary */
-        get: {
-            parameters: {
-                query: {
-                    /** @description User ID */
-                    user_id: string;
-                    /** @description Period (week, month) */
-                    period?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Analytics summary */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AnalyticsSummary"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
+	"/api/v1/auth/login": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** User login */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["LoginRequest"];
+				};
+			};
+			responses: {
+				/** @description Auth response */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["AuthResponse"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/auth/register": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** User registration */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["RegisterRequest"];
+				};
+			};
+			responses: {
+				/** @description Auth response */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["AuthResponse"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/expenses": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get expenses */
+		get: {
+			parameters: {
+				query: {
+					/** @description User ID */
+					user_id: string;
+				};
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description List of expenses */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Expense"][];
+					};
+				};
+			};
+		};
+		put?: never;
+		/** Create expense */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["Expense"];
+				};
+			};
+			responses: {
+				/** @description Expense created */
+				201: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Expense"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/categories": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get categories */
+		get: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description List of categories */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Category"][];
+					};
+				};
+			};
+		};
+		put?: never;
+		/** Create category */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["Category"];
+				};
+			};
+			responses: {
+				/** @description Category created */
+				201: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Category"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/goals": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get goals */
+		get: {
+			parameters: {
+				query: {
+					/** @description User ID */
+					user_id: string;
+				};
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description List of goals */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Goal"][];
+					};
+				};
+			};
+		};
+		put?: never;
+		/** Create goal */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["Goal"];
+				};
+			};
+			responses: {
+				/** @description Goal created */
+				201: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Goal"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/recurring": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get recurring expenses */
+		get: {
+			parameters: {
+				query: {
+					/** @description User ID */
+					user_id: string;
+				};
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description List of recurring expenses */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["RecurringExpense"][];
+					};
+				};
+			};
+		};
+		put?: never;
+		/** Create recurring expense */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["RecurringExpense"];
+				};
+			};
+			responses: {
+				/** @description Recurring expense created */
+				201: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["RecurringExpense"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/notifications": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get notifications */
+		get: {
+			parameters: {
+				query?: {
+					/** @description Notification status */
+					status?: string;
+				};
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description List of notifications */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Notification"][];
+					};
+				};
+			};
+		};
+		put?: never;
+		/** Create notification */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["Notification"];
+				};
+			};
+			responses: {
+				/** @description Notification created */
+				201: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Notification"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/notifications/{id}": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Update notification status */
+		put: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					/** @description Notification ID */
+					id: string;
+				};
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": {
+						status?: string;
+					};
+				};
+			};
+			responses: {
+				/** @description Notification updated */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/reminders": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get reminders */
+		get: {
+			parameters: {
+				query?: {
+					/** @description Reminder time (HH:MM) */
+					time?: string;
+				};
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description List of reminders */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Reminder"][];
+					};
+				};
+			};
+		};
+		put?: never;
+		/** Create reminder */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["Reminder"];
+				};
+			};
+			responses: {
+				/** @description Reminder created */
+				201: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Reminder"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/analytics/stats/summary": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Get analytics summary */
+		get: {
+			parameters: {
+				query: {
+					/** @description User ID */
+					user_id: string;
+					/** @description Period (week, month) */
+					period?: string;
+				};
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description Analytics summary */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["AnalyticsSummary"];
+					};
+				};
+			};
+		};
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        LoginRequest: {
-            email?: string;
-            password?: string;
-        };
-        RegisterRequest: {
-            email?: string;
-            password?: string;
-            name?: string;
-            country?: string;
-            language?: string;
-        };
-        AuthResponse: {
-            token?: string;
-            refreshToken?: string;
-            user?: components["schemas"]["User"];
-        };
-        User: {
-            id?: string;
-            email?: string;
-            name?: string;
-            /** Format: int64 */
-            telegramId?: number;
-            telegramUsername?: string;
-            telegramPhotoUrl?: string;
-            country?: string;
-            language?: string;
-        };
-        Category: {
-            id?: string;
-            name?: string;
-            color?: string;
-            icon?: string;
-            parentId?: string;
-            description?: string;
-        };
-        Expense: {
-            id?: string;
-            userId?: string;
-            amount?: number;
-            categoryId?: string;
-            description?: string;
-            emotion?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            reaction?: components["schemas"]["ReactionType"];
-        };
-        Goal: {
-            id?: string;
-            userId?: string;
-            target?: number;
-            purpose?: string;
-            /** Format: date-time */
-            targetDate?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
-        RecurringExpense: {
-            id?: string;
-            userId?: string;
-            /** Format: int64 */
-            chatId?: number;
-            amount?: number;
-            categoryId?: string;
-            /** Format: date-time */
-            startDate?: string;
-            interval?: string;
-            /** Format: date-time */
-            nextRun?: string;
-        };
-        Notification: {
-            id?: string;
-            userId?: string;
-            /** Format: int64 */
-            chatId?: number;
-            message?: string;
-            type?: string;
-            status?: string;
-        };
-        Reminder: {
-            id?: string;
-            userId?: string;
-            time?: string;
-            message?: string;
-            enabled?: boolean;
-        };
-        AnalyticsSummary: {
-            totalExpenses?: number;
-            byCategory?: {
-                [key: string]: number;
-            };
-            lastMonth?: number;
-            thisMonth?: number;
-        };
-        /** @enum {string} */
-        ReactionType: "like" | "dislike" | "happy" | "sad" | "regret" | "joy" | "neutral";
-    };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+	schemas: {
+		LoginRequest: {
+			email?: string;
+			password?: string;
+		};
+		RegisterRequest: {
+			email?: string;
+			password?: string;
+			name?: string;
+			country?: string;
+			language?: string;
+		};
+		AuthResponse: {
+			token?: string;
+			refreshToken?: string;
+			user?: components["schemas"]["User"];
+		};
+		User: {
+			id?: string;
+			email?: string;
+			name?: string;
+			/** Format: int64 */
+			telegramId?: number;
+			telegramUsername?: string;
+			telegramPhotoUrl?: string;
+			country?: string;
+			language?: string;
+		};
+		Category: {
+			id?: string;
+			name?: string;
+			color?: string;
+			icon?: string;
+			parentId?: string;
+			description?: string;
+		};
+		Expense: {
+			id?: string;
+			userId?: string;
+			amount?: number;
+			categoryId?: string;
+			description?: string;
+			emotion?: string;
+			/** Format: date-time */
+			createdAt?: string;
+			/** Format: date-time */
+			updatedAt?: string;
+			reaction?: components["schemas"]["ReactionType"];
+		};
+		Goal: {
+			id?: string;
+			userId?: string;
+			target?: number;
+			purpose?: string;
+			/** Format: date-time */
+			targetDate?: string;
+			/** Format: date-time */
+			createdAt?: string;
+			/** Format: date-time */
+			updatedAt?: string;
+		};
+		RecurringExpense: {
+			id?: string;
+			userId?: string;
+			/** Format: int64 */
+			chatId?: number;
+			amount?: number;
+			categoryId?: string;
+			/** Format: date-time */
+			startDate?: string;
+			interval?: string;
+			/** Format: date-time */
+			nextRun?: string;
+		};
+		Notification: {
+			id?: string;
+			userId?: string;
+			/** Format: int64 */
+			chatId?: number;
+			message?: string;
+			type?: string;
+			status?: string;
+		};
+		Reminder: {
+			id?: string;
+			userId?: string;
+			time?: string;
+			message?: string;
+			enabled?: boolean;
+		};
+		AnalyticsSummary: {
+			totalExpenses?: number;
+			byCategory?: {
+				[key: string]: number;
+			};
+			lastMonth?: number;
+			thisMonth?: number;
+		};
+		/** @enum {string} */
+		ReactionType:
+			| "like"
+			| "dislike"
+			| "happy"
+			| "sad"
+			| "regret"
+			| "joy"
+			| "neutral";
+	};
+	responses: never;
+	parameters: never;
+	requestBodies: never;
+	headers: never;
+	pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;

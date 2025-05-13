@@ -95,9 +95,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	useEffect(() => {
 		// Log window unload/reload events
 		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			console.log(e);
 			console.log("[AuthContext] Window beforeunload event triggered.");
 		};
 		const handleUnload = (e: Event) => {
+			console.log(e);
 			console.log("[AuthContext] Window unload event triggered.");
 		};
 		window.addEventListener("beforeunload", handleBeforeUnload);
