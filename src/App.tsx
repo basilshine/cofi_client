@@ -7,6 +7,8 @@ import { Login } from "@pages/auth/Login";
 import { Register } from "@pages/auth/Register";
 import { ResetPassword } from "@pages/auth/ResetPassword";
 import { TelegramCallback } from "@pages/auth/TelegramCallback";
+import * as Sentry from "@sentry/react";
+import { browserTracingIntegration } from "@sentry/react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useTelegram } from "./hooks/useTelegram";
 import { Layout } from "./layouts/Layout";
@@ -14,6 +16,13 @@ import { Home } from "./pages/Home";
 import { Promo } from "./pages/Promo";
 import { QueryProvider } from "./providers/QueryProvider";
 import "./i18n/config";
+
+Sentry.init({
+	dsn: import.meta.env.VITE_SENTRY_DSN || "", // Set your Sentry DSN in env
+	integrations: [browserTracingIntegration()],
+	tracesSampleRate: 1.0,
+	environment: import.meta.env.VITE_ENVIRONMENT || "development",
+});
 
 function AppContent() {
 	const { error } = useTelegram();
@@ -121,16 +130,23 @@ function AppContent() {
 	);
 }
 
-function App() {
-	return (
-		<BrowserRouter basename={import.meta.env.BASE_URL}>
+const App = () => (
+	<Sentry.ErrorBoundary
+		fallback={
+			<div className="text-red-500">
+				An unexpected error occurred. Please refresh the page.
+			</div>
+		}
+		showDialog
+	>
+		<AuthProvider>
 			<QueryProvider>
-				<AuthProvider>
+				<BrowserRouter basename={import.meta.env.BASE_URL}>
 					<AppContent />
-				</AuthProvider>
+				</BrowserRouter>
 			</QueryProvider>
-		</BrowserRouter>
-	);
-}
+		</AuthProvider>
+	</Sentry.ErrorBoundary>
+);
 
 export default App;

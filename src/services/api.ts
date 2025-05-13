@@ -65,15 +65,46 @@ export const apiService = {
 		telegramLogin: (data: {
 			telegramInitData: string;
 			user: TelegramUser;
-		}): Promise<AxiosResponse<TelegramLoginResponse>> =>
-			api.post<TelegramLoginResponse>("/api/v1/auth/telegram", data),
+		}): Promise<AxiosResponse<TelegramLoginResponse>> => {
+			console.log(
+				"[apiService.auth.telegramLogin] Sending Telegram login request:",
+				data,
+			);
+			return api
+				.post<TelegramLoginResponse>("/api/v1/auth/telegram", data)
+				.then((res) => {
+					console.log("[apiService.auth.telegramLogin] Response:", res.data);
+					return res;
+				})
+				.catch((err) => {
+					console.error("[apiService.auth.telegramLogin] Error:", err);
+					throw err;
+				});
+		},
 		telegramOAuthCallback: (
 			data: Record<string, string>,
-		): Promise<AxiosResponse<TelegramLoginResponse>> =>
-			api.post<TelegramLoginResponse>(
-				"/api/v1/auth/telegram/oauth-callback",
+		): Promise<AxiosResponse<TelegramLoginResponse>> => {
+			console.log(
+				"[apiService.auth.telegramOAuthCallback] Sending Telegram OAuth callback request:",
 				data,
-			),
+			);
+			return api
+				.post<TelegramLoginResponse>(
+					"/api/v1/auth/telegram/oauth-callback",
+					data,
+				)
+				.then((res) => {
+					console.log(
+						"[apiService.auth.telegramOAuthCallback] Response:",
+						res.data,
+					);
+					return res;
+				})
+				.catch((err) => {
+					console.error("[apiService.auth.telegramOAuthCallback] Error:", err);
+					throw err;
+				});
+		},
 	},
 	expenses: {
 		list: () => api.get<components["schemas"]["Expense"][]>(ENDPOINTS.expenses),

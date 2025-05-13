@@ -9,16 +9,22 @@ export const TelegramCallback = () => {
 	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
+		console.log("[TelegramCallback] Component mounted. Parsing URL params...");
 		const params = new URLSearchParams(window.location.search);
 		const telegramData: Record<string, string> = {};
 		params.forEach((value, key) => {
 			telegramData[key] = value;
 		});
+		console.log("[TelegramCallback] Parsed telegramData:", telegramData);
 
 		if (telegramData.id && telegramData.hash) {
+			console.log(
+				"[TelegramCallback] Valid Telegram data found. Sending to backend...",
+			);
 			apiService.auth
 				.telegramOAuthCallback(telegramData)
 				.then((response) => {
+					console.log("[TelegramCallback] Backend response:", response.data);
 					setToken(response.data.token ?? null);
 					const user = response.data.user
 						? {
@@ -31,13 +37,22 @@ export const TelegramCallback = () => {
 								telegramPhotoUrl: response.data.user.telegramPhotoUrl,
 							}
 						: null;
+					console.log(
+						"[TelegramCallback] Setting user and navigating to dashboard:",
+						user,
+					);
 					setUser(user);
 					navigate("/dashboard");
 				})
-				.catch(() => {
+				.catch((err) => {
+					console.error("[TelegramCallback] Telegram login failed:", err);
 					setError("Telegram login failed. Please try again.");
 				});
 		} else {
+			console.error(
+				"[TelegramCallback] Invalid Telegram callback data:",
+				telegramData,
+			);
 			setError("Invalid Telegram callback data.");
 		}
 	}, [navigate, setUser, setToken]);

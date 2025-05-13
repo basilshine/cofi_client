@@ -93,6 +93,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	}, []);
 
 	useEffect(() => {
+		// Log window unload/reload events
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			console.log("[AuthContext] Window beforeunload event triggered.");
+		};
+		const handleUnload = (e: Event) => {
+			console.log("[AuthContext] Window unload event triggered.");
+		};
+		window.addEventListener("beforeunload", handleBeforeUnload);
+		window.addEventListener("unload", handleUnload);
+		return () => {
+			window.removeEventListener("beforeunload", handleBeforeUnload);
+			window.removeEventListener("unload", handleUnload);
+		};
+	}, []);
+
+	useEffect(() => {
 		// Auto-login/register with Telegram if in WebApp and not already authenticated
 		if (
 			isWebApp &&
@@ -101,11 +117,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			!state.isAuthenticated &&
 			!state.isLoading
 		) {
+			console.log("[AuthContext] Attempting Telegram WebApp login:", {
+				telegramUser,
+				initData,
+			});
 			setState((prev) => ({ ...prev, isLoading: true, error: null }));
 			apiService.auth
 				.telegramLogin({ telegramInitData: initData, user: telegramUser })
 				.then((response: AxiosResponse<TelegramLoginResponse>) => {
 					const data = response.data;
+					console.log("[AuthContext] Telegram login response:", data);
 					localStorage.setItem("token", data.token ?? "");
 					const user = data.user
 						? {
@@ -119,6 +140,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 								telegramPhotoUrl: data.user.telegramPhotoUrl,
 							}
 						: null;
+					console.log(
+						"[AuthContext] Setting user and navigating to dashboard:",
+						user,
+					);
 					setState((prev) => ({
 						...prev,
 						user,
@@ -130,6 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					navigate("/dashboard");
 				})
 				.catch((error) => {
+					console.error("[AuthContext] Telegram login error:", error);
 					setState((prev) => ({
 						...prev,
 						isLoading: false,
