@@ -2,7 +2,6 @@ import { useTelegram } from "@/hooks/useTelegram";
 import type { TelegramWidgetUser } from "@/types/TelegramWidgetUser";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { apiService } from "@services/api";
-import WebApp from "@twa-dev/sdk";
 import type { AxiosResponse } from "axios";
 import { jwtDecode } from "jwt-decode";
 import type { ReactNode } from "react";
@@ -72,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	});
 
 	const navigate = useNavigate();
-	const { isWebApp: hookIsWebApp, telegramUser, initData } = useTelegram();
+	const { telegramUser, initData } = useTelegram();
 
 	useEffect(() => {
 		const token = localStorage.getItem("token");
