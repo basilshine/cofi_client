@@ -70,12 +70,7 @@
 		"vite": "^5.1.0"
 	},
 	"lint-staged": {
-		"*.{js,jsx,ts,tsx}": [
-			"biome check",
-			"biome format --write"
-		],
-		"*.{json,css,md}": [
-			"biome format --write"
-		]
+		"*.{js,jsx,ts,tsx}": ["biome check", "biome format --write"],
+		"*.{json,css,md}": ["biome format --write"]
 	}
 }
