@@ -20,6 +20,7 @@ declare global {
 				};
 			};
 		};
+		TelegramGameProxy?: unknown;
 	}
 }
 
@@ -28,7 +29,7 @@ export const useTelegram = () => {
 	const [initData, setInitData] = useState<string>("");
 
 	useEffect(() => {
-		// Comprehensive debug logging for Telegram WebApp context detection
+		// Even more detailed debug info
 		const win = window as typeof window & {
 			Telegram?: {
 				WebApp?: {
@@ -36,6 +37,7 @@ export const useTelegram = () => {
 					initData?: string;
 				};
 			};
+			TelegramGameProxy?: unknown;
 		};
 		const userAgent = navigator.userAgent;
 		const referrer = document.referrer;
@@ -48,6 +50,10 @@ export const useTelegram = () => {
 			typeof win.Telegram !== "undefined" &&
 			typeof win.Telegram.WebApp !== "undefined";
 
+		const windowKeys = Object.keys(window);
+		const telegramKeys = windowKeys.filter((k) => k.startsWith("Telegram"));
+		const hasTelegramGameProxy = typeof win.TelegramGameProxy !== "undefined";
+
 		const debugInfo = {
 			userAgent,
 			referrer,
@@ -57,9 +63,19 @@ export const useTelegram = () => {
 			tgUser,
 			tgInitData,
 			isTelegramWebApp,
+			windowKeys,
+			telegramKeys,
+			hasTelegramGameProxy,
 		};
 		console.log("[useTelegram] Debug info:", debugInfo);
 		LogRocket.log("[useTelegram] Debug info:", debugInfo);
+
+		if (typeof window !== "undefined") {
+			alert(`window.Telegram: ${typeof win.Telegram}`);
+			alert(
+				`window.Telegram.WebApp: ${win.Telegram && typeof win.Telegram.WebApp}`,
+			);
+		}
 
 		if (isTelegramWebApp && tg) {
 			setTelegramUser(tgUser || null);
