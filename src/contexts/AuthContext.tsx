@@ -5,7 +5,7 @@ import { apiService } from "@services/api";
 import type { AxiosResponse } from "axios";
 import { jwtDecode } from "jwt-decode";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface User {
@@ -72,6 +72,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 	const navigate = useNavigate();
 	const { telegramUser, initData } = useTelegram();
+	const hasAttemptedTelegramLogin = useRef(false);
 
 	useEffect(() => {
 		const token = localStorage.getItem("token");
@@ -113,16 +114,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		};
 	}, []);
 
+	// Improved Telegram WebApp auto-login
 	useEffect(() => {
-		// Auto-login/register with Telegram if in WebApp and not already authenticated
 		if (
 			isWebApp &&
 			telegramUser &&
 			initData &&
 			!state.isAuthenticated &&
-			!state.isLoading
+			!hasAttemptedTelegramLogin.current
 		) {
-			console.log("[AuthContext] Attempting Telegram WebApp login:", {
+			hasAttemptedTelegramLogin.current = true;
+			console.log("[AuthContext] Attempting Telegram WebApp auto-login", {
 				telegramUser,
 				initData,
 			});
@@ -146,10 +148,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 								telegramPhotoUrl: data.user.telegramPhotoUrl,
 							}
 						: null;
-					console.log(
-						"[AuthContext] Setting user and navigating to dashboard:",
-						user,
-					);
 					setState((prev) => ({
 						...prev,
 						user,
@@ -170,14 +168,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					}));
 				});
 		}
-	}, [
-		isWebApp,
-		telegramUser,
-		initData,
-		state.isAuthenticated,
-		state.isLoading,
-		navigate,
-	]);
+	}, [isWebApp, telegramUser, initData, state.isAuthenticated, navigate]);
 
 	const login = async (email: string, password: string) => {
 		try {
@@ -410,7 +401,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				handleTelegramWidgetAuth,
 			}}
 		>
-			{children}
+			{isWebApp && state.isLoading && !state.isAuthenticated ? (
+				<div className="flex min-h-screen items-center justify-center">
+					<div className="text-center">
+						<p className="text-lg font-semibold">Logging in with Telegram...</p>
+					</div>
+				</div>
+			) : (
+				children
+			)}
 		</AuthContext.Provider>
 	);
 };
