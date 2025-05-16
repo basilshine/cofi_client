@@ -1,3 +1,4 @@
+import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
 
 type TelegramUser = {
@@ -27,9 +28,7 @@ export const useTelegram = () => {
 	const [initData, setInitData] = useState<string>("");
 
 	useEffect(() => {
-		// Improved logging for debugging Telegram WebApp context
-		console.log("[useTelegram] Checking for Telegram WebApp context...");
-		// Use type guards to avoid linter errors
+		// Comprehensive debug logging for Telegram WebApp context detection
 		const win = window as typeof window & {
 			Telegram?: {
 				WebApp?: {
@@ -38,26 +37,46 @@ export const useTelegram = () => {
 				};
 			};
 		};
-		console.log("[useTelegram] window.Telegram:", win.Telegram);
-		console.log("[useTelegram] window.Telegram.WebApp:", win.Telegram?.WebApp);
-
+		const userAgent = navigator.userAgent;
+		const referrer = document.referrer;
+		const locationHref = window.location.href;
+		const tg = win.Telegram?.WebApp;
+		const tgUser = tg?.initDataUnsafe?.user;
+		const tgInitData = tg?.initData;
 		const isTelegramWebApp =
 			typeof window !== "undefined" &&
 			typeof win.Telegram !== "undefined" &&
 			typeof win.Telegram.WebApp !== "undefined";
 
-		if (isTelegramWebApp && win.Telegram && win.Telegram.WebApp) {
-			const tg = win.Telegram.WebApp;
-			setTelegramUser(tg.initDataUnsafe?.user || null);
-			setInitData(tg.initData || "");
+		const debugInfo = {
+			userAgent,
+			referrer,
+			locationHref,
+			windowTelegram: win.Telegram,
+			windowTelegramWebApp: tg,
+			tgUser,
+			tgInitData,
+			isTelegramWebApp,
+		};
+		console.log("[useTelegram] Debug info:", debugInfo);
+		LogRocket.log("[useTelegram] Debug info:", debugInfo);
+
+		if (isTelegramWebApp && tg) {
+			setTelegramUser(tgUser || null);
+			setInitData(tgInitData || "");
 			console.log("[useTelegram] Telegram WebApp context detected.", {
-				user: tg.initDataUnsafe?.user,
-				initData: tg.initData,
+				user: tgUser,
+				initData: tgInitData,
+			});
+			LogRocket.log("[useTelegram] Telegram WebApp context detected.", {
+				user: tgUser,
+				initData: tgInitData,
 			});
 		} else {
 			setTelegramUser(null);
 			setInitData("");
 			console.log("[useTelegram] Not in Telegram WebApp context.");
+			LogRocket.log("[useTelegram] Not in Telegram WebApp context.");
 		}
 	}, []);
 
