@@ -1,4 +1,5 @@
 import { useTelegram } from "@/hooks/useTelegram";
+import type { TelegramWidgetUser } from "@/types/TelegramWidgetUser";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { apiService } from "@services/api";
 import WebApp from "@twa-dev/sdk";
@@ -41,7 +42,7 @@ interface AuthContextType extends AuthState {
 	handleTelegramAuth: () => void;
 	setUser: (user: User | null) => void;
 	setToken: (token: string | null) => void;
-	handleTelegramWidgetAuth: (tgUser: any) => Promise<void>;
+	handleTelegramWidgetAuth: (tgUser: TelegramWidgetUser) => Promise<void>;
 }
 
 interface TelegramLoginResponse {
@@ -135,8 +136,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					localStorage.setItem("token", data.token ?? "");
 					const user = data.user
 						? {
-								id: data.user.id ?? "",
-								email: data.user.email ?? "",
+								id: typeof data.user.id === "string" ? data.user.id : "",
+								email:
+									typeof data.user.email === "string" ? data.user.email : "",
 								firstName: data.user.firstName ?? telegramUser.first_name ?? "",
 								lastName: data.user.lastName ?? telegramUser.last_name,
 								telegramId: data.user.telegramId ?? telegramUser.id,
@@ -201,14 +203,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						};
 					})()
 				: null;
-			setState({
-				...state,
+			setState((prev) => ({
+				...prev,
 				user,
 				token: response.data.token ?? null,
 				isAuthenticated: true,
 				isLoading: false,
 				error: null,
-			});
+			}));
 			navigate("/dashboard");
 		} catch (error) {
 			setState((prev) => ({
@@ -350,15 +352,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	};
 
 	// Handle Telegram Login Widget (browser)
-	const handleTelegramWidgetAuth = async (tgUser: any) => {
+	const handleTelegramWidgetAuth = async (tgUser: TelegramWidgetUser) => {
 		setState((prev) => ({ ...prev, isLoading: true, error: null }));
 		try {
-			const response = await apiService.auth.telegramLoginWidget(tgUser);
+			const response = await apiService.auth.telegramLoginWidget({
+				telegram_id: tgUser.id,
+				username: tgUser.username,
+				first_name: tgUser.first_name,
+				last_name: tgUser.last_name,
+				photo_url: tgUser.photo_url,
+				auth_date: tgUser.auth_date,
+				hash: tgUser.hash,
+				language: tgUser.language_code,
+				country: tgUser.country,
+			});
 			const { token, user } = response.data;
 			localStorage.setItem("token", token ?? "");
 			setState((prev) => ({
 				...prev,
-				user,
+				user: user
+					? {
+							id: typeof user.id === "string" ? user.id : "",
+							email: typeof user.email === "string" ? user.email : "",
+							firstName: user.firstName ?? "",
+							lastName: user.lastName,
+							telegramId: user.telegramId,
+							telegramUsername: user.telegramUsername,
+							telegramPhotoUrl: user.telegramPhotoUrl,
+						}
+					: null,
 				token: token ?? null,
 				isAuthenticated: true,
 				isLoading: false,

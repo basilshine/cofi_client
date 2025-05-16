@@ -105,6 +105,22 @@ export const apiService = {
 					throw err;
 				});
 		},
+		telegramLoginWidget: (data: {
+			telegram_id: number;
+			username: string;
+			first_name?: string;
+			last_name?: string;
+			photo_url?: string;
+			auth_date: number;
+			hash: string;
+			language?: string;
+			country?: string;
+		}) => {
+			return api.post<TelegramLoginResponse>(
+				"/api/v1/auth/telegram/login",
+				data,
+			);
+		},
 	},
 	expenses: {
 		list: () => api.get<components["schemas"]["Expense"][]>(ENDPOINTS.expenses),

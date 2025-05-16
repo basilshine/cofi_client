@@ -1,5 +1,5 @@
+import type { TelegramWidgetUser } from "@/types/TelegramWidgetUser";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
-import { AuthForm } from "@components/auth/AuthForm";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -8,18 +8,6 @@ import { useAuth } from "@contexts/AuthContext";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-
-type TelegramWidgetUser = {
-	id: number;
-	username: string;
-	first_name: string;
-	last_name?: string;
-	photo_url?: string;
-	auth_date: number;
-	hash: string;
-	language_code?: string;
-	country?: string;
-};
 
 export const Login = () => {
 	const { t } = useTranslation();
@@ -42,17 +30,7 @@ export const Login = () => {
 				onTelegramAuth: (user: TelegramWidgetUser) => void;
 			}
 		).onTelegramAuth = (user: TelegramWidgetUser) => {
-			handleTelegramWidgetAuth({
-				telegram_id: user.id,
-				username: user.username,
-				country: user.country || "",
-				language: user.language_code || "",
-				first_name: user.first_name,
-				last_name: user.last_name,
-				photo_url: user.photo_url,
-				hash: user.hash,
-				auth_date: user.auth_date,
-			});
+			handleTelegramWidgetAuth(user);
 		};
 		// Inject the Telegram widget script
 		const script = document.createElement("script");
