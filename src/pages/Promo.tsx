@@ -104,14 +104,6 @@ export const Promo = () => {
 							<Button asChild size="lg" className="w-full md:w-auto">
 								<Link to="/auth/login">{t("promo.cta.login")}</Link>
 							</Button>
-							<Button
-								variant="outline"
-								size="lg"
-								className="w-full md:w-auto"
-								onClick={handleTelegramAuth}
-							>
-								{t("promo.cta.telegram")}
-							</Button>
 						</div>
 					)}
 				</section>
