@@ -1,4 +1,5 @@
 import { useTelegram } from "@/hooks/useTelegram";
+import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { apiService } from "@services/api";
 import WebApp from "@twa-dev/sdk";
 import type { AxiosResponse } from "axios";
@@ -40,6 +41,7 @@ interface AuthContextType extends AuthState {
 	handleTelegramAuth: () => void;
 	setUser: (user: User | null) => void;
 	setToken: (token: string | null) => void;
+	handleTelegramWidgetAuth: (tgUser: any) => Promise<void>;
 }
 
 interface TelegramLoginResponse {
@@ -58,17 +60,18 @@ interface TelegramLoginResponse {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+	const isWebApp = isTelegramWebApp();
 	const [state, setState] = useState<AuthState>({
 		user: null,
 		token: localStorage.getItem("token"),
 		isAuthenticated: false,
 		isLoading: true,
 		error: null,
-		isWebApp: WebApp.platform !== "unknown",
+		isWebApp: isWebApp,
 	});
 
 	const navigate = useNavigate();
-	const { isWebApp, telegramUser, initData } = useTelegram();
+	const { isWebApp: hookIsWebApp, telegramUser, initData } = useTelegram();
 
 	useEffect(() => {
 		const token = localStorage.getItem("token");
@@ -346,6 +349,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		}
 	};
 
+	// Handle Telegram Login Widget (browser)
+	const handleTelegramWidgetAuth = async (tgUser: any) => {
+		setState((prev) => ({ ...prev, isLoading: true, error: null }));
+		try {
+			const response = await apiService.auth.telegramLoginWidget(tgUser);
+			const { token, user } = response.data;
+			localStorage.setItem("token", token ?? "");
+			setState((prev) => ({
+				...prev,
+				user,
+				token: token ?? null,
+				isAuthenticated: true,
+				isLoading: false,
+				error: null,
+			}));
+			navigate("/dashboard");
+		} catch (error) {
+			setState((prev) => ({
+				...prev,
+				isLoading: false,
+				error: error instanceof Error ? error.message : "Telegram login failed",
+			}));
+		}
+	};
+
 	return (
 		<AuthContext.Provider
 			value={{
@@ -358,6 +386,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				handleTelegramAuth,
 				setUser,
 				setToken,
+				handleTelegramWidgetAuth,
 			}}
 		>
 			{children}

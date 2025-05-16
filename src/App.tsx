@@ -10,7 +10,6 @@ import { TelegramCallback } from "@pages/auth/TelegramCallback";
 import * as Sentry from "@sentry/react";
 import { browserTracingIntegration } from "@sentry/react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { useTelegram } from "./hooks/useTelegram";
 import { Layout } from "./layouts/Layout";
 import { Home } from "./pages/Home";
 import { Promo } from "./pages/Promo";
@@ -25,19 +24,7 @@ Sentry.init({
 });
 
 function AppContent() {
-	const { error } = useTelegram();
 	const { isAuthenticated, isLoading } = useAuth();
-
-	if (error) {
-		return (
-			<div className="flex min-h-screen items-center justify-center">
-				<div className="text-center">
-					<h1 className="text-2xl font-bold text-red-500">Error</h1>
-					<p className="mt-2 text-muted-foreground">{error}</p>
-				</div>
-			</div>
-		);
-	}
 
 	if (isLoading) {
 		return (

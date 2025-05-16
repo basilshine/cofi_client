@@ -17,6 +17,7 @@
 	"author": "",
 	"license": "ISC",
 	"dependencies": {
+		"@auth0/auth0-react": "^2.3.0",
 		"@emotion/react": "^11.11.3",
 		"@mantine/charts": "^7.5.0",
 		"@mantine/core": "^7.5.0",
@@ -69,7 +70,12 @@
 		"vite": "^5.1.0"
 	},
 	"lint-staged": {
-		"*.{js,jsx,ts,tsx}": ["biome check", "biome format --write"],
-		"*.{json,css,md}": ["biome format --write"]
+		"*.{js,jsx,ts,tsx}": [
+			"biome check",
+			"biome format --write"
+		],
+		"*.{json,css,md}": [
+			"biome format --write"
+		]
 	}
 }
