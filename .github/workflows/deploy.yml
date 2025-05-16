@@ -35,6 +35,7 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:8000' }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
           VITE_ENVIRONMENT: ${{ secrets.VITE_ENVIRONMENT || 'development' }}
+          VITE_LOGROCKET_ID: ${{ secrets.VITE_LOGROCKET_ID || 'to9zmq/cofilance' }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
