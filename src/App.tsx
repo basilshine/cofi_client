@@ -139,13 +139,13 @@ const App = () => (
 		}
 		showDialog
 	>
-		<AuthProvider>
-			<QueryProvider>
-				<BrowserRouter basename={import.meta.env.BASE_URL}>
+		<BrowserRouter basename={import.meta.env.BASE_URL}>
+			<AuthProvider>
+				<QueryProvider>
 					<AppContent />
-				</BrowserRouter>
-			</QueryProvider>
-		</AuthProvider>
+				</QueryProvider>
+			</AuthProvider>
+		</BrowserRouter>
 	</Sentry.ErrorBoundary>
 );
 
