@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 
 export const Promo = () => {
 	const { t, i18n } = useTranslation();
-	const { isAuthenticated, handleTelegramAuth } = useAuth();
+	const { isAuthenticated } = useAuth();
 	const languages = [
 		{ code: "en", label: t("common.language.en") },
 		{ code: "ru", label: t("common.language.ru") },
