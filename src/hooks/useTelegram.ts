@@ -8,7 +8,7 @@ type TelegramUser = {
 	username?: string;
 };
 
-function parseTgWebAppData(hash: string): {
+export function parseTgWebAppData(hash: string): {
 	user?: TelegramUser;
 	initData: string;
 } {
@@ -99,13 +99,6 @@ export const useTelegram = () => {
 		};
 		console.log("[useTelegram] Debug info:", debugInfo);
 		LogRocket.log("[useTelegram] Debug info:", debugInfo);
-
-		if (typeof window !== "undefined") {
-			alert(`window.Telegram: ${typeof win.Telegram}`);
-			alert(
-				`window.Telegram.WebApp: ${win.Telegram && typeof win.Telegram.WebApp}`,
-			);
-		}
 
 		if (isTelegramWebApp && (tg || fallbackInitData)) {
 			setTelegramUser(tgUser || fallbackUser || null);
