@@ -17,6 +17,8 @@ function parseTgWebAppData(hash: string): {
 	const params = new URLSearchParams(cleanHash);
 	const tgWebAppData = params.get("tgWebAppData");
 	if (!tgWebAppData) return { initData: "" };
+	console.log("[useTelegram] Raw tgWebAppData from URL hash:", tgWebAppData);
+	LogRocket.log("[useTelegram] Raw tgWebAppData from URL hash:", tgWebAppData);
 	// Try to parse user from tgWebAppData (it's a query string)
 	const dataParams = new URLSearchParams(tgWebAppData);
 	let user: TelegramUser | undefined = undefined;
