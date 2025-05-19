@@ -8,6 +8,29 @@ type TelegramUser = {
 	username?: string;
 };
 
+function parseTgWebAppData(hash: string): {
+	user?: TelegramUser;
+	initData: string;
+} {
+	// Remove leading #
+	const cleanHash = hash.startsWith("#") ? hash.slice(1) : hash;
+	const params = new URLSearchParams(cleanHash);
+	const tgWebAppData = params.get("tgWebAppData");
+	if (!tgWebAppData) return { initData: "" };
+	// Try to parse user from tgWebAppData (it's a query string)
+	const dataParams = new URLSearchParams(tgWebAppData);
+	let user: TelegramUser | undefined = undefined;
+	const userStr = dataParams.get("user");
+	if (userStr) {
+		try {
+			user = JSON.parse(decodeURIComponent(userStr));
+		} catch (e) {
+			console.error("Failed to parse user from tgWebAppData", e);
+		}
+	}
+	return { user, initData: tgWebAppData };
+}
+
 declare global {
 	interface Window {
 		Telegram?: {
@@ -29,7 +52,6 @@ export const useTelegram = () => {
 	const [initData, setInitData] = useState<string>("");
 
 	useEffect(() => {
-		// Even more detailed debug info
 		const win = window as typeof window & {
 			Telegram?: {
 				WebApp?: {
@@ -45,14 +67,21 @@ export const useTelegram = () => {
 		const tg = win.Telegram?.WebApp;
 		const tgUser = tg?.initDataUnsafe?.user;
 		const tgInitData = tg?.initData;
-		const isTelegramWebApp =
+		let isTelegramWebApp =
 			typeof window !== "undefined" &&
 			typeof win.Telegram !== "undefined" &&
 			typeof win.Telegram.WebApp !== "undefined";
 
-		const windowKeys = Object.keys(window);
-		const telegramKeys = windowKeys.filter((k) => k.startsWith("Telegram"));
-		const hasTelegramGameProxy = typeof win.TelegramGameProxy !== "undefined";
+		let fallbackUser: TelegramUser | null = null;
+		let fallbackInitData = "";
+		if (!isTelegramWebApp && window.location.hash.includes("tgWebAppData=")) {
+			const parsed = parseTgWebAppData(window.location.hash);
+			if (parsed.initData) {
+				isTelegramWebApp = true;
+				fallbackUser = parsed.user || null;
+				fallbackInitData = parsed.initData;
+			}
+		}
 
 		const debugInfo = {
 			userAgent,
@@ -63,9 +92,8 @@ export const useTelegram = () => {
 			tgUser,
 			tgInitData,
 			isTelegramWebApp,
-			windowKeys,
-			telegramKeys,
-			hasTelegramGameProxy,
+			fallbackUser,
+			fallbackInitData,
 		};
 		console.log("[useTelegram] Debug info:", debugInfo);
 		LogRocket.log("[useTelegram] Debug info:", debugInfo);
@@ -77,16 +105,16 @@ export const useTelegram = () => {
 			);
 		}
 
-		if (isTelegramWebApp && tg) {
-			setTelegramUser(tgUser || null);
-			setInitData(tgInitData || "");
+		if (isTelegramWebApp && (tg || fallbackInitData)) {
+			setTelegramUser(tgUser || fallbackUser || null);
+			setInitData(tgInitData || fallbackInitData || "");
 			console.log("[useTelegram] Telegram WebApp context detected.", {
-				user: tgUser,
-				initData: tgInitData,
+				user: tgUser || fallbackUser,
+				initData: tgInitData || fallbackInitData,
 			});
 			LogRocket.log("[useTelegram] Telegram WebApp context detected.", {
-				user: tgUser,
-				initData: tgInitData,
+				user: tgUser || fallbackUser,
+				initData: tgInitData || fallbackInitData,
 			});
 		} else {
 			setTelegramUser(null);
