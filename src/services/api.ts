@@ -2,7 +2,7 @@ import type { components, paths } from "@/types/api-types";
 import { useAuthStore } from "@store/useStore";
 import axios from "axios";
 import type { AxiosResponse } from "axios";
-
+import { useLogRocket } from "../hooks/useLogRocket";
 interface TelegramUser {
 	id: number;
 	first_name: string;
@@ -37,6 +37,14 @@ const api = axios.create({
 		"Content-Type": "application/json",
 	},
 });
+
+// Log API base URL to LogRocket and console
+try {
+	useLogRocket().log("[API] Base URL:", import.meta.env.VITE_API_URL);
+} catch (e) {
+	// LogRocket not available or not initialized
+}
+console.log("[API] Base URL:", import.meta.env.VITE_API_URL);
 
 api.interceptors.request.use((config) => {
 	const token = useAuthStore.getState().token;

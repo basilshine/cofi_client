@@ -8,34 +8,27 @@ import {
 	TableHeader,
 	TableRow,
 } from "@components/ui/table";
+import { expensesService } from "@services/api/expenses";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 
 type Expense = components["schemas"]["Expense"];
 
-const mockExpenses: Expense[] = [
-	{
-		id: "1",
-		amount: 25.5,
-		description: "Lunch at Cafe",
-		categoryId: "food",
-		createdAt: "2024-03-15T00:00:00Z",
-		updatedAt: "2024-03-15T00:00:00Z",
-		userId: "user1",
-	},
-	{
-		id: "2",
-		amount: 45.0,
-		description: "Monthly Metro Pass",
-		categoryId: "transport",
-		createdAt: "2024-03-14T00:00:00Z",
-		updatedAt: "2024-03-14T00:00:00Z",
-		userId: "user1",
-	},
-];
-
 export const ExpenseList = () => {
 	const { t } = useTranslation();
+
+	const {
+		data: expenses,
+		isLoading,
+		error,
+	} = useQuery({
+		queryKey: ["expenses"],
+		queryFn: () => expensesService.getExpenses(),
+	});
+
+	if (isLoading) return <div>{t("common.loading")}</div>;
+	if (error) return <div>{t("common.error")}</div>;
 
 	return (
 		<Card>
@@ -55,13 +48,13 @@ export const ExpenseList = () => {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{mockExpenses.map((expense) => (
+						{expenses?.map((expense) => (
 							<TableRow key={expense.id}>
 								<TableCell>
-									{format(new Date(expense.createdAt ?? ""), "MMM dd, yyyy")}
+									{format(new Date(expense.date ?? ""), "MMM dd, yyyy")}
 								</TableCell>
 								<TableCell>{expense.description}</TableCell>
-								<TableCell>{expense.categoryId}</TableCell>
+								<TableCell>{expense.category}</TableCell>
 								<TableCell className="text-right">
 									${expense.amount?.toFixed(2)}
 								</TableCell>
