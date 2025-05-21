@@ -1,4 +1,3 @@
-import type { components } from "@/types/api-types";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import {
 	Table,
@@ -12,8 +11,6 @@ import { expensesService } from "@services/api/expenses";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
-
-type Expense = components["schemas"]["Expense"];
 
 export const ExpenseList = () => {
 	const { t } = useTranslation();
