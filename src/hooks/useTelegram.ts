@@ -45,7 +45,8 @@ declare global {
 				};
 			};
 		};
-		TelegramGameProxy?: unknown;
+		// Note: window.TelegramGameProxy is declared for type safety, but is not used in this app.
+		// If you ever see errors about receiveEvent, it means some code or library is trying to use Telegram Game API, which is not needed here.
 	}
 }
 
@@ -61,7 +62,6 @@ export const useTelegram = () => {
 					initData?: string;
 				};
 			};
-			TelegramGameProxy?: unknown;
 		};
 		const userAgent = navigator.userAgent;
 		const referrer = document.referrer;
