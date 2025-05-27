@@ -1,10 +1,10 @@
-import { useLogRocket } from "@/hooks/useLogRocket";
 import { useTelegram } from "@/hooks/useTelegram";
 import type { TelegramWidgetUser } from "@/types/TelegramWidgetUser";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { apiService } from "@services/api";
 import type { AxiosResponse } from "axios";
 import { jwtDecode } from "jwt-decode";
+import LogRocket from "logrocket";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -74,7 +74,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const navigate = useNavigate();
 	const { telegramUser, initData } = useTelegram();
 	const hasAttemptedTelegramLogin = useRef(false);
-	const { log, captureException, identify } = useLogRocket();
 
 	useEffect(() => {
 		const token = localStorage.getItem("token");
@@ -137,7 +136,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			!hasAttemptedTelegramLogin.current
 		) {
 			hasAttemptedTelegramLogin.current = true;
-			log("[AuthContext] Attempting Telegram WebApp auto-login", {
+			LogRocket.log("[AuthContext] Attempting Telegram WebApp auto-login", {
 				telegramUser,
 				initData,
 			});
@@ -146,7 +145,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				.telegramLogin({ telegramInitData: initData, user: telegramUser })
 				.then((response: AxiosResponse<TelegramLoginResponse>) => {
 					const data = response.data;
-					log("[AuthContext] Telegram login response:", data);
+					LogRocket.log("[AuthContext] Telegram login response:", data);
 					localStorage.setItem("token", data.token ?? "");
 					const user = data.user
 						? {
@@ -163,7 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						: null;
 					// Optionally identify user in LogRocket
 					if (user?.id) {
-						identify(user.id, {
+						LogRocket.identify(user.id, {
 							name: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
 							email: user.email || "",
 							telegramUsername: user.telegramUsername || "",
@@ -180,7 +179,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					navigate("/dashboard");
 				})
 				.catch((error) => {
-					captureException(error);
+					LogRocket.captureException(error);
 					setState((prev) => ({
 						...prev,
 						isLoading: false,
@@ -189,16 +188,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					}));
 				});
 		}
-	}, [
-		isWebApp,
-		telegramUser,
-		initData,
-		state.isAuthenticated,
-		navigate,
-		log,
-		captureException,
-		identify,
-	]);
+	}, [isWebApp, telegramUser, initData, state.isAuthenticated, navigate]);
 
 	const login = async (email: string, password: string) => {
 		try {

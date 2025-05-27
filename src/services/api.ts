@@ -2,7 +2,7 @@ import type { components, paths } from "@/types/api-types";
 import { useAuthStore } from "@store/useStore";
 import axios from "axios";
 import type { AxiosResponse } from "axios";
-import { useLogRocket } from "../hooks/useLogRocket";
+import LogRocket from "logrocket";
 interface TelegramUser {
 	id: number;
 	first_name: string;
@@ -40,11 +40,11 @@ const api = axios.create({
 
 // Log API base URL to LogRocket and console
 try {
-	useLogRocket().log("[API] Base URL:", import.meta.env.VITE_API_URL);
+	LogRocket.log("[API] Base URL:", import.meta.env.VITE_API_URL);
 } catch (e) {
 	// LogRocket not available or not initialized
 }
-console.log("[API] Base URL:", import.meta.env.VITE_API_URL);
+LogRocket.log("[API] Base URL:", import.meta.env.VITE_API_URL);
 
 api.interceptors.request.use((config) => {
 	const token = useAuthStore.getState().token;
@@ -74,42 +74,18 @@ export const apiService = {
 			telegramInitData: string;
 			user: TelegramUser;
 		}): Promise<AxiosResponse<TelegramLoginResponse>> => {
-			console.log(
+			LogRocket.log(
 				"[apiService.auth.telegramLogin] Sending Telegram login request:",
 				data,
 			);
 			return api
 				.post<TelegramLoginResponse>("/api/v1/auth/telegram", data)
 				.then((res) => {
-					console.log("[apiService.auth.telegramLogin] Response:", res.data);
+					LogRocket.log("[apiService.auth.telegramLogin] Response:", res.data);
 					return res;
 				})
 				.catch((err) => {
-					console.error("[apiService.auth.telegramLogin] Error:", err);
-					throw err;
-				});
-		},
-		telegramOAuthCallback: (
-			data: Record<string, string>,
-		): Promise<AxiosResponse<TelegramLoginResponse>> => {
-			console.log(
-				"[apiService.auth.telegramOAuthCallback] Sending Telegram OAuth callback request:",
-				data,
-			);
-			return api
-				.post<TelegramLoginResponse>(
-					"/api/v1/auth/telegram/oauth-callback",
-					data,
-				)
-				.then((res) => {
-					console.log(
-						"[apiService.auth.telegramOAuthCallback] Response:",
-						res.data,
-					);
-					return res;
-				})
-				.catch((err) => {
-					console.error("[apiService.auth.telegramOAuthCallback] Error:", err);
+					LogRocket.error("[apiService.auth.telegramLogin] Error:", err);
 					throw err;
 				});
 		},
