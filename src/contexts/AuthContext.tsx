@@ -128,6 +128,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 	// Improved Telegram WebApp auto-login
 	useEffect(() => {
+		LogRocket.log("[AuthContext] isWebApp", isWebApp);
+		LogRocket.log("[AuthContext] telegramUser", telegramUser);
+		LogRocket.log("[AuthContext] initData", initData);
+		LogRocket.log("[AuthContext] state.isAuthenticated", state.isAuthenticated);
+		LogRocket.log(
+			"[AuthContext] hasAttemptedTelegramLogin",
+			hasAttemptedTelegramLogin.current,
+		);
 		if (
 			isWebApp &&
 			telegramUser &&
