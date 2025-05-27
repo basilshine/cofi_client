@@ -118,9 +118,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	// Ensure loading state is correct on mount
 	useEffect(() => {
 		if (isWebApp && !state.isAuthenticated) {
+			LogRocket.log("[AuthContext] Setting isLoading: true for WebApp");
 			setState((prev) => ({ ...prev, isLoading: true }));
 		}
 		if (!isWebApp && !state.isAuthenticated) {
+			LogRocket.log("[AuthContext] Setting isLoading: false for non-WebApp");
 			setState((prev) => ({ ...prev, isLoading: false }));
 		}
 		// eslint-disable-next-line
@@ -135,6 +137,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			isAuthenticated: state.isAuthenticated,
 			hasAttemptedTelegramLogin: hasAttemptedTelegramLogin.current,
 		});
+
+		let shortWaitTimeout: NodeJS.Timeout | null = null;
+		let longWaitTimeout: NodeJS.Timeout | null = null;
+
 		if (
 			isWebApp &&
 			telegramUser &&
@@ -142,6 +148,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			!state.isAuthenticated &&
 			!hasAttemptedTelegramLogin.current
 		) {
+			// We have all the data, proceed with login
 			hasAttemptedTelegramLogin.current = true;
 			LogRocket.log("[AuthContext] Attempting Telegram WebApp auto-login", {
 				telegramUser,
@@ -199,25 +206,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				});
 		} else if (
 			isWebApp &&
-			!telegramUser &&
-			!initData &&
-			!state.isAuthenticated
+			!state.isAuthenticated &&
+			!hasAttemptedTelegramLogin.current &&
+			(!telegramUser || !initData)
 		) {
+			// We're in a WebApp but don't have the data yet
 			LogRocket.log(
-				"[AuthContext] Telegram user/initData missing, setting timeout",
+				"[AuthContext] Telegram WebApp detected but user/initData missing, waiting 200ms",
 			);
-			const timeout = setTimeout(() => {
-				LogRocket.log(
-					"[AuthContext] Telegram user/initData still missing after 3s, disabling loading",
-				);
-				setState((prev) => ({
-					...prev,
-					isLoading: false,
-					error: "Could not detect Telegram user.",
-				}));
-			}, 3000);
-			return () => clearTimeout(timeout);
+
+			// Wait a short time for useTelegram to update
+			shortWaitTimeout = setTimeout(() => {
+				// Check again after short wait
+				if (!telegramUser || !initData) {
+					LogRocket.log(
+						"[AuthContext] Telegram user/initData still missing after 200ms, setting 3s timeout",
+					);
+					// Still no data, set longer timeout
+					longWaitTimeout = setTimeout(() => {
+						LogRocket.log(
+							"[AuthContext] Telegram user/initData still missing after 3s, disabling loading",
+						);
+						setState((prev) => ({
+							...prev,
+							isLoading: false,
+							error: "Could not detect Telegram user.",
+						}));
+					}, 3000);
+				} else {
+					LogRocket.log(
+						"[AuthContext] Telegram data arrived during short wait, will process on next effect run",
+					);
+				}
+			}, 200);
 		}
+
+		// Cleanup function to clear timeouts
+		return () => {
+			if (shortWaitTimeout) {
+				clearTimeout(shortWaitTimeout);
+				LogRocket.log("[AuthContext] Cleared short wait timeout");
+			}
+			if (longWaitTimeout) {
+				clearTimeout(longWaitTimeout);
+				LogRocket.log("[AuthContext] Cleared long wait timeout");
+			}
+		};
 	}, [isWebApp, telegramUser, initData, state.isAuthenticated, navigate]);
 
 	const login = async (email: string, password: string) => {
