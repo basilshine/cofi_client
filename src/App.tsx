@@ -6,7 +6,6 @@ import { ForgotPassword } from "@pages/auth/ForgotPassword";
 import { Login } from "@pages/auth/Login";
 import { Register } from "@pages/auth/Register";
 import { ResetPassword } from "@pages/auth/ResetPassword";
-import { TelegramCallback } from "@pages/auth/TelegramCallback";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./layouts/Layout";
 import { Home } from "./pages/Home";
@@ -70,7 +69,6 @@ function AppContent() {
 						)
 					}
 				/>
-				<Route path="telegram/callback" element={<TelegramCallback />} />
 			</Route>
 
 			{/* Protected routes */}
