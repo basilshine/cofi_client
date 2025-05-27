@@ -60,6 +60,7 @@ export const useTelegram = () => {
 	const [initData, setInitData] = useState<string>("");
 
 	useEffect(() => {
+		LogRocket.log("[useTelegram] useEffect triggered");
 		const win = window as typeof window & {
 			Telegram?: {
 				WebApp?: {
@@ -87,6 +88,10 @@ export const useTelegram = () => {
 				isTelegramWebApp = true;
 				fallbackUser = parsed.user || null;
 				fallbackInitData = parsed.initData;
+				LogRocket.log("[useTelegram] Fallback user/initData parsed", {
+					fallbackUser,
+					fallbackInitData,
+				});
 			}
 		}
 
@@ -108,10 +113,6 @@ export const useTelegram = () => {
 		if (isTelegramWebApp && (tg || fallbackInitData)) {
 			setTelegramUser(tgUser || fallbackUser || null);
 			setInitData(tgInitData || fallbackInitData || "");
-			console.log("[useTelegram] Telegram WebApp context detected.", {
-				user: tgUser || fallbackUser,
-				initData: tgInitData || fallbackInitData,
-			});
 			LogRocket.log("[useTelegram] Telegram WebApp context detected.", {
 				user: tgUser || fallbackUser,
 				initData: tgInitData || fallbackInitData,
@@ -119,10 +120,13 @@ export const useTelegram = () => {
 		} else {
 			setTelegramUser(null);
 			setInitData("");
-			console.log("[useTelegram] Not in Telegram WebApp context.");
 			LogRocket.log("[useTelegram] Not in Telegram WebApp context.");
 		}
 	}, []);
+
+	useEffect(() => {
+		LogRocket.log("[useTelegram] State updated", { telegramUser, initData });
+	}, [telegramUser, initData]);
 
 	return { telegramUser, initData };
 };

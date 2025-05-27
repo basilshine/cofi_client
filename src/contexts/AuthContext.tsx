@@ -128,14 +128,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 	// Improved Telegram WebApp auto-login
 	useEffect(() => {
-		LogRocket.log("[AuthContext] isWebApp", isWebApp);
-		LogRocket.log("[AuthContext] telegramUser", telegramUser);
-		LogRocket.log("[AuthContext] initData", initData);
-		LogRocket.log("[AuthContext] state.isAuthenticated", state.isAuthenticated);
-		LogRocket.log(
-			"[AuthContext] hasAttemptedTelegramLogin",
-			hasAttemptedTelegramLogin.current,
-		);
+		LogRocket.log("[AuthContext] Telegram auto-login effect triggered", {
+			isWebApp,
+			telegramUser,
+			initData,
+			isAuthenticated: state.isAuthenticated,
+			hasAttemptedTelegramLogin: hasAttemptedTelegramLogin.current,
+		});
 		if (
 			isWebApp &&
 			telegramUser &&
@@ -168,7 +167,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 								telegramPhotoUrl: data.user.telegramPhotoUrl,
 							}
 						: null;
-					// Optionally identify user in LogRocket
 					if (user?.id) {
 						LogRocket.identify(user.id, {
 							name: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
@@ -184,10 +182,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						isLoading: false,
 						error: null,
 					}));
+					LogRocket.log(
+						"[AuthContext] Telegram login success, navigating to /dashboard",
+					);
 					navigate("/dashboard");
 				})
 				.catch((error) => {
 					LogRocket.captureException(error);
+					LogRocket.log("[AuthContext] Telegram login error", error);
 					setState((prev) => ({
 						...prev,
 						isLoading: false,
@@ -195,6 +197,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 							error instanceof Error ? error.message : "Telegram login failed",
 					}));
 				});
+		} else if (
+			isWebApp &&
+			!telegramUser &&
+			!initData &&
+			!state.isAuthenticated
+		) {
+			LogRocket.log(
+				"[AuthContext] Telegram user/initData missing, setting timeout",
+			);
+			const timeout = setTimeout(() => {
+				LogRocket.log(
+					"[AuthContext] Telegram user/initData still missing after 3s, disabling loading",
+				);
+				setState((prev) => ({
+					...prev,
+					isLoading: false,
+					error: "Could not detect Telegram user.",
+				}));
+			}, 3000);
+			return () => clearTimeout(timeout);
 		}
 	}, [isWebApp, telegramUser, initData, state.isAuthenticated, navigate]);
 
@@ -433,6 +455,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				<div className="flex min-h-screen items-center justify-center">
 					<div className="text-center">
 						<p className="text-lg font-semibold">Logging in with Telegram...</p>
+						{state.error && <p className="text-red-500 mt-2">{state.error}</p>}
 					</div>
 				</div>
 			) : (
