@@ -25,7 +25,12 @@ export function parseTgWebAppData(hash: string): {
 	const userStr = dataParams.get("user");
 	if (userStr) {
 		try {
-			user = JSON.parse(decodeURIComponent(userStr));
+			let cleanUserStr = decodeURIComponent(userStr);
+			// Remove trailing semicolon if present
+			if (cleanUserStr.endsWith(";")) {
+				cleanUserStr = cleanUserStr.slice(0, -1);
+			}
+			user = JSON.parse(cleanUserStr);
 		} catch (e) {
 			console.error("Failed to parse user from tgWebAppData", e);
 		}
