@@ -141,7 +141,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		let shortWaitTimeout: NodeJS.Timeout | null = null;
 		let longWaitTimeout: NodeJS.Timeout | null = null;
 
-		if (
+		if (isWebApp && state.isAuthenticated) {
+			// User is already authenticated in WebApp, ensure loading is false and navigate
+			LogRocket.log(
+				"[AuthContext] User already authenticated in WebApp, setting isLoading: false and navigating",
+			);
+			setState((prev) => ({ ...prev, isLoading: false }));
+			navigate("/dashboard");
+		} else if (
 			isWebApp &&
 			telegramUser &&
 			initData &&
