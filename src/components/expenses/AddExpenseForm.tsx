@@ -34,14 +34,17 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 	useEffect(() => {
 		const telegramData = getTelegramExpenseData();
 		if (telegramData) {
-			setFormData((prev) => ({
-				...prev,
-				...(telegramData.amount && { amount: telegramData.amount.toString() }),
-				...(telegramData.category && { category: telegramData.category }),
-				...(telegramData.description && {
-					description: telegramData.description,
-				}),
-			}));
+			const updates: Partial<typeof formData> = {};
+			if (telegramData.amount) {
+				updates.amount = String(telegramData.amount);
+			}
+			if (telegramData.category) {
+				updates.category = String(telegramData.category);
+			}
+			if (telegramData.description) {
+				updates.description = String(telegramData.description);
+			}
+			setFormData((prev) => ({ ...prev, ...updates }));
 		}
 	}, []);
 
