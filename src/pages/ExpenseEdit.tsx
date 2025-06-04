@@ -3,11 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { ArrowLeft, Check, Trash, X } from "@phosphor-icons/react";
 import type { Expense, ExpenseItem } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
-import { notifyTelegramWebApp } from "@utils/telegramWebApp";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useParams } from "react-router-dom";
+import { notifyTelegramWebApp } from "@utils/telegramWebApp";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
@@ -16,9 +16,16 @@ export const ExpenseEdit = () => {
 	const queryClient = useQueryClient();
 	const [editingItems, setEditingItems] = useState<ExpenseItem[]>([]);
 
-	const { data: expense, isLoading, error } = useQuery({
-		queryKey: ['expense', id],
-		queryFn: () => expensesService.getExpenseById(id!),
+	const {
+		data: expense,
+		isLoading,
+		error,
+	} = useQuery({
+		queryKey: ["expense", id],
+		queryFn: () => {
+			if (!id) throw new Error("No expense ID provided");
+			return expensesService.getExpenseById(id);
+		},
 		enabled: !!id,
 	});
 
@@ -30,76 +37,90 @@ export const ExpenseEdit = () => {
 	}, [expense]);
 
 	const updateMutation = useMutation({
-		mutationFn: (data: Partial<Expense>) => expensesService.updateExpense(id!, data),
+		mutationFn: (data: Partial<Expense>) => {
+			if (!id) throw new Error("No expense ID provided");
+			return expensesService.updateExpense(id, data);
+		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['expenses'] });
-			queryClient.invalidateQueries({ queryKey: ['expense', id] });
-			notifyTelegramWebApp('expense_updated');
-			navigate('/expenses');
+			queryClient.invalidateQueries({ queryKey: ["expenses"] });
+			queryClient.invalidateQueries({ queryKey: ["expense", id] });
+			notifyTelegramWebApp("expense_updated");
+			navigate("/expenses");
 		},
 		onError: (error) => {
-			console.error('Failed to update expense:', error);
+			console.error("Failed to update expense:", error);
 		},
 	});
 
 	const approveMutation = useMutation({
-		mutationFn: () => expensesService.approveExpense(id!),
+		mutationFn: () => {
+			if (!id) throw new Error("No expense ID provided");
+			return expensesService.approveExpense(id);
+		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['expenses'] });
-			queryClient.invalidateQueries({ queryKey: ['expense', id] });
-			notifyTelegramWebApp('expense_updated', { message: 'Expense approved!' });
-			navigate('/expenses');
+			queryClient.invalidateQueries({ queryKey: ["expenses"] });
+			queryClient.invalidateQueries({ queryKey: ["expense", id] });
+			notifyTelegramWebApp("expense_updated", { message: "Expense approved!" });
+			navigate("/expenses");
 		},
 		onError: (error) => {
-			console.error('Failed to approve expense:', error);
+			console.error("Failed to approve expense:", error);
 		},
 	});
 
 	const cancelMutation = useMutation({
-		mutationFn: () => expensesService.cancelExpense(id!),
+		mutationFn: () => {
+			if (!id) throw new Error("No expense ID provided");
+			return expensesService.cancelExpense(id);
+		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['expenses'] });
-			notifyTelegramWebApp('expense_deleted', { message: 'Expense cancelled!' });
-			navigate('/expenses');
+			queryClient.invalidateQueries({ queryKey: ["expenses"] });
+			notifyTelegramWebApp("expense_deleted", {
+				message: "Expense cancelled!",
+			});
+			navigate("/expenses");
 		},
 		onError: (error) => {
-			console.error('Failed to cancel expense:', error);
+			console.error("Failed to cancel expense:", error);
 		},
 	});
 
 	const deleteMutation = useMutation({
-		mutationFn: () => expensesService.deleteExpense(id!),
+		mutationFn: () => {
+			if (!id) throw new Error("No expense ID provided");
+			return expensesService.deleteExpense(id);
+		},
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['expenses'] });
-			notifyTelegramWebApp('expense_deleted');
-			navigate('/expenses');
+			queryClient.invalidateQueries({ queryKey: ["expenses"] });
+			notifyTelegramWebApp("expense_deleted");
+			navigate("/expenses");
 		},
 		onError: (error) => {
-			console.error('Failed to delete expense:', error);
+			console.error("Failed to delete expense:", error);
 		},
 	});
 
 	const handleApprove = () => {
-		if (window.confirm(t('expenses.confirmApprove'))) {
+		if (window.confirm(t("expenses.confirmApprove"))) {
 			approveMutation.mutate();
 		}
 	};
 
 	const handleCancel = () => {
-		if (window.confirm(t('expenses.confirmCancel'))) {
+		if (window.confirm(t("expenses.confirmCancel"))) {
 			cancelMutation.mutate();
 		}
 	};
 
 	const handleDelete = () => {
-		if (window.confirm(t('expenses.confirmDelete'))) {
+		if (window.confirm(t("expenses.confirmDelete"))) {
 			deleteMutation.mutate();
 		}
 	};
 
 	const handleUpdateItems = () => {
 		if (!expense) return;
-		
+
 		const updatedExpense: Partial<Expense> = {
 			...expense,
 			items: editingItems,
@@ -108,10 +129,14 @@ export const ExpenseEdit = () => {
 	};
 
 	const handleBack = () => {
-		navigate('/expenses');
+		navigate("/expenses");
 	};
 
-	const updateItem = (index: number, field: keyof ExpenseItem, value: string | number) => {
+	const updateItem = (
+		index: number,
+		field: keyof ExpenseItem,
+		value: string | number,
+	) => {
 		const newItems = [...editingItems];
 		newItems[index] = { ...newItems[index], [field]: value };
 		setEditingItems(newItems);
@@ -127,8 +152,8 @@ export const ExpenseEdit = () => {
 			...editingItems,
 			{
 				amount: 0,
-				name: '',
-				emotion: '',
+				name: "",
+				emotion: "",
 			},
 		]);
 	};
@@ -137,7 +162,7 @@ export const ExpenseEdit = () => {
 		return (
 			<div className="flex min-h-screen items-center justify-center">
 				<div className="text-center">
-					<p className="text-muted-foreground">{t('common.loading')}</p>
+					<p className="text-muted-foreground">{t("common.loading")}</p>
 				</div>
 			</div>
 		);
@@ -147,16 +172,16 @@ export const ExpenseEdit = () => {
 		return (
 			<div className="container mx-auto py-8">
 				<div className="text-center">
-					<p className="text-red-500">{t('expenses.notFound')}</p>
+					<p className="text-red-500">{t("expenses.notFound")}</p>
 					<Button onClick={handleBack} className="mt-4">
-						{t('common.goBack')}
+						{t("common.goBack")}
 					</Button>
 				</div>
 			</div>
 		);
 	}
 
-	const isDraft = expense.status === 'draft';
+	const isDraft = expense.status === "draft";
 	const totalAmount = editingItems.reduce((sum, item) => sum + item.amount, 0);
 
 	return (
@@ -165,21 +190,23 @@ export const ExpenseEdit = () => {
 				<div className="flex items-center gap-4">
 					<Button variant="ghost" size="sm" onClick={handleBack}>
 						<ArrowLeft className="h-4 w-4 mr-2" />
-						{t('common.back')}
+						{t("common.back")}
 					</Button>
 					<div>
-						<h1 className="text-3xl font-bold">{t('expenses.editExpense')}</h1>
+						<h1 className="text-3xl font-bold">{t("expenses.editExpense")}</h1>
 						<div className="flex items-center gap-2 mt-1">
-							<span className={`px-2 py-1 text-xs rounded-full ${isDraft ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-								{isDraft ? t('expenses.draft') : t('expenses.approved')}
+							<span
+								className={`px-2 py-1 text-xs rounded-full ${isDraft ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"}`}
+							>
+								{isDraft ? t("expenses.draft") : t("expenses.approved")}
 							</span>
 							<span className="text-sm text-muted-foreground">
-								{t('expenses.total')}: ${totalAmount.toFixed(2)}
+								{t("expenses.total")}: ${totalAmount.toFixed(2)}
 							</span>
 						</div>
 					</div>
 				</div>
-				
+
 				<div className="flex items-center gap-2">
 					{isDraft ? (
 						<>
@@ -190,7 +217,7 @@ export const ExpenseEdit = () => {
 								disabled={cancelMutation.isPending}
 							>
 								<X className="h-4 w-4 mr-2" />
-								{t('expenses.cancel')}
+								{t("expenses.cancel")}
 							</Button>
 							<Button
 								size="sm"
@@ -198,7 +225,7 @@ export const ExpenseEdit = () => {
 								disabled={approveMutation.isPending}
 							>
 								<Check className="h-4 w-4 mr-2" />
-								{t('expenses.approve')}
+								{t("expenses.approve")}
 							</Button>
 						</>
 					) : (
@@ -209,7 +236,7 @@ export const ExpenseEdit = () => {
 							disabled={deleteMutation.isPending}
 						>
 							<Trash className="h-4 w-4 mr-2" />
-							{t('common.delete')}
+							{t("common.delete")}
 						</Button>
 					)}
 				</div>
@@ -218,16 +245,16 @@ export const ExpenseEdit = () => {
 			<div className="space-y-6">
 				<Card>
 					<CardHeader>
-						<CardTitle>{t('expenses.expenseDetails')}</CardTitle>
+						<CardTitle>{t("expenses.expenseDetails")}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-4">
 							<div>
-								<label className="text-sm font-medium">
-									{t('expenses.description')}
-								</label>
+								<div className="text-sm font-medium">
+									{t("expenses.description")}
+								</div>
 								<p className="text-sm text-muted-foreground mt-1">
-									{expense.description || t('expenses.noDescription')}
+									{expense.description || t("expenses.noDescription")}
 								</p>
 							</div>
 						</div>
@@ -237,10 +264,12 @@ export const ExpenseEdit = () => {
 				<Card>
 					<CardHeader>
 						<div className="flex items-center justify-between">
-							<CardTitle>{t('expenses.items')} ({editingItems.length})</CardTitle>
+							<CardTitle>
+								{t("expenses.items")} ({editingItems.length})
+							</CardTitle>
 							{isDraft && (
 								<Button variant="outline" size="sm" onClick={addItem}>
-									{t('expenses.addItem')}
+									{t("expenses.addItem")}
 								</Button>
 							)}
 						</div>
@@ -248,13 +277,18 @@ export const ExpenseEdit = () => {
 					<CardContent>
 						<div className="space-y-4">
 							{editingItems.map((item, index) => (
-								<div key={index} className="flex items-center gap-4 p-4 border rounded-lg">
+								<div
+									key={item.id || `item-${index}-${item.name}`}
+									className="flex items-center gap-4 p-4 border rounded-lg"
+								>
 									<div className="flex-1">
 										<input
 											type="text"
 											value={item.name}
-											onChange={(e) => updateItem(index, 'name', e.target.value)}
-											placeholder={t('expenses.itemName')}
+											onChange={(e) =>
+												updateItem(index, "name", e.target.value)
+											}
+											placeholder={t("expenses.itemName")}
 											className="w-full p-2 border rounded"
 											disabled={!isDraft}
 										/>
@@ -264,7 +298,13 @@ export const ExpenseEdit = () => {
 											type="number"
 											step="0.01"
 											value={item.amount}
-											onChange={(e) => updateItem(index, 'amount', parseFloat(e.target.value) || 0)}
+											onChange={(e) =>
+												updateItem(
+													index,
+													"amount",
+													Number.parseFloat(e.target.value) || 0,
+												)
+											}
 											placeholder="0.00"
 											className="w-full p-2 border rounded"
 											disabled={!isDraft}
@@ -273,8 +313,10 @@ export const ExpenseEdit = () => {
 									<div className="w-20">
 										<input
 											type="text"
-											value={item.emotion || ''}
-											onChange={(e) => updateItem(index, 'emotion', e.target.value)}
+											value={item.emotion || ""}
+											onChange={(e) =>
+												updateItem(index, "emotion", e.target.value)
+											}
 											placeholder="😊"
 											className="w-full p-2 border rounded text-center"
 											disabled={!isDraft}
@@ -300,12 +342,14 @@ export const ExpenseEdit = () => {
 
 						{isDraft && editingItems.length > 0 && (
 							<div className="mt-6 pt-4 border-t">
-								<Button 
+								<Button
 									onClick={handleUpdateItems}
 									disabled={updateMutation.isPending}
 									className="w-full"
 								>
-									{updateMutation.isPending ? t('common.saving') : t('expenses.updateItems')}
+									{updateMutation.isPending
+										? t("common.saving")
+										: t("expenses.updateItems")}
 								</Button>
 							</div>
 						)}
@@ -314,4 +358,4 @@ export const ExpenseEdit = () => {
 			</div>
 		</div>
 	);
-}; 
+};

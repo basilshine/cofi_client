@@ -9,7 +9,10 @@ import {
 	SelectValue,
 } from "@components/ui/select";
 import { expensesService } from "@services/api/expenses";
-import { getTelegramExpenseData, notifyTelegramWebApp } from "@utils/telegramWebApp";
+import {
+	getTelegramExpenseData,
+	notifyTelegramWebApp,
+} from "@utils/telegramWebApp";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -31,11 +34,13 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 	useEffect(() => {
 		const telegramData = getTelegramExpenseData();
 		if (telegramData) {
-			setFormData(prev => ({
+			setFormData((prev) => ({
 				...prev,
 				...(telegramData.amount && { amount: telegramData.amount.toString() }),
 				...(telegramData.category && { category: telegramData.category }),
-				...(telegramData.description && { description: telegramData.description }),
+				...(telegramData.description && {
+					description: telegramData.description,
+				}),
 			}));
 		}
 	}, []);
@@ -49,8 +54,14 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 			await expensesService.createExpense({
 				amount: Number.parseFloat(formData.amount),
 				description: formData.description,
-				category: formData.category,
-				date: new Date().toISOString(),
+				status: "approved",
+				items: [
+					{
+						amount: Number.parseFloat(formData.amount),
+						name: formData.description,
+						category: { id: 1, name: formData.category },
+					},
+				],
 			});
 			// Reset form
 			setFormData({
@@ -58,7 +69,7 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 				description: "",
 				category: "",
 			});
-			notifyTelegramWebApp('expense_created');
+			notifyTelegramWebApp("expense_created");
 			onExpenseAdded();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create expense");

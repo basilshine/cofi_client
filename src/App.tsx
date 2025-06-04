@@ -1,7 +1,7 @@
 import { AuthProvider, useAuth } from "@contexts/AuthContext";
 import { Analytics } from "@pages/Analytics";
-import { Expenses } from "@pages/Expenses";
 import { ExpenseEdit } from "@pages/ExpenseEdit";
+import { Expenses } from "@pages/Expenses";
 import { Settings } from "@pages/Settings";
 import { ForgotPassword } from "@pages/auth/ForgotPassword";
 import { Login } from "@pages/auth/Login";

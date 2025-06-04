@@ -16,7 +16,7 @@ import {
 } from "@components/ui/select";
 import { Calendar as CalendarIcon } from "@phosphor-icons/react";
 import { format } from "date-fns";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 const categories = [
@@ -42,18 +42,20 @@ interface ExpenseFormProps {
 	submitButtonText?: string;
 }
 
-export const ExpenseForm = ({ 
-	initialData, 
-	onSubmit, 
+export const ExpenseForm = ({
+	initialData,
+	onSubmit,
 	isLoading = false,
-	submitButtonText 
+	submitButtonText,
 }: ExpenseFormProps) => {
 	const { t } = useTranslation();
 	const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
-	const [description, setDescription] = useState(initialData?.description || "");
+	const [description, setDescription] = useState(
+		initialData?.description || "",
+	);
 	const [category, setCategory] = useState(initialData?.category || "");
 	const [date, setDate] = useState<Date | undefined>(
-		initialData?.date ? new Date(initialData.date) : new Date()
+		initialData?.date ? new Date(initialData.date) : new Date(),
 	);
 
 	// Update form when initialData changes
@@ -68,11 +70,11 @@ export const ExpenseForm = ({
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		
+
 		if (!date) return;
 
 		const formData: ExpenseFormData = {
-			amount: parseFloat(amount),
+			amount: Number.parseFloat(amount),
 			description,
 			category,
 			date: date.toISOString(),
@@ -144,7 +146,9 @@ export const ExpenseForm = ({
 			</div>
 
 			<Button type="submit" className="w-full" disabled={isLoading}>
-				{isLoading ? t("common.saving") : (submitButtonText || t("expenses.addExpense"))}
+				{isLoading
+					? t("common.saving")
+					: submitButtonText || t("expenses.addExpense")}
 			</Button>
 		</form>
 	);

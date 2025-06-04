@@ -119,7 +119,8 @@ export const apiService = {
 		list: () => api.get<components["schemas"]["Expense"][]>(ENDPOINTS.expenses),
 		create: (data: components["schemas"]["Expense"]) =>
 			api.post<components["schemas"]["Expense"]>(ENDPOINTS.expenses, data),
-		update: (id: string, data: unknown) => api.put(`${ENDPOINTS.expenses}/${id}`, data),
+		update: (id: string, data: unknown) =>
+			api.put(`${ENDPOINTS.expenses}/${id}`, data),
 		delete: (id: string) => api.delete(`${ENDPOINTS.expenses}/${id}`),
 	},
 	analytics: {

@@ -8,27 +8,30 @@ export const Analytics = () => {
 	const { t } = useTranslation();
 
 	const { data: summary, isLoading: isSummaryLoading } = useQuery({
-		queryKey: ['expenses', 'summary'],
+		queryKey: ["expenses", "summary"],
 		queryFn: expensesService.getSummary,
 	});
 
 	const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
-		queryKey: ['expenses', 'categories'],
+		queryKey: ["expenses", "categories"],
 		queryFn: expensesService.getMostUsedCategories,
 	});
 
 	const { data: expenses = [], isLoading: isExpensesLoading } = useQuery({
-		queryKey: ['expenses'],
+		queryKey: ["expenses"],
 		queryFn: expensesService.getExpenses,
 	});
 
-	const isLoading = isSummaryLoading || isCategoriesLoading || isExpensesLoading;
+	const isLoading =
+		isSummaryLoading || isCategoriesLoading || isExpensesLoading;
 
 	// Calculate additional analytics
 	const totalExpenses = expenses.length;
-	const averageExpense = expenses.length > 0 
-		? expenses.reduce((sum, expense) => sum + expense.amount, 0) / expenses.length 
-		: 0;
+	const averageExpense =
+		expenses.length > 0
+			? expenses.reduce((sum, expense) => sum + expense.amount, 0) /
+				expenses.length
+			: 0;
 
 	return (
 		<div className="container mx-auto py-8">
@@ -99,9 +102,12 @@ export const Analytics = () => {
 							{categories.length > 0 ? (
 								<div className="space-y-3">
 									{categories.slice(0, 5).map((category, index) => (
-										<div key={category.category} className="flex justify-between items-center">
+										<div
+											key={category.category}
+											className="flex justify-between items-center"
+										>
 											<div className="flex items-center gap-2">
-												<div 
+												<div
 													className={`w-3 h-3 rounded-full bg-blue-${(index + 1) * 100}`}
 												/>
 												<span className="text-sm font-medium">
@@ -150,7 +156,7 @@ export const Analytics = () => {
 											{t("analytics.topCategory")}
 										</p>
 										{Object.entries(summary.byCategory)
-											.sort(([,a], [,b]) => b - a)
+											.sort(([, a], [, b]) => b - a)
 											.slice(0, 1)
 											.map(([category, amount]) => (
 												<div key={category} className="flex justify-between">
@@ -161,8 +167,7 @@ export const Analytics = () => {
 														${amount.toFixed(2)}
 													</span>
 												</div>
-											))
-										}
+											))}
 									</div>
 								)}
 							</div>

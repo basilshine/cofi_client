@@ -47,7 +47,7 @@ export const expensesService = {
 
 	getDraftExpenses: async () => {
 		const expenses = await expensesService.getExpenses();
-		return expenses.filter(expense => expense.status === 'draft');
+		return expenses.filter((expense) => expense.status === "draft");
 	},
 
 	getExpenseById: async (id: string) => {
@@ -55,15 +55,18 @@ export const expensesService = {
 		if (!userId) throw new Error("User not authenticated");
 
 		const token = useAuthStore.getState().token;
-		const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/finances/expenses/${id}`, {
-			headers: {
-				'Authorization': `Bearer ${token}`,
-				'Content-Type': 'application/json',
+		const response = await fetch(
+			`${import.meta.env.VITE_API_URL}/api/v1/finances/expenses/${id}`,
+			{
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
 			},
-		});
+		);
 
 		if (!response.ok) {
-			throw new Error('Failed to fetch expense');
+			throw new Error("Failed to fetch expense");
 		}
 
 		const data = await response.json();
@@ -104,20 +107,23 @@ export const expensesService = {
 		if (!userId) throw new Error("User not authenticated");
 
 		const token = useAuthStore.getState().token;
-		const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/finances/expenses/approve`, {
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${token}`,
-				'Content-Type': 'application/json',
+		const response = await fetch(
+			`${import.meta.env.VITE_API_URL}/api/v1/finances/expenses/approve`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					user_id: Number.parseInt(userId),
+					expense_id: Number.parseInt(expenseId),
+				}),
 			},
-			body: JSON.stringify({
-				user_id: parseInt(userId),
-				expense_id: parseInt(expenseId),
-			}),
-		});
+		);
 
 		if (!response.ok) {
-			throw new Error('Failed to approve expense');
+			throw new Error("Failed to approve expense");
 		}
 
 		return response.json();
@@ -128,20 +134,23 @@ export const expensesService = {
 		if (!userId) throw new Error("User not authenticated");
 
 		const token = useAuthStore.getState().token;
-		const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/finances/expenses/cancel`, {
-			method: 'POST',
-			headers: {
-				'Authorization': `Bearer ${token}`,
-				'Content-Type': 'application/json',
+		const response = await fetch(
+			`${import.meta.env.VITE_API_URL}/api/v1/finances/expenses/cancel`,
+			{
+				method: "POST",
+				headers: {
+					Authorization: `Bearer ${token}`,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					user_id: Number.parseInt(userId),
+					expense_id: Number.parseInt(expenseId),
+				}),
 			},
-			body: JSON.stringify({
-				user_id: parseInt(userId),
-				expense_id: parseInt(expenseId),
-			}),
-		});
+		);
 
 		if (!response.ok) {
-			throw new Error('Failed to cancel expense');
+			throw new Error("Failed to cancel expense");
 		}
 
 		return response.json();
@@ -162,16 +171,19 @@ export const expensesService = {
 		try {
 			// Try to get expenses and calculate categories from them
 			const expenses = await expensesService.getExpenses();
-			
+
 			// Group by categories and count from items
 			const categoryCount: Record<string, number> = {};
-			
-			expenses.forEach(expense => {
-				expense.items?.forEach(item => {
-					const categoryName = item.category?.name || 'Uncategorized';
-					categoryCount[categoryName] = (categoryCount[categoryName] || 0) + 1;
-				});
-			});
+
+			for (const expense of expenses) {
+				if (expense.items) {
+					for (const item of expense.items) {
+						const categoryName = item.category?.name || "Uncategorized";
+						categoryCount[categoryName] =
+							(categoryCount[categoryName] || 0) + 1;
+					}
+				}
+			}
 
 			// Convert to array and sort by count
 			return Object.entries(categoryCount)
@@ -179,7 +191,7 @@ export const expensesService = {
 				.sort((a, b) => b.count - a.count)
 				.slice(0, 10); // Top 10 categories
 		} catch (error) {
-			console.error('Failed to get most used categories:', error);
+			console.error("Failed to get most used categories:", error);
 			return [];
 		}
 	},

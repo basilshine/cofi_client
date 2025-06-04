@@ -200,7 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					LogRocket.log(
 						"[AuthContext] Telegram login success, checking for navigation parameters",
 					);
-					
+
 					// Check for Telegram navigation parameters
 					const hasNavigated = handleTelegramNavigation(navigate);
 					if (!hasNavigated) {
