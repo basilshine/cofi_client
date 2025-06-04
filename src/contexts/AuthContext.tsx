@@ -1,6 +1,7 @@
 import { useTelegram } from "@/hooks/useTelegram";
 import type { TelegramWidgetUser } from "@/types/TelegramWidgetUser";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
+import { handleTelegramNavigation } from "@/utils/telegramWebApp";
 import { apiService } from "@services/api";
 import type { AxiosResponse } from "axios";
 import { jwtDecode } from "jwt-decode";
@@ -197,9 +198,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						error: null,
 					}));
 					LogRocket.log(
-						"[AuthContext] Telegram login success, navigating to /dashboard",
+						"[AuthContext] Telegram login success, checking for navigation parameters",
 					);
-					navigate("/dashboard");
+					
+					// Check for Telegram navigation parameters
+					const hasNavigated = handleTelegramNavigation(navigate);
+					if (!hasNavigated) {
+						// Default navigation if no specific parameters
+						navigate("/dashboard");
+					}
 				})
 				.catch((error) => {
 					LogRocket.captureException(error);

@@ -16,7 +16,8 @@ import {
 } from "@components/ui/select";
 import { Calendar as CalendarIcon } from "@phosphor-icons/react";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 const categories = [
 	{ value: "food", label: "Food & Dining" },
@@ -27,25 +28,67 @@ const categories = [
 	{ value: "other", label: "Other" },
 ];
 
-export const ExpenseForm = () => {
-	const [amount, setAmount] = useState("");
-	const [description, setDescription] = useState("");
-	const [category, setCategory] = useState("");
-	const [date, setDate] = useState<Date | undefined>(new Date());
+interface ExpenseFormData {
+	amount: number;
+	description: string;
+	category: string;
+	date: string;
+}
+
+interface ExpenseFormProps {
+	initialData?: Partial<ExpenseFormData>;
+	onSubmit: (data: ExpenseFormData) => void;
+	isLoading?: boolean;
+	submitButtonText?: string;
+}
+
+export const ExpenseForm = ({ 
+	initialData, 
+	onSubmit, 
+	isLoading = false,
+	submitButtonText 
+}: ExpenseFormProps) => {
+	const { t } = useTranslation();
+	const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
+	const [description, setDescription] = useState(initialData?.description || "");
+	const [category, setCategory] = useState(initialData?.category || "");
+	const [date, setDate] = useState<Date | undefined>(
+		initialData?.date ? new Date(initialData.date) : new Date()
+	);
+
+	// Update form when initialData changes
+	useEffect(() => {
+		if (initialData) {
+			setAmount(initialData.amount?.toString() || "");
+			setDescription(initialData.description || "");
+			setCategory(initialData.category || "");
+			setDate(initialData.date ? new Date(initialData.date) : new Date());
+		}
+	}, [initialData]);
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		// TODO: Implement expense submission
-		console.log({ amount, description, category, date });
+		
+		if (!date) return;
+
+		const formData: ExpenseFormData = {
+			amount: parseFloat(amount),
+			description,
+			category,
+			date: date.toISOString(),
+		};
+
+		onSubmit(formData);
 	};
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
 			<div className="space-y-2">
-				<Label htmlFor="amount">Amount</Label>
+				<Label htmlFor="amount">{t("expenses.amount")}</Label>
 				<Input
 					id="amount"
 					type="number"
+					step="0.01"
 					placeholder="0.00"
 					value={amount}
 					onChange={(e) => setAmount(e.target.value)}
@@ -54,10 +97,10 @@ export const ExpenseForm = () => {
 			</div>
 
 			<div className="space-y-2">
-				<Label htmlFor="description">Description</Label>
+				<Label htmlFor="description">{t("expenses.description")}</Label>
 				<Input
 					id="description"
-					placeholder="What did you spend on?"
+					placeholder={t("expenses.descriptionPlaceholder")}
 					value={description}
 					onChange={(e) => setDescription(e.target.value)}
 					required
@@ -65,10 +108,10 @@ export const ExpenseForm = () => {
 			</div>
 
 			<div className="space-y-2">
-				<Label htmlFor="category">Category</Label>
+				<Label htmlFor="category">{t("expenses.category")}</Label>
 				<Select value={category} onValueChange={setCategory}>
 					<SelectTrigger>
-						<SelectValue placeholder="Select a category" />
+						<SelectValue placeholder={t("expenses.selectCategory")} />
 					</SelectTrigger>
 					<SelectContent>
 						{categories.map((cat) => (
@@ -81,12 +124,12 @@ export const ExpenseForm = () => {
 			</div>
 
 			<div className="space-y-2">
-				<Label>Date</Label>
+				<Label>{t("expenses.date")}</Label>
 				<Popover>
 					<PopoverTrigger asChild>
 						<Button variant="outline" className="w-full justify-start">
 							<CalendarIcon className="mr-2 h-4 w-4" />
-							{date ? format(date, "PPP") : "Pick a date"}
+							{date ? format(date, "PPP") : t("expenses.pickDate")}
 						</Button>
 					</PopoverTrigger>
 					<PopoverContent className="w-auto p-0">
@@ -100,8 +143,8 @@ export const ExpenseForm = () => {
 				</Popover>
 			</div>
 
-			<Button type="submit" className="w-full">
-				Add Expense
+			<Button type="submit" className="w-full" disabled={isLoading}>
+				{isLoading ? t("common.saving") : (submitButtonText || t("expenses.addExpense"))}
 			</Button>
 		</form>
 	);

@@ -26,8 +26,8 @@ export interface TelegramLoginResponse {
 const ENDPOINTS = {
 	login: "/api/v1/auth/login" as const,
 	register: "/api/v1/auth/register" as const,
-	expenses: "/api/v1/expenses" as const,
-	categories: "/api/v1/categories" as const,
+	expenses: "/api/v1/finances/expenses" as const,
+	categories: "/api/v1/finances/categories" as const,
 	analyticsSummary: "/api/v1/analytics/stats/summary" as const,
 };
 
@@ -119,8 +119,8 @@ export const apiService = {
 		list: () => api.get<components["schemas"]["Expense"][]>(ENDPOINTS.expenses),
 		create: (data: components["schemas"]["Expense"]) =>
 			api.post<components["schemas"]["Expense"]>(ENDPOINTS.expenses, data),
-		update: (id: string, data: unknown) => api.put(`/expenses/${id}`, data),
-		delete: (id: string) => api.delete(`/expenses/${id}`),
+		update: (id: string, data: unknown) => api.put(`${ENDPOINTS.expenses}/${id}`, data),
+		delete: (id: string) => api.delete(`${ENDPOINTS.expenses}/${id}`),
 	},
 	analytics: {
 		summary: (userId: string, period?: string) =>

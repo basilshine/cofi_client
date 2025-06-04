@@ -9,7 +9,8 @@ import {
 	SelectValue,
 } from "@components/ui/select";
 import { expensesService } from "@services/api/expenses";
-import { useState } from "react";
+import { getTelegramExpenseData, notifyTelegramWebApp } from "@utils/telegramWebApp";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 interface AddExpenseFormProps {
@@ -25,6 +26,19 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 	});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	// Check for pre-filled data from Telegram bot
+	useEffect(() => {
+		const telegramData = getTelegramExpenseData();
+		if (telegramData) {
+			setFormData(prev => ({
+				...prev,
+				...(telegramData.amount && { amount: telegramData.amount.toString() }),
+				...(telegramData.category && { category: telegramData.category }),
+				...(telegramData.description && { description: telegramData.description }),
+			}));
+		}
+	}, []);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -44,6 +58,7 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 				description: "",
 				category: "",
 			});
+			notifyTelegramWebApp('expense_created');
 			onExpenseAdded();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create expense");

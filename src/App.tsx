@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from "@contexts/AuthContext";
 import { Analytics } from "@pages/Analytics";
 import { Expenses } from "@pages/Expenses";
+import { ExpenseEdit } from "@pages/ExpenseEdit";
 import { Settings } from "@pages/Settings";
 import { ForgotPassword } from "@pages/auth/ForgotPassword";
 import { Login } from "@pages/auth/Login";
@@ -96,6 +97,18 @@ function AppContent() {
 					isAuthenticated ? (
 						<Layout>
 							<Expenses />
+						</Layout>
+					) : (
+						<Navigate to="/" replace />
+					)
+				}
+			/>
+			<Route
+				path="/expenses/:id/edit"
+				element={
+					isAuthenticated ? (
+						<Layout>
+							<ExpenseEdit />
 						</Layout>
 					) : (
 						<Navigate to="/" replace />
