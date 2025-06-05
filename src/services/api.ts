@@ -49,13 +49,25 @@ try {
 api.interceptors.request.use(
 	(config) => {
 		const token = localStorage.getItem("token");
-		console.log("[API Debug] Token from localStorage:", token ? `${token.substring(0, 20)}...` : "null");
-		LogRocket.log("[API Debug] Token from localStorage:", token ? `${token.substring(0, 20)}...` : "null");
-		
+		console.log(
+			"[API Debug] Token from localStorage:",
+			token ? `${token.substring(0, 20)}...` : "null",
+		);
+		LogRocket.log(
+			"[API Debug] Token from localStorage:",
+			token ? `${token.substring(0, 20)}...` : "null",
+		);
+
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`;
-			console.log("[API Debug] Authorization header set:", `Bearer ${token.substring(0, 20)}...`);
-			LogRocket.log("[API Debug] Authorization header set:", `Bearer ${token.substring(0, 20)}...`);
+			console.log(
+				"[API Debug] Authorization header set:",
+				`Bearer ${token.substring(0, 20)}...`,
+			);
+			LogRocket.log(
+				"[API Debug] Authorization header set:",
+				`Bearer ${token.substring(0, 20)}...`,
+			);
 		} else {
 			console.log("[API Debug] No token found, no Authorization header set");
 			LogRocket.log("[API Debug] No token found, no Authorization header set");
@@ -73,7 +85,13 @@ api.interceptors.request.use(
 				hasAuthHeader: !!config.headers.Authorization,
 			});
 		} catch (e) {
-			console.log("[API Request]", config.method?.toUpperCase(), config.url, "Auth:", !!config.headers.Authorization);
+			console.log(
+				"[API Request]",
+				config.method?.toUpperCase(),
+				config.url,
+				"Auth:",
+				!!config.headers.Authorization,
+			);
 			LogRocket.log("[API Request]", {
 				method: config.method?.toUpperCase(),
 				url: config.url,
