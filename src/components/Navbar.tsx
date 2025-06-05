@@ -35,11 +35,15 @@ export const Navbar = () => {
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
 	const navItems = [
-		{ label: t("nav.home"), path: "/", icon: House },
+		{ label: t("nav.home"), path: "/dashboard", icon: House },
 		{ label: t("nav.expenses"), path: "/expenses", icon: Wallet },
-		{ label: t("nav.debug"), path: "/debug", icon: Bug },
-		{ label: t("nav.analytics"), path: "/analytics", icon: ChartLineUp },
-		{ label: t("nav.settings"), path: "/settings", icon: Gear },
+		{ label: t("nav.debug"), path: "/dashboard/debug", icon: Bug },
+		{
+			label: t("nav.analytics"),
+			path: "/dashboard/analytics",
+			icon: ChartLineUp,
+		},
+		{ label: t("nav.settings"), path: "/dashboard/settings", icon: Gear },
 	];
 
 	const languages = [

@@ -17,6 +17,7 @@ const resources = {
 			"nav.expenses": "Expenses",
 			"nav.analytics": "Analytics",
 			"nav.settings": "Settings",
+			"nav.debug": "Debug",
 			"nav.login": "Login",
 
 			// Promo
@@ -46,6 +47,8 @@ const resources = {
 			"expenses.description": "Description",
 			"expenses.category": "Category",
 			"expenses.amount": "Amount",
+			"expenses.total": "Total",
+			"expenses.monthlyAverage": "Monthly Average",
 
 			// Analytics
 			"analytics.title": "Analytics",
@@ -60,6 +63,13 @@ const resources = {
 			"analytics.budget_analysis": "Budget Analysis",
 			"analytics.budget_analysis_desc":
 				"Compare your spending against budget limits",
+			"analytics.totalTransactions": "Total Transactions",
+			"analytics.averageExpense": "Average Expense",
+			"analytics.topCategory": "Top Category",
+			"analytics.transactions": "transactions",
+			"analytics.noData": "No data available",
+			"analytics.noCategories": "No categories found",
+			"analytics.andMore": "and {{count}} more...",
 
 			// Auth
 			"auth.login": "Login",
@@ -108,6 +118,7 @@ const resources = {
 			"nav.expenses": "Расходы",
 			"nav.analytics": "Аналитика",
 			"nav.settings": "Настройки",
+			"nav.debug": "Отладка",
 
 			// Expenses
 			"expenses.title": "Последние расходы",
@@ -115,6 +126,8 @@ const resources = {
 			"expenses.description": "Описание",
 			"expenses.category": "Категория",
 			"expenses.amount": "Сумма",
+			"expenses.total": "Всего",
+			"expenses.monthlyAverage": "Среднемесячные",
 
 			// Analytics
 			"analytics.title": "Аналитика",
@@ -129,6 +142,43 @@ const resources = {
 			"analytics.budget_analysis": "Анализ бюджета",
 			"analytics.budget_analysis_desc":
 				"Сравните свои расходы с бюджетными лимитами",
+			"analytics.totalTransactions": "Всего транзакций",
+			"analytics.averageExpense": "Средний расход",
+			"analytics.topCategory": "Топ категория",
+			"analytics.transactions": "транзакций",
+			"analytics.noData": "Нет данных",
+			"analytics.noCategories": "Категории не найдены",
+			"analytics.andMore": "и еще {{count}}...",
+
+			// Auth
+			"auth.login": "Вход",
+			"auth.register": "Регистрация",
+			"auth.forgotPassword": "Забыли пароль?",
+			"auth.loginWithTelegram": "Войти через Telegram",
+			"auth.noAccount": "Нет аккаунта?",
+			"auth.login.title": "Войти в аккаунт",
+			"auth.login.description": "Введите данные для входа",
+			"auth.requestNewReset": "Запросить новый сброс",
+			"auth.backToLogin": "Вернуться к входу",
+			"auth.checkEmail": "Проверьте email для сброса пароля",
+			"auth.resetPassword": "Сбросить пароль",
+			"auth.password": "Пароль",
+			"auth.confirmPassword": "Подтвердите пароль",
+			"auth.login.submit": "Войти",
+			"auth.haveAccount": "Уже есть аккаунт?",
+			"auth.email": "Email",
+			"auth.forgotPassword.title": "Забыли пароль?",
+			"auth.forgotPassword.description": "Введите email для сброса пароля",
+			"auth.forgotPassword.submit": "Сбросить пароль",
+			"auth.login.invalidCredentials": "Неверные данные",
+			"auth.register.title": "Создать аккаунт",
+			"auth.register.description": "Зарегистрируйтесь для начала",
+			"auth.register.submit": "Создать аккаунт",
+			"auth.register.firstName": "Имя",
+			"auth.register.lastName": "Фамилия",
+			"auth.register.email": "Email",
+			"auth.register.password": "Пароль",
+			"auth.register.confirmPassword": "Подтвердите пароль",
 		},
 	},
 };
