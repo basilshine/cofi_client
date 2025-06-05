@@ -49,19 +49,16 @@ try {
 api.interceptors.request.use(
 	(config) => {
 		const token = localStorage.getItem("token");
-		console.log(
-			"[API Debug] Token from localStorage:",
-			token ? `${token.substring(0, 20)}...` : "null",
-		);
-
+		console.log("[API Debug] Token from localStorage:", token ? `${token.substring(0, 20)}...` : "null");
+		LogRocket.log("[API Debug] Token from localStorage:", token ? `${token.substring(0, 20)}...` : "null");
+		
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`;
-			console.log(
-				"[API Debug] Authorization header set:",
-				`Bearer ${token.substring(0, 20)}...`,
-			);
+			console.log("[API Debug] Authorization header set:", `Bearer ${token.substring(0, 20)}...`);
+			LogRocket.log("[API Debug] Authorization header set:", `Bearer ${token.substring(0, 20)}...`);
 		} else {
 			console.log("[API Debug] No token found, no Authorization header set");
+			LogRocket.log("[API Debug] No token found, no Authorization header set");
 		}
 
 		// Log all outgoing requests
@@ -76,13 +73,16 @@ api.interceptors.request.use(
 				hasAuthHeader: !!config.headers.Authorization,
 			});
 		} catch (e) {
-			console.log(
-				"[API Request]",
-				config.method?.toUpperCase(),
-				config.url,
-				"Auth:",
-				!!config.headers.Authorization,
-			);
+			console.log("[API Request]", config.method?.toUpperCase(), config.url, "Auth:", !!config.headers.Authorization);
+			LogRocket.log("[API Request]", {
+				method: config.method?.toUpperCase(),
+				url: config.url,
+				baseURL: config.baseURL,
+				headers: config.headers,
+				data: config.data,
+				params: config.params,
+				hasAuthHeader: !!config.headers.Authorization,
+			});
 		}
 
 		return config;
@@ -114,6 +114,12 @@ api.interceptors.response.use(
 				response.status,
 				response.config.url,
 			);
+			LogRocket.log("[API Response Success]", {
+				status: response.status,
+				statusText: response.statusText,
+				url: response.config.url,
+				data: response.data,
+			});
 		}
 		return response;
 	},
@@ -134,6 +140,13 @@ api.interceptors.response.use(
 				error.config?.url,
 				error.message,
 			);
+			LogRocket.error("[API Response Error]", {
+				status: error.response?.status,
+				statusText: error.response?.statusText,
+				url: error.config?.url,
+				data: error.response?.data,
+				message: error.message,
+			});
 		}
 		return Promise.reject(error);
 	},
