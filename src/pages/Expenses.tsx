@@ -13,13 +13,19 @@ import { Plus } from "@phosphor-icons/react";
 import type { MostUsedCategories } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import LogRocket from "logrocket";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export const Expenses = () => {
 	const { t } = useTranslation();
 	const queryClient = useQueryClient();
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+	// Log when Expenses page is loaded
+	useEffect(() => {
+		LogRocket.log("[Expenses] Page loaded");
+	}, []);
 
 	// Fetch summary
 	const {
@@ -41,10 +47,30 @@ export const Expenses = () => {
 		queryFn: expensesService.getMostUsedCategories,
 	});
 
+	// Log results
+	useEffect(() => {
+		if (summary) {
+			LogRocket.log("[Expenses] Summary loaded:", summary);
+		}
+		if (summaryError) {
+			LogRocket.error("[Expenses] Summary error:", summaryError);
+		}
+	}, [summary, summaryError]);
+
+	useEffect(() => {
+		if (categories.length > 0) {
+			LogRocket.log("[Expenses] Categories loaded:", categories);
+		}
+		if (categoriesError) {
+			LogRocket.error("[Expenses] Categories error:", categoriesError);
+		}
+	}, [categories, categoriesError]);
+
 	const isLoading = isSummaryLoading || isCategoriesLoading;
 	const error = summaryError?.message || categoriesError?.message || null;
 
 	const handleExpenseAdded = () => {
+		LogRocket.log("[Expenses] Expense added, invalidating queries");
 		setIsDialogOpen(false);
 		queryClient.invalidateQueries({ queryKey: ["expenses"] });
 	};

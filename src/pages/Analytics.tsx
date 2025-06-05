@@ -2,28 +2,76 @@ import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { ChartBar, ChartLineUp, ChartPie } from "@phosphor-icons/react";
 import { expensesService } from "@services/api/expenses";
 import { useQuery } from "@tanstack/react-query";
+import LogRocket from "logrocket";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 export const Analytics = () => {
 	const { t } = useTranslation();
 
-	const { data: summary, isLoading: isSummaryLoading } = useQuery({
+	// Log when Analytics page is loaded
+	useEffect(() => {
+		LogRocket.log("[Analytics] Page loaded");
+	}, []);
+
+	const {
+		data: summary,
+		isLoading: isSummaryLoading,
+		error: summaryError,
+	} = useQuery({
 		queryKey: ["expenses", "summary"],
 		queryFn: expensesService.getSummary,
 	});
 
-	const { data: categories = [], isLoading: isCategoriesLoading } = useQuery({
+	const {
+		data: categories = [],
+		isLoading: isCategoriesLoading,
+		error: categoriesError,
+	} = useQuery({
 		queryKey: ["expenses", "categories"],
 		queryFn: expensesService.getMostUsedCategories,
 	});
 
-	const { data: expenses = [], isLoading: isExpensesLoading } = useQuery({
+	const {
+		data: expenses = [],
+		isLoading: isExpensesLoading,
+		error: expensesError,
+	} = useQuery({
 		queryKey: ["expenses"],
 		queryFn: expensesService.getExpenses,
 	});
 
+	// Log fetch results
+	useEffect(() => {
+		if (summary) {
+			LogRocket.log("[Analytics] Summary loaded:", summary);
+		}
+		if (summaryError) {
+			LogRocket.error("[Analytics] Summary error:", summaryError);
+		}
+	}, [summary, summaryError]);
+
+	useEffect(() => {
+		if (categories.length > 0) {
+			LogRocket.log("[Analytics] Categories loaded:", categories);
+		}
+		if (categoriesError) {
+			LogRocket.error("[Analytics] Categories error:", categoriesError);
+		}
+	}, [categories, categoriesError]);
+
+	useEffect(() => {
+		if (expenses.length > 0) {
+			LogRocket.log("[Analytics] Expenses loaded:", { count: expenses.length });
+		}
+		if (expensesError) {
+			LogRocket.error("[Analytics] Expenses error:", expensesError);
+		}
+	}, [expenses, expensesError]);
+
 	const isLoading =
 		isSummaryLoading || isCategoriesLoading || isExpensesLoading;
+	const hasErrors = summaryError || categoriesError || expensesError;
 
 	// Calculate additional analytics
 	const totalExpenses = expenses.length;
@@ -32,6 +80,46 @@ export const Analytics = () => {
 			? expenses.reduce((sum, expense) => sum + expense.amount, 0) /
 				expenses.length
 			: 0;
+
+	LogRocket.log("[Analytics] Render state:", {
+		isLoading,
+		hasErrors,
+		totalExpenses,
+		averageExpense,
+		summaryData: summary,
+		categoriesCount: categories.length,
+	});
+
+	// Show error state if any API calls failed
+	if (hasErrors && !isLoading) {
+		return (
+			<div className="container mx-auto py-8">
+				<div className="mb-8">
+					<h1 className="text-3xl font-bold">{t("analytics.title")}</h1>
+				</div>
+				<Card>
+					<CardContent className="pt-6">
+						<div className="text-center space-y-4">
+							<p className="text-red-500 font-medium">
+								Error loading analytics data
+							</p>
+							<div className="text-sm text-muted-foreground space-y-2">
+								{summaryError && <p>Summary: {summaryError.message}</p>}
+								{categoriesError && (
+									<p>Categories: {categoriesError.message}</p>
+								)}
+								{expensesError && <p>Expenses: {expensesError.message}</p>}
+							</div>
+							<p className="text-xs text-muted-foreground">
+								Check browser console and LogRocket for detailed error
+								information.
+							</p>
+						</div>
+					</CardContent>
+				</Card>
+			</div>
+		);
+	}
 
 	return (
 		<div className="container mx-auto py-8">

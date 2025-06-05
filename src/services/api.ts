@@ -43,16 +43,84 @@ try {
 	LogRocket.log("[API] Base URL:", import.meta.env.VITE_API_URL);
 } catch (e) {
 	// LogRocket not available or not initialized
+	console.log("[API] Base URL:", import.meta.env.VITE_API_URL);
 }
-LogRocket.log("[API] Base URL:", import.meta.env.VITE_API_URL);
 
-api.interceptors.request.use((config) => {
-	const token = useAuthStore.getState().token;
-	if (token) {
-		config.headers.Authorization = `Bearer ${token}`;
-	}
-	return config;
-});
+// Request interceptor with logging
+api.interceptors.request.use(
+	(config) => {
+		const token = useAuthStore.getState().token;
+		if (token) {
+			config.headers.Authorization = `Bearer ${token}`;
+		}
+
+		// Log all outgoing requests
+		try {
+			LogRocket.log("[API Request]", {
+				method: config.method?.toUpperCase(),
+				url: config.url,
+				baseURL: config.baseURL,
+				headers: config.headers,
+				data: config.data,
+				params: config.params,
+			});
+		} catch (e) {
+			console.log("[API Request]", config.method?.toUpperCase(), config.url);
+		}
+
+		return config;
+	},
+	(error) => {
+		try {
+			LogRocket.error("[API Request Error]", error);
+		} catch (e) {
+			console.error("[API Request Error]", error);
+		}
+		return Promise.reject(error);
+	},
+);
+
+// Response interceptor with logging
+api.interceptors.response.use(
+	(response) => {
+		// Log successful responses
+		try {
+			LogRocket.log("[API Response Success]", {
+				status: response.status,
+				statusText: response.statusText,
+				url: response.config.url,
+				data: response.data,
+			});
+		} catch (e) {
+			console.log(
+				"[API Response Success]",
+				response.status,
+				response.config.url,
+			);
+		}
+		return response;
+	},
+	(error) => {
+		// Log error responses
+		try {
+			LogRocket.error("[API Response Error]", {
+				status: error.response?.status,
+				statusText: error.response?.statusText,
+				url: error.config?.url,
+				data: error.response?.data,
+				message: error.message,
+			});
+		} catch (e) {
+			console.error(
+				"[API Response Error]",
+				error.response?.status,
+				error.config?.url,
+				error.message,
+			);
+		}
+		return Promise.reject(error);
+	},
+);
 
 export const apiService = {
 	auth: {

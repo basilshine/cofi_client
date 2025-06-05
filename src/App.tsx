@@ -1,5 +1,6 @@
 import { AuthProvider, useAuth } from "@contexts/AuthContext";
 import { Analytics } from "@pages/Analytics";
+import { Debug } from "@pages/Debug";
 import { ExpenseEdit } from "@pages/ExpenseEdit";
 import { Expenses } from "@pages/Expenses";
 import { Settings } from "@pages/Settings";
@@ -82,6 +83,7 @@ function AppContent() {
 								<Route path="/" element={<Home />} />
 								<Route path="/analytics" element={<Analytics />} />
 								<Route path="/settings" element={<Settings />} />
+								<Route path="/debug" element={<Debug />} />
 							</Routes>
 						</Layout>
 					) : (
