@@ -49,8 +49,19 @@ try {
 api.interceptors.request.use(
 	(config) => {
 		const token = localStorage.getItem("token");
+		console.log(
+			"[API Debug] Token from localStorage:",
+			token ? `${token.substring(0, 20)}...` : "null",
+		);
+
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`;
+			console.log(
+				"[API Debug] Authorization header set:",
+				`Bearer ${token.substring(0, 20)}...`,
+			);
+		} else {
+			console.log("[API Debug] No token found, no Authorization header set");
 		}
 
 		// Log all outgoing requests
@@ -62,9 +73,16 @@ api.interceptors.request.use(
 				headers: config.headers,
 				data: config.data,
 				params: config.params,
+				hasAuthHeader: !!config.headers.Authorization,
 			});
 		} catch (e) {
-			console.log("[API Request]", config.method?.toUpperCase(), config.url);
+			console.log(
+				"[API Request]",
+				config.method?.toUpperCase(),
+				config.url,
+				"Auth:",
+				!!config.headers.Authorization,
+			);
 		}
 
 		return config;
