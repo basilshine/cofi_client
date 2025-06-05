@@ -8,6 +8,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@components/ui/table";
+import { useAuth } from "@contexts/AuthContext";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
 import type { Expense } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
@@ -18,6 +19,7 @@ import { Link } from "react-router-dom";
 
 export const ExpenseList = () => {
 	const { t } = useTranslation();
+	const { isAuthenticated } = useAuth();
 	const queryClient = useQueryClient();
 
 	const {
@@ -27,6 +29,7 @@ export const ExpenseList = () => {
 	} = useQuery({
 		queryKey: ["expenses"],
 		queryFn: () => expensesService.getExpenses(),
+		enabled: isAuthenticated,
 	});
 
 	const deleteMutation = useMutation({
@@ -44,6 +47,14 @@ export const ExpenseList = () => {
 			deleteMutation.mutate(id);
 		}
 	};
+
+	if (!isAuthenticated) {
+		return (
+			<div className="text-sm text-muted-foreground">
+				{t("common.loginRequired")}
+			</div>
+		);
+	}
 
 	if (isLoading) return <div>{t("common.loading")}</div>;
 	if (error) return <div>{t("common.error")}</div>;

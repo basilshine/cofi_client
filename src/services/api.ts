@@ -1,5 +1,4 @@
 import type { components, paths } from "@/types/api-types";
-import { useAuthStore } from "@store/useStore";
 import axios from "axios";
 import type { AxiosResponse } from "axios";
 import LogRocket from "logrocket";
@@ -49,7 +48,7 @@ try {
 // Request interceptor with logging
 api.interceptors.request.use(
 	(config) => {
-		const token = useAuthStore.getState().token;
+		const token = localStorage.getItem("token");
 		if (token) {
 			config.headers.Authorization = `Bearer ${token}`;
 		}

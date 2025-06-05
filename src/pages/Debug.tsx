@@ -1,7 +1,7 @@
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { useAuth } from "@contexts/AuthContext";
 import { expensesService } from "@services/api/expenses";
-import { useAuthStore } from "@store/useStore";
 import LogRocket from "logrocket";
 import { useState } from "react";
 
@@ -38,8 +38,7 @@ interface TestResults {
 export const Debug = () => {
 	const [testResults, setTestResults] = useState<TestResults>({});
 	const [isLoading, setIsLoading] = useState(false);
-	const user = useAuthStore((state) => state.user);
-	const token = useAuthStore((state) => state.token);
+	const { user, token, isAuthenticated } = useAuth();
 
 	const runTests = async () => {
 		setIsLoading(true);
@@ -59,7 +58,7 @@ export const Debug = () => {
 		results.auth = {
 			user: user,
 			token: token ? `${token.substring(0, 10)}...` : null,
-			isAuthenticated: !!user && !!token,
+			isAuthenticated: isAuthenticated,
 		};
 
 		// Test 3: API base URL check
@@ -162,10 +161,20 @@ export const Debug = () => {
 							<strong>Environment:</strong> {import.meta.env.NODE_ENV}
 						</div>
 						<div>
-							<strong>User Authenticated:</strong> {user ? "Yes" : "No"}
+							<strong>User Authenticated:</strong>{" "}
+							{isAuthenticated ? "Yes" : "No"}
 						</div>
 						<div>
 							<strong>Token Present:</strong> {token ? "Yes" : "No"}
+						</div>
+						<div>
+							<strong>User ID:</strong> {user?.id || "None"}
+						</div>
+						<div>
+							<strong>User Name:</strong>{" "}
+							{user?.firstName
+								? `${user.firstName} ${user.lastName || ""}`.trim()
+								: "None"}
 						</div>
 					</CardContent>
 				</Card>
