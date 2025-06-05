@@ -8,6 +8,7 @@ import {
 import { useAuth } from "@contexts/AuthContext";
 import {
 	ChartLineUp,
+	Bug,
 	Gear,
 	Globe,
 	House,
@@ -25,6 +26,7 @@ export const Navbar = () => {
 	const navItems = [
 		{ label: t("nav.home"), path: "/", icon: House },
 		{ label: t("nav.expenses"), path: "/expenses", icon: Wallet },
+		{ label: t("nav.debug"), path: "/debug", icon: Bug },
 		{ label: t("nav.analytics"), path: "/analytics", icon: ChartLineUp },
 		{ label: t("nav.settings"), path: "/settings", icon: Gear },
 	];
