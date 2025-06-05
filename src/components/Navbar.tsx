@@ -7,8 +7,8 @@ import {
 } from "@components/ui/dropdown-menu";
 import { useAuth } from "@contexts/AuthContext";
 import {
-	ChartLineUp,
 	Bug,
+	ChartLineUp,
 	Gear,
 	Globe,
 	House,
