@@ -1,18 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { Button } from "@components/ui/button";
 import { ChartBar, ChartLineUp, ChartPie } from "@phosphor-icons/react";
+import { useAuth } from "@contexts/AuthContext";
 import { expensesService } from "@services/api/expenses";
 import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 export const Analytics = () => {
 	const { t } = useTranslation();
+	const { isAuthenticated, isLoading: authLoading } = useAuth();
 
 	// Log when Analytics page is loaded
 	useEffect(() => {
-		LogRocket.log("[Analytics] Page loaded");
-	}, []);
+		LogRocket.log("[Analytics] Page loaded", { isAuthenticated, authLoading });
+	}, [isAuthenticated, authLoading]);
 
 	const {
 		data: summary,
@@ -21,6 +25,7 @@ export const Analytics = () => {
 	} = useQuery({
 		queryKey: ["expenses", "summary"],
 		queryFn: expensesService.getSummary,
+		enabled: isAuthenticated,
 	});
 
 	const {
@@ -30,6 +35,7 @@ export const Analytics = () => {
 	} = useQuery({
 		queryKey: ["expenses", "categories"],
 		queryFn: expensesService.getMostUsedCategories,
+		enabled: isAuthenticated,
 	});
 
 	const {
@@ -39,6 +45,7 @@ export const Analytics = () => {
 	} = useQuery({
 		queryKey: ["expenses"],
 		queryFn: expensesService.getExpenses,
+		enabled: isAuthenticated,
 	});
 
 	// Log fetch results
@@ -88,7 +95,40 @@ export const Analytics = () => {
 		averageExpense,
 		summaryData: summary,
 		categoriesCount: categories.length,
+		isAuthenticated,
+		authLoading,
 	});
+
+	// Show loading state while checking authentication
+	if (authLoading) {
+		return (
+			<div className="flex items-center justify-center py-8">
+				<p className="text-muted-foreground">{t("common.loading")}</p>
+			</div>
+		);
+	}
+
+	// Show login prompt if not authenticated
+	if (!isAuthenticated) {
+		return (
+			<div className="container mx-auto py-8">
+				<div className="text-center py-12">
+					<h1 className="text-3xl font-bold mb-4">{t("analytics.title")}</h1>
+					<div className="max-w-md mx-auto space-y-4">
+						<p className="text-muted-foreground">{t("common.loginRequired")}</p>
+						<div className="space-y-2">
+							<Button asChild className="w-full">
+								<Link to="/auth/login">{t("nav.login")}</Link>
+							</Button>
+							<Button asChild variant="outline" className="w-full">
+								<Link to="/">{t("common.goHome")}</Link>
+							</Button>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	// Show error state if any API calls failed
 	if (hasErrors && !isLoading) {

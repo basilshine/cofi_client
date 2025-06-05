@@ -11,6 +11,8 @@ const resources = {
 			"common.language": "Language",
 			"common.language.en": "English",
 			"common.language.ru": "Russian",
+			"common.loginRequired": "Please log in to access your financial data.",
+			"common.goHome": "Go to Home",
 
 			// Navigation
 			"nav.home": "Home",
@@ -19,6 +21,7 @@ const resources = {
 			"nav.settings": "Settings",
 			"nav.debug": "Debug",
 			"nav.login": "Login",
+			"nav.dashboard": "Dashboard",
 
 			// Promo
 			promo: "Promo",
@@ -49,6 +52,11 @@ const resources = {
 			"expenses.amount": "Amount",
 			"expenses.total": "Total",
 			"expenses.monthlyAverage": "Monthly Average",
+			"expenses.addExpense": "Add Expense",
+			"expenses.recentExpenses": "Recent Expenses",
+			"expenses.monthlySummary": "Monthly Summary",
+			"expenses.mostUsedCategories": "Most Used Categories",
+			"expenses.noCategories": "No categories found",
 
 			// Analytics
 			"analytics.title": "Analytics",
@@ -112,6 +120,9 @@ const resources = {
 			"common.language": "Язык",
 			"common.language.en": "Английский",
 			"common.language.ru": "Русский",
+			"common.loginRequired":
+				"Пожалуйста, войдите в систему, чтобы получить доступ к финансовым данным.",
+			"common.goHome": "Перейти на главную",
 
 			// Navigation
 			"nav.home": "Главная",
@@ -119,6 +130,7 @@ const resources = {
 			"nav.analytics": "Аналитика",
 			"nav.settings": "Настройки",
 			"nav.debug": "Отладка",
+			"nav.dashboard": "Панель управления",
 
 			// Expenses
 			"expenses.title": "Последние расходы",
@@ -128,6 +140,11 @@ const resources = {
 			"expenses.amount": "Сумма",
 			"expenses.total": "Всего",
 			"expenses.monthlyAverage": "Среднемесячные",
+			"expenses.addExpense": "Добавить расход",
+			"expenses.recentExpenses": "Последние расходы",
+			"expenses.monthlySummary": "Месячный итог",
+			"expenses.mostUsedCategories": "Часто используемые категории",
+			"expenses.noCategories": "Категории не найдены",
 
 			// Analytics
 			"analytics.title": "Аналитика",
