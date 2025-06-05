@@ -13,6 +13,10 @@ const resources = {
 			"common.language.ru": "Russian",
 			"common.loginRequired": "Please log in to access your financial data.",
 			"common.goHome": "Go to Home",
+			"common.actions": "Actions",
+			"common.saving": "Saving...",
+			"common.back": "Back",
+			"common.delete": "Delete",
 
 			// Navigation
 			"nav.home": "Home",
@@ -48,6 +52,7 @@ const resources = {
 			"expenses.title": "Recent Expenses",
 			"expenses.date": "Date",
 			"expenses.description": "Description",
+			"expenses.expenseDescription": "Expense description (optional)",
 			"expenses.category": "Category",
 			"expenses.amount": "Amount",
 			"expenses.total": "Total",
@@ -57,6 +62,24 @@ const resources = {
 			"expenses.monthlySummary": "Monthly Summary",
 			"expenses.mostUsedCategories": "Most Used Categories",
 			"expenses.noCategories": "No categories found",
+			"expenses.items": "Items",
+			"expenses.addItem": "Add Item",
+			"expenses.item": "Item",
+			"expenses.itemName": "Item Name",
+			"expenses.itemNamePlaceholder": "What did you buy?",
+			"expenses.totalItems": "Total Items",
+			"expenses.moreItems": "more items",
+			"expenses.status": "Status",
+			"expenses.noDescription": "No description",
+			"expenses.confirmDelete":
+				"Are you sure you want to delete '{{description}}'?",
+			"expenses.selectCategory": "Select category",
+			"expenses.categories.food": "Food & Dining",
+			"expenses.categories.transport": "Transportation",
+			"expenses.categories.entertainment": "Entertainment",
+			"expenses.categories.utilities": "Bills & Utilities",
+			"expenses.categories.shopping": "Shopping",
+			"expenses.categories.other": "Other",
 
 			// Analytics
 			"analytics.title": "Analytics",
@@ -123,6 +146,10 @@ const resources = {
 			"common.loginRequired":
 				"Пожалуйста, войдите в систему, чтобы получить доступ к финансовым данным.",
 			"common.goHome": "Перейти на главную",
+			"common.actions": "Действия",
+			"common.saving": "Сохранение...",
+			"common.back": "Назад",
+			"common.delete": "Удалить",
 
 			// Navigation
 			"nav.home": "Главная",
@@ -136,6 +163,7 @@ const resources = {
 			"expenses.title": "Последние расходы",
 			"expenses.date": "Дата",
 			"expenses.description": "Описание",
+			"expenses.expenseDescription": "Описание расхода (необязательно)",
 			"expenses.category": "Категория",
 			"expenses.amount": "Сумма",
 			"expenses.total": "Всего",
@@ -145,6 +173,24 @@ const resources = {
 			"expenses.monthlySummary": "Месячный итог",
 			"expenses.mostUsedCategories": "Часто используемые категории",
 			"expenses.noCategories": "Категории не найдены",
+			"expenses.items": "Позиции",
+			"expenses.addItem": "Добавить позицию",
+			"expenses.item": "Позиция",
+			"expenses.itemName": "Название позиции",
+			"expenses.itemNamePlaceholder": "Что вы купили?",
+			"expenses.totalItems": "Всего позиций",
+			"expenses.moreItems": "еще позиций",
+			"expenses.status": "Статус",
+			"expenses.noDescription": "Без описания",
+			"expenses.confirmDelete":
+				"Вы уверены, что хотите удалить '{{description}}'?",
+			"expenses.selectCategory": "Выберите категорию",
+			"expenses.categories.food": "Еда и рестораны",
+			"expenses.categories.transport": "Транспорт",
+			"expenses.categories.entertainment": "Развлечения",
+			"expenses.categories.utilities": "Коммунальные услуги",
+			"expenses.categories.shopping": "Покупки",
+			"expenses.categories.other": "Прочее",
 
 			// Analytics
 			"analytics.title": "Аналитика",

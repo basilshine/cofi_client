@@ -8,6 +8,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@components/ui/select";
+import { Separator } from "@components/ui/separator";
+import { Minus, Plus } from "@phosphor-icons/react";
 import { expensesService } from "@services/api/expenses";
 import {
 	getTelegramExpenseData,
@@ -16,17 +18,22 @@ import {
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
+interface ExpenseItem {
+	amount: string;
+	name: string;
+	category: string;
+}
+
 interface AddExpenseFormProps {
 	onExpenseAdded: () => void;
 }
 
 export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 	const { t } = useTranslation();
-	const [formData, setFormData] = useState({
-		amount: "",
-		description: "",
-		category: "",
-	});
+	const [description, setDescription] = useState("");
+	const [items, setItems] = useState<ExpenseItem[]>([
+		{ amount: "", name: "", category: "" },
+	]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -34,19 +41,44 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 	useEffect(() => {
 		const telegramData = getTelegramExpenseData();
 		if (telegramData) {
-			const updates: Partial<typeof formData> = {};
-			if (telegramData.amount) {
-				updates.amount = String(telegramData.amount);
-			}
-			if (telegramData.category) {
-				updates.category = String(telegramData.category);
-			}
 			if (telegramData.description) {
-				updates.description = String(telegramData.description);
+				setDescription(String(telegramData.description));
 			}
-			setFormData((prev) => ({ ...prev, ...updates }));
+			if (telegramData.amount || telegramData.category) {
+				setItems([
+					{
+						amount: telegramData.amount ? String(telegramData.amount) : "",
+						name: telegramData.description
+							? String(telegramData.description)
+							: "",
+						category: telegramData.category
+							? String(telegramData.category)
+							: "",
+					},
+				]);
+			}
 		}
 	}, []);
+
+	const addItem = () => {
+		setItems([...items, { amount: "", name: "", category: "" }]);
+	};
+
+	const removeItem = (index: number) => {
+		if (items.length > 1) {
+			setItems(items.filter((_, i) => i !== index));
+		}
+	};
+
+	const updateItem = (
+		index: number,
+		field: keyof ExpenseItem,
+		value: string,
+	) => {
+		const updatedItems = [...items];
+		updatedItems[index][field] = value;
+		setItems(updatedItems);
+	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -54,24 +86,32 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 		setError(null);
 
 		try {
+			// Validate that all items have required fields
+			const validItems = items.filter(
+				(item) => item.amount && item.name && item.category,
+			);
+
+			if (validItems.length === 0) {
+				throw new Error("Please add at least one expense item");
+			}
+
 			await expensesService.createExpense({
-				amount: Number.parseFloat(formData.amount),
-				description: formData.description,
+				amount: validItems.reduce(
+					(sum, item) => sum + Number.parseFloat(item.amount),
+					0,
+				),
+				description: description || "Multiple expense items",
 				status: "approved",
-				items: [
-					{
-						amount: Number.parseFloat(formData.amount),
-						name: formData.description,
-						category: { id: 1, name: formData.category },
-					},
-				],
+				items: validItems.map((item) => ({
+					amount: Number.parseFloat(item.amount),
+					name: item.name,
+					category: { id: 1, name: item.category },
+				})),
 			});
+
 			// Reset form
-			setFormData({
-				amount: "",
-				description: "",
-				category: "",
-			});
+			setDescription("");
+			setItems([{ amount: "", name: "", category: "" }]);
 			notifyTelegramWebApp("expense_created");
 			onExpenseAdded();
 		} catch (err) {
@@ -81,72 +121,140 @@ export const AddExpenseForm = ({ onExpenseAdded }: AddExpenseFormProps) => {
 		}
 	};
 
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const { name, value } = e.target;
-		setFormData((prev) => ({ ...prev, [name]: value }));
-	};
+	const categories = [
+		"food",
+		"transport",
+		"entertainment",
+		"utilities",
+		"shopping",
+		"other",
+	];
 
 	return (
-		<form onSubmit={handleSubmit} className="space-y-4">
+		<form onSubmit={handleSubmit} className="space-y-6">
 			{error && <p className="text-sm text-red-500">{error}</p>}
-			<div className="space-y-2">
-				<Label htmlFor="amount">{t("expenses.amount")}</Label>
-				<Input
-					id="amount"
-					name="amount"
-					type="number"
-					step="0.01"
-					value={formData.amount}
-					onChange={handleChange}
-					required
-				/>
-			</div>
+
+			{/* Expense Description */}
 			<div className="space-y-2">
 				<Label htmlFor="description">{t("expenses.description")}</Label>
 				<Input
 					id="description"
-					name="description"
-					value={formData.description}
-					onChange={handleChange}
-					required
+					value={description}
+					onChange={(e) => setDescription(e.target.value)}
+					placeholder={t("expenses.expenseDescription")}
 				/>
 			</div>
-			<div className="space-y-2">
-				<Label htmlFor="category">{t("expenses.category")}</Label>
-				<Select
-					value={formData.category}
-					onValueChange={(value) =>
-						setFormData((prev) => ({ ...prev, category: value }))
-					}
-				>
-					<SelectTrigger>
-						<SelectValue placeholder={t("expenses.selectCategory")} />
-					</SelectTrigger>
-					<SelectContent>
-						<SelectItem value="food">
-							{t("expenses.categories.food")}
-						</SelectItem>
-						<SelectItem value="transport">
-							{t("expenses.categories.transport")}
-						</SelectItem>
-						<SelectItem value="entertainment">
-							{t("expenses.categories.entertainment")}
-						</SelectItem>
-						<SelectItem value="utilities">
-							{t("expenses.categories.utilities")}
-						</SelectItem>
-						<SelectItem value="shopping">
-							{t("expenses.categories.shopping")}
-						</SelectItem>
-						<SelectItem value="other">
-							{t("expenses.categories.other")}
-						</SelectItem>
-					</SelectContent>
-				</Select>
+
+			<Separator />
+
+			{/* Expense Items */}
+			<div className="space-y-4">
+				<div className="flex items-center justify-between">
+					<Label className="text-base font-semibold">
+						{t("expenses.items")} ({items.length})
+					</Label>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={addItem}
+						className="flex items-center gap-2"
+					>
+						<Plus className="h-4 w-4" />
+						{t("expenses.addItem")}
+					</Button>
+				</div>
+
+				{items.map((item, index) => (
+					<div
+						key={`item-${index}-${item.name}`}
+						className="p-4 border rounded-lg space-y-3 bg-gray-50"
+					>
+						<div className="flex items-center justify-between">
+							<h4 className="font-medium">
+								{t("expenses.item")} {index + 1}
+							</h4>
+							{items.length > 1 && (
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={() => removeItem(index)}
+									className="text-red-600 hover:text-red-700"
+								>
+									<Minus className="h-4 w-4" />
+								</Button>
+							)}
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+							<div className="space-y-1">
+								<Label htmlFor={`item-name-${index}`}>
+									{t("expenses.itemName")}
+								</Label>
+								<Input
+									id={`item-name-${index}`}
+									value={item.name}
+									onChange={(e) => updateItem(index, "name", e.target.value)}
+									placeholder={t("expenses.itemNamePlaceholder")}
+									required
+								/>
+							</div>
+
+							<div className="space-y-1">
+								<Label htmlFor={`item-amount-${index}`}>
+									{t("expenses.amount")}
+								</Label>
+								<Input
+									id={`item-amount-${index}`}
+									type="number"
+									step="0.01"
+									value={item.amount}
+									onChange={(e) => updateItem(index, "amount", e.target.value)}
+									placeholder="0.00"
+									required
+								/>
+							</div>
+
+							<div className="space-y-1">
+								<Label htmlFor={`item-category-${index}`}>
+									{t("expenses.category")}
+								</Label>
+								<Select
+									value={item.category}
+									onValueChange={(value) =>
+										updateItem(index, "category", value)
+									}
+								>
+									<SelectTrigger id={`item-category-${index}`}>
+										<SelectValue placeholder={t("expenses.selectCategory")} />
+									</SelectTrigger>
+									<SelectContent>
+										{categories.map((category) => (
+											<SelectItem key={category} value={category}>
+												{t(`expenses.categories.${category}`)}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+					</div>
+				))}
 			</div>
-			<Button type="submit" disabled={isSubmitting}>
-				{isSubmitting ? t("common.saving") : t("expenses.addExpense")}
-			</Button>
+
+			<div className="flex items-center justify-between pt-4">
+				<div className="text-sm text-muted-foreground">
+					{t("expenses.totalItems")}:{" "}
+					{
+						items.filter((item) => item.amount && item.name && item.category)
+							.length
+					}
+				</div>
+				<Button type="submit" disabled={isSubmitting} className="min-w-[120px]">
+					{isSubmitting ? t("common.saving") : t("expenses.addExpense")}
+				</Button>
+			</div>
 		</form>
 	);
 };
