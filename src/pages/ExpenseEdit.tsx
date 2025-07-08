@@ -1,5 +1,6 @@
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { useAuth } from "@contexts/AuthContext";
 import { ArrowLeft, Check, Trash, X } from "@phosphor-icons/react";
 import type { Expense, ExpenseItem } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
@@ -16,7 +17,7 @@ export const ExpenseEdit = () => {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const [editingItems, setEditingItems] = useState<ExpenseItem[]>([]);
-
+	const { user, token } = useAuth();
 	const {
 		data: expense,
 		isLoading,
@@ -26,10 +27,14 @@ export const ExpenseEdit = () => {
 		queryFn: () => {
 			LogRocket.log("[ExpenseEdit] useQuery.queryFn", { id });
 			if (!id) throw new Error("No expense ID provided");
-			return expensesService.getExpenseById(id).then((res) => {
-				LogRocket.log("[ExpenseEdit] useQuery.queryFn result", res);
-				return res;
-			});
+			if (!user?.id) throw new Error("No user ID provided");
+			if (!token) throw new Error("No token provided");
+			return expensesService
+				.getExpenseById(id, Number(user.id), token)
+				.then((res) => {
+					LogRocket.log("[ExpenseEdit] useQuery.queryFn result", res);
+					return res;
+				});
 		},
 		enabled: !!id,
 	});

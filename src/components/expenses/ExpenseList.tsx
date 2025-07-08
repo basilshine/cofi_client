@@ -21,7 +21,7 @@ import { Link } from "react-router-dom";
 
 export const ExpenseList = () => {
 	const { t } = useTranslation();
-	const { isAuthenticated } = useAuth();
+	const { isAuthenticated, user, token } = useAuth();
 	const queryClient = useQueryClient();
 
 	const {
@@ -31,9 +31,16 @@ export const ExpenseList = () => {
 	} = useQuery({
 		queryKey: ["expenses"],
 		queryFn: () => {
+			if (!user?.id || !token) {
+				throw new Error("User ID and token are required");
+			}
 			LogRocket.log("[ExpenseList] useQuery.queryFn");
-			return expensesService.getExpenses().then((res) => {
-				LogRocket.log("[ExpenseList] useQuery result", res);
+			return expensesService.getExpenses(Number(user.id), token).then((res) => {
+				LogRocket.log("[ExpenseList] useQuery result", {
+					userId: user.id,
+					token: "present",
+					expenses: res.length || 0,
+				});
 				return res;
 			});
 		},

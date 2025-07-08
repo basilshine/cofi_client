@@ -24,7 +24,7 @@ export const Expenses = () => {
 	const { isAuthenticated, isLoading: authLoading } = useAuth();
 	const queryClient = useQueryClient();
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-
+	const { user, token } = useAuth();
 	// Log when Expenses page is loaded
 	useEffect(() => {
 		LogRocket.log("[Expenses] Page loaded", { isAuthenticated, authLoading });
@@ -39,7 +39,10 @@ export const Expenses = () => {
 		queryKey: ["expenses", "summary"],
 		queryFn: () => {
 			LogRocket.log("[Expenses] getSummary queryFn");
-			return expensesService.getSummary().then((res) => {
+			if (!user?.id || !token) {
+				throw new Error("User ID and token are required");
+			}
+			return expensesService.getSummary(Number(user?.id), token).then((res) => {
 				LogRocket.log("[Expenses] getSummary result", res);
 				return res;
 			});
@@ -56,10 +59,15 @@ export const Expenses = () => {
 		queryKey: ["expenses", "categories"],
 		queryFn: () => {
 			LogRocket.log("[Expenses] getMostUsedCategories queryFn");
-			return expensesService.getMostUsedCategories().then((res) => {
-				LogRocket.log("[Expenses] getMostUsedCategories result", res);
-				return res;
-			});
+			if (!user?.id || !token) {
+				throw new Error("User ID and token are required");
+			}
+			return expensesService
+				.getMostUsedCategories(Number(user?.id), token)
+				.then((res) => {
+					LogRocket.log("[Expenses] getMostUsedCategories result", res);
+					return res;
+				});
 		},
 		enabled: isAuthenticated, // Only run query if authenticated
 	});

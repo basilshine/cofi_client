@@ -38,28 +38,21 @@ export interface MostUsedCategories {
 }
 
 export const expensesService = {
-	getExpenses: async () => {
+	getExpenses: async (userId: number, token: string) => {
 		try {
-			LogRocket.log("[expensesService.getExpenses] Starting request");
-
-			const isAuthorized = useIsAuthorized();
-			const { user } = useAuthStore.getState();
-			const userId = isAuthorized ? Number(user?.id) : undefined;
-			if (!userId) {
+			LogRocket.log("[expensesService.getExpenses] Starting request", {
+				userId,
+			});
+			if (!userId || !token) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.getExpenses] Error:", error);
 				throw new Error(error);
 			}
-
-			LogRocket.log("[expensesService.getExpenses] User ID:", userId);
-
 			const response = await apiService.expenses.list();
-
 			LogRocket.log("[expensesService.getExpenses] Success:", {
 				count: response.data?.length || 0,
 				data: response.data,
 			});
-
 			return response.data as Expense[];
 		} catch (error) {
 			LogRocket.error("[expensesService.getExpenses] Failed:", error);
@@ -67,10 +60,12 @@ export const expensesService = {
 		}
 	},
 
-	getDraftExpenses: async () => {
+	getDraftExpenses: async (userId: number, token: string) => {
 		try {
-			LogRocket.log("[expensesService.getDraftExpenses] Starting request");
-			const expenses = await expensesService.getExpenses();
+			LogRocket.log("[expensesService.getDraftExpenses] Starting request", {
+				userId,
+			});
+			const expenses = await expensesService.getExpenses(userId, token);
 			const drafts = expenses.filter((expense) => expense.status === "draft");
 			LogRocket.log("[expensesService.getDraftExpenses] Success:", {
 				count: drafts.length,
@@ -82,39 +77,29 @@ export const expensesService = {
 		}
 	},
 
-	getExpenseById: async (id: string) => {
+	getExpenseById: async (id: string, userId: number, token: string) => {
 		try {
 			LogRocket.log(
 				"[expensesService.getExpenseById] Starting request for ID:",
 				id,
 			);
-
-			const isAuthorized = useIsAuthorized();
-			const { user } = useAuthStore.getState();
-			const userId = isAuthorized ? Number(user?.id) : undefined;
-			if (!userId) {
+			if (!userId || !token) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.getExpenseById] Error:", error);
 				throw new Error(error);
 			}
-
-			const token = useAuthStore.getState().token;
 			const url = `${import.meta.env.VITE_API_URL}/api/v1/finances/expenses/${id}`;
-
 			LogRocket.log("[expensesService.getExpenseById] Making request to:", url);
-
 			const response = await fetch(url, {
 				headers: {
 					Authorization: `Bearer ${token}`,
 					"Content-Type": "application/json",
 				},
 			});
-
 			LogRocket.log(
 				"[expensesService.getExpenseById] Response status:",
 				response.status,
 			);
-
 			if (!response.ok) {
 				const errorText = await response.text();
 				LogRocket.error("[expensesService.getExpenseById] HTTP Error:", {
@@ -126,7 +111,6 @@ export const expensesService = {
 					`Failed to fetch expense: ${response.status} ${response.statusText}`,
 				);
 			}
-
 			const data = await response.json();
 			LogRocket.log("[expensesService.getExpenseById] Success:", data);
 			return data as Expense;
@@ -281,23 +265,18 @@ export const expensesService = {
 		return response.json();
 	},
 
-	getSummary: async () => {
+	getSummary: async (userId: number, token: string) => {
 		try {
-			LogRocket.log("[expensesService.getSummary] Starting request");
-
-			const isAuthorized = useIsAuthorized();
-			const { user } = useAuthStore.getState();
-			const userId = isAuthorized ? Number(user?.id) : undefined;
-			if (!userId) {
+			LogRocket.log("[expensesService.getSummary] Starting request", {
+				userId,
+			});
+			if (!userId || !token) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.getSummary] Error:", error);
 				throw new Error(error);
 			}
-
 			LogRocket.log("[expensesService.getSummary] User ID:", userId);
-
 			const response = await apiService.analytics.summary(userId);
-
 			LogRocket.log("[expensesService.getSummary] Success:", response.data);
 			return response.data as ExpenseSummary;
 		} catch (error) {
@@ -306,14 +285,10 @@ export const expensesService = {
 		}
 	},
 
-	getMostUsedCategories: async () => {
+	getMostUsedCategories: async (userId: number, token: string) => {
 		try {
 			LogRocket.log("[expensesService.getMostUsedCategories] Starting request");
-
-			const isAuthorized = useIsAuthorized();
-			const { user } = useAuthStore.getState();
-			const userId = isAuthorized ? Number(user?.id) : undefined;
-			if (!userId) {
+			if (!userId || !token) {
 				const error = "User not authenticated";
 				LogRocket.error(
 					"[expensesService.getMostUsedCategories] Error:",
@@ -321,17 +296,14 @@ export const expensesService = {
 				);
 				throw new Error(error);
 			}
-
 			// Try to get expenses and calculate categories from them
-			const expenses = await expensesService.getExpenses();
+			const expenses = await expensesService.getExpenses(userId, token);
 			LogRocket.log(
 				"[expensesService.getMostUsedCategories] Retrieved expenses:",
 				{ count: expenses.length },
 			);
-
 			// Group by categories and count from items
 			const categoryCount: Record<string, number> = {};
-
 			for (const expense of expenses) {
 				if (expense.items) {
 					for (const item of expense.items) {
@@ -341,13 +313,11 @@ export const expensesService = {
 					}
 				}
 			}
-
 			// Convert to array and sort by count
 			const result = Object.entries(categoryCount)
 				.map(([category, count]) => ({ category, count }))
 				.sort((a, b) => b.count - a.count)
 				.slice(0, 10); // Top 10 categories
-
 			LogRocket.log("[expensesService.getMostUsedCategories] Success:", result);
 			return result;
 		} catch (error) {

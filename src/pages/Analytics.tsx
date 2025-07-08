@@ -12,7 +12,7 @@ import { Link } from "react-router-dom";
 export const Analytics = () => {
 	const { t } = useTranslation();
 	const { isAuthenticated, isLoading: authLoading } = useAuth();
-
+	const { user, token } = useAuth();
 	// Log when Analytics page is loaded
 	useEffect(() => {
 		LogRocket.log("[Analytics] Page loaded", { isAuthenticated, authLoading });
@@ -26,7 +26,10 @@ export const Analytics = () => {
 		queryKey: ["expenses", "summary"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getSummary queryFn");
-			return expensesService.getSummary().then((res) => {
+			if (!user?.id || !token) {
+				throw new Error("User ID and token are required");
+			}
+			return expensesService.getSummary(Number(user?.id), token).then((res) => {
 				LogRocket.log("[Analytics] getSummary result", res);
 				return res;
 			});
@@ -42,10 +45,15 @@ export const Analytics = () => {
 		queryKey: ["expenses", "categories"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getMostUsedCategories queryFn");
-			return expensesService.getMostUsedCategories().then((res) => {
-				LogRocket.log("[Analytics] getMostUsedCategories result", res);
-				return res;
-			});
+			if (!user?.id || !token) {
+				throw new Error("User ID and token are required");
+			}
+			return expensesService
+				.getMostUsedCategories(Number(user?.id), token)
+				.then((res) => {
+					LogRocket.log("[Analytics] getMostUsedCategories result", res);
+					return res;
+				});
 		},
 		enabled: isAuthenticated,
 	});
@@ -58,10 +66,15 @@ export const Analytics = () => {
 		queryKey: ["expenses"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getExpenses queryFn");
-			return expensesService.getExpenses().then((res) => {
-				LogRocket.log("[Analytics] getExpenses result", res);
-				return res;
-			});
+			if (!user?.id || !token) {
+				throw new Error("User ID and token are required");
+			}
+			return expensesService
+				.getExpenses(Number(user?.id), token)
+				.then((res) => {
+					LogRocket.log("[Analytics] getExpenses result", res);
+					return res;
+				});
 		},
 		enabled: isAuthenticated,
 	});

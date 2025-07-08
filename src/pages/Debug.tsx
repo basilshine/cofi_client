@@ -92,9 +92,10 @@ export const Debug = () => {
 
 		// Test 4: Expenses API
 		let expenses: Expense[] = [];
-		if (user && token) {
+		const userId = user?.id ? Number(user.id) : undefined;
+		if (userId && token) {
 			try {
-				expenses = await expensesService.getExpenses();
+				expenses = await expensesService.getExpenses(userId, token);
 				results.expensesAPI = {
 					success: true,
 					count: expenses.length,
@@ -109,7 +110,7 @@ export const Debug = () => {
 
 			// Test 5: Summary API
 			try {
-				const summary = await expensesService.getSummary();
+				const summary = await expensesService.getSummary(userId, token);
 				results.summaryAPI = {
 					success: true,
 					data: summary,
@@ -126,6 +127,8 @@ export const Debug = () => {
 				try {
 					const firstExpense = await expensesService.getExpenseById(
 						expenses[0].id.toString(),
+						userId,
+						token,
 					);
 					results.expenseDetail = {
 						success: true,
@@ -140,21 +143,21 @@ export const Debug = () => {
 			}
 
 			// Fetch analytics: most used categories
-			if (expensesService.getMostUsedCategories) {
-				try {
-					const categories = await expensesService.getMostUsedCategories();
-					results.analyticsCategories = {
-						success: true,
-						data: categories,
-					};
-				} catch (error: unknown) {
-					results.analyticsCategories = {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
+			try {
+				const categories = await expensesService.getMostUsedCategories(
+					userId,
+					token,
+				);
+				results.analyticsCategories = {
+					success: true,
+					data: categories,
+				};
+			} catch (error: unknown) {
+				results.analyticsCategories = {
+					success: false,
+					error: error instanceof Error ? error.message : "Unknown error",
+				};
 			}
-			// Removed analyticsMonthly (getMonthlySummary) as it does not exist
 		}
 
 		LogRocket.log("[Debug] Test results:", results);
