@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
 import { expensesService } from "@services/api/expenses";
 import LogRocket from "logrocket";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface TestResults {
 	environment?: {
@@ -33,6 +33,17 @@ interface TestResults {
 		data?: unknown;
 		error?: string;
 	};
+	expenseDetail?: {
+		success: boolean;
+		data?: unknown;
+		error?: string;
+	};
+	analyticsCategories?: {
+		success: boolean;
+		data?: unknown;
+		error?: string;
+	};
+	// Removed analyticsMonthly (getMonthlySummary) as it does not exist
 }
 
 export const Debug = () => {
@@ -79,18 +90,19 @@ export const Debug = () => {
 		}
 
 		// Test 4: Expenses API
+		let expenses: any[] = [];
 		if (user && token) {
 			try {
-				const expenses = await expensesService.getExpenses();
+				expenses = await expensesService.getExpenses();
 				results.expensesAPI = {
 					success: true,
 					count: expenses.length,
 					data: expenses.slice(0, 2), // Show first 2 items
 				};
-			} catch (error) {
+			} catch (error: any) {
 				results.expensesAPI = {
 					success: false,
-					error: error instanceof Error ? error.message : "Unknown error",
+					error: error?.message || error?.toString() || "Unknown error",
 				};
 			}
 
@@ -101,12 +113,45 @@ export const Debug = () => {
 					success: true,
 					data: summary,
 				};
-			} catch (error) {
+			} catch (error: any) {
 				results.summaryAPI = {
 					success: false,
-					error: error instanceof Error ? error.message : "Unknown error",
+					error: error?.message || error?.toString() || "Unknown error",
 				};
 			}
+
+			// Fetch first expense in detail
+			if (expenses.length > 0) {
+				try {
+					const firstExpense = await expensesService.getExpenseById(expenses[0].id);
+					results.expenseDetail = {
+						success: true,
+						data: firstExpense,
+					};
+				} catch (error: any) {
+					results.expenseDetail = {
+						success: false,
+						error: error?.message || error?.toString() || "Unknown error",
+					};
+				}
+			}
+
+			// Fetch analytics: most used categories
+			if (expensesService.getMostUsedCategories) {
+				try {
+					const categories = await expensesService.getMostUsedCategories();
+					results.analyticsCategories = {
+						success: true,
+						data: categories,
+					};
+				} catch (error: any) {
+					results.analyticsCategories = {
+						success: false,
+						error: error?.message || error?.toString() || "Unknown error",
+					};
+				}
+			}
+			// Removed analyticsMonthly (getMonthlySummary) as it does not exist
 		}
 
 		LogRocket.log("[Debug] Test results:", results);
@@ -176,6 +221,17 @@ export const Debug = () => {
 								? `${user.firstName} ${user.lastName || ""}`.trim()
 								: "None"}
 						</div>
+						{/* auth_type and telegramId are only available if user is from store (Telegram/email auth) */}
+						{user && (user as any).auth_type && (
+							<div>
+								<strong>Auth Type:</strong> {(user as any).auth_type}
+							</div>
+						)}
+						{user && (user as any).telegramId && (
+							<div>
+								<strong>Telegram ID:</strong> {(user as any).telegramId}
+							</div>
+						)}
 					</CardContent>
 				</Card>
 			</div>
