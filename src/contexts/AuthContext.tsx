@@ -210,12 +210,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					}
 					setState((prev) => ({
 						...prev,
-						user,
 						token: data.token ?? null,
 						isAuthenticated: true,
-						isLoading: false,
+						isLoading: true,
 						error: null,
 					}));
+					fetchCurrentUser(data.token ?? "")
+						.then((user) => {
+							setState((prev) => ({
+								...prev,
+								user,
+								isLoading: false,
+							}));
+						})
+						.catch(() => {
+							logout();
+						});
 					LogRocket.log(
 						"[AuthContext] Telegram login success, checking for navigation parameters",
 					);
