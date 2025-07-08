@@ -1,9 +1,10 @@
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
-import { expensesService } from "@services/api/expenses";
+import type { User } from "@contexts/AuthContext";
+import { type Expense, expensesService } from "@services/api/expenses";
 import LogRocket from "logrocket";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface TestResults {
 	environment?: {
@@ -90,7 +91,7 @@ export const Debug = () => {
 		}
 
 		// Test 4: Expenses API
-		let expenses: any[] = [];
+		let expenses: Expense[] = [];
 		if (user && token) {
 			try {
 				expenses = await expensesService.getExpenses();
@@ -99,10 +100,10 @@ export const Debug = () => {
 					count: expenses.length,
 					data: expenses.slice(0, 2), // Show first 2 items
 				};
-			} catch (error: any) {
+			} catch (error: unknown) {
 				results.expensesAPI = {
 					success: false,
-					error: error?.message || error?.toString() || "Unknown error",
+					error: error instanceof Error ? error.message : "Unknown error",
 				};
 			}
 
@@ -113,25 +114,27 @@ export const Debug = () => {
 					success: true,
 					data: summary,
 				};
-			} catch (error: any) {
+			} catch (error: unknown) {
 				results.summaryAPI = {
 					success: false,
-					error: error?.message || error?.toString() || "Unknown error",
+					error: error instanceof Error ? error.message : "Unknown error",
 				};
 			}
 
 			// Fetch first expense in detail
 			if (expenses.length > 0) {
 				try {
-					const firstExpense = await expensesService.getExpenseById(expenses[0].id);
+					const firstExpense = await expensesService.getExpenseById(
+						expenses[0].id.toString(),
+					);
 					results.expenseDetail = {
 						success: true,
 						data: firstExpense,
 					};
-				} catch (error: any) {
+				} catch (error: unknown) {
 					results.expenseDetail = {
 						success: false,
-						error: error?.message || error?.toString() || "Unknown error",
+						error: error instanceof Error ? error.message : "Unknown error",
 					};
 				}
 			}
@@ -144,10 +147,10 @@ export const Debug = () => {
 						success: true,
 						data: categories,
 					};
-				} catch (error: any) {
+				} catch (error: unknown) {
 					results.analyticsCategories = {
 						success: false,
-						error: error?.message || error?.toString() || "Unknown error",
+						error: error instanceof Error ? error.message : "Unknown error",
 					};
 				}
 			}
@@ -222,14 +225,14 @@ export const Debug = () => {
 								: "None"}
 						</div>
 						{/* auth_type and telegramId are only available if user is from store (Telegram/email auth) */}
-						{user && (user as any).auth_type && (
+						{user && (user as User).auth_type && (
 							<div>
-								<strong>Auth Type:</strong> {(user as any).auth_type}
+								<strong>Auth Type:</strong> {(user as User).auth_type}
 							</div>
 						)}
-						{user && (user as any).telegramId && (
+						{user && (user as User).telegramId && (
 							<div>
-								<strong>Telegram ID:</strong> {(user as any).telegramId}
+								<strong>Telegram ID:</strong> {(user as User).telegramId}
 							</div>
 						)}
 					</CardContent>

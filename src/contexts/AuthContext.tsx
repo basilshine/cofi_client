@@ -10,10 +10,11 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-interface User {
+export interface User {
 	id: string;
 	email: string;
 	firstName: string;
+	auth_type?: string;
 	lastName?: string;
 	telegramId?: number;
 	telegramUsername?: string;
