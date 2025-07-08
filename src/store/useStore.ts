@@ -1,6 +1,6 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { useMemo } from "react";
 
 interface User {
 	id: string;
@@ -36,6 +36,9 @@ export const useAuthStore = create<AuthState>()(
 
 // Universal hook to check if user is authorized (token + user + user.id + user.auth_type)
 export const useIsAuthorized = () => {
-  const { token, user } = useAuthStore();
-  return useMemo(() => !!token && !!user && !!user.id && !!user.auth_type, [token, user]);
+	const { token, user } = useAuthStore();
+	return useMemo(
+		() => !!token && !!user && !!user.id && !!user.auth_type,
+		[token, user],
+	);
 };
