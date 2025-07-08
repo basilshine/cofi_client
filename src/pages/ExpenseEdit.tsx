@@ -1,8 +1,8 @@
+import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
 import { ArrowLeft, Check, Trash, X } from "@phosphor-icons/react";
-import type { Expense, ExpenseItem } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifyTelegramWebApp } from "@utils/telegramWebApp";
@@ -10,6 +10,9 @@ import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
+
+type Expense = components["schemas"]["Expense"];
+type ExpenseItem = components["schemas"]["ExpenseItem"];
 
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
@@ -222,7 +225,10 @@ export const ExpenseEdit = () => {
 	}
 
 	const isDraft = expense.status === "draft";
-	const totalAmount = editingItems.reduce((sum, item) => sum + item.amount, 0);
+	const totalAmount = editingItems.reduce(
+		(sum, item) => sum + (item.amount ?? 0),
+		0,
+	);
 
 	return (
 		<div className="container mx-auto py-8 max-w-4xl">

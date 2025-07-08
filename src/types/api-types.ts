@@ -207,69 +207,6 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	"/api/v1/goals": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** Get goals */
-		get: {
-			parameters: {
-				query: {
-					/** @description User ID */
-					user_id: string;
-				};
-				header?: never;
-				path?: never;
-				cookie?: never;
-			};
-			requestBody?: never;
-			responses: {
-				/** @description List of goals */
-				200: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Goal"][];
-					};
-				};
-			};
-		};
-		put?: never;
-		/** Create goal */
-		post: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path?: never;
-				cookie?: never;
-			};
-			requestBody: {
-				content: {
-					"application/json": components["schemas"]["Goal"];
-				};
-			};
-			responses: {
-				/** @description Goal created */
-				201: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Goal"];
-					};
-				};
-			};
-		};
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
 	"/api/v1/recurring": {
 		parameters: {
 			query?: never;
@@ -568,6 +505,7 @@ export interface components {
 			id?: number;
 			email?: string;
 			name?: string;
+			auth_type?: string;
 			/** Format: int64 */
 			telegramId?: number;
 			telegramUsername?: string;

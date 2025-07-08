@@ -1,41 +1,12 @@
+import type { components } from "@/types/api-types";
 import { useAuthStore, useIsAuthorized } from "@store/useStore";
 import LogRocket from "logrocket";
 import { apiService } from "../api";
 
-export interface ExpenseItem {
-	id?: number;
-	amount: number;
-	name: string;
-	categoryId?: number;
-	category?: {
-		id: number;
-		name: string;
-	};
-	emotion?: string;
-	expenseDate?: string;
-}
-
-export interface Expense {
-	id: number;
-	amount: number; // This will be calculated from items
-	description: string;
-	status: string; // "draft" | "approved" | "cancelled"
-	userId: number;
-	items: ExpenseItem[];
-	createdAt?: string;
-	updatedAt?: string;
-}
-
-export interface ExpenseSummary {
-	total: number;
-	byCategory: Record<string, number>;
-	monthlyAverage: number;
-}
-
-export interface MostUsedCategories {
-	category: string;
-	count: number;
-}
+// Use OpenAPI types:
+type Expense = components["schemas"]["Expense"];
+type ExpenseItem = components["schemas"]["ExpenseItem"];
+type ExpenseSummary = components["schemas"]["AnalyticsSummary"];
 
 export const expensesService = {
 	getExpenses: async (userId: number, token: string) => {

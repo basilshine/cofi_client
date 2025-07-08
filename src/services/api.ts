@@ -205,25 +205,10 @@ export const apiService = {
 					throw err;
 				});
 		},
-		telegramOAuthCallback: (data: {
-			telegramInitData: string;
-			user: TelegramUser;
-		}) => {
-			return api.post<TelegramLoginResponse>(
-				"/api/v1/auth/telegram/oauth-callback",
-				data,
-			);
-		},
 		telegramLoginWidget: (data: {
-			telegram_id: number;
-			username: string;
-			first_name?: string;
-			last_name?: string;
-			photo_url?: string;
-			auth_date: number;
-			hash: string;
-			language?: string;
-			country?: string;
+			telegramId: number;
+			telegramUsername: string;
+			telegramPhotoUrl: string;
 		}) => {
 			return api.post<TelegramLoginResponse>(
 				"/api/v1/auth/telegram/login",

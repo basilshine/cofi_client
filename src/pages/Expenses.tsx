@@ -1,3 +1,4 @@
+import type { components } from "@/types/api-types";
 import { AddExpenseForm } from "@components/expenses/AddExpenseForm";
 import { ExpenseList } from "@components/expenses/ExpenseList";
 import { Button } from "@components/ui/button";
@@ -11,7 +12,6 @@ import {
 } from "@components/ui/dialog";
 import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
-import type { MostUsedCategories } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LogRocket from "logrocket";
@@ -55,7 +55,9 @@ export const Expenses = () => {
 		data: categories = [],
 		isLoading: isCategoriesLoading,
 		error: categoriesError,
-	} = useQuery<MostUsedCategories[]>({
+	} = useQuery<
+		components["schemas"]["Category"][] | { category: string; count: number }[]
+	>({
 		queryKey: ["expenses", "categories"],
 		queryFn: () => {
 			LogRocket.log("[Expenses] getMostUsedCategories queryFn");
@@ -83,7 +85,7 @@ export const Expenses = () => {
 	}, [summary, summaryError]);
 
 	useEffect(() => {
-		if (categories.length > 0) {
+		if (categories && categories.length > 0) {
 			LogRocket.log("[Expenses] Categories loaded:", categories);
 		}
 		if (categoriesError) {
@@ -183,7 +185,7 @@ export const Expenses = () => {
 										{t("expenses.total")}
 									</span>
 									<span className="font-medium">
-										${summary.total.toFixed(2)}
+										${summary.totalExpenses?.toFixed(2) ?? "0.00"}
 									</span>
 								</div>
 								<div className="flex justify-between">
@@ -191,7 +193,7 @@ export const Expenses = () => {
 										{t("expenses.monthlyAverage")}
 									</span>
 									<span className="font-medium">
-										${summary.monthlyAverage.toFixed(2)}
+										${summary.lastMonth?.toFixed(2) ?? "0.00"}
 									</span>
 								</div>
 							</div>
@@ -210,16 +212,17 @@ export const Expenses = () => {
 							</p>
 						) : error ? (
 							<p className="text-sm text-red-500">{error}</p>
-						) : categories.length > 0 ? (
+						) : categories && categories.length > 0 ? (
 							<div className="space-y-2">
-								{categories.map((category) => (
-									<div key={category.category} className="flex justify-between">
-										<span className="text-sm text-muted-foreground">
-											{category.category}
-										</span>
-										<span className="font-medium">{category.count}</span>
-									</div>
-								))}
+								{categories.map(
+									(category: components["schemas"]["Category"]) => (
+										<div key={category.name} className="flex justify-between">
+											<span className="text-sm text-muted-foreground">
+												{category.name}
+											</span>
+										</div>
+									),
+								)}
 							</div>
 						) : (
 							<p className="text-sm text-muted-foreground">

@@ -1,10 +1,13 @@
+import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
-import type { User } from "@contexts/AuthContext";
-import { type Expense, expensesService } from "@services/api/expenses";
+import { expensesService } from "@services/api/expenses";
 import LogRocket from "logrocket";
 import { useState } from "react";
+
+type Expense = components["schemas"]["Expense"];
+type User = components["schemas"]["User"];
 
 interface TestResults {
 	environment?: {
@@ -126,7 +129,7 @@ export const Debug = () => {
 			if (expenses.length > 0) {
 				try {
 					const firstExpense = await expensesService.getExpenseById(
-						expenses[0].id.toString(),
+						expenses[0].id?.toString() ?? "unknown",
 						userId,
 						token,
 					);
@@ -222,10 +225,7 @@ export const Debug = () => {
 							<strong>User ID:</strong> {user?.id || "None"}
 						</div>
 						<div>
-							<strong>User Name:</strong>{" "}
-							{user?.firstName
-								? `${user.firstName} ${user.lastName || ""}`.trim()
-								: "None"}
+							<strong>User Name:</strong> {user?.name ? `${user.name}` : "None"}
 						</div>
 						{/* auth_type and telegramId are only available if user is from store (Telegram/email auth) */}
 						{user && (user as User).auth_type && (

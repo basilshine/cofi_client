@@ -1,3 +1,4 @@
+import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
@@ -8,6 +9,15 @@ import LogRocket from "logrocket";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+
+type Expense = components["schemas"]["Expense"];
+type AnalyticsSummary = components["schemas"]["AnalyticsSummary"];
+
+// Define local type for most used categories
+interface MostUsedCategory {
+	category: string;
+	count: number;
+}
 
 export const Analytics = () => {
 	const { t } = useTranslation();
@@ -22,7 +32,7 @@ export const Analytics = () => {
 		data: summary,
 		isLoading: isSummaryLoading,
 		error: summaryError,
-	} = useQuery({
+	} = useQuery<AnalyticsSummary>({
 		queryKey: ["expenses", "summary"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getSummary queryFn");
@@ -41,7 +51,7 @@ export const Analytics = () => {
 		data: categories = [],
 		isLoading: isCategoriesLoading,
 		error: categoriesError,
-	} = useQuery({
+	} = useQuery<MostUsedCategory[]>({
 		queryKey: ["expenses", "categories"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getMostUsedCategories queryFn");
@@ -62,7 +72,7 @@ export const Analytics = () => {
 		data: expenses = [],
 		isLoading: isExpensesLoading,
 		error: expensesError,
-	} = useQuery({
+	} = useQuery<Expense[]>({
 		queryKey: ["expenses"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getExpenses queryFn");
@@ -115,7 +125,7 @@ export const Analytics = () => {
 	const totalExpenses = expenses.length;
 	const averageExpense =
 		expenses.length > 0
-			? expenses.reduce((sum, expense) => sum + expense.amount, 0) /
+			? expenses.reduce((sum, expense) => sum + (expense.amount ?? 0), 0) /
 				expenses.length
 			: 0;
 
@@ -222,7 +232,7 @@ export const Analytics = () => {
 											{t("expenses.total")}
 										</span>
 										<span className="text-2xl font-bold">
-											${summary.total.toFixed(2)}
+											${summary.totalExpenses?.toFixed(2) ?? "0.00"}
 										</span>
 									</div>
 									<div className="flex justify-between items-center">
@@ -230,7 +240,7 @@ export const Analytics = () => {
 											{t("expenses.monthlyAverage")}
 										</span>
 										<span className="text-lg font-semibold">
-											${summary.monthlyAverage.toFixed(2)}
+											${((summary.thisMonth ?? 0) / 1).toFixed(2)}
 										</span>
 									</div>
 									<div className="flex justify-between items-center">

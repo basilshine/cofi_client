@@ -1,5 +1,5 @@
 import { useTelegram } from "@/hooks/useTelegram";
-import type { TelegramWidgetUser } from "@/types/TelegramWidgetUser";
+import type { components } from "@/types/api-types";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { handleTelegramNavigation } from "@/utils/telegramWebApp";
 import { apiService } from "@services/api";
@@ -11,16 +11,7 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export interface User {
-	id: string;
-	email: string;
-	firstName: string;
-	auth_type?: string;
-	lastName?: string;
-	telegramId?: number;
-	telegramUsername?: string;
-	telegramPhotoUrl?: string;
-}
+type User = components["schemas"]["User"];
 
 interface AuthState {
 	user: User | null;
@@ -45,7 +36,9 @@ interface AuthContextType extends AuthState {
 	handleTelegramAuth: () => void;
 	setUser: (user: User | null) => void;
 	setToken: (token: string | null) => void;
-	handleTelegramWidgetAuth: (tgUser: TelegramWidgetUser) => Promise<void>;
+	handleTelegramWidgetAuth: (
+		tgUser: components["schemas"]["User"],
+	) => Promise<void>;
 }
 
 interface TelegramLoginResponse {
@@ -193,7 +186,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 								id: typeof data.user.id === "string" ? data.user.id : "",
 								email:
 									typeof data.user.email === "string" ? data.user.email : "",
-								firstName: data.user.firstName ?? telegramUser.first_name ?? "",
+								name: data.user.firstName ?? telegramUser.first_name ?? "",
 								lastName: data.user.lastName ?? telegramUser.last_name,
 								telegramId: data.user.telegramId ?? telegramUser.id,
 								telegramUsername:
@@ -203,7 +196,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						: null;
 					if (user?.id) {
 						LogRocket.identify(user.id, {
-							name: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
+							name: user.name + (user.lastName ? ` ${user.lastName}` : ""),
 							email: user.email || "",
 							telegramUsername: user.telegramUsername || "",
 						});
@@ -312,8 +305,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						return {
 							id: response.data.user.id ?? "",
 							email: response.data.user.email ?? "",
-							firstName,
-							lastName,
+							name: firstName,
+							lastName: lastName,
 							telegramId: response.data.user.telegramId,
 							telegramUsername: response.data.user.telegramUsername,
 							telegramPhotoUrl: response.data.user.telegramPhotoUrl,
@@ -362,7 +355,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						return {
 							id: response.data.user.id ?? "",
 							email: response.data.user.email ?? "",
-							firstName: first,
+							name: first,
 							lastName: last,
 							telegramId: response.data.user.telegramId,
 							telegramUsername: response.data.user.telegramUsername,
@@ -469,30 +462,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	};
 
 	// Handle Telegram Login Widget (browser)
-	const handleTelegramWidgetAuth = async (tgUser: TelegramWidgetUser) => {
+	const handleTelegramWidgetAuth = async (
+		tgUser: components["schemas"]["User"],
+	) => {
 		setState((prev) => ({ ...prev, isLoading: true, error: null }));
 		try {
 			const response = await apiService.auth.telegramLoginWidget({
-				telegram_id: tgUser.id,
-				username: tgUser.username,
-				first_name: tgUser.first_name,
-				last_name: tgUser.last_name,
-				photo_url: tgUser.photo_url,
-				auth_date: tgUser.auth_date,
-				hash: tgUser.hash,
-				language: tgUser.language_code,
-				country: tgUser.country,
+				telegramId: tgUser.telegramId ?? 0,
+				telegramUsername: tgUser.telegramUsername ?? "",
+				telegramPhotoUrl: tgUser.telegramPhotoUrl ?? "",
 			});
 			const { token, user } = response.data;
 			localStorage.setItem("token", token ?? "");
-			setState((prev) => ({
+			setState((prev: AuthState) => ({
 				...prev,
 				user: user
 					? {
-							id: typeof user.id === "string" ? user.id : "",
-							email: typeof user.email === "string" ? user.email : "",
-							firstName: user.firstName ?? "",
-							lastName: user.lastName,
+							id: typeof user.id === "number" ? user.id : undefined,
+							email: user.email,
 							telegramId: user.telegramId,
 							telegramUsername: user.telegramUsername,
 							telegramPhotoUrl: user.telegramPhotoUrl,

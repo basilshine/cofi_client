@@ -1,3 +1,4 @@
+import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import {
@@ -10,7 +11,6 @@ import {
 } from "@components/ui/table";
 import { useAuth } from "@contexts/AuthContext";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
-import type { Expense } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -18,6 +18,9 @@ import LogRocket from "logrocket";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+
+type Expense = components["schemas"]["Expense"];
+type ExpenseItem = components["schemas"]["ExpenseItem"];
 
 export const ExpenseList = () => {
 	const { t } = useTranslation();
@@ -110,8 +113,8 @@ export const ExpenseList = () => {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{expenses?.map((expense: Expense) => (
-							<TableRow key={expense.id}>
+						{expenses?.map((expense: Expense, index) => (
+							<TableRow key={expense.id ?? `expense-${index}`}>
 								<TableCell>
 									{expense.createdAt
 										? format(new Date(expense.createdAt), "MMM dd, yyyy")
@@ -124,10 +127,15 @@ export const ExpenseList = () => {
 									<div className="flex flex-col gap-1">
 										{expense.items?.slice(0, 2).map((item, index) => (
 											<div
-												key={item.id || `item-${expense.id}-${index}`}
+												key={
+													item.id ?? `item-${expense.id ?? "unknown"}-${index}`
+												}
 												className="text-xs text-muted-foreground"
 											>
-												{item.name} - ${item.amount.toFixed(2)}
+												{item.name} - $
+												{typeof item.amount === "number"
+													? item.amount.toFixed(2)
+													: "0.00"}
 												{item.emotion && (
 													<span className="ml-1">{item.emotion}</span>
 												)}
@@ -154,12 +162,15 @@ export const ExpenseList = () => {
 									</span>
 								</TableCell>
 								<TableCell className="text-right">
-									${expense.amount?.toFixed(2) || "0.00"}
+									$
+									{typeof expense.amount === "number"
+										? expense.amount.toFixed(2)
+										: "0.00"}
 								</TableCell>
 								<TableCell className="text-right">
 									<div className="flex items-center justify-end gap-2">
 										<Button variant="ghost" size="sm" asChild>
-											<Link to={`/expenses/${expense.id}/edit`}>
+											<Link to={`/expenses/${expense.id ?? "unknown"}/edit`}>
 												<PencilSimple className="h-4 w-4" />
 											</Link>
 										</Button>
@@ -169,7 +180,7 @@ export const ExpenseList = () => {
 												size="sm"
 												onClick={() =>
 													handleDelete(
-														expense.id.toString(),
+														(expense.id ?? "").toString(),
 														expense.description || "expense",
 													)
 												}
