@@ -14,10 +14,10 @@ import type { Expense } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
 import LogRocket from "logrocket";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 export const ExpenseList = () => {
 	const { t } = useTranslation();

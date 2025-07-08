@@ -5,10 +5,10 @@ import type { Expense, ExpenseItem } from "@services/api/expenses";
 import { expensesService } from "@services/api/expenses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifyTelegramWebApp } from "@utils/telegramWebApp";
+import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import LogRocket from "logrocket";
 
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
@@ -42,7 +42,7 @@ export const ExpenseEdit = () => {
 
 	// Update editing items when expense data changes
 	useEffect(() => {
-		if (expense && expense.items) {
+		if (expense?.items) {
 			setEditingItems(expense.items);
 		}
 	}, [expense]);

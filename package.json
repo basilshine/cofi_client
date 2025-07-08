@@ -7,6 +7,8 @@
 		"dev": "vite",
 		"build": "tsc && vite build",
 		"lint": "biome check .",
+		"lint:fix": "biome check . --fix",
+		"lint:fix:all": "biome check . --fix --unsafe",
 		"format": "biome format . --write",
 		"preview": "vite preview",
 		"gen:types": "sh scripts/gen_types.sh",
@@ -67,7 +69,7 @@
 		"postcss": "^8.4.35",
 		"tailwindcss": "^3.4.1",
 		"typescript": "^5.3.3",
-		"vite": "^5.1.0"
+		"vite": "^6.3.5"
 	},
 	"lint-staged": {
 		"*.{js,jsx,ts,tsx}": ["biome check", "biome format --write"],
