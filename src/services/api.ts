@@ -248,3 +248,18 @@ export const apiService = {
 			}),
 	},
 };
+
+export const fetchCurrentUser = async (token: string) => {
+	const response = await fetch(
+		`${import.meta.env.VITE_API_URL}/api/v1/auth/me`,
+		{
+			headers: {
+				Authorization: `Bearer ${token}`,
+			},
+		},
+	);
+	if (!response.ok) {
+		throw new Error("Failed to fetch user profile");
+	}
+	return response.json();
+};

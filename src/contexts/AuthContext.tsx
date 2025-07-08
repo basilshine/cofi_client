@@ -3,6 +3,7 @@ import type { TelegramWidgetUser } from "@/types/TelegramWidgetUser";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { handleTelegramNavigation } from "@/utils/telegramWebApp";
 import { apiService } from "@services/api";
+import { fetchCurrentUser } from "@services/api";
 import type { AxiosResponse } from "axios";
 import { jwtDecode } from "jwt-decode";
 import LogRocket from "logrocket";
@@ -85,11 +86,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				if (decoded.exp && decoded.exp * 1000 < Date.now()) {
 					logout();
 				} else {
-					setState((prev) => ({
-						...prev,
-						isAuthenticated: true,
-						isLoading: false,
-					}));
+					// If user is not set, fetch from backend
+					if (!state.user) {
+						setState((prev) => ({ ...prev, isLoading: true }));
+						fetchCurrentUser(token)
+							.then((user) => {
+								setState((prev) => ({
+									...prev,
+									user,
+									isAuthenticated: true,
+									isLoading: false,
+								}));
+							})
+							.catch(() => {
+								logout();
+							});
+					} else {
+						setState((prev) => ({
+							...prev,
+							isAuthenticated: true,
+							isLoading: false,
+						}));
+					}
 				}
 			} catch (error) {
 				logout();
@@ -97,7 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		} else {
 			setState((prev) => ({ ...prev, isLoading: false }));
 		}
-	}, []);
+	}, [state.user, state.isAuthenticated]);
 
 	useEffect(() => {
 		// Log window unload/reload events
