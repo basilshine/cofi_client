@@ -240,7 +240,7 @@ export const apiService = {
 		delete: (id: string) => api.delete(`${ENDPOINTS.expenses}/${id}`),
 	},
 	analytics: {
-		summary: (userId: string, period?: string) =>
+		summary: (userId: number, period?: string) =>
 			api.get<
 				paths["/api/v1/analytics/stats/summary"]["get"]["responses"]["200"]["content"]["application/json"]
 			>(ENDPOINTS.analyticsSummary, {

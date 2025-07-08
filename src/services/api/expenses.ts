@@ -1,4 +1,4 @@
-import { useAuthStore } from "@store/useStore";
+import { useAuthStore, useIsAuthorized } from "@store/useStore";
 import LogRocket from "logrocket";
 import { apiService } from "../api";
 
@@ -16,11 +16,11 @@ export interface ExpenseItem {
 }
 
 export interface Expense {
-	id: string;
+	id: number;
 	amount: number; // This will be calculated from items
 	description: string;
 	status: string; // "draft" | "approved" | "cancelled"
-	userId: string;
+	userId: number;
 	items: ExpenseItem[];
 	createdAt?: string;
 	updatedAt?: string;
@@ -42,7 +42,9 @@ export const expensesService = {
 		try {
 			LogRocket.log("[expensesService.getExpenses] Starting request");
 
-			const userId = useAuthStore.getState().user?.id;
+			const isAuthorized = useIsAuthorized();
+			const { user } = useAuthStore.getState();
+			const userId = isAuthorized ? Number(user?.id) : undefined;
 			if (!userId) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.getExpenses] Error:", error);
@@ -87,7 +89,9 @@ export const expensesService = {
 				id,
 			);
 
-			const userId = useAuthStore.getState().user?.id;
+			const isAuthorized = useIsAuthorized();
+			const { user } = useAuthStore.getState();
+			const userId = isAuthorized ? Number(user?.id) : undefined;
 			if (!userId) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.getExpenseById] Error:", error);
@@ -139,7 +143,9 @@ export const expensesService = {
 				expense,
 			);
 
-			const userId = useAuthStore.getState().user?.id;
+			const isAuthorized = useIsAuthorized();
+			const { user } = useAuthStore.getState();
+			const userId = isAuthorized ? Number(user?.id) : undefined;
 			if (!userId) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.createExpense] Error:", error);
@@ -173,7 +179,9 @@ export const expensesService = {
 				expense,
 			});
 
-			const userId = useAuthStore.getState().user?.id;
+			const isAuthorized = useIsAuthorized();
+			const { user } = useAuthStore.getState();
+			const userId = isAuthorized ? Number(user?.id) : undefined;
 			if (!userId) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.updateExpense] Error:", error);
@@ -197,7 +205,9 @@ export const expensesService = {
 				id,
 			);
 
-			const userId = useAuthStore.getState().user?.id;
+			const isAuthorized = useIsAuthorized();
+			const { user } = useAuthStore.getState();
+			const userId = isAuthorized ? Number(user?.id) : undefined;
 			if (!userId) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.deleteExpense] Error:", error);
@@ -214,7 +224,9 @@ export const expensesService = {
 
 	// Draft expense specific operations
 	approveExpense: async (expenseId: string) => {
-		const userId = useAuthStore.getState().user?.id;
+		const isAuthorized = useIsAuthorized();
+		const { user } = useAuthStore.getState();
+		const userId = isAuthorized ? Number(user?.id) : undefined;
 		if (!userId) throw new Error("User not authenticated");
 
 		const token = useAuthStore.getState().token;
@@ -227,8 +239,8 @@ export const expensesService = {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					user_id: Number.parseInt(userId),
-					expense_id: Number.parseInt(expenseId),
+					user_id: userId,
+					expense_id: Number(expenseId),
 				}),
 			},
 		);
@@ -241,7 +253,9 @@ export const expensesService = {
 	},
 
 	cancelExpense: async (expenseId: string) => {
-		const userId = useAuthStore.getState().user?.id;
+		const isAuthorized = useIsAuthorized();
+		const { user } = useAuthStore.getState();
+		const userId = isAuthorized ? Number(user?.id) : undefined;
 		if (!userId) throw new Error("User not authenticated");
 
 		const token = useAuthStore.getState().token;
@@ -254,8 +268,8 @@ export const expensesService = {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					user_id: Number.parseInt(userId),
-					expense_id: Number.parseInt(expenseId),
+					user_id: userId,
+					expense_id: Number(expenseId),
 				}),
 			},
 		);
@@ -271,7 +285,9 @@ export const expensesService = {
 		try {
 			LogRocket.log("[expensesService.getSummary] Starting request");
 
-			const userId = useAuthStore.getState().user?.id;
+			const isAuthorized = useIsAuthorized();
+			const { user } = useAuthStore.getState();
+			const userId = isAuthorized ? Number(user?.id) : undefined;
 			if (!userId) {
 				const error = "User not authenticated";
 				LogRocket.error("[expensesService.getSummary] Error:", error);
@@ -294,7 +310,9 @@ export const expensesService = {
 		try {
 			LogRocket.log("[expensesService.getMostUsedCategories] Starting request");
 
-			const userId = useAuthStore.getState().user?.id;
+			const isAuthorized = useIsAuthorized();
+			const { user } = useAuthStore.getState();
+			const userId = isAuthorized ? Number(user?.id) : undefined;
 			if (!userId) {
 				const error = "User not authenticated";
 				LogRocket.error(
