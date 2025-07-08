@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		} else {
 			setState((prev) => ({ ...prev, isLoading: false }));
 		}
-	}, [state.user, state.isAuthenticated]);
+	}, [state.user]);
 
 	useEffect(() => {
 		// Log window unload/reload events
