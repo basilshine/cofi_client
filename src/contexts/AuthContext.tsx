@@ -291,9 +291,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						};
 					})()
 				: null;
-			setState((prev) => ({
+			setState((prev: AuthState) => ({
 				...prev,
-				user,
+				user: user as User,
 				token: response.data.token ?? null,
 				isAuthenticated: true,
 				isLoading: false,
@@ -301,7 +301,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			}));
 			navigate("/dashboard");
 		} catch (error) {
-			setState((prev) => ({
+			setState((prev: AuthState) => ({
 				...prev,
 				isLoading: false,
 				error: error instanceof Error ? error.message : "Login failed",
@@ -343,7 +343,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				: null;
 			setState({
 				...state,
-				user,
+				user: user as User,
 				token: response.data.token ?? null,
 				isAuthenticated: true,
 				isLoading: false,
