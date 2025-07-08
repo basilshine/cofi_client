@@ -16,6 +16,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import LogRocket from "logrocket";
+import { useEffect } from "react";
 
 export const ExpenseList = () => {
 	const { t } = useTranslation();
@@ -28,16 +30,36 @@ export const ExpenseList = () => {
 		error,
 	} = useQuery({
 		queryKey: ["expenses"],
-		queryFn: () => expensesService.getExpenses(),
+		queryFn: () => {
+			LogRocket.log("[ExpenseList] useQuery.queryFn");
+			return expensesService.getExpenses().then((res) => {
+				LogRocket.log("[ExpenseList] useQuery result", res);
+				return res;
+			});
+		},
 		enabled: isAuthenticated,
 	});
 
+	// Логируем ошибки/успех через useEffect
+	useEffect(() => {
+		if (expenses) LogRocket.log("[ExpenseList] useQuery success", expenses);
+		if (error) LogRocket.error("[ExpenseList] useQuery error", error);
+	}, [expenses, error]);
+
 	const deleteMutation = useMutation({
-		mutationFn: (id: string) => expensesService.deleteExpense(id),
-		onSuccess: () => {
+		mutationFn: (id: string) => {
+			LogRocket.log("[ExpenseList] deleteMutation.mutationFn", { id });
+			return expensesService.deleteExpense(id).then((res) => {
+				LogRocket.log("[ExpenseList] deleteMutation result", res);
+				return res;
+			});
+		},
+		onSuccess: (data) => {
+			LogRocket.log("[ExpenseList] deleteMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 		},
 		onError: (error) => {
+			LogRocket.error("[ExpenseList] deleteMutation error", error);
 			console.error("Failed to delete expense:", error);
 		},
 	});
@@ -140,7 +162,7 @@ export const ExpenseList = () => {
 												size="sm"
 												onClick={() =>
 													handleDelete(
-														expense.id,
+														expense.id.toString(),
 														expense.description || "expense",
 													)
 												}

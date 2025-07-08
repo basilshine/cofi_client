@@ -8,6 +8,7 @@ import { notifyTelegramWebApp } from "@utils/telegramWebApp";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
+import LogRocket from "logrocket";
 
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
@@ -20,60 +21,87 @@ export const ExpenseEdit = () => {
 		data: expense,
 		isLoading,
 		error,
-	} = useQuery({
+	} = useQuery<Expense, Error>({
 		queryKey: ["expense", id],
 		queryFn: () => {
+			LogRocket.log("[ExpenseEdit] useQuery.queryFn", { id });
 			if (!id) throw new Error("No expense ID provided");
-			return expensesService.getExpenseById(id);
+			return expensesService.getExpenseById(id).then((res) => {
+				LogRocket.log("[ExpenseEdit] useQuery.queryFn result", res);
+				return res;
+			});
 		},
 		enabled: !!id,
 	});
 
+	// Логируем ошибки/успех через useEffect
+	useEffect(() => {
+		if (expense) LogRocket.log("[ExpenseEdit] useQuery success", expense);
+		if (error) LogRocket.error("[ExpenseEdit] useQuery error", error);
+	}, [expense, error]);
+
 	// Update editing items when expense data changes
 	useEffect(() => {
-		if (expense?.items) {
+		if (expense && expense.items) {
 			setEditingItems(expense.items);
 		}
 	}, [expense]);
 
 	const updateMutation = useMutation({
 		mutationFn: (data: Partial<Expense>) => {
+			LogRocket.log("[ExpenseEdit] updateMutation.mutationFn", { id, data });
 			if (!id) throw new Error("No expense ID provided");
-			return expensesService.updateExpense(id, data);
+			return expensesService.updateExpense(id, data).then((res) => {
+				LogRocket.log("[ExpenseEdit] updateMutation result", res);
+				return res;
+			});
 		},
-		onSuccess: () => {
+		onSuccess: (data) => {
+			LogRocket.log("[ExpenseEdit] updateMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			queryClient.invalidateQueries({ queryKey: ["expense", id] });
 			notifyTelegramWebApp("expense_updated");
 			navigate("/expenses");
 		},
 		onError: (error) => {
+			LogRocket.error("[ExpenseEdit] updateMutation error", error);
 			console.error("Failed to update expense:", error);
 		},
 	});
 
 	const approveMutation = useMutation({
 		mutationFn: () => {
+			LogRocket.log("[ExpenseEdit] approveMutation.mutationFn", { id });
 			if (!id) throw new Error("No expense ID provided");
-			return expensesService.approveExpense(id);
+			return expensesService.approveExpense(id).then((res) => {
+				LogRocket.log("[ExpenseEdit] approveMutation result", res);
+				return res;
+			});
 		},
-		onSuccess: () => {
+		onSuccess: (data) => {
+			LogRocket.log("[ExpenseEdit] approveMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			queryClient.invalidateQueries({ queryKey: ["expense", id] });
 			notifyTelegramWebApp("expense_updated", { message: "Expense approved!" });
 			navigate("/expenses");
 		},
 		onError: (error) => {
+			LogRocket.error("[ExpenseEdit] approveMutation error", error);
 			console.error("Failed to approve expense:", error);
 		},
 	});
 
 	const cancelMutation = useMutation({
 		mutationFn: () => {
+			LogRocket.log("[ExpenseEdit] cancelMutation.mutationFn", { id });
 			if (!id) throw new Error("No expense ID provided");
-			return expensesService.cancelExpense(id);
+			return expensesService.cancelExpense(id).then((res) => {
+				LogRocket.log("[ExpenseEdit] cancelMutation result", res);
+				return res;
+			});
 		},
-		onSuccess: () => {
+		onSuccess: (data) => {
+			LogRocket.log("[ExpenseEdit] cancelMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			notifyTelegramWebApp("expense_deleted", {
 				message: "Expense cancelled!",
@@ -81,21 +109,28 @@ export const ExpenseEdit = () => {
 			navigate("/expenses");
 		},
 		onError: (error) => {
+			LogRocket.error("[ExpenseEdit] cancelMutation error", error);
 			console.error("Failed to cancel expense:", error);
 		},
 	});
 
 	const deleteMutation = useMutation({
 		mutationFn: () => {
+			LogRocket.log("[ExpenseEdit] deleteMutation.mutationFn", { id });
 			if (!id) throw new Error("No expense ID provided");
-			return expensesService.deleteExpense(id);
+			return expensesService.deleteExpense(id).then((res) => {
+				LogRocket.log("[ExpenseEdit] deleteMutation result", res);
+				return res;
+			});
 		},
-		onSuccess: () => {
+		onSuccess: (data) => {
+			LogRocket.log("[ExpenseEdit] deleteMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			notifyTelegramWebApp("expense_deleted");
 			navigate("/expenses");
 		},
 		onError: (error) => {
+			LogRocket.error("[ExpenseEdit] deleteMutation error", error);
 			console.error("Failed to delete expense:", error);
 		},
 	});

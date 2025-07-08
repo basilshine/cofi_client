@@ -37,7 +37,13 @@ export const Expenses = () => {
 		error: summaryError,
 	} = useQuery({
 		queryKey: ["expenses", "summary"],
-		queryFn: expensesService.getSummary,
+		queryFn: () => {
+			LogRocket.log("[Expenses] getSummary queryFn");
+			return expensesService.getSummary().then((res) => {
+				LogRocket.log("[Expenses] getSummary result", res);
+				return res;
+			});
+		},
 		enabled: isAuthenticated, // Only run query if authenticated
 	});
 
@@ -48,7 +54,13 @@ export const Expenses = () => {
 		error: categoriesError,
 	} = useQuery<MostUsedCategories[]>({
 		queryKey: ["expenses", "categories"],
-		queryFn: expensesService.getMostUsedCategories,
+		queryFn: () => {
+			LogRocket.log("[Expenses] getMostUsedCategories queryFn");
+			return expensesService.getMostUsedCategories().then((res) => {
+				LogRocket.log("[Expenses] getMostUsedCategories result", res);
+				return res;
+			});
+		},
 		enabled: isAuthenticated, // Only run query if authenticated
 	});
 

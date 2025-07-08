@@ -24,7 +24,13 @@ export const Analytics = () => {
 		error: summaryError,
 	} = useQuery({
 		queryKey: ["expenses", "summary"],
-		queryFn: expensesService.getSummary,
+		queryFn: () => {
+			LogRocket.log("[Analytics] getSummary queryFn");
+			return expensesService.getSummary().then((res) => {
+				LogRocket.log("[Analytics] getSummary result", res);
+				return res;
+			});
+		},
 		enabled: isAuthenticated,
 	});
 
@@ -34,7 +40,13 @@ export const Analytics = () => {
 		error: categoriesError,
 	} = useQuery({
 		queryKey: ["expenses", "categories"],
-		queryFn: expensesService.getMostUsedCategories,
+		queryFn: () => {
+			LogRocket.log("[Analytics] getMostUsedCategories queryFn");
+			return expensesService.getMostUsedCategories().then((res) => {
+				LogRocket.log("[Analytics] getMostUsedCategories result", res);
+				return res;
+			});
+		},
 		enabled: isAuthenticated,
 	});
 
@@ -44,7 +56,13 @@ export const Analytics = () => {
 		error: expensesError,
 	} = useQuery({
 		queryKey: ["expenses"],
-		queryFn: expensesService.getExpenses,
+		queryFn: () => {
+			LogRocket.log("[Analytics] getExpenses queryFn");
+			return expensesService.getExpenses().then((res) => {
+				LogRocket.log("[Analytics] getExpenses result", res);
+				return res;
+			});
+		},
 		enabled: isAuthenticated,
 	});
 
