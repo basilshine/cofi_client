@@ -172,8 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					let user: User | null = null;
 					if (data.user) {
 						// Split name into firstName/lastName if needed
-						const [firstName = "", ...rest] = (data.user.name ?? "").split(" ");
-						const lastName = rest.join(" ") || undefined;
+						const [firstName = ""] = (data.user.name ?? "").split(" ");
 						user = {
 							...data.user,
 							name: firstName || telegramUser.first_name || "",

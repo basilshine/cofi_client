@@ -1,4 +1,4 @@
-import type { TelegramWidgetUser } from "@/types/TelegramWidgetUser";
+import type { components } from "@/types/api-types";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -27,9 +27,9 @@ export const Login = () => {
 		// Define the global callback
 		(
 			window as unknown as {
-				onTelegramAuth: (user: TelegramWidgetUser) => void;
+				onTelegramAuth: (user: components["schemas"]["User"]) => void;
 			}
-		).onTelegramAuth = (user: TelegramWidgetUser) => {
+		).onTelegramAuth = (user: components["schemas"]["User"]) => {
 			handleTelegramWidgetAuth(user);
 		};
 		// Inject the Telegram widget script

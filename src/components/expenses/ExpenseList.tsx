@@ -21,7 +21,7 @@ import { Link } from "react-router-dom";
 
 export const ExpenseList = () => {
 	const { t } = useTranslation();
-	const { isAuthenticated, user, token } = useAuth();
+	const { isAuthenticated, user } = useAuth();
 	const queryClient = useQueryClient();
 
 	const {

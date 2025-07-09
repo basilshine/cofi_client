@@ -110,7 +110,7 @@ export const Navbar = () => {
 								{user?.telegramPhotoUrl ? (
 									<img
 										src={user.telegramPhotoUrl}
-										alt={user.firstName}
+										alt={user.telegramUsername}
 										className="h-6 w-6 rounded-full"
 									/>
 								) : (
@@ -121,7 +121,7 @@ export const Navbar = () => {
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
 							<div className="px-2 py-1.5">
-								<p className="text-sm font-medium">{user?.firstName}</p>
+								<p className="text-sm font-medium">{user?.name}</p>
 								{user?.telegramUsername && (
 									<p className="text-xs text-muted-foreground">
 										@{user.telegramUsername}
@@ -183,7 +183,7 @@ export const Navbar = () => {
 									{user?.telegramPhotoUrl ? (
 										<img
 											src={user.telegramPhotoUrl}
-											alt={user.firstName}
+											alt={user.name}
 											className="h-10 w-10 rounded-full"
 										/>
 									) : (
@@ -192,7 +192,7 @@ export const Navbar = () => {
 										</div>
 									)}
 									<div>
-										<p className="text-sm font-medium">{user?.firstName}</p>
+										<p className="text-sm font-medium">{user?.name}</p>
 										{user?.telegramUsername && (
 											<p className="text-xs text-muted-foreground">
 												@{user.telegramUsername}
