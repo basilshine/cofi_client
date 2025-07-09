@@ -1,8 +1,8 @@
 import { useTelegram } from "@/hooks/useTelegram";
+import { apiService } from "@/services/api";
 import type { components } from "@/types/api-types";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { handleTelegramNavigation } from "@/utils/telegramWebApp";
-import { apiService } from "@/services/api";
 import { jwtDecode } from "jwt-decode";
 import LogRocket from "logrocket";
 import type { ReactNode } from "react";
@@ -69,7 +69,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					// If user is not set, fetch from backend
 					if (!state.user) {
 						setState((prev) => ({ ...prev, isLoading: true }));
-						apiService.auth.me()
+						apiService.auth
+							.me()
 							.then((response) => {
 								setState((prev) => ({
 									...prev,
@@ -193,7 +194,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						isLoading: true,
 						error: null,
 					}));
-					apiService.auth.me()
+					apiService.auth
+						.me()
 						.then((response) => {
 							setState((prev) => ({
 								...prev,

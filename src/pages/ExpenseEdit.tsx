@@ -1,8 +1,8 @@
+import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { ArrowLeft, Check, Trash, X } from "@phosphor-icons/react";
-import { expensesService } from "@/services/api/expenses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifyTelegramWebApp } from "@utils/telegramWebApp";
 import LogRocket from "logrocket";
@@ -15,7 +15,9 @@ export const ExpenseEdit = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const [editingItems, setEditingItems] = useState<components["schemas"]["ExpenseItem"][]>([]);
+	const [editingItems, setEditingItems] = useState<
+		components["schemas"]["ExpenseItem"][]
+	>([]);
 	const {
 		data: expense,
 		isLoading,

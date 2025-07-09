@@ -1,3 +1,4 @@
+import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
@@ -11,7 +12,6 @@ import {
 } from "@components/ui/table";
 import { useAuth } from "@contexts/AuthContext";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
-import { expensesService } from "@/services/api/expenses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import LogRocket from "logrocket";
@@ -108,86 +108,89 @@ export const ExpenseList = () => {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{expenses?.map((expense: components["schemas"]["Expense"], index) => (
-							<TableRow key={expense.id ?? `expense-${index}`}>
-								<TableCell>
-									{expense.createdAt
-										? format(new Date(expense.createdAt), "MMM dd, yyyy")
-										: "-"}
-								</TableCell>
-								<TableCell>
-									{expense.description || t("expenses.noDescription")}
-								</TableCell>
-								<TableCell>
-									<div className="flex flex-col gap-1">
-										{expense.items?.slice(0, 2).map((item, index) => (
-											<div
-												key={
-													item.id ?? `item-${expense.id ?? "unknown"}-${index}`
-												}
-												className="text-xs text-muted-foreground"
-											>
-												{item.name} - $
-												{typeof item.amount === "number"
-													? item.amount.toFixed(2)
-													: "0.00"}
-												{item.emotion && (
-													<span className="ml-1">{item.emotion}</span>
-												)}
-											</div>
-										))}
-										{expense.items && expense.items.length > 2 && (
-											<div className="text-xs text-muted-foreground">
-												+{expense.items.length - 2} {t("expenses.moreItems")}
-											</div>
-										)}
-									</div>
-								</TableCell>
-								<TableCell>
-									<span
-										className={`px-2 py-1 text-xs rounded-full ${
-											expense.status === "draft"
-												? "bg-yellow-100 text-yellow-800"
-												: expense.status === "approved"
-													? "bg-green-100 text-green-800"
-													: "bg-gray-100 text-gray-800"
-										}`}
-									>
-										{expense.status || "unknown"}
-									</span>
-								</TableCell>
-								<TableCell className="text-right">
-									$
-									{typeof expense.amount === "number"
-										? expense.amount.toFixed(2)
-										: "0.00"}
-								</TableCell>
-								<TableCell className="text-right">
-									<div className="flex items-center justify-end gap-2">
-										<Button variant="ghost" size="sm" asChild>
-											<Link to={`/expenses/${expense.id ?? "unknown"}/edit`}>
-												<PencilSimple className="h-4 w-4" />
-											</Link>
-										</Button>
-										{expense.status !== "draft" && (
-											<Button
-												variant="ghost"
-												size="sm"
-												onClick={() =>
-													handleDelete(
-														(expense.id ?? "").toString(),
-														expense.description || "expense",
-													)
-												}
-												disabled={deleteMutation.isPending}
-											>
-												<Trash className="h-4 w-4" />
+						{expenses?.map(
+							(expense: components["schemas"]["Expense"], index) => (
+								<TableRow key={expense.id ?? `expense-${index}`}>
+									<TableCell>
+										{expense.createdAt
+											? format(new Date(expense.createdAt), "MMM dd, yyyy")
+											: "-"}
+									</TableCell>
+									<TableCell>
+										{expense.description || t("expenses.noDescription")}
+									</TableCell>
+									<TableCell>
+										<div className="flex flex-col gap-1">
+											{expense.items?.slice(0, 2).map((item, index) => (
+												<div
+													key={
+														item.id ??
+														`item-${expense.id ?? "unknown"}-${index}`
+													}
+													className="text-xs text-muted-foreground"
+												>
+													{item.name} - $
+													{typeof item.amount === "number"
+														? item.amount.toFixed(2)
+														: "0.00"}
+													{item.emotion && (
+														<span className="ml-1">{item.emotion}</span>
+													)}
+												</div>
+											))}
+											{expense.items && expense.items.length > 2 && (
+												<div className="text-xs text-muted-foreground">
+													+{expense.items.length - 2} {t("expenses.moreItems")}
+												</div>
+											)}
+										</div>
+									</TableCell>
+									<TableCell>
+										<span
+											className={`px-2 py-1 text-xs rounded-full ${
+												expense.status === "draft"
+													? "bg-yellow-100 text-yellow-800"
+													: expense.status === "approved"
+														? "bg-green-100 text-green-800"
+														: "bg-gray-100 text-gray-800"
+											}`}
+										>
+											{expense.status || "unknown"}
+										</span>
+									</TableCell>
+									<TableCell className="text-right">
+										$
+										{typeof expense.amount === "number"
+											? expense.amount.toFixed(2)
+											: "0.00"}
+									</TableCell>
+									<TableCell className="text-right">
+										<div className="flex items-center justify-end gap-2">
+											<Button variant="ghost" size="sm" asChild>
+												<Link to={`/expenses/${expense.id ?? "unknown"}/edit`}>
+													<PencilSimple className="h-4 w-4" />
+												</Link>
 											</Button>
-										)}
-									</div>
-								</TableCell>
-							</TableRow>
-						))}
+											{expense.status !== "draft" && (
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() =>
+														handleDelete(
+															(expense.id ?? "").toString(),
+															expense.description || "expense",
+														)
+													}
+													disabled={deleteMutation.isPending}
+												>
+													<Trash className="h-4 w-4" />
+												</Button>
+											)}
+										</div>
+									</TableCell>
+								</TableRow>
+							),
+						)}
 					</TableBody>
 				</Table>
 			</CardContent>

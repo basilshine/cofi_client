@@ -84,7 +84,7 @@ export const Debug = () => {
 			if (expenses.length > 0) {
 				try {
 					const firstExpense = await expensesService.getExpenseById(
-						expenses[0].id?.toString() ?? "unknown"
+						expenses[0].id?.toString() ?? "unknown",
 					);
 					results.expenseDetail = {
 						success: true,
@@ -180,12 +180,14 @@ export const Debug = () => {
 						{/* auth_type and telegramId are only available if user is from store (Telegram/email auth) */}
 						{user && (user as components["schemas"]["User"]).auth_type && (
 							<div>
-								<strong>Auth Type:</strong> {(user as components["schemas"]["User"]).auth_type}
+								<strong>Auth Type:</strong>{" "}
+								{(user as components["schemas"]["User"]).auth_type}
 							</div>
 						)}
 						{user && (user as components["schemas"]["User"]).telegramId && (
 							<div>
-								<strong>Telegram ID:</strong> {(user as components["schemas"]["User"]).telegramId}
+								<strong>Telegram ID:</strong>{" "}
+								{(user as components["schemas"]["User"]).telegramId}
 							</div>
 						)}
 					</CardContent>

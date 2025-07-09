@@ -1,3 +1,4 @@
+import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { AddExpenseForm } from "@components/expenses/AddExpenseForm";
 import { ExpenseList } from "@components/expenses/ExpenseList";
@@ -12,7 +13,6 @@ import {
 } from "@components/ui/dialog";
 import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
-import { expensesService } from "@/services/api/expenses";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
