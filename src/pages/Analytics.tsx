@@ -3,26 +3,17 @@ import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
 import { ChartBar, ChartLineUp, ChartPie } from "@phosphor-icons/react";
-import { expensesService } from "@services/api/expenses";
+import { expensesService } from "@/services/api/expenses";
 import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-type Expense = components["schemas"]["Expense"];
-type AnalyticsSummary = components["schemas"]["AnalyticsSummary"];
-
-// Define local type for most used categories
-interface MostUsedCategory {
-	category: string;
-	count: number;
-}
-
 export const Analytics = () => {
 	const { t } = useTranslation();
 	const { isAuthenticated, isLoading: authLoading } = useAuth();
-	const { user, token } = useAuth();
+	const { user } = useAuth();
 	// Log when Analytics page is loaded
 	useEffect(() => {
 		LogRocket.log("[Analytics] Page loaded", { isAuthenticated, authLoading });
@@ -32,14 +23,14 @@ export const Analytics = () => {
 		data: summary,
 		isLoading: isSummaryLoading,
 		error: summaryError,
-	} = useQuery<AnalyticsSummary>({
+	} = useQuery<components["schemas"]["AnalyticsSummary"]>({
 		queryKey: ["expenses", "summary"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getSummary queryFn");
-			if (!user?.id || !token) {
-				throw new Error("User ID and token are required");
+			if (!user?.id) {
+				throw new Error("User ID is required");
 			}
-			return expensesService.getSummary(Number(user?.id), token).then((res) => {
+			return expensesService.getSummary(Number(user?.id)).then((res) => {
 				LogRocket.log("[Analytics] getSummary result", res);
 				return res;
 			});
@@ -51,19 +42,14 @@ export const Analytics = () => {
 		data: categories = [],
 		isLoading: isCategoriesLoading,
 		error: categoriesError,
-	} = useQuery<MostUsedCategory[]>({
+	} = useQuery<components["schemas"]["Category"][]>({
 		queryKey: ["expenses", "categories"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getMostUsedCategories queryFn");
-			if (!user?.id || !token) {
-				throw new Error("User ID and token are required");
-			}
-			return expensesService
-				.getMostUsedCategories(Number(user?.id), token)
-				.then((res) => {
-					LogRocket.log("[Analytics] getMostUsedCategories result", res);
-					return res;
-				});
+			return expensesService.getMostUsedCategories().then((res) => {
+				LogRocket.log("[Analytics] getMostUsedCategories result", res);
+				return res;
+			});
 		},
 		enabled: isAuthenticated,
 	});
@@ -72,19 +58,14 @@ export const Analytics = () => {
 		data: expenses = [],
 		isLoading: isExpensesLoading,
 		error: expensesError,
-	} = useQuery<Expense[]>({
+	} = useQuery<components["schemas"]["Expense"][]>({
 		queryKey: ["expenses"],
 		queryFn: () => {
 			LogRocket.log("[Analytics] getExpenses queryFn");
-			if (!user?.id || !token) {
-				throw new Error("User ID and token are required");
-			}
-			return expensesService
-				.getExpenses(Number(user?.id), token)
-				.then((res) => {
-					LogRocket.log("[Analytics] getExpenses result", res);
-					return res;
-				});
+			return expensesService.getExpenses().then((res) => {
+				LogRocket.log("[Analytics] getExpenses result", res);
+				return res;
+			});
 		},
 		enabled: isAuthenticated,
 	});
@@ -272,7 +253,7 @@ export const Analytics = () => {
 								<div className="space-y-3">
 									{categories.slice(0, 5).map((category, index) => (
 										<div
-											key={category.category}
+											key={category.id}
 											className="flex justify-between items-center"
 										>
 											<div className="flex items-center gap-2">
@@ -280,12 +261,9 @@ export const Analytics = () => {
 													className={`w-3 h-3 rounded-full bg-blue-${(index + 1) * 100}`}
 												/>
 												<span className="text-sm font-medium">
-													{category.category}
+													{category.name}
 												</span>
 											</div>
-											<span className="text-sm text-muted-foreground">
-												{category.count} {t("analytics.transactions")}
-											</span>
 										</div>
 									))}
 									{categories.length > 5 && (

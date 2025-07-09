@@ -11,16 +11,13 @@ import {
 } from "@components/ui/table";
 import { useAuth } from "@contexts/AuthContext";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
-import { expensesService } from "@services/api/expenses";
+import { expensesService } from "@/services/api/expenses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import LogRocket from "logrocket";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-
-type Expense = components["schemas"]["Expense"];
-type ExpenseItem = components["schemas"]["ExpenseItem"];
 
 export const ExpenseList = () => {
 	const { t } = useTranslation();
@@ -31,16 +28,14 @@ export const ExpenseList = () => {
 		data: expenses,
 		isLoading,
 		error,
-	} = useQuery({
+	} = useQuery<components["schemas"]["Expense"][]>({
 		queryKey: ["expenses"],
 		queryFn: () => {
-			if (!user?.id || !token) {
-				throw new Error("User ID and token are required");
-			}
+			if (!isAuthenticated) throw new Error("Not authenticated");
 			LogRocket.log("[ExpenseList] useQuery.queryFn");
-			return expensesService.getExpenses(Number(user.id), token).then((res) => {
+			return expensesService.getExpenses().then((res) => {
 				LogRocket.log("[ExpenseList] useQuery result", {
-					userId: user.id,
+					userId: user?.id,
 					token: "present",
 					expenses: res.length || 0,
 				});
@@ -113,7 +108,7 @@ export const ExpenseList = () => {
 						</TableRow>
 					</TableHeader>
 					<TableBody>
-						{expenses?.map((expense: Expense, index) => (
+						{expenses?.map((expense: components["schemas"]["Expense"], index) => (
 							<TableRow key={expense.id ?? `expense-${index}`}>
 								<TableCell>
 									{expense.createdAt

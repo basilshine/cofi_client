@@ -2,16 +2,16 @@ import { useTelegram } from "@/hooks/useTelegram";
 import type { components } from "@/types/api-types";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { handleTelegramNavigation } from "@/utils/telegramWebApp";
-import { apiService } from "@services/api";
-import { fetchCurrentUser } from "@services/api";
-import type { AxiosResponse } from "axios";
+import { apiService } from "@/services/api";
 import { jwtDecode } from "jwt-decode";
 import LogRocket from "logrocket";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-type User = components["schemas"]["User"];
+// Use only types from api-types.ts
+export type User = components["schemas"]["User"];
+export type AuthResponse = components["schemas"]["AuthResponse"];
 
 interface AuthState {
 	user: User | null;
@@ -39,19 +39,6 @@ interface AuthContextType extends AuthState {
 	handleTelegramWidgetAuth: (
 		tgUser: components["schemas"]["User"],
 	) => Promise<void>;
-}
-
-interface TelegramLoginResponse {
-	token?: string;
-	user?: {
-		id?: string;
-		email?: string;
-		firstName?: string;
-		lastName?: string;
-		telegramId?: number;
-		telegramUsername?: string;
-		telegramPhotoUrl?: string;
-	};
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -82,11 +69,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					// If user is not set, fetch from backend
 					if (!state.user) {
 						setState((prev) => ({ ...prev, isLoading: true }));
-						fetchCurrentUser(token)
-							.then((user) => {
+						apiService.auth.me()
+							.then((response) => {
 								setState((prev) => ({
 									...prev,
-									user,
+									user: response.data,
 									isAuthenticated: true,
 									isLoading: false,
 								}));
@@ -177,26 +164,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			setState((prev) => ({ ...prev, isLoading: true, error: null }));
 			apiService.auth
 				.telegramLogin({ telegramInitData: initData, user: telegramUser })
-				.then((response: AxiosResponse<TelegramLoginResponse>) => {
-					const data = response.data;
+				.then((response) => {
+					const data: AuthResponse = response.data;
 					LogRocket.log("[AuthContext] Telegram login response:", data);
 					localStorage.setItem("token", data.token ?? "");
-					const user = data.user
-						? {
-								id: typeof data.user.id === "string" ? data.user.id : "",
-								email:
-									typeof data.user.email === "string" ? data.user.email : "",
-								name: data.user.firstName ?? telegramUser.first_name ?? "",
-								lastName: data.user.lastName ?? telegramUser.last_name,
-								telegramId: data.user.telegramId ?? telegramUser.id,
-								telegramUsername:
-									data.user.telegramUsername ?? telegramUser.username,
-								telegramPhotoUrl: data.user.telegramPhotoUrl,
-							}
-						: null;
+					let user: User | null = null;
+					if (data.user) {
+						// Split name into firstName/lastName if needed
+						const [firstName = "", ...rest] = (data.user.name ?? "").split(" ");
+						const lastName = rest.join(" ") || undefined;
+						user = {
+							...data.user,
+							name: firstName || telegramUser.first_name || "",
+							// Optionally, you can add a custom lastName field if needed, but User type does not have it
+						};
+					}
 					if (user?.id) {
-						LogRocket.identify(user.id, {
-							name: user.name + (user.lastName ? ` ${user.lastName}` : ""),
+						LogRocket.identify(user.id.toString(), {
+							name: user.name || "",
 							email: user.email || "",
 							telegramUsername: user.telegramUsername || "",
 						});
@@ -208,11 +193,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						isLoading: true,
 						error: null,
 					}));
-					fetchCurrentUser(data.token ?? "")
-						.then((user) => {
+					apiService.auth.me()
+						.then((response) => {
 							setState((prev) => ({
 								...prev,
-								user,
+								user: response.data,
 								isLoading: false,
 							}));
 						})
@@ -296,23 +281,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			const response = await apiService.auth.login({ email, password });
 
 			localStorage.setItem("token", response.data.token ?? "");
-			const user = response.data.user
-				? (() => {
-						const [firstName = "", ...rest] = (
-							response.data.user.name ?? ""
-						).split(" ");
-						const lastName = rest.join(" ") || undefined;
-						return {
-							id: response.data.user.id ?? "",
-							email: response.data.user.email ?? "",
-							name: firstName,
-							lastName: lastName,
-							telegramId: response.data.user.telegramId,
-							telegramUsername: response.data.user.telegramUsername,
-							telegramPhotoUrl: response.data.user.telegramPhotoUrl,
-						};
-					})()
-				: null;
+			const user = response.data.user ?? null;
 			setState((prev: AuthState) => ({
 				...prev,
 				user: user as User,
@@ -346,23 +315,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			});
 
 			localStorage.setItem("token", response.data.token ?? "");
-			const user = response.data.user
-				? (() => {
-						const [first = "", ...rest] = (response.data.user.name ?? "").split(
-							" ",
-						);
-						const last = rest.join(" ") || undefined;
-						return {
-							id: response.data.user.id ?? "",
-							email: response.data.user.email ?? "",
-							name: first,
-							lastName: last,
-							telegramId: response.data.user.telegramId,
-							telegramUsername: response.data.user.telegramUsername,
-							telegramPhotoUrl: response.data.user.telegramPhotoUrl,
-						};
-					})()
-				: null;
+			const user = response.data.user ?? null;
 			setState({
 				...state,
 				user: user as User,
@@ -397,10 +350,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const requestPasswordReset = async (email: string) => {
 		try {
 			setState((prev) => ({ ...prev, isLoading: true, error: null }));
-			const response = await apiService.auth.requestPasswordReset({
-				email: email ?? "",
-			});
-
+			const response = await apiService.auth.passwordReset({ email });
 			if (response.status !== 200) {
 				throw new Error("Failed to request password reset");
 			}
@@ -416,11 +366,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const resetPassword = async (token: string, newPassword: string) => {
 		try {
 			setState((prev) => ({ ...prev, isLoading: true, error: null }));
-			const response = await apiService.auth.resetPassword({
+			const response = await apiService.auth.passwordResetConfirm({
 				token,
-				newPassword,
+				password: newPassword,
 			});
-
 			if (response.status !== 200) {
 				throw new Error("Failed to reset password");
 			}
@@ -469,22 +418,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		try {
 			const response = await apiService.auth.telegramLoginWidget({
 				telegramId: tgUser.telegramId ?? 0,
-				telegramUsername: tgUser.telegramUsername ?? "",
-				telegramPhotoUrl: tgUser.telegramPhotoUrl ?? "",
+				username: tgUser.telegramUsername ?? "",
+				photoUrl: tgUser.telegramPhotoUrl ?? "",
+				country: tgUser.country,
+				language: tgUser.language,
+				// authDate and hash are not available from User, so omit them
 			});
 			const { token, user } = response.data;
 			localStorage.setItem("token", token ?? "");
 			setState((prev: AuthState) => ({
 				...prev,
-				user: user
-					? {
-							id: typeof user.id === "number" ? user.id : undefined,
-							email: user.email,
-							telegramId: user.telegramId,
-							telegramUsername: user.telegramUsername,
-							telegramPhotoUrl: user.telegramPhotoUrl,
-						}
-					: null,
+				user: user ?? null,
 				token: token ?? null,
 				isAuthenticated: true,
 				isLoading: false,

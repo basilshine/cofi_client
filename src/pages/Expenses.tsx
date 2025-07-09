@@ -12,7 +12,7 @@ import {
 } from "@components/ui/dialog";
 import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
-import { expensesService } from "@services/api/expenses";
+import { expensesService } from "@/services/api/expenses";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
@@ -24,7 +24,7 @@ export const Expenses = () => {
 	const { isAuthenticated, isLoading: authLoading } = useAuth();
 	const queryClient = useQueryClient();
 	const [isDialogOpen, setIsDialogOpen] = useState(false);
-	const { user, token } = useAuth();
+	const { user } = useAuth();
 	// Log when Expenses page is loaded
 	useEffect(() => {
 		LogRocket.log("[Expenses] Page loaded", { isAuthenticated, authLoading });
@@ -39,10 +39,10 @@ export const Expenses = () => {
 		queryKey: ["expenses", "summary"],
 		queryFn: () => {
 			LogRocket.log("[Expenses] getSummary queryFn");
-			if (!user?.id || !token) {
-				throw new Error("User ID and token are required");
+			if (!user?.id) {
+				throw new Error("User ID is required");
 			}
-			return expensesService.getSummary(Number(user?.id), token).then((res) => {
+			return expensesService.getSummary(Number(user?.id)).then((res) => {
 				LogRocket.log("[Expenses] getSummary result", res);
 				return res;
 			});
@@ -55,21 +55,14 @@ export const Expenses = () => {
 		data: categories = [],
 		isLoading: isCategoriesLoading,
 		error: categoriesError,
-	} = useQuery<
-		components["schemas"]["Category"][] | { category: string; count: number }[]
-	>({
+	} = useQuery<components["schemas"]["Category"][]>({
 		queryKey: ["expenses", "categories"],
 		queryFn: () => {
 			LogRocket.log("[Expenses] getMostUsedCategories queryFn");
-			if (!user?.id || !token) {
-				throw new Error("User ID and token are required");
-			}
-			return expensesService
-				.getMostUsedCategories(Number(user?.id), token)
-				.then((res) => {
-					LogRocket.log("[Expenses] getMostUsedCategories result", res);
-					return res;
-				});
+			return expensesService.getMostUsedCategories().then((res) => {
+				LogRocket.log("[Expenses] getMostUsedCategories result", res);
+				return res;
+			});
 		},
 		enabled: isAuthenticated, // Only run query if authenticated
 	});

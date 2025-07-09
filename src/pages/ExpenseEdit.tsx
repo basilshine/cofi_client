@@ -1,9 +1,8 @@
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
-import { useAuth } from "@contexts/AuthContext";
 import { ArrowLeft, Check, Trash, X } from "@phosphor-icons/react";
-import { expensesService } from "@services/api/expenses";
+import { expensesService } from "@/services/api/expenses";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifyTelegramWebApp } from "@utils/telegramWebApp";
 import LogRocket from "logrocket";
@@ -11,33 +10,25 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
-type Expense = components["schemas"]["Expense"];
-type ExpenseItem = components["schemas"]["ExpenseItem"];
-
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const [editingItems, setEditingItems] = useState<ExpenseItem[]>([]);
-	const { user, token } = useAuth();
+	const [editingItems, setEditingItems] = useState<components["schemas"]["ExpenseItem"][]>([]);
 	const {
 		data: expense,
 		isLoading,
 		error,
-	} = useQuery<Expense, Error>({
+	} = useQuery<components["schemas"]["Expense"], Error>({
 		queryKey: ["expense", id],
 		queryFn: () => {
 			LogRocket.log("[ExpenseEdit] useQuery.queryFn", { id });
 			if (!id) throw new Error("No expense ID provided");
-			if (!user?.id) throw new Error("No user ID provided");
-			if (!token) throw new Error("No token provided");
-			return expensesService
-				.getExpenseById(id, Number(user.id), token)
-				.then((res) => {
-					LogRocket.log("[ExpenseEdit] useQuery.queryFn result", res);
-					return res;
-				});
+			return expensesService.getExpenseById(id).then((res) => {
+				LogRocket.log("[ExpenseEdit] useQuery.queryFn result", res);
+				return res;
+			});
 		},
 		enabled: !!id,
 	});
@@ -56,7 +47,7 @@ export const ExpenseEdit = () => {
 	}, [expense]);
 
 	const updateMutation = useMutation({
-		mutationFn: (data: Partial<Expense>) => {
+		mutationFn: (data: Partial<components["schemas"]["Expense"]>) => {
 			LogRocket.log("[ExpenseEdit] updateMutation.mutationFn", { id, data });
 			if (!id) throw new Error("No expense ID provided");
 			return expensesService.updateExpense(id, data).then((res) => {
@@ -164,7 +155,7 @@ export const ExpenseEdit = () => {
 	const handleUpdateItems = () => {
 		if (!expense) return;
 
-		const updatedExpense: Partial<Expense> = {
+		const updatedExpense: Partial<components["schemas"]["Expense"]> = {
 			...expense,
 			items: editingItems,
 		};
@@ -177,7 +168,7 @@ export const ExpenseEdit = () => {
 
 	const updateItem = (
 		index: number,
-		field: keyof ExpenseItem,
+		field: keyof components["schemas"]["ExpenseItem"],
 		value: string | number,
 	) => {
 		const newItems = [...editingItems];

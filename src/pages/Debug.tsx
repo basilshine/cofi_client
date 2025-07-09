@@ -6,59 +6,15 @@ import { expensesService } from "@services/api/expenses";
 import LogRocket from "logrocket";
 import { useState } from "react";
 
-type Expense = components["schemas"]["Expense"];
-type User = components["schemas"]["User"];
-
-interface TestResults {
-	environment?: {
-		VITE_API_URL: string;
-		NODE_ENV: string;
-		MODE: string;
-	};
-	auth?: {
-		user: unknown;
-		token: string | null;
-		isAuthenticated: boolean;
-	};
-	healthCheck?: {
-		status?: number;
-		ok?: boolean;
-		url?: string;
-		error?: string;
-	};
-	expensesAPI?: {
-		success: boolean;
-		count?: number;
-		data?: unknown;
-		error?: string;
-	};
-	summaryAPI?: {
-		success: boolean;
-		data?: unknown;
-		error?: string;
-	};
-	expenseDetail?: {
-		success: boolean;
-		data?: unknown;
-		error?: string;
-	};
-	analyticsCategories?: {
-		success: boolean;
-		data?: unknown;
-		error?: string;
-	};
-	// Removed analyticsMonthly (getMonthlySummary) as it does not exist
-}
-
 export const Debug = () => {
-	const [testResults, setTestResults] = useState<TestResults>({});
+	const [testResults, setTestResults] = useState<Record<string, unknown>>({});
 	const [isLoading, setIsLoading] = useState(false);
 	const { user, token, isAuthenticated } = useAuth();
 
 	const runTests = async () => {
 		setIsLoading(true);
 		setTestResults({});
-		const results: TestResults = {};
+		const results: Record<string, unknown> = {};
 
 		LogRocket.log("[Debug] Starting API tests");
 
@@ -94,11 +50,10 @@ export const Debug = () => {
 		}
 
 		// Test 4: Expenses API
-		let expenses: Expense[] = [];
-		const userId = user?.id ? Number(user.id) : undefined;
-		if (userId && token) {
+		let expenses: components["schemas"]["Expense"][] = [];
+		if (isAuthenticated) {
 			try {
-				expenses = await expensesService.getExpenses(userId, token);
+				expenses = await expensesService.getExpenses();
 				results.expensesAPI = {
 					success: true,
 					count: expenses.length,
@@ -113,7 +68,7 @@ export const Debug = () => {
 
 			// Test 5: Summary API
 			try {
-				const summary = await expensesService.getSummary(userId, token);
+				const summary = await expensesService.getSummary(user?.id ?? 0);
 				results.summaryAPI = {
 					success: true,
 					data: summary,
@@ -129,9 +84,7 @@ export const Debug = () => {
 			if (expenses.length > 0) {
 				try {
 					const firstExpense = await expensesService.getExpenseById(
-						expenses[0].id?.toString() ?? "unknown",
-						userId,
-						token,
+						expenses[0].id?.toString() ?? "unknown"
 					);
 					results.expenseDetail = {
 						success: true,
@@ -147,10 +100,7 @@ export const Debug = () => {
 
 			// Fetch analytics: most used categories
 			try {
-				const categories = await expensesService.getMostUsedCategories(
-					userId,
-					token,
-				);
+				const categories = await expensesService.getMostUsedCategories();
 				results.analyticsCategories = {
 					success: true,
 					data: categories,
@@ -228,14 +178,14 @@ export const Debug = () => {
 							<strong>User Name:</strong> {user?.name ? `${user.name}` : "None"}
 						</div>
 						{/* auth_type and telegramId are only available if user is from store (Telegram/email auth) */}
-						{user && (user as User).auth_type && (
+						{user && (user as components["schemas"]["User"]).auth_type && (
 							<div>
-								<strong>Auth Type:</strong> {(user as User).auth_type}
+								<strong>Auth Type:</strong> {(user as components["schemas"]["User"]).auth_type}
 							</div>
 						)}
-						{user && (user as User).telegramId && (
+						{user && (user as components["schemas"]["User"]).telegramId && (
 							<div>
-								<strong>Telegram ID:</strong> {(user as User).telegramId}
+								<strong>Telegram ID:</strong> {(user as components["schemas"]["User"]).telegramId}
 							</div>
 						)}
 					</CardContent>
