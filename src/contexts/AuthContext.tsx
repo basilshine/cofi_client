@@ -114,7 +114,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 										...prev,
 										isAuthenticated: true,
 										isLoading: false,
-										error: "Failed to load user data. You can continue using the app, but some features may not work properly.",
+										error:
+											"Failed to load user data. You can continue using the app, but some features may not work properly.",
 									}));
 								}
 							});
@@ -246,13 +247,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 							}));
 						})
 						.catch((error) => {
-							console.error("Failed to fetch user data after Telegram login:", error);
+							console.error(
+								"Failed to fetch user data after Telegram login:",
+								error,
+							);
 							// Don't logout after successful Telegram login - just use the user data we got
 							// from the login response and set loading to false
 							setState((prev) => ({
 								...prev,
 								isLoading: false,
-								error: "Failed to refresh user data, but you're still logged in.",
+								error:
+									"Failed to refresh user data, but you're still logged in.",
 							}));
 						});
 					LogRocket.log(
