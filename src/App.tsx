@@ -3,6 +3,7 @@ import { Analytics } from "@pages/Analytics";
 import { Debug } from "@pages/Debug";
 import { ExpenseEdit } from "@pages/ExpenseEdit";
 import { Expenses } from "@pages/Expenses";
+import { Profile } from "@pages/Profile";
 import { Settings } from "@pages/Settings";
 import { ForgotPassword } from "@pages/auth/ForgotPassword";
 import { Login } from "@pages/auth/Login";
@@ -11,6 +12,7 @@ import { ResetPassword } from "@pages/auth/ResetPassword";
 import { isTelegramWebApp } from "@utils/isTelegramWebApp";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./layouts/Layout";
+import { WebAppLayout } from "./layouts/WebAppLayout";
 import { Home } from "./pages/Home";
 import { Promo } from "./pages/Promo";
 import { QueryProvider } from "./providers/QueryProvider";
@@ -19,6 +21,9 @@ import "./i18n/config";
 function AppContent() {
 	const { isAuthenticated, isLoading } = useAuth();
 	const isWebAppUser = isTelegramWebApp();
+
+	// Choose the appropriate layout based on the environment
+	const AppLayout = isWebAppUser ? WebAppLayout : Layout;
 
 	if (isLoading) {
 		return (
@@ -102,14 +107,17 @@ function AppContent() {
 				path="/dashboard/*"
 				element={
 					isAuthenticated ? (
-						<Layout>
+						<AppLayout title="Dashboard">
 							<Routes>
 								<Route path="/" element={<Home />} />
 								<Route path="/analytics" element={<Analytics />} />
-								<Route path="/settings" element={<Settings />} />
+								<Route
+									path="/settings"
+									element={isWebAppUser ? <Profile /> : <Settings />}
+								/>
 								<Route path="/debug" element={<Debug />} />
 							</Routes>
-						</Layout>
+						</AppLayout>
 					) : (
 						getUnauthenticatedRedirect()
 					)
@@ -121,9 +129,9 @@ function AppContent() {
 				path="/expenses"
 				element={
 					isAuthenticated ? (
-						<Layout>
+						<AppLayout title="Expenses">
 							<Expenses />
-						</Layout>
+						</AppLayout>
 					) : (
 						getUnauthenticatedRedirect()
 					)
@@ -133,9 +141,21 @@ function AppContent() {
 				path="/expenses/:id/edit"
 				element={
 					isAuthenticated ? (
-						<Layout>
+						<AppLayout title="Edit Expense" showBackButton={true}>
 							<ExpenseEdit />
-						</Layout>
+						</AppLayout>
+					) : (
+						getUnauthenticatedRedirect()
+					)
+				}
+			/>
+			<Route
+				path="/profile"
+				element={
+					isAuthenticated ? (
+						<AppLayout title="Profile & Settings">
+							<Profile />
+						</AppLayout>
 					) : (
 						getUnauthenticatedRedirect()
 					)

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Settings - Personal Finance Assistant</title>
+<link crossorigin="" href="https://fonts.gstatic.com/" rel="preconnect"/>
+<link as="style" href="https://fonts.googleapis.com/css2?display=swap&amp;family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;family=Noto+Sans:wght@400;500;700;900" onload="this.rel='stylesheet'" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style type="text/tailwindcss">
+    :root {
+      --primary-color: #47c1ea;
+      --secondary-color: #e0f2f7;
+      --background-color: #f8fafc;
+      --text-primary: #1e3a8a;
+      --text-secondary: #64748b;
+      --accent-color: #93c5fd;
+      --danger-color: #ef4444;
+      --danger-bg-color: #fee2e2;
+      --select-button-svg: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e');
+    }
+    body {
+      @apply font-sans bg-[var(--background-color)] text-[var(--text-primary)];
+    }
+    .main_container {
+      @apply container mx-auto px-4 py-8;
+    }
+    .card {
+      @apply bg-white rounded-lg shadow-md p-6;
+    }
+    .button_primary {
+      @apply bg-[var(--primary-color)] text-white rounded-lg px-4 py-2 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50;
+    }
+    .button_secondary {
+      @apply bg-[var(--secondary-color)] text-[var(--primary-color)] rounded-lg px-4 py-2 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50;
+    }
+    .input {
+      @apply bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+    }
+    .typography_h1 {
+      @apply text-3xl font-bold text-[var(--text-primary)];
+    }
+    .typography_h2 {
+      @apply text-2xl font-semibold text-[var(--text-primary)];
+    }
+    .typography_body {
+      @apply text-base text-[var(--text-secondary)];
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-color font-sans">
+<div class="relative flex size-full min-h-screen flex-col justify-between overflow-x-hidden">
+<div class="flex-grow">
+<header class="flex items-center p-4 pb-2 justify-between">
+<button class="text-text-primary flex size-12 shrink-0 items-center justify-center rounded-full hover:bg-secondary-color">
+<svg fill="currentColor" height="24px" viewBox="0 0 256 256" width="24px" xmlns="http://www.w3.org/2000/svg">
+<path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"></path>
+</svg>
+</button>
+<h1 class="text-text-primary text-xl font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12">Profile &amp; Settings</h1>
+</header>
+<main class="px-4 py-6 space-y-8 pb-32">
+<section class="space-y-4">
+<h2 class="text-text-primary text-lg font-semibold leading-tight px-4 pb-2">User Information</h2>
+<div class="bg-white rounded-xl shadow-sm mx-4">
+<div class="p-4 border-b border-gray-200">
+<label class="text-sm font-medium text-text-secondary" for="email">Email Address</label>
+<div class="flex items-center mt-1">
+<input class="input w-full border-0 p-0 text-text-primary focus:ring-0" id="email" type="email" value="alexander@email.com"/>
+<button class="text-sm font-medium text-primary-color ml-4">Edit</button>
+</div>
+</div>
+<div class="p-4 border-b border-gray-200">
+<label class="text-sm font-medium text-text-secondary" for="country">Country</label>
+<select class="input w-full border-0 p-0 text-text-primary focus:ring-0 bg-[image:--select-button-svg] bg-right pr-10" id="country">
+<option>United States</option>
+<option>United Kingdom</option>
+<option>Canada</option>
+</select>
+</div>
+<div class="p-4">
+<label class="text-sm font-medium text-text-secondary" for="currency">Default Currency</label>
+<select class="input w-full border-0 p-0 text-text-primary focus:ring-0 bg-[image:--select-button-svg] bg-right pr-10" id="currency">
+<option>USD ($)</option>
+<option>EUR (€)</option>
+<option>GBP (£)</option>
+</select>
+</div>
+</div>
+</section>
+<section class="space-y-4">
+<h2 class="text-text-primary text-lg font-semibold leading-tight px-4 pb-2">App Settings</h2>
+<div class="bg-white rounded-xl shadow-sm mx-4">
+<div class="p-4 border-b border-gray-200">
+<label class="text-sm font-medium text-text-secondary" for="language">Language</label>
+<select class="input w-full border-0 p-0 text-text-primary focus:ring-0 bg-[image:--select-button-svg] bg-right pr-10" id="language">
+<option>English (United States)</option>
+<option>Español (España)</option>
+<option>Français (France)</option>
+</select>
+</div>
+<div class="p-4">
+<label class="text-sm font-medium text-text-secondary" for="timezone">Timezone</label>
+<select class="input w-full border-0 p-0 text-text-primary focus:ring-0 bg-[image:--select-button-svg] bg-right pr-10" id="timezone">
+<option>(GMT-08:00) Pacific Time</option>
+<option>(GMT-05:00) Eastern Time</option>
+<option>(GMT+01:00) Central European Time</option>
+</select>
+</div>
+</div>
+</section>
+<section class="space-y-4">
+<h2 class="text-text-primary text-lg font-semibold leading-tight px-4 pb-2">Subscription</h2>
+<div class="flex items-center justify-between bg-white rounded-xl p-4 mx-4 shadow-sm">
+<div class="flex flex-col">
+<p class="text-text-primary font-medium">Current Tier: <span class="font-bold text-primary-color">Premium</span></p>
+<p class="text-text-secondary text-sm">Renews on Dec 24, 2024</p>
+</div>
+<button class="button_secondary text-sm font-medium">
+              Manage
+            </button>
+</div>
+</section>
+<section class="space-y-4">
+<h2 class="text-text-primary text-lg font-semibold leading-tight px-4 pb-2">Preferences</h2>
+<div class="bg-white rounded-xl shadow-sm mx-4">
+<div class="flex items-center justify-between p-4 border-b border-gray-200">
+<p class="text-text-primary font-medium">Email Notifications</p>
+<label class="relative flex h-8 w-14 cursor-pointer items-center rounded-full bg-secondary-color p-1 has-[:checked]:bg-primary-color has-[:checked]:justify-end">
+<div class="h-6 w-6 rounded-full bg-white shadow-md transition-transform"></div>
+<input checked="" class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+<div class="flex items-center justify-between p-4 border-b border-gray-200">
+<p class="text-text-primary font-medium">Dark Mode</p>
+<label class="relative flex h-8 w-14 cursor-pointer items-center rounded-full bg-secondary-color p-1 has-[:checked]:bg-primary-color has-[:checked]:justify-end">
+<div class="h-6 w-6 rounded-full bg-white shadow-md transition-transform"></div>
+<input class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+<div class="p-4 border-b border-gray-200">
+<label class="text-sm font-medium text-text-secondary" for="date-format">Date Format</label>
+<select class="input w-full border-0 p-0 text-text-primary focus:ring-0 bg-[image:--select-button-svg] bg-right pr-10" id="date-format">
+<option>MM/DD/YYYY</option>
+<option>DD/MM/YYYY</option>
+<option>YYYY-MM-DD</option>
+</select>
+</div>
+<div class="flex items-center justify-between p-4">
+<p class="text-text-primary font-medium">Export Data</p>
+<button class="text-primary-color">
+<svg class="lucide lucide-download" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>
+</button>
+</div>
+</div>
+</section>
+<section class="space-y-4">
+<h2 class="text-text-primary text-lg font-semibold leading-tight px-4 pb-2">Account</h2>
+<div class="mx-4">
+<button class="w-full text-left p-4 bg-white rounded-xl shadow-sm flex items-center justify-between">
+<span class="font-medium text-text-primary">Connected Accounts</span>
+<svg class="text-text-secondary" fill="none" height="20" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><polyline points="9 18 15 12 9 6"></polyline></svg>
+</button>
+</div>
+<div class="mx-4">
+<button class="w-full text-left p-4 bg-[var(--danger-bg-color)] rounded-xl shadow-sm">
+<span class="font-medium text-[var(--danger-color)]">Delete Account</span>
+</button>
+</div>
+</section>
+<div class="relative h-32 mt-10">
+<img alt="Friendly mascot" class="absolute bottom-0 right-4 h-40 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL2QQm2j6zhP6Z0xVapTpLNn9D75VcnST3yeCAn6NsqS8fLpgEgR3ICEAckXFTYLD_SndP9zImXDWhlFDmg5kk2czJS0IhzHhjIpNHb_tdPUOyJAFp698E56N6SVjGT26GtJmOgdgK_4_sxLbKYOicEJxHgzsf6FIutfM0wn0TPWPG9Yn5g1NIkj52zI8fwWosNRLS9D9qIKYFc1wFe_XzLhoXR72r_u6h4SoizGwQaJabmswgQxAvLIYITICIu50Fwrc-Rll2nRA"/>
+</div>
+</main>
+</div>
+<nav class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm shadow-[0_-1px_4px_rgba(0,0,0,0.05)] rounded-t-3xl">
+<div class="flex justify-around items-center h-20 px-4">
+<a class="flex flex-col items-center space-y-1 text-text-secondary" href="#">
+<svg class="lucide lucide-wallet-cards" fill="none" height="28" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="28" xmlns="http://www.w3.org/2000/svg">
+<rect height="18" rx="2" width="18" x="3" y="3"></rect>
+<path d="M3 7h18"></path>
+<path d="M21 15h-2.4a.6.6 0 0 0-.6.6v1.8a.6.6 0 0 0 .6.6H21Z"></path>
+</svg>
+<span class="text-xs font-medium">Expenses</span>
+</a>
+<a class="flex flex-col items-center space-y-1 text-text-secondary" href="#">
+<svg class="lucide lucide-pie-chart" fill="none" height="28" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="28" xmlns="http://www.w3.org/2000/svg">
+<path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+<path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+</svg>
+<span class="text-xs font-medium">Analytics</span>
+</a>
+<a class="flex flex-col items-center space-y-1 text-primary-color" href="#">
+<div class="bg-secondary-color p-3 rounded-full">
+<svg class="lucide lucide-user-circle-2" fill="none" height="28" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="28" xmlns="http://www.w3.org/2000/svg">
+<path d="M18 20a6 6 0 0 0-12 0"></path>
+<circle cx="12" cy="10" r="4"></circle>
+<circle cx="12" cy="12" r="10"></circle>
+</svg>
+</div>
+<span class="text-xs font-bold">Profile</span>
+</a>
+</div>
+</nav>
+</div>
+
+</body></html>
