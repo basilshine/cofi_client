@@ -88,8 +88,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 									isLoading: false,
 								}));
 							})
-							.catch(() => {
-								logout();
+							.catch((error) => {
+								console.error("Failed to fetch user data:", error);
+
+								// For Telegram WebApp, be more lenient with errors
+								// since we might be in the middle of auto-login process
+								if (isWebApp && !hasAttemptedTelegramLogin.current) {
+									// Don't logout yet, let Telegram auto-login try first
+									setState((prev) => ({
+										...prev,
+										isAuthenticated: false,
+										isLoading: true, // Keep loading for Telegram auto-login
+										error: null,
+									}));
+									return;
+								}
+
+								// Only logout if it's a 401 (unauthorized) error
+								if (error?.response?.status === 401) {
+									logout();
+								} else {
+									// For other errors (network, 500, etc.), assume user is still authenticated
+									// but we couldn't fetch user data
+									setState((prev) => ({
+										...prev,
+										isAuthenticated: true,
+										isLoading: false,
+										error: "Failed to load user data. You can continue using the app, but some features may not work properly.",
+									}));
+								}
 							});
 					} else {
 						setState((prev) => ({
@@ -100,12 +127,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					}
 				}
 			} catch (error) {
+				// Only logout if token is malformed
+				console.error("Invalid token:", error);
 				logout();
 			}
 		} else {
-			setState((prev) => ({ ...prev, isLoading: false }));
+			// No token - for WebApp, keep loading to allow Telegram auto-login
+			if (isWebApp && !hasAttemptedTelegramLogin.current) {
+				setState((prev) => ({ ...prev, isLoading: true }));
+			} else {
+				setState((prev) => ({ ...prev, isLoading: false }));
+			}
 		}
-	}, [state.user]);
+	}, [state.user, isWebApp]);
 
 	useEffect(() => {
 		// Log window unload/reload events
@@ -211,8 +245,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 								isLoading: false,
 							}));
 						})
-						.catch(() => {
-							logout();
+						.catch((error) => {
+							console.error("Failed to fetch user data after Telegram login:", error);
+							// Don't logout after successful Telegram login - just use the user data we got
+							// from the login response and set loading to false
+							setState((prev) => ({
+								...prev,
+								isLoading: false,
+								error: "Failed to refresh user data, but you're still logged in.",
+							}));
 						});
 					LogRocket.log(
 						"[AuthContext] Telegram login success, checking for navigation parameters",

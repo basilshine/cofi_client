@@ -184,7 +184,22 @@ export const ExpenseEdit = () => {
 		);
 	}
 
-	if (error || !expense) {
+	if (error) {
+		return (
+			<div className="flex min-h-screen items-center justify-center bg-background">
+				<div className="text-center">
+					<p className="text-destructive">
+						{error.message || t("expenses.notFound")}
+					</p>
+					<Button onClick={() => navigate("/expenses")} className="mt-4">
+						{t("common.goBack")}
+					</Button>
+				</div>
+			</div>
+		);
+	}
+
+	if (!expense) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background">
 				<div className="text-center">
