@@ -24,6 +24,14 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 			startParam = urlParams.get("startapp") || "";
 		}
 
+		// Debug logging
+		console.log("[getTelegramWebAppData] Current URL:", window.location.href);
+		console.log("[getTelegramWebAppData] URL search params:", window.location.search);
+		console.log("[getTelegramWebAppData] initDataUnsafe:", tgWebApp.initDataUnsafe);
+		console.log("[getTelegramWebAppData] start_param from initDataUnsafe:", (tgWebApp.initDataUnsafe as Record<string, unknown>)?.start_param);
+		console.log("[getTelegramWebAppData] startapp from URL:", new URLSearchParams(window.location.search).get('startapp'));
+		console.log("[getTelegramWebAppData] Final startParam:", startParam);
+
 		return {
 			initData: tgWebApp.initData || "",
 			initDataUnsafe: tgWebApp.initDataUnsafe || {},
@@ -38,17 +46,22 @@ export const parseStartParam = (
 ): ParsedStartParam | null => {
 	if (!startParam) return null;
 
+	console.log("[parseStartParam] Parsing start param:", startParam);
+
 	// Parse different parameter formats:
 	// edit_expense_123 - edit expense with ID 123
 	// view_analytics - go to analytics page
 	// add_expense_food_25.50 - add expense for food category with amount 25.50
 
 	const editExpenseMatch = startParam.match(/^edit_expense_(\d+)$/);
+	console.log("[parseStartParam] Edit expense match:", editExpenseMatch);
 	if (editExpenseMatch) {
-		return {
-			action: "edit_expense",
+		const result = {
+			action: "edit_expense" as const,
 			expenseId: editExpenseMatch[1],
 		};
+		console.log("[parseStartParam] Returning edit expense result:", result);
+		return result;
 	}
 
 	if (startParam === "view_analytics") {

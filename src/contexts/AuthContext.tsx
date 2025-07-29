@@ -135,8 +135,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		} else {
 			// No token - for WebApp, keep loading to allow Telegram auto-login
 			if (isWebApp && !hasAttemptedTelegramLogin.current) {
+				console.log("[AuthContext] No token but WebApp detected, keeping loading state for auto-login");
 				setState((prev) => ({ ...prev, isLoading: true }));
 			} else {
+				console.log("[AuthContext] No token and not WebApp (or already attempted), setting loading false");
 				setState((prev) => ({ ...prev, isLoading: false }));
 			}
 		}
@@ -182,6 +184,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			isAuthenticated: state.isAuthenticated,
 			hasAttemptedTelegramLogin: hasAttemptedTelegramLogin.current,
 		});
+		console.log("[AuthContext] Telegram auto-login effect triggered", {
+			isWebApp,
+			telegramUser: telegramUser ? "present" : "missing",
+			initData: initData ? "present" : "missing",
+			isAuthenticated: state.isAuthenticated,
+			hasAttemptedTelegramLogin: hasAttemptedTelegramLogin.current,
+		});
 
 		let shortWaitTimeout: NodeJS.Timeout | null = null;
 		let longWaitTimeout: NodeJS.Timeout | null = null;
@@ -197,19 +206,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			console.log(
 				"[AuthContext] Already authenticated, checking Telegram navigation",
 			);
-			const hasNavigated = handleTelegramNavigation(navigate);
-			console.log(
-				"[AuthContext] Already authenticated navigation result:",
-				hasNavigated,
-			);
-
-			if (!hasNavigated) {
-				// Default navigation if no specific parameters
+			
+			// Small delay to ensure routing is ready
+			setTimeout(() => {
+				const hasNavigated = handleTelegramNavigation(navigate);
 				console.log(
-					"[AuthContext] Already authenticated, no Telegram navigation, going to dashboard",
+					"[AuthContext] Already authenticated navigation result:",
+					hasNavigated,
 				);
-				navigate("/dashboard");
-			}
+
+				if (!hasNavigated) {
+					// Default navigation if no specific parameters
+					console.log(
+						"[AuthContext] Already authenticated, no Telegram navigation, going to dashboard",
+					);
+					navigate("/dashboard");
+				}
+			}, 100);
 		} else if (
 			isWebApp &&
 			telegramUser &&
@@ -261,20 +274,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						);
 						console.log("[AuthContext] About to check Telegram navigation");
 
-						// Check for Telegram navigation parameters
-						const hasNavigated = handleTelegramNavigation(navigate);
-						console.log(
-							"[AuthContext] Telegram navigation result:",
-							hasNavigated,
-						);
-
-						if (!hasNavigated) {
-							// Default navigation if no specific parameters
+						// Small delay to ensure routing is ready
+						setTimeout(() => {
+							// Check for Telegram navigation parameters
+							const hasNavigated = handleTelegramNavigation(navigate);
 							console.log(
-								"[AuthContext] No Telegram navigation, going to dashboard",
+								"[AuthContext] Telegram navigation result:",
+								hasNavigated,
 							);
-							navigate("/dashboard");
-						}
+
+							if (!hasNavigated) {
+								// Default navigation if no specific parameters
+								console.log(
+									"[AuthContext] No Telegram navigation, going to dashboard",
+								);
+								navigate("/dashboard");
+							}
+						}, 100);
 					};
 
 					apiService.auth
