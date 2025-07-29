@@ -2,7 +2,16 @@ import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
-import { ArrowLeft, Check, Trash, X } from "@phosphor-icons/react";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@components/ui/select";
+import { CaretDown, CaretUp, Plus, Trash, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifyTelegramWebApp } from "@utils/telegramWebApp";
 import LogRocket from "logrocket";
@@ -18,6 +27,18 @@ export const ExpenseEdit = () => {
 	const [editingItems, setEditingItems] = useState<
 		components["schemas"]["ExpenseItem"][]
 	>([]);
+	const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+	const [showNewItemModal, setShowNewItemModal] = useState(false);
+	const [newItemStep, setNewItemStep] = useState(1);
+	const [newItem, setNewItem] = useState<
+		Partial<components["schemas"]["ExpenseItem"]>
+	>({
+		name: "",
+		amount: 0,
+		emotion: "😐",
+		category: undefined,
+	});
+
 	const {
 		data: expense,
 		isLoading,
@@ -34,12 +55,6 @@ export const ExpenseEdit = () => {
 		},
 		enabled: !!id,
 	});
-
-	// Логируем ошибки/успех через useEffect
-	useEffect(() => {
-		if (expense) LogRocket.log("[ExpenseEdit] useQuery success", expense);
-		if (error) LogRocket.error("[ExpenseEdit] useQuery error", error);
-	}, [expense, error]);
 
 	// Update editing items when expense data changes
 	useEffect(() => {
@@ -61,7 +76,9 @@ export const ExpenseEdit = () => {
 			LogRocket.log("[ExpenseEdit] updateMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			queryClient.invalidateQueries({ queryKey: ["expense", id] });
-			notifyTelegramWebApp("expense_updated");
+			notifyTelegramWebApp("expense_updated", {
+				message: "Expense saved successfully!",
+			});
 			navigate("/expenses");
 		},
 		onError: (error) => {
@@ -70,91 +87,7 @@ export const ExpenseEdit = () => {
 		},
 	});
 
-	const approveMutation = useMutation({
-		mutationFn: () => {
-			LogRocket.log("[ExpenseEdit] approveMutation.mutationFn", { id });
-			if (!id) throw new Error("No expense ID provided");
-			return expensesService.approveExpense(id).then((res) => {
-				LogRocket.log("[ExpenseEdit] approveMutation result", res);
-				return res;
-			});
-		},
-		onSuccess: (data) => {
-			LogRocket.log("[ExpenseEdit] approveMutation success", data);
-			queryClient.invalidateQueries({ queryKey: ["expenses"] });
-			queryClient.invalidateQueries({ queryKey: ["expense", id] });
-			notifyTelegramWebApp("expense_updated", { message: "Expense approved!" });
-			navigate("/expenses");
-		},
-		onError: (error) => {
-			LogRocket.error("[ExpenseEdit] approveMutation error", error);
-			console.error("Failed to approve expense:", error);
-		},
-	});
-
-	const cancelMutation = useMutation({
-		mutationFn: () => {
-			LogRocket.log("[ExpenseEdit] cancelMutation.mutationFn", { id });
-			if (!id) throw new Error("No expense ID provided");
-			return expensesService.cancelExpense(id).then((res) => {
-				LogRocket.log("[ExpenseEdit] cancelMutation result", res);
-				return res;
-			});
-		},
-		onSuccess: (data) => {
-			LogRocket.log("[ExpenseEdit] cancelMutation success", data);
-			queryClient.invalidateQueries({ queryKey: ["expenses"] });
-			notifyTelegramWebApp("expense_deleted", {
-				message: "Expense cancelled!",
-			});
-			navigate("/expenses");
-		},
-		onError: (error) => {
-			LogRocket.error("[ExpenseEdit] cancelMutation error", error);
-			console.error("Failed to cancel expense:", error);
-		},
-	});
-
-	const deleteMutation = useMutation({
-		mutationFn: () => {
-			LogRocket.log("[ExpenseEdit] deleteMutation.mutationFn", { id });
-			if (!id) throw new Error("No expense ID provided");
-			return expensesService.deleteExpense(id).then((res) => {
-				LogRocket.log("[ExpenseEdit] deleteMutation result", res);
-				return res;
-			});
-		},
-		onSuccess: (data) => {
-			LogRocket.log("[ExpenseEdit] deleteMutation success", data);
-			queryClient.invalidateQueries({ queryKey: ["expenses"] });
-			notifyTelegramWebApp("expense_deleted");
-			navigate("/expenses");
-		},
-		onError: (error) => {
-			LogRocket.error("[ExpenseEdit] deleteMutation error", error);
-			console.error("Failed to delete expense:", error);
-		},
-	});
-
-	const handleApprove = () => {
-		if (window.confirm(t("expenses.confirmApprove"))) {
-			approveMutation.mutate();
-		}
-	};
-
-	const handleCancel = () => {
-		if (window.confirm(t("expenses.confirmCancel"))) {
-			cancelMutation.mutate();
-		}
-	};
-
-	const handleDelete = () => {
-		if (window.confirm(t("expenses.confirmDelete"))) {
-			deleteMutation.mutate();
-		}
-	};
-
-	const handleUpdateItems = () => {
+	const handleSaveChanges = () => {
 		if (!expense) return;
 
 		const updatedExpense: Partial<components["schemas"]["Expense"]> = {
@@ -164,7 +97,7 @@ export const ExpenseEdit = () => {
 		updateMutation.mutate(updatedExpense);
 	};
 
-	const handleBack = () => {
+	const handleCancel = () => {
 		navigate("/expenses");
 	};
 
@@ -183,20 +116,45 @@ export const ExpenseEdit = () => {
 		setEditingItems(newItems);
 	};
 
-	const addItem = () => {
-		setEditingItems([
-			...editingItems,
-			{
-				amount: 0,
-				name: "",
-				emotion: "",
-			},
-		]);
+	const toggleItemExpansion = (index: number) => {
+		const newExpanded = new Set(expandedItems);
+		if (newExpanded.has(index)) {
+			newExpanded.delete(index);
+		} else {
+			newExpanded.add(index);
+		}
+		setExpandedItems(newExpanded);
+	};
+
+	const addNewItem = () => {
+		if (newItem.name && newItem.amount) {
+			setEditingItems([
+				...editingItems,
+				newItem as components["schemas"]["ExpenseItem"],
+			]);
+			setNewItem({ name: "", amount: 0, emotion: "😐", category: undefined });
+			setNewItemStep(1);
+			setShowNewItemModal(false);
+		}
+	};
+
+	const handleNewItemNext = () => {
+		if (newItemStep < 4) {
+			setNewItemStep(newItemStep + 1);
+		} else {
+			addNewItem();
+		}
+	};
+
+	const handleNewItemBack = () => {
+		if (newItemStep > 1) {
+			setNewItemStep(newItemStep - 1);
+		}
 	};
 
 	if (isLoading) {
 		return (
-			<div className="flex min-h-screen items-center justify-center">
+			<div className="flex min-h-screen items-center justify-center bg-background">
 				<div className="text-center">
 					<p className="text-muted-foreground">{t("common.loading")}</p>
 				</div>
@@ -206,10 +164,10 @@ export const ExpenseEdit = () => {
 
 	if (error || !expense) {
 		return (
-			<div className="container mx-auto py-8">
+			<div className="flex min-h-screen items-center justify-center bg-background">
 				<div className="text-center">
-					<p className="text-red-500">{t("expenses.notFound")}</p>
-					<Button onClick={handleBack} className="mt-4">
+					<p className="text-destructive">{t("expenses.notFound")}</p>
+					<Button onClick={() => navigate("/expenses")} className="mt-4">
 						{t("common.goBack")}
 					</Button>
 				</div>
@@ -217,184 +175,380 @@ export const ExpenseEdit = () => {
 		);
 	}
 
-	const isDraft = expense.status === "draft";
 	const totalAmount = editingItems.reduce(
 		(sum, item) => sum + (item.amount ?? 0),
 		0,
 	);
 
 	return (
-		<div className="container mx-auto py-8 max-w-4xl">
-			<div className="flex items-center justify-between mb-6">
-				<div className="flex items-center gap-4">
-					<Button variant="ghost" size="sm" onClick={handleBack}>
-						<ArrowLeft className="h-4 w-4 mr-2" />
-						{t("common.back")}
+		<div className="min-h-screen bg-background flex flex-col">
+			{/* Header */}
+			<header className="sticky top-0 z-10 bg-background border-b">
+				<div className="flex items-center justify-between p-4">
+					<Button variant="ghost" size="sm" onClick={handleCancel}>
+						<X className="h-5 w-5" />
 					</Button>
-					<div>
-						<h1 className="text-3xl font-bold">{t("expenses.editExpense")}</h1>
-						<div className="flex items-center gap-2 mt-1">
-							<span
-								className={`px-2 py-1 text-xs rounded-full ${isDraft ? "bg-yellow-100 text-yellow-800" : "bg-green-100 text-green-800"}`}
-							>
-								{isDraft ? t("expenses.draft") : t("expenses.approved")}
-							</span>
-							<span className="text-sm text-muted-foreground">
-								{t("expenses.total")}: ${totalAmount.toFixed(2)}
-							</span>
-						</div>
-					</div>
+					<h1 className="text-xl font-bold font-heading">Edit Expense</h1>
+					<div className="w-8" />
 				</div>
+			</header>
 
-				<div className="flex items-center gap-2">
-					{isDraft ? (
-						<>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={handleCancel}
-								disabled={cancelMutation.isPending}
-							>
-								<X className="h-4 w-4 mr-2" />
-								{t("expenses.cancel")}
-							</Button>
-							<Button
-								size="sm"
-								onClick={handleApprove}
-								disabled={approveMutation.isPending}
-							>
-								<Check className="h-4 w-4 mr-2" />
-								{t("expenses.approve")}
-							</Button>
-						</>
-					) : (
-						<Button
-							variant="destructive"
-							size="sm"
-							onClick={handleDelete}
-							disabled={deleteMutation.isPending}
-						>
-							<Trash className="h-4 w-4 mr-2" />
-							{t("common.delete")}
-						</Button>
-					)}
-				</div>
-			</div>
-
-			<div className="space-y-6">
-				<Card>
-					<CardHeader>
-						<CardTitle>{t("expenses.expenseDetails")}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="space-y-4">
+			{/* Main Content */}
+			<main className="flex-1 p-4 space-y-6">
+				{/* Total Amount Card */}
+				<Card className="bg-card">
+					<CardContent className="p-4">
+						<div className="flex items-center justify-between">
 							<div>
-								<div className="text-sm font-medium">
-									{t("expenses.description")}
-								</div>
-								<p className="text-sm text-muted-foreground mt-1">
-									{expense.description || t("expenses.noDescription")}
+								<p className="text-sm text-muted-foreground">Total Amount</p>
+								<p className="text-2xl font-bold">${totalAmount.toFixed(2)}</p>
+							</div>
+							<div className="text-right">
+								<p className="text-sm text-muted-foreground">Date</p>
+								<p className="font-medium">
+									{expense.createdAt
+										? new Date(expense.createdAt).toLocaleDateString()
+										: "Today"}
 								</p>
 							</div>
 						</div>
 					</CardContent>
 				</Card>
 
-				<Card>
-					<CardHeader>
-						<div className="flex items-center justify-between">
-							<CardTitle>
-								{t("expenses.items")} ({editingItems.length})
-							</CardTitle>
-							{isDraft && (
-								<Button variant="outline" size="sm" onClick={addItem}>
-									{t("expenses.addItem")}
-								</Button>
-							)}
-						</div>
-					</CardHeader>
-					<CardContent>
-						<div className="space-y-4">
-							{editingItems.map((item, index) => (
-								<div
-									key={item.id || `item-${index}-${item.name}`}
-									className="flex items-center gap-4 p-4 border rounded-lg"
+				{/* Items Section */}
+				<div>
+					<h2 className="text-lg font-bold font-heading mb-4">Items</h2>
+					<div className="space-y-2">
+						{editingItems.map((item, index) => (
+							<Card key={item.id || `item-${index}`} className="bg-card">
+								{/* Collapsed View */}
+								<button
+									type="button"
+									className="flex items-center justify-between p-4 w-full text-left hover:bg-accent/50 transition-colors"
+									onClick={() => toggleItemExpansion(index)}
 								>
-									<div className="flex-1">
-										<input
-											type="text"
-											value={item.name}
-											onChange={(e) =>
-												updateItem(index, "name", e.target.value)
-											}
-											placeholder={t("expenses.itemName")}
-											className="w-full p-2 border rounded"
-											disabled={!isDraft}
-										/>
+									<div>
+										<p className="font-medium">{item.name || "Unnamed Item"}</p>
+										<p className="text-sm text-muted-foreground">
+											{item.category?.name || "Uncategorized"}
+										</p>
 									</div>
-									<div className="w-32">
-										<input
-											type="number"
-											step="0.01"
-											value={item.amount}
-											onChange={(e) =>
-												updateItem(
-													index,
-													"amount",
-													Number.parseFloat(e.target.value) || 0,
-												)
-											}
-											placeholder="0.00"
-											className="w-full p-2 border rounded"
-											disabled={!isDraft}
-										/>
-									</div>
-									<div className="w-20">
-										<input
-											type="text"
-											value={item.emotion || ""}
-											onChange={(e) =>
-												updateItem(index, "emotion", e.target.value)
-											}
-											placeholder="😊"
-											className="w-full p-2 border rounded text-center"
-											disabled={!isDraft}
-										/>
-									</div>
-									{item.category && (
-										<div className="text-sm text-muted-foreground">
-											{item.category.name}
+									<div className="flex items-center gap-2">
+										<div className="text-right">
+											<p className="font-bold">
+												${(item.amount || 0).toFixed(2)}
+											</p>
 										</div>
-									)}
-									{isDraft && (
-										<Button
-											variant="ghost"
-											size="sm"
-											onClick={() => removeItem(index)}
-										>
-											<X className="h-4 w-4" />
-										</Button>
-									)}
-								</div>
-							))}
-						</div>
+										{expandedItems.has(index) ? (
+											<CaretUp className="h-5 w-5 text-muted-foreground" />
+										) : (
+											<CaretDown className="h-5 w-5 text-muted-foreground" />
+										)}
+									</div>
+								</button>
 
-						{isDraft && editingItems.length > 0 && (
-							<div className="mt-6 pt-4 border-t">
+								{/* Expanded View */}
+								{expandedItems.has(index) && (
+									<div className="p-4 border-t space-y-4">
+										<div className="flex items-center justify-between">
+											<p className="font-bold text-lg">Edit Item</p>
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={(e) => {
+													e.stopPropagation();
+													removeItem(index);
+												}}
+												className="text-destructive hover:text-destructive"
+											>
+												<Trash className="h-4 w-4" />
+											</Button>
+										</div>
+
+										<div className="space-y-4">
+											<div>
+												<Label htmlFor={`item-description-${index}`}>
+													Description
+												</Label>
+												<Input
+													id={`item-description-${index}`}
+													value={item.name || ""}
+													onChange={(e) =>
+														updateItem(index, "name", e.target.value)
+													}
+													placeholder="e.g., Coffee with friend"
+													className="bg-muted border-none"
+												/>
+												<div className="text-xs text-muted-foreground mt-1 space-x-1">
+													<span>Suggestions:</span>
+													<button
+														type="button"
+														className="bg-accent px-2 py-0.5 rounded-full text-xs hover:bg-accent/80"
+													>
+														{item.category?.name || "Food"}
+													</button>
+													<button
+														type="button"
+														className="bg-accent px-2 py-0.5 rounded-full text-xs hover:bg-accent/80"
+													>
+														Coffee
+													</button>
+												</div>
+											</div>
+
+											<div className="grid grid-cols-2 gap-4">
+												<div>
+													<Label htmlFor={`item-amount-${index}`}>Amount</Label>
+													<div className="relative">
+														<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+															$
+														</span>
+														<Input
+															id={`item-amount-${index}`}
+															type="number"
+															step="0.01"
+															value={item.amount || 0}
+															onChange={(e) =>
+																updateItem(
+																	index,
+																	"amount",
+																	Number.parseFloat(e.target.value) || 0,
+																)
+															}
+															placeholder="0.00"
+															className="pl-7 bg-muted border-none"
+														/>
+													</div>
+												</div>
+												<div>
+													<Label htmlFor={`item-date-${index}`}>Date</Label>
+													<Input
+														id={`item-date-${index}`}
+														type="date"
+														defaultValue={
+															new Date().toISOString().split("T")[0]
+														}
+														className="bg-muted border-none"
+													/>
+												</div>
+											</div>
+
+											<div>
+												<Label htmlFor={`item-category-${index}`}>
+													Category
+												</Label>
+												<Select
+													defaultValue={item.category?.name || "Groceries"}
+												>
+													<SelectTrigger className="bg-muted border-none">
+														<SelectValue placeholder="Select category" />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="Groceries">Groceries</SelectItem>
+														<SelectItem value="Food">Food</SelectItem>
+														<SelectItem value="Transport">Transport</SelectItem>
+														<SelectItem value="Entertainment">
+															Entertainment
+														</SelectItem>
+													</SelectContent>
+												</Select>
+												<div className="text-xs text-muted-foreground mt-1">
+													Most frequent: Food, Groceries
+												</div>
+											</div>
+
+											<div className="grid grid-cols-2 gap-4">
+												<div>
+													<Label htmlFor={`item-feeling-${index}`}>
+														Emotional Feeling
+													</Label>
+													<Select defaultValue={item.emotion || "😐"}>
+														<SelectTrigger className="bg-muted border-none">
+															<SelectValue placeholder="Select feeling" />
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="😀">😀 Happy</SelectItem>
+															<SelectItem value="😐">😐 Neutral</SelectItem>
+															<SelectItem value="😔">😔 Sad</SelectItem>
+															<SelectItem value="😌">😌 Satisfied</SelectItem>
+														</SelectContent>
+													</Select>
+												</div>
+												<div>
+													<Label htmlFor={`tags-${index}`}>Tags</Label>
+													<Input
+														id={`tags-${index}`}
+														placeholder="e.g., organic, lactose-free"
+														className="bg-muted border-none"
+													/>
+												</div>
+											</div>
+										</div>
+									</div>
+								)}
+							</Card>
+						))}
+					</div>
+
+					{/* Add New Item Button */}
+					<Button
+						variant="outline"
+						className="w-full mt-4 border-dashed"
+						onClick={() => setShowNewItemModal(true)}
+					>
+						<Plus className="h-4 w-4 mr-2" />
+						Add New Item
+					</Button>
+				</div>
+			</main>
+
+			{/* Footer */}
+			<footer className="sticky bottom-0 bg-background p-4 border-t">
+				<div className="grid grid-cols-2 gap-4">
+					<Button variant="outline" onClick={handleCancel}>
+						Cancel
+					</Button>
+					<Button
+						onClick={handleSaveChanges}
+						disabled={updateMutation.isPending}
+					>
+						{updateMutation.isPending ? "Saving..." : "Save Changes"}
+					</Button>
+				</div>
+			</footer>
+
+			{/* New Item Modal */}
+			{showNewItemModal && (
+				<div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4">
+					<Card className="w-full max-w-md">
+						<CardHeader>
+							<div className="flex justify-between items-center">
+								<CardTitle>Add New Item</CardTitle>
 								<Button
-									onClick={handleUpdateItems}
-									disabled={updateMutation.isPending}
-									className="w-full"
+									variant="ghost"
+									size="sm"
+									onClick={() => setShowNewItemModal(false)}
 								>
-									{updateMutation.isPending
-										? t("common.saving")
-										: t("expenses.updateItems")}
+									<X className="h-4 w-4" />
 								</Button>
 							</div>
-						)}
-					</CardContent>
-				</Card>
-			</div>
+							<div className="space-y-2">
+								<div className="flex justify-between text-sm text-muted-foreground">
+									<span>Step {newItemStep} of 4</span>
+								</div>
+								<div className="w-full bg-muted rounded-full h-2">
+									<div
+										className="bg-primary h-2 rounded-full transition-all duration-300"
+										style={{ width: `${(newItemStep / 4) * 100}%` }}
+									/>
+								</div>
+							</div>
+						</CardHeader>
+						<CardContent className="space-y-4">
+							{newItemStep === 1 && (
+								<div>
+									<Label htmlFor="new-item-description">Description</Label>
+									<Input
+										id="new-item-description"
+										value={newItem.name || ""}
+										onChange={(e) =>
+											setNewItem({ ...newItem, name: e.target.value })
+										}
+										placeholder="e.g., Coffee with friend"
+										className="bg-muted border-none"
+									/>
+								</div>
+							)}
+
+							{newItemStep === 2 && (
+								<div>
+									<Label htmlFor="new-item-amount">Amount</Label>
+									<div className="relative">
+										<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+											$
+										</span>
+										<Input
+											id="new-item-amount"
+											type="number"
+											step="0.01"
+											value={newItem.amount || 0}
+											onChange={(e) =>
+												setNewItem({
+													...newItem,
+													amount: Number.parseFloat(e.target.value) || 0,
+												})
+											}
+											placeholder="0.00"
+											className="pl-7 bg-muted border-none"
+										/>
+									</div>
+								</div>
+							)}
+
+							{newItemStep === 3 && (
+								<div>
+									<Label htmlFor="new-item-category">Category</Label>
+									<Select
+										onValueChange={(value) =>
+											setNewItem({
+												...newItem,
+												category: {
+													name: value,
+												} as components["schemas"]["Category"],
+											})
+										}
+									>
+										<SelectTrigger className="bg-muted border-none">
+											<SelectValue placeholder="Select category" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="Food">Food</SelectItem>
+											<SelectItem value="Groceries">Groceries</SelectItem>
+											<SelectItem value="Transport">Transport</SelectItem>
+											<SelectItem value="Entertainment">
+												Entertainment
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							)}
+
+							{newItemStep === 4 && (
+								<div>
+									<Label htmlFor="new-item-feeling">Emotional Feeling</Label>
+									<Select
+										onValueChange={(value) =>
+											setNewItem({ ...newItem, emotion: value })
+										}
+									>
+										<SelectTrigger className="bg-muted border-none">
+											<SelectValue placeholder="Select feeling" />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="😀">😀 Happy</SelectItem>
+											<SelectItem value="😐">😐 Neutral</SelectItem>
+											<SelectItem value="😔">😔 Sad</SelectItem>
+											<SelectItem value="😌">😌 Satisfied</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							)}
+						</CardContent>
+						<div className="flex justify-between items-center p-6 border-t">
+							<Button
+								variant="outline"
+								onClick={handleNewItemBack}
+								disabled={newItemStep === 1}
+							>
+								Back
+							</Button>
+							<Button onClick={handleNewItemNext}>
+								{newItemStep < 4 ? "Next" : "Finish"}
+							</Button>
+						</div>
+					</Card>
+				</div>
+			)}
 		</div>
 	);
 };

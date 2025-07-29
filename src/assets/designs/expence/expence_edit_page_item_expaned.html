@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Edit Expense</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        :root {
+            --primary-color: #bed7ee;
+            --background-color: #f8fafc;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --accent-color: #e2e8f0;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+        }
+        .input {
+            @apply shadow-sm focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] block w-full sm:text-sm border-gray-300 rounded-xl bg-[var(--accent-color)] border-none placeholder:text-[var(--text-secondary)];
+        }
+        .button_primary {
+            @apply w-full inline-flex justify-center rounded-full shadow-sm px-4 py-3 bg-[var(--primary-color)] text-base font-bold text-[var(--text-primary)] hover:bg-[#a9c8e6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-color)] sm:text-sm;
+        }
+        .button_secondary {
+            @apply w-full inline-flex justify-center rounded-full shadow-sm px-4 py-3 bg-white text-[var(--text-primary)] text-base font-bold hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-color)] sm:text-sm border border-gray-300;
+        }
+        .label {
+            @apply block text-sm font-medium text-[var(--text-secondary)] mb-1;
+        }
+        .switch {
+            @apply relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--primary-color)] focus:ring-offset-2;
+        }
+        .switch-true {
+            @apply bg-[var(--primary-color)];
+        }
+        .switch-false {
+            @apply bg-gray-200;
+        }
+        .switch-handle {
+            @apply pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out;
+        }
+        .switch-handle-true {
+            @apply translate-x-5;
+        }
+        .switch-handle-false {
+            @apply translate-x-0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[var(--background-color)] text-[var(--text-primary)]">
+<div class="relative flex size-full min-h-screen flex-col overflow-y-auto">
+<header class="sticky top-0 z-10 bg-[var(--background-color)] shadow-sm">
+<div class="flex items-center justify-between p-4">
+<button class="text-[var(--text-primary)]">
+<span class="material-icons">close</span>
+</button>
+<h1 class="flex-1 text-center text-xl font-bold">Edit Expense</h1>
+<div class="w-8"></div>
+</div>
+</header>
+<main class="flex-1 p-4">
+<div class="space-y-6">
+<div class="rounded-xl bg-white p-4 shadow-sm">
+<div class="flex items-center justify-between">
+<div>
+<p class="text-sm text-[var(--text-secondary)]">Total Amount</p>
+<p class="text-2xl font-bold">$11.50</p>
+</div>
+<div>
+<p class="text-sm text-[var(--text-secondary)] text-right">Date</p>
+<p class="font-medium">Apr 23, 2024</p>
+</div>
+</div>
+</div>
+<div>
+<h2 class="text-lg font-bold text-[var(--text-primary)] mb-4">Items</h2>
+<div class="space-y-4">
+<div class="rounded-xl bg-white p-4 shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<p class="font-bold text-lg">Edit Item</p>
+<button class="text-[var(--error)] hover:text-red-700">
+<span class="material-icons text-xl">delete</span>
+</button>
+</div>
+<div>
+<label class="label" for="item-description-1">Description</label>
+<input class="input" id="item-description-1" placeholder="e.g., Coffee with friend" type="text" value="Milk"/>
+<div class="text-xs text-[var(--text-secondary)] mt-1 space-x-1">
+<span>Suggestions:</span>
+<button class="bg-[var(--accent-color)] px-2 py-0.5 rounded-full">Milk</button>
+<button class="bg-[var(--accent-color)] px-2 py-0.5 rounded-full">Almond Milk</button>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="label" for="item-amount-1">Amount</label>
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--text-secondary)]">$</span>
+<input class="input pl-7" id="item-amount-1" placeholder="0.00" type="number" value="2.50"/>
+</div>
+</div>
+<div>
+<label class="label" for="item-date-1">Date</label>
+<input class="input" id="item-date-1" type="date" value="2024-04-23"/>
+</div>
+</div>
+<div>
+<label class="label" for="item-category-1">Category</label>
+<select class="input" id="item-category-1">
+<option selected="">Groceries</option>
+<option>Food</option>
+<option>Coffee</option>
+</select>
+<div class="text-xs text-[var(--text-secondary)] mt-1">Most frequent: Food, Groceries</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="label" for="item-feeling-1">Emotional Feeling</label>
+<select class="input" id="item-feeling-1">
+<option>😀 Happy</option>
+<option>😐 Neutral</option>
+<option>😔 Sad</option>
+<option selected="">😌 Satisfied</option>
+</select>
+</div>
+<div>
+<label class="label" for="tags-1">Tags</label>
+<input class="input" id="tags-1" placeholder="e.g., organic, lactose-free" type="text" value="dairy"/>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between">
+<label class="label" for="recurring-1">Recurring</label>
+<button aria-checked="false" class="switch switch-false" id="recurring-1" role="switch" type="button">
+<span class="switch-handle switch-handle-false"></span>
+</button>
+</div>
+</div>
+</div>
+<div class="rounded-xl bg-white p-4 shadow-sm space-y-4">
+<div class="flex items-center justify-between">
+<p class="font-bold text-lg">Edit Item</p>
+<button class="text-[var(--error)] hover:text-red-700">
+<span class="material-icons text-xl">delete</span>
+</button>
+</div>
+<div>
+<label class="label" for="item-description-2">Description</label>
+<input class="input" id="item-description-2" placeholder="e.g., Sourdough bread" type="text" value="Bread"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="label" for="item-amount-2">Amount</label>
+<div class="relative">
+<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--text-secondary)]">$</span>
+<input class="input pl-7" id="item-amount-2" placeholder="0.00" type="number" value="3.00"/>
+</div>
+</div>
+<div>
+<label class="label" for="item-date-2">Date</label>
+<input class="input" id="item-date-2" type="date" value="2024-04-23"/>
+</div>
+</div>
+<div>
+<label class="label" for="item-category-2">Category</label>
+<select class="input" id="item-category-2">
+<option selected="">Groceries</option>
+<option>Food</option>
+<option>Bakery</option>
+</select>
+<div class="text-xs text-[var(--text-secondary)] mt-1">Most frequent: Food, Groceries</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="label" for="item-feeling-2">Emotional Feeling</label>
+<select class="input" id="item-feeling-2">
+<option>😀 Happy</option>
+<option selected="">😐 Neutral</option>
+<option>😔 Sad</option>
+</select>
+</div>
+<div>
+<label class="label" for="tags-2">Tags</label>
+<input class="input" id="tags-2" placeholder="e.g., breakfast" type="text" value="bakery, carbs"/>
+</div>
+</div>
+<div>
+<div class="flex items-center justify-between">
+<label class="label" for="recurring-2">Recurring</label>
+<button aria-checked="true" class="switch switch-true" id="recurring-2" role="switch" type="button">
+<span class="switch-handle switch-handle-true"></span>
+</button>
+</div>
+<div class="mt-4 space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="label" for="recurrence-frequency-2">Frequency</label>
+<select class="input" id="recurrence-frequency-2">
+<option>Daily</option>
+<option selected="">Weekly</option>
+<option>Monthly</option>
+</select>
+</div>
+<div>
+<label class="label" for="recurrence-end-date-2">End Date (Optional)</label>
+<input class="input" id="recurrence-end-date-2" type="date" value="2024-12-31"/>
+</div>
+</div>
+<p class="text-xs text-[var(--text-secondary)] text-center">Recurring until Dec 31, 2024</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full inline-flex justify-center items-center gap-2 rounded-full shadow-sm px-4 py-3 bg-white text-[var(--text-primary)] text-base font-bold hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--primary-color)] sm:text-sm border border-dashed border-gray-400">
+<span class="material-icons">add</span>
+                Add New Item
+            </button>
+</div>
+</main>
+<footer class="sticky bottom-0 bg-[var(--background-color)] p-4 shadow-[0_-2px_4px_rgba(0,0,0,0.05)]">
+<div class="grid grid-cols-2 gap-4">
+<button class="button_secondary">Cancel</button>
+<button class="button_primary">Save Changes</button>
+</div>
+</footer>
+<div class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 bg-[var(--text-primary)] text-white px-4 py-2 rounded-full text-sm shadow-lg" id="toast">
+        Item saved
+    </div>
+</div>
+
+</body></html>
