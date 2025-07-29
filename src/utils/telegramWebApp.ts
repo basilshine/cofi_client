@@ -13,11 +13,20 @@ interface ParsedStartParam {
 export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
 		const tgWebApp = window.Telegram.WebApp;
+		
+		// Check for start parameter in multiple places
+		let startParam = (tgWebApp.initDataUnsafe as Record<string, unknown>)?.start_param as string;
+		
+		// Also check for startapp parameter (used in WebApp URLs)
+		if (!startParam) {
+			const urlParams = new URLSearchParams(window.location.search);
+			startParam = urlParams.get('startapp') || '';
+		}
+		
 		return {
 			initData: tgWebApp.initData || "",
 			initDataUnsafe: tgWebApp.initDataUnsafe || {},
-			startParam: (tgWebApp.initDataUnsafe as Record<string, unknown>)
-				?.start_param as string,
+			startParam: startParam,
 		};
 	}
 	return null;
@@ -73,29 +82,38 @@ export const handleTelegramNavigation = (
 ): boolean => {
 	const webAppData = getTelegramWebAppData();
 
+	console.log("[TelegramNavigation] WebApp data:", webAppData);
+	console.log("[TelegramNavigation] Start param:", webAppData?.startParam);
+
 	if (!webAppData?.startParam) {
+		console.log("[TelegramNavigation] No start param found");
 		return false;
 	}
 
 	const parsed = parseStartParam(webAppData.startParam);
+	console.log("[TelegramNavigation] Parsed start param:", parsed);
 
 	if (!parsed) {
+		console.log("[TelegramNavigation] Failed to parse start param");
 		return false;
 	}
 
 	switch (parsed.action) {
 		case "edit_expense":
 			if (parsed.expenseId) {
+				console.log("[TelegramNavigation] Navigating to expense edit:", parsed.expenseId);
 				navigate(`/expenses/${parsed.expenseId}/edit`);
 				return true;
 			}
 			break;
 
 		case "view_analytics":
+			console.log("[TelegramNavigation] Navigating to analytics");
 			navigate("/dashboard/analytics");
 			return true;
 
 		case "add_expense":
+			console.log("[TelegramNavigation] Navigating to add expense");
 			navigate("/expenses");
 			// If we have pre-filled data, we could store it in sessionStorage
 			// and have the AddExpenseForm component read it
@@ -108,6 +126,7 @@ export const handleTelegramNavigation = (
 			return true;
 	}
 
+	console.log("[TelegramNavigation] No matching action found");
 	return false;
 };
 

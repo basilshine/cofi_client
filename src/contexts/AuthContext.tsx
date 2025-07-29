@@ -192,7 +192,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				"[AuthContext] User already authenticated in WebApp, setting isLoading: false and navigating",
 			);
 			setState((prev) => ({ ...prev, isLoading: false }));
-			navigate("/dashboard");
+			
+			// Check for Telegram navigation parameters first
+			console.log("[AuthContext] Already authenticated, checking Telegram navigation");
+			const hasNavigated = handleTelegramNavigation(navigate);
+			console.log("[AuthContext] Already authenticated navigation result:", hasNavigated);
+			
+			if (!hasNavigated) {
+				// Default navigation if no specific parameters
+				console.log("[AuthContext] Already authenticated, no Telegram navigation, going to dashboard");
+				navigate("/dashboard");
+			}
 		} else if (
 			isWebApp &&
 			telegramUser &&
@@ -237,6 +247,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						isLoading: true,
 						error: null,
 					}));
+					// Handle navigation after user data is loaded
+					const handleNavigationAfterLogin = () => {
+						LogRocket.log(
+							"[AuthContext] Telegram login success, checking for navigation parameters",
+						);
+						console.log("[AuthContext] About to check Telegram navigation");
+
+						// Check for Telegram navigation parameters
+						const hasNavigated = handleTelegramNavigation(navigate);
+						console.log("[AuthContext] Telegram navigation result:", hasNavigated);
+						
+						if (!hasNavigated) {
+							// Default navigation if no specific parameters
+							console.log("[AuthContext] No Telegram navigation, going to dashboard");
+							navigate("/dashboard");
+						}
+					};
+
 					apiService.auth
 						.me()
 						.then((response) => {
@@ -245,6 +273,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 								user: response.data,
 								isLoading: false,
 							}));
+							// Navigate after user data is fully loaded
+							handleNavigationAfterLogin();
 						})
 						.catch((error) => {
 							console.error(
@@ -259,17 +289,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 								error:
 									"Failed to refresh user data, but you're still logged in.",
 							}));
+							// Still navigate even if user data fetch failed
+							handleNavigationAfterLogin();
 						});
-					LogRocket.log(
-						"[AuthContext] Telegram login success, checking for navigation parameters",
-					);
-
-					// Check for Telegram navigation parameters
-					const hasNavigated = handleTelegramNavigation(navigate);
-					if (!hasNavigated) {
-						// Default navigation if no specific parameters
-						navigate("/dashboard");
-					}
 				})
 				.catch((error) => {
 					LogRocket.captureException(error);
