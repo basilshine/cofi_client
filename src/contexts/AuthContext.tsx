@@ -425,24 +425,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		setState((prev) => ({ ...prev, isLoading: true, error: null }));
 		try {
 			// Validate required fields from Telegram widget
-			if (!tgUser.id || !tgUser.username || !tgUser.hash) {
-				throw new Error("Missing required Telegram authentication data");
+			if (!tgUser.id) {
+				throw new Error("Missing Telegram user ID");
+			}
+			if (!tgUser.username) {
+				throw new Error("Missing Telegram username");
+			}
+			if (!tgUser.hash) {
+				throw new Error("Missing Telegram authentication hash");
 			}
 
-			// Map Telegram widget data to our API format (using camelCase for TypeScript)
+			console.log("Telegram widget data received:", {
+				id: tgUser.id,
+				username: tgUser.username,
+				first_name: tgUser.first_name,
+				hash: tgUser.hash ? "present" : "missing",
+				auth_date: tgUser.auth_date,
+			});
+
+			// Map Telegram widget data to backend API format (snake_case)
+			// Note: TypeScript types use camelCase but backend expects snake_case
 			const loginData = {
-				telegramId: tgUser.id, // Telegram widget uses 'id', not 'telegramId'
+				telegram_id: tgUser.id, // Required: Telegram widget uses 'id'
 				username: tgUser.username, // Required field
-				firstName: tgUser.first_name || "",
-				lastName: tgUser.last_name || "",
-				photoUrl: tgUser.photo_url || "",
-				authDate: tgUser.auth_date || Math.floor(Date.now() / 1000),
+				first_name: tgUser.first_name || "",
+				last_name: tgUser.last_name || "",
+				photo_url: tgUser.photo_url || "",
+				auth_date: tgUser.auth_date || Math.floor(Date.now() / 1000),
 				hash: tgUser.hash, // Required field from Telegram widget
 				language: "en", // Default language, could be detected from browser
 				country: "", // Not provided by widget
-			};
+				// biome-ignore lint/suspicious/noExplicitAny: Backend expects snake_case but TypeScript types are camelCase
+			} as any;
 
 			console.log("Sending Telegram login data:", loginData);
+			console.log("Expected backend format:", {
+				telegram_id: "number (required)",
+				username: "string (required)",
+				hash: "string (required)",
+				first_name: "string (optional)",
+				last_name: "string (optional)",
+				photo_url: "string (optional)",
+				auth_date: "number (optional)",
+				language: "string (optional)",
+				country: "string (optional)",
+			});
+
 			const response = await apiService.auth.telegramLoginWidget(loginData);
 			const { token, user } = response.data;
 			localStorage.setItem("token", token ?? "");
