@@ -26,10 +26,22 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 
 		// Debug logging
 		console.log("[getTelegramWebAppData] Current URL:", window.location.href);
-		console.log("[getTelegramWebAppData] URL search params:", window.location.search);
-		console.log("[getTelegramWebAppData] initDataUnsafe:", tgWebApp.initDataUnsafe);
-		console.log("[getTelegramWebAppData] start_param from initDataUnsafe:", (tgWebApp.initDataUnsafe as Record<string, unknown>)?.start_param);
-		console.log("[getTelegramWebAppData] startapp from URL:", new URLSearchParams(window.location.search).get('startapp'));
+		console.log(
+			"[getTelegramWebAppData] URL search params:",
+			window.location.search,
+		);
+		console.log(
+			"[getTelegramWebAppData] initDataUnsafe:",
+			tgWebApp.initDataUnsafe,
+		);
+		console.log(
+			"[getTelegramWebAppData] start_param from initDataUnsafe:",
+			(tgWebApp.initDataUnsafe as Record<string, unknown>)?.start_param,
+		);
+		console.log(
+			"[getTelegramWebAppData] startapp from URL:",
+			new URLSearchParams(window.location.search).get("startapp"),
+		);
 		console.log("[getTelegramWebAppData] Final startParam:", startParam);
 
 		return {

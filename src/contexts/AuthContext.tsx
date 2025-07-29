@@ -135,10 +135,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		} else {
 			// No token - for WebApp, keep loading to allow Telegram auto-login
 			if (isWebApp && !hasAttemptedTelegramLogin.current) {
-				console.log("[AuthContext] No token but WebApp detected, keeping loading state for auto-login");
+				console.log(
+					"[AuthContext] No token but WebApp detected, keeping loading state for auto-login",
+				);
 				setState((prev) => ({ ...prev, isLoading: true }));
 			} else {
-				console.log("[AuthContext] No token and not WebApp (or already attempted), setting loading false");
+				console.log(
+					"[AuthContext] No token and not WebApp (or already attempted), setting loading false",
+				);
 				setState((prev) => ({ ...prev, isLoading: false }));
 			}
 		}
@@ -206,7 +210,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			console.log(
 				"[AuthContext] Already authenticated, checking Telegram navigation",
 			);
-			
+
 			// Small delay to ensure routing is ready
 			setTimeout(() => {
 				const hasNavigated = handleTelegramNavigation(navigate);

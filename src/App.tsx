@@ -8,8 +8,8 @@ import { ForgotPassword } from "@pages/auth/ForgotPassword";
 import { Login } from "@pages/auth/Login";
 import { Register } from "@pages/auth/Register";
 import { ResetPassword } from "@pages/auth/ResetPassword";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { isTelegramWebApp } from "@utils/isTelegramWebApp";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./layouts/Layout";
 import { Home } from "./pages/Home";
 import { Promo } from "./pages/Promo";
@@ -17,7 +17,7 @@ import { QueryProvider } from "./providers/QueryProvider";
 import "./i18n/config";
 
 function AppContent() {
-	const { isAuthenticated, isLoading, isWebApp } = useAuth();
+	const { isAuthenticated, isLoading } = useAuth();
 	const isWebAppUser = isTelegramWebApp();
 
 	if (isLoading) {
@@ -36,23 +36,19 @@ function AppContent() {
 		if (isWebAppUser) {
 			// For WebApp users, redirect to dashboard where they'll be auto-logged in
 			return <Navigate to="/dashboard" replace />;
-		} else {
-			// For regular web users, redirect to promo page
-			return <Navigate to="/" replace />;
 		}
+		// For regular web users, redirect to promo page
+		return <Navigate to="/" replace />;
 	};
 
 	return (
 		<Routes>
 			{/* Public routes - only for non-WebApp users */}
 			{!isWebAppUser && <Route path="/" element={<Promo />} />}
-			
+
 			{/* For WebApp users, redirect root to dashboard */}
 			{isWebAppUser && (
-				<Route 
-					path="/" 
-					element={<Navigate to="/dashboard" replace />} 
-				/>
+				<Route path="/" element={<Navigate to="/dashboard" replace />} />
 			)}
 
 			{/* Auth routes - only for non-WebApp users */}
@@ -61,7 +57,11 @@ function AppContent() {
 					<Route
 						path="login"
 						element={
-							!isAuthenticated ? <Login /> : <Navigate to="/dashboard" replace />
+							!isAuthenticated ? (
+								<Login />
+							) : (
+								<Navigate to="/dashboard" replace />
+							)
 						}
 					/>
 					<Route
@@ -141,17 +141,17 @@ function AppContent() {
 					)
 				}
 			/>
-			
+
 			{/* Catch-all route */}
-			<Route 
-				path="*" 
+			<Route
+				path="*"
 				element={
 					isWebAppUser ? (
 						<Navigate to="/dashboard" replace />
 					) : (
 						<Navigate to="/" replace />
 					)
-				} 
+				}
 			/>
 		</Routes>
 	);
