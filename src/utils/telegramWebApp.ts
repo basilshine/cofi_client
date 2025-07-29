@@ -126,35 +126,78 @@ export const notifyTelegramWebApp = (
 	data?: Record<string, unknown>,
 ) => {
 	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
-		const webApp = window.Telegram.WebApp as Record<string, unknown>;
+		// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete, need to access showAlert method
+		const webApp = window.Telegram.WebApp as any;
 		switch (event) {
 			case "expense_created":
-				if (typeof webApp.showAlert === "function") {
-					(webApp.showAlert as (message: string) => void)(
-						"Expense created successfully!",
-					);
+				if (webApp.showAlert) {
+					webApp.showAlert("Expense created successfully!");
 				}
 				break;
 			case "expense_updated":
-				if (typeof webApp.showAlert === "function") {
-					(webApp.showAlert as (message: string) => void)(
-						"Expense updated successfully!",
+				if (webApp.showAlert) {
+					webApp.showAlert(
+						(data?.message as string) || "Expense updated successfully!",
 					);
 				}
 				break;
 			case "expense_deleted":
-				if (typeof webApp.showAlert === "function") {
-					(webApp.showAlert as (message: string) => void)(
-						"Expense deleted successfully!",
-					);
+				if (webApp.showAlert) {
+					webApp.showAlert("Expense deleted successfully!");
 				}
 				break;
 			default:
-				if (data?.message && typeof webApp.showAlert === "function") {
-					(webApp.showAlert as (message: string) => void)(
-						data.message as string,
-					);
+				if (data?.message && webApp.showAlert) {
+					webApp.showAlert(data.message as string);
 				}
+		}
+	}
+};
+
+// Close the Telegram WebApp
+export const closeTelegramWebApp = () => {
+	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+		// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete, need to access close method
+		const webApp = window.Telegram.WebApp as any;
+		if (webApp.close) {
+			webApp.close();
+		}
+	}
+};
+
+// Show expense saved notification and close WebApp
+export const notifyExpenseSavedAndClose = (expenseData: {
+	totalAmount: number;
+	itemsCount: number;
+	status: string;
+}) => {
+	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+		// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete, need to access showAlert/close methods
+		const webApp = window.Telegram.WebApp as any;
+		const message = `✅ Expense saved successfully!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
+
+		if (webApp.showAlert) {
+			webApp.showAlert(message, () => {
+				// Close the WebApp after user acknowledges the message
+				if (webApp.close) {
+					webApp.close();
+				}
+			});
+		}
+	}
+};
+
+// Show cancellation message and close WebApp
+export const notifyCancelAndClose = () => {
+	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+		// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete, need to access showAlert/close methods
+		const webApp = window.Telegram.WebApp as any;
+		if (webApp.showAlert) {
+			webApp.showAlert("❌ Changes cancelled", () => {
+				if (webApp.close) {
+					webApp.close();
+				}
+			});
 		}
 	}
 };

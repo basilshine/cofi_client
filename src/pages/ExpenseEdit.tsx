@@ -13,7 +13,11 @@ import {
 } from "@components/ui/select";
 import { CaretDown, CaretUp, Plus, Trash, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { notifyTelegramWebApp } from "@utils/telegramWebApp";
+import { isTelegramWebApp } from "@utils/isTelegramWebApp";
+import {
+	notifyCancelAndClose,
+	notifyExpenseSavedAndClose,
+} from "@utils/telegramWebApp";
 import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -76,10 +80,22 @@ export const ExpenseEdit = () => {
 			LogRocket.log("[ExpenseEdit] updateMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			queryClient.invalidateQueries({ queryKey: ["expense", id] });
-			notifyTelegramWebApp("expense_updated", {
-				message: "Expense saved successfully!",
-			});
-			navigate("/expenses");
+
+			// If in Telegram WebApp, show success message and close
+			if (isTelegramWebApp()) {
+				const totalAmount = editingItems.reduce(
+					(sum, item) => sum + (item.amount ?? 0),
+					0,
+				);
+				notifyExpenseSavedAndClose({
+					totalAmount,
+					itemsCount: editingItems.length,
+					status: "saved",
+				});
+			} else {
+				// Regular web navigation
+				navigate("/expenses");
+			}
 		},
 		onError: (error) => {
 			LogRocket.error("[ExpenseEdit] updateMutation error", error);
@@ -98,7 +114,13 @@ export const ExpenseEdit = () => {
 	};
 
 	const handleCancel = () => {
-		navigate("/expenses");
+		// If in Telegram WebApp, show cancel message and close
+		if (isTelegramWebApp()) {
+			notifyCancelAndClose();
+		} else {
+			// Regular web navigation
+			navigate("/expenses");
+		}
 	};
 
 	const updateItem = (
