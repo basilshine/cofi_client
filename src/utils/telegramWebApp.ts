@@ -13,16 +13,17 @@ interface ParsedStartParam {
 export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
 		const tgWebApp = window.Telegram.WebApp;
-		
+
 		// Check for start parameter in multiple places
-		let startParam = (tgWebApp.initDataUnsafe as Record<string, unknown>)?.start_param as string;
-		
+		let startParam = (tgWebApp.initDataUnsafe as Record<string, unknown>)
+			?.start_param as string;
+
 		// Also check for startapp parameter (used in WebApp URLs)
 		if (!startParam) {
 			const urlParams = new URLSearchParams(window.location.search);
-			startParam = urlParams.get('startapp') || '';
+			startParam = urlParams.get("startapp") || "";
 		}
-		
+
 		return {
 			initData: tgWebApp.initData || "",
 			initDataUnsafe: tgWebApp.initDataUnsafe || {},
@@ -101,7 +102,10 @@ export const handleTelegramNavigation = (
 	switch (parsed.action) {
 		case "edit_expense":
 			if (parsed.expenseId) {
-				console.log("[TelegramNavigation] Navigating to expense edit:", parsed.expenseId);
+				console.log(
+					"[TelegramNavigation] Navigating to expense edit:",
+					parsed.expenseId,
+				);
 				navigate(`/expenses/${parsed.expenseId}/edit`);
 				return true;
 			}

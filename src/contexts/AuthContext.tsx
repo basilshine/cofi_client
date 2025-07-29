@@ -192,15 +192,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				"[AuthContext] User already authenticated in WebApp, setting isLoading: false and navigating",
 			);
 			setState((prev) => ({ ...prev, isLoading: false }));
-			
+
 			// Check for Telegram navigation parameters first
-			console.log("[AuthContext] Already authenticated, checking Telegram navigation");
+			console.log(
+				"[AuthContext] Already authenticated, checking Telegram navigation",
+			);
 			const hasNavigated = handleTelegramNavigation(navigate);
-			console.log("[AuthContext] Already authenticated navigation result:", hasNavigated);
-			
+			console.log(
+				"[AuthContext] Already authenticated navigation result:",
+				hasNavigated,
+			);
+
 			if (!hasNavigated) {
 				// Default navigation if no specific parameters
-				console.log("[AuthContext] Already authenticated, no Telegram navigation, going to dashboard");
+				console.log(
+					"[AuthContext] Already authenticated, no Telegram navigation, going to dashboard",
+				);
 				navigate("/dashboard");
 			}
 		} else if (
@@ -256,11 +263,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 						// Check for Telegram navigation parameters
 						const hasNavigated = handleTelegramNavigation(navigate);
-						console.log("[AuthContext] Telegram navigation result:", hasNavigated);
-						
+						console.log(
+							"[AuthContext] Telegram navigation result:",
+							hasNavigated,
+						);
+
 						if (!hasNavigated) {
 							// Default navigation if no specific parameters
-							console.log("[AuthContext] No Telegram navigation, going to dashboard");
+							console.log(
+								"[AuthContext] No Telegram navigation, going to dashboard",
+							);
 							navigate("/dashboard");
 						}
 					};
