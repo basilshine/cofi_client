@@ -13,6 +13,17 @@ import { useNavigate } from "react-router-dom";
 export type User = components["schemas"]["User"];
 export type AuthResponse = components["schemas"]["AuthResponse"];
 
+// Type for Telegram Login Widget data
+interface TelegramWidgetUser {
+	id: number;
+	username?: string;
+	first_name?: string;
+	last_name?: string;
+	photo_url?: string;
+	auth_date: number;
+	hash: string;
+}
+
 interface AuthState {
 	user: User | null;
 	token: string | null;
@@ -36,9 +47,7 @@ interface AuthContextType extends AuthState {
 	handleTelegramAuth: () => void;
 	setUser: (user: User | null) => void;
 	setToken: (token: string | null) => void;
-	handleTelegramWidgetAuth: (
-		tgUser: components["schemas"]["User"],
-	) => Promise<void>;
+	handleTelegramWidgetAuth: (tgUser: TelegramWidgetUser) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -412,19 +421,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	};
 
 	// Handle Telegram Login Widget (browser)
-	const handleTelegramWidgetAuth = async (
-		tgUser: components["schemas"]["User"],
-	) => {
+	const handleTelegramWidgetAuth = async (tgUser: TelegramWidgetUser) => {
 		setState((prev) => ({ ...prev, isLoading: true, error: null }));
 		try {
-			const response = await apiService.auth.telegramLoginWidget({
-				telegramId: tgUser.telegramId ?? 0,
-				username: tgUser.telegramUsername ?? "",
-				photoUrl: tgUser.telegramPhotoUrl ?? "",
-				country: tgUser.country,
-				language: tgUser.language,
-				// authDate and hash are not available from User, so omit them
-			});
+			// Validate required fields from Telegram widget
+			if (!tgUser.id || !tgUser.username || !tgUser.hash) {
+				throw new Error("Missing required Telegram authentication data");
+			}
+
+			// Map Telegram widget data to our API format (using camelCase for TypeScript)
+			const loginData = {
+				telegramId: tgUser.id, // Telegram widget uses 'id', not 'telegramId'
+				username: tgUser.username, // Required field
+				firstName: tgUser.first_name || "",
+				lastName: tgUser.last_name || "",
+				photoUrl: tgUser.photo_url || "",
+				authDate: tgUser.auth_date || Math.floor(Date.now() / 1000),
+				hash: tgUser.hash, // Required field from Telegram widget
+				language: "en", // Default language, could be detected from browser
+				country: "", // Not provided by widget
+			};
+
+			console.log("Sending Telegram login data:", loginData);
+			const response = await apiService.auth.telegramLoginWidget(loginData);
 			const { token, user } = response.data;
 			localStorage.setItem("token", token ?? "");
 			setState((prev: AuthState) => ({
@@ -437,6 +456,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			}));
 			navigate("/dashboard");
 		} catch (error) {
+			console.error("Telegram widget login error:", error);
 			setState((prev) => ({
 				...prev,
 				isLoading: false,

@@ -1,4 +1,3 @@
-import type { components } from "@/types/api-types";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -8,6 +7,17 @@ import { useAuth } from "@contexts/AuthContext";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+
+// Type for Telegram Login Widget data
+interface TelegramWidgetUser {
+	id: number;
+	username?: string;
+	first_name?: string;
+	last_name?: string;
+	photo_url?: string;
+	auth_date: number;
+	hash: string;
+}
 
 export const Login = () => {
 	const { t } = useTranslation();
@@ -25,11 +35,13 @@ export const Login = () => {
 	useEffect(() => {
 		if (isWebApp) return;
 		// Define the global callback
+		// Telegram widget provides: id, first_name, last_name, username, photo_url, auth_date, hash
 		(
 			window as unknown as {
-				onTelegramAuth: (user: components["schemas"]["User"]) => void;
+				onTelegramAuth: (user: TelegramWidgetUser) => void;
 			}
-		).onTelegramAuth = (user: components["schemas"]["User"]) => {
+		).onTelegramAuth = (user: TelegramWidgetUser) => {
+			console.log("Telegram widget data:", user); // Debug log
 			handleTelegramWidgetAuth(user);
 		};
 		// Inject the Telegram widget script
