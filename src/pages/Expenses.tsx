@@ -5,18 +5,15 @@ import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 export const Expenses = () => {
 	const { t } = useTranslation();
-	const { isAuthenticated, isLoading: authLoading } = useAuth();
-	const queryClient = useQueryClient();
-
-	const { user } = useAuth();
+	const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 	// Log when Expenses page is loaded
 	useEffect(() => {
 		LogRocket.log("[Expenses] Page loaded", { isAuthenticated, authLoading });
@@ -80,7 +77,6 @@ export const Expenses = () => {
 
 	const isLoading = isSummaryLoading || isCategoriesLoading;
 	const error = summaryError?.message || categoriesError?.message || null;
-
 
 	// Show loading state while checking authentication
 	if (authLoading) {
