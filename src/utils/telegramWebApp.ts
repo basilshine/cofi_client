@@ -85,12 +85,17 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 		window.location.search.includes("startapp=");
 
 	// Method 5: Check session storage for persisted WebApp state (for navigation)
-	const persistedWebAppState = sessionStorage.getItem("cofi_telegram_webapp_detected");
+	const persistedWebAppState = sessionStorage.getItem(
+		"cofi_telegram_webapp_detected",
+	);
 	const isPersistedWebApp = !!persistedWebAppState;
 
 	console.log("[getTelegramWebAppData] Final startParam:", startParam);
 	console.log("[getTelegramWebAppData] Is WebApp environment:", isWebApp);
-	console.log("[getTelegramWebAppData] Is persisted WebApp:", isPersistedWebApp);
+	console.log(
+		"[getTelegramWebAppData] Is persisted WebApp:",
+		isPersistedWebApp,
+	);
 
 	// Return data if we're in a WebApp environment (current or persisted)
 	if (isWebApp || isPersistedWebApp) {
@@ -222,8 +227,8 @@ export const handleTelegramNavigation = (
 			"[TelegramNavigation] Available hash params:",
 			window.location.hash
 				? Array.from(
-						new URLSearchParams(window.location.hash.substring(1)).entries(),
-					)
+					new URLSearchParams(window.location.hash.substring(1)).entries(),
+				)
 				: "none",
 		);
 		return false;

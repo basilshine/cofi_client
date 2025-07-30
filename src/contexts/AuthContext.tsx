@@ -239,7 +239,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			// Only check for navigation on initial load, not on every effect run
 			if (!hasAttemptedTelegramLogin.current) {
 				hasAttemptedTelegramLogin.current = true;
-				
+
 				// Check for Telegram navigation parameters first
 				console.log(
 					"[AuthContext] Already authenticated, checking Telegram navigation (initial load)",
