@@ -1,3 +1,4 @@
+import { DebugInfo } from "@components/DebugInfo";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { AuthProvider, useAuth } from "@contexts/AuthContext";
 import { Analytics } from "@pages/Analytics";
@@ -11,6 +12,8 @@ import { Login } from "@pages/auth/Login";
 import { Register } from "@pages/auth/Register";
 import { ResetPassword } from "@pages/auth/ResetPassword";
 import { isTelegramWebApp } from "@utils/isTelegramWebApp";
+import LogRocket from "logrocket";
+import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./layouts/Layout";
 import { WebAppLayout } from "./layouts/WebAppLayout";
@@ -23,8 +26,39 @@ function AppContent() {
 	const { isAuthenticated, isLoading } = useAuth();
 	const isWebAppUser = isTelegramWebApp();
 
+	// Log layout detection for debugging
+	useEffect(() => {
+		const debugInfo = {
+			isWebAppUser,
+			currentURL: window.location.href,
+			userAgent: navigator.userAgent,
+			hasTelegramWebApp: !!window.Telegram?.WebApp,
+			urlSearch: window.location.search,
+			urlHash: window.location.hash,
+			startappParam: new URLSearchParams(window.location.search).get(
+				"startapp",
+			),
+			hasHashTgData: window.location.hash.includes("tgWebAppData="),
+		};
+
+		console.log("[App] Layout Detection Debug:", debugInfo);
+		LogRocket.log("[App] Layout Detection", debugInfo);
+	}, [isWebAppUser]);
+
 	// Choose the appropriate layout based on the environment
 	const AppLayout = isWebAppUser ? WebAppLayout : Layout;
+
+	// Log which layout is being used
+	useEffect(() => {
+		const layoutInfo = {
+			layoutUsed: isWebAppUser ? "WebAppLayout" : "Layout",
+			isWebAppUser,
+			isAuthenticated,
+			isLoading,
+		};
+		console.log("[App] Layout Selection:", layoutInfo);
+		LogRocket.log("[App] Layout Selection", layoutInfo);
+	}, [isWebAppUser, isAuthenticated, isLoading]);
 
 	if (isLoading) {
 		return <LoadingScreen />;
@@ -42,145 +76,148 @@ function AppContent() {
 	};
 
 	return (
-		<Routes>
-			{/* Public routes - only for non-WebApp users */}
-			{!isWebAppUser && <Route path="/" element={<Promo />} />}
+		<>
+			<DebugInfo />
+			<Routes>
+				{/* Public routes - only for non-WebApp users */}
+				{!isWebAppUser && <Route path="/" element={<Promo />} />}
 
-			{/* For WebApp users, redirect root to dashboard */}
-			{isWebAppUser && (
-				<Route path="/" element={<Navigate to="/dashboard" replace />} />
-			)}
+				{/* For WebApp users, redirect root to dashboard */}
+				{isWebAppUser && (
+					<Route path="/" element={<Navigate to="/dashboard" replace />} />
+				)}
 
-			{/* Auth routes - only for non-WebApp users */}
-			{!isWebAppUser && (
-				<Route path="/auth">
-					<Route
-						path="login"
-						element={
-							!isAuthenticated ? (
-								<Login />
-							) : (
-								<Navigate to="/dashboard" replace />
-							)
-						}
-					/>
-					<Route
-						path="register"
-						element={
-							!isAuthenticated ? (
-								<Register />
-							) : (
-								<Navigate to="/dashboard" replace />
-							)
-						}
-					/>
-					<Route
-						path="forgot-password"
-						element={
-							!isAuthenticated ? (
-								<ForgotPassword />
-							) : (
-								<Navigate to="/dashboard" replace />
-							)
-						}
-					/>
-					<Route
-						path="reset-password"
-						element={
-							!isAuthenticated ? (
-								<ResetPassword />
-							) : (
-								<Navigate to="/dashboard" replace />
-							)
-						}
-					/>
-				</Route>
-			)}
+				{/* Auth routes - only for non-WebApp users */}
+				{!isWebAppUser && (
+					<Route path="/auth">
+						<Route
+							path="login"
+							element={
+								!isAuthenticated ? (
+									<Login />
+								) : (
+									<Navigate to="/dashboard" replace />
+								)
+							}
+						/>
+						<Route
+							path="register"
+							element={
+								!isAuthenticated ? (
+									<Register />
+								) : (
+									<Navigate to="/dashboard" replace />
+								)
+							}
+						/>
+						<Route
+							path="forgot-password"
+							element={
+								!isAuthenticated ? (
+									<ForgotPassword />
+								) : (
+									<Navigate to="/dashboard" replace />
+								)
+							}
+						/>
+						<Route
+							path="reset-password"
+							element={
+								!isAuthenticated ? (
+									<ResetPassword />
+								) : (
+									<Navigate to="/dashboard" replace />
+								)
+							}
+						/>
+					</Route>
+				)}
 
-			{/* Protected routes */}
-			<Route
-				path="/dashboard/*"
-				element={
-					isAuthenticated ? (
-						<AppLayout title="Dashboard">
-							<Routes>
-								<Route path="/" element={<Home />} />
-								<Route path="/analytics" element={<Analytics />} />
-								<Route
-									path="/settings"
-									element={isWebAppUser ? <Profile /> : <Settings />}
-								/>
-								<Route path="/debug" element={<Debug />} />
-							</Routes>
-						</AppLayout>
-					) : (
-						getUnauthenticatedRedirect()
-					)
-				}
-			/>
+				{/* Protected routes */}
+				<Route
+					path="/dashboard/*"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Dashboard">
+								<Routes>
+									<Route path="/" element={<Home />} />
+									<Route path="/analytics" element={<Analytics />} />
+									<Route
+										path="/settings"
+										element={isWebAppUser ? <Profile /> : <Settings />}
+									/>
+									<Route path="/debug" element={<Debug />} />
+								</Routes>
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect()
+						)
+					}
+				/>
 
-			{/* Protected standalone routes */}
-			<Route
-				path="/expenses"
-				element={
-					isAuthenticated ? (
-						<AppLayout title="Expenses">
-							<Expenses />
-						</AppLayout>
-					) : (
-						getUnauthenticatedRedirect()
-					)
-				}
-			/>
-			<Route
-				path="/expenses/add"
-				element={
-					isAuthenticated ? (
-						<AppLayout title="Add Expense" showBackButton={true}>
-							<ExpenseEdit />
-						</AppLayout>
-					) : (
-						getUnauthenticatedRedirect()
-					)
-				}
-			/>
-			<Route
-				path="/expenses/:id/edit"
-				element={
-					isAuthenticated ? (
-						<AppLayout title="Edit Expense" showBackButton={true}>
-							<ExpenseEdit />
-						</AppLayout>
-					) : (
-						getUnauthenticatedRedirect()
-					)
-				}
-			/>
-			<Route
-				path="/profile"
-				element={
-					isAuthenticated ? (
-						<AppLayout title="Profile & Settings">
-							<Profile />
-						</AppLayout>
-					) : (
-						getUnauthenticatedRedirect()
-					)
-				}
-			/>
+				{/* Protected standalone routes */}
+				<Route
+					path="/expenses"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Expenses">
+								<Expenses />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect()
+						)
+					}
+				/>
+				<Route
+					path="/expenses/add"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Add Expense" showBackButton={true}>
+								<ExpenseEdit />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect()
+						)
+					}
+				/>
+				<Route
+					path="/expenses/:id/edit"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Edit Expense" showBackButton={true}>
+								<ExpenseEdit />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect()
+						)
+					}
+				/>
+				<Route
+					path="/profile"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Profile & Settings">
+								<Profile />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect()
+						)
+					}
+				/>
 
-			{/* Catch-all route */}
-			<Route
-				path="*"
-				element={
-					isWebAppUser ? (
-						<Navigate to="/dashboard" replace />
-					) : (
-						<Navigate to="/" replace />
-					)
-				}
-			/>
-		</Routes>
+				{/* Catch-all route */}
+				<Route
+					path="*"
+					element={
+						isWebAppUser ? (
+							<Navigate to="/dashboard" replace />
+						) : (
+							<Navigate to="/" replace />
+						)
+					}
+				/>
+			</Routes>
+		</>
 	);
 }
 
