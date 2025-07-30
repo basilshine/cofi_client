@@ -1,5 +1,6 @@
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
+import { LoadingScreen } from "@components/LoadingScreen";
 import { Button } from "@components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Input } from "@components/ui/input";
@@ -22,7 +23,6 @@ import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { LoadingScreen } from "@components/LoadingScreen";
 
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();

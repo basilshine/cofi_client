@@ -1,9 +1,9 @@
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
+import { LoadingScreen } from "@components/LoadingScreen";
 import { ExpenseList } from "@components/expenses/ExpenseList";
 import { Button } from "@components/ui/button";
 import { Card } from "@components/ui/card";
-import { LoadingScreen } from "@components/LoadingScreen";
 import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";

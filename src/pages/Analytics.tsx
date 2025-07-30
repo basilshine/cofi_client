@@ -1,8 +1,8 @@
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
+import { LoadingScreen } from "@components/LoadingScreen";
 import { Button } from "@components/ui/button";
 import { Card, CardContent } from "@components/ui/card";
-import { LoadingScreen } from "@components/LoadingScreen";
 import { useAuth } from "@contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
