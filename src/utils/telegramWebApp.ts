@@ -261,9 +261,9 @@ export const handleTelegramNavigation = (
 
 		case "add_expense":
 			console.log("[TelegramNavigation] Navigating to add expense");
-			navigate("/expenses");
+			navigate("/expenses/add");
 			// If we have pre-filled data, we could store it in sessionStorage
-			// and have the AddExpenseForm component read it
+			// and have the ExpenseEdit component read it
 			if (parsed.data) {
 				sessionStorage.setItem(
 					"telegram_expense_data",

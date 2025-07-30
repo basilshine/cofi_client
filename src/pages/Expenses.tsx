@@ -1,16 +1,8 @@
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
-import { AddExpenseForm } from "@components/expenses/AddExpenseForm";
 import { ExpenseList } from "@components/expenses/ExpenseList";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@components/ui/dialog";
 import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,7 +15,7 @@ export const Expenses = () => {
 	const { t } = useTranslation();
 	const { isAuthenticated, isLoading: authLoading } = useAuth();
 	const queryClient = useQueryClient();
-	const [isDialogOpen, setIsDialogOpen] = useState(false);
+
 	const { user } = useAuth();
 	// Log when Expenses page is loaded
 	useEffect(() => {
@@ -134,20 +126,12 @@ export const Expenses = () => {
 				<h1 className="text-3xl font-bold tracking-tight">
 					{t("expenses.title")}
 				</h1>
-				<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-					<DialogTrigger asChild>
-						<Button>
-							<Plus className="mr-2 h-4 w-4" />
-							{t("expenses.addExpense")}
-						</Button>
-					</DialogTrigger>
-					<DialogContent>
-						<DialogHeader>
-							<DialogTitle>{t("expenses.addExpense")}</DialogTitle>
-						</DialogHeader>
-						<AddExpenseForm onExpenseAdded={handleExpenseAdded} />
-					</DialogContent>
-				</Dialog>
+				<Button asChild>
+					<Link to="/expenses/add">
+						<Plus className="mr-2 h-4 w-4" />
+						{t("expenses.addExpense")}
+					</Link>
+				</Button>
 			</div>
 
 			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

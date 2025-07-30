@@ -43,6 +43,10 @@ export const ExpenseEdit = () => {
 		category: undefined,
 	});
 
+	// Determine if this is add mode (no ID) or edit mode (has ID)
+	const isAddMode = !id;
+	const isEditMode = !!id;
+
 	const {
 		data: expense,
 		isLoading,
@@ -57,15 +61,25 @@ export const ExpenseEdit = () => {
 				return res;
 			});
 		},
-		enabled: !!id,
+		enabled: isEditMode, // Only fetch if we're in edit mode
 	});
 
-	// Update editing items when expense data changes
+	// Update editing items when expense data changes or initialize for add mode
 	useEffect(() => {
-		if (expense?.items) {
+		if (isEditMode && expense?.items) {
 			setEditingItems(expense.items);
+		} else if (isAddMode && editingItems.length === 0) {
+			// Initialize with one empty item for add mode
+			setEditingItems([
+				{
+					name: "",
+					amount: 0,
+					emotion: "😐",
+					category: undefined,
+				} as components["schemas"]["ExpenseItem"],
+			]);
 		}
-	}, [expense]);
+	}, [expense, isAddMode, isEditMode, editingItems.length]);
 
 	const updateMutation = useMutation({
 		mutationFn: (data: Partial<components["schemas"]["Expense"]>) => {
@@ -103,14 +117,56 @@ export const ExpenseEdit = () => {
 		},
 	});
 
-	const handleSaveChanges = () => {
-		if (!expense) return;
+	const createMutation = useMutation({
+		mutationFn: (data: Partial<components["schemas"]["Expense"]>) => {
+			LogRocket.log("[ExpenseEdit] createMutation.mutationFn", { data });
+			return expensesService.createExpense(data).then((res) => {
+				LogRocket.log("[ExpenseEdit] createMutation result", res);
+				return res;
+			});
+		},
+		onSuccess: (data) => {
+			LogRocket.log("[ExpenseEdit] createMutation success", data);
+			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 
-		const updatedExpense: Partial<components["schemas"]["Expense"]> = {
-			...expense,
+			// If in Telegram WebApp, show success message and close
+			if (isTelegramWebApp()) {
+				const totalAmount = editingItems.reduce(
+					(sum, item) => sum + (item.amount ?? 0),
+					0,
+				);
+				notifyExpenseSavedAndClose({
+					totalAmount,
+					itemsCount: editingItems.length,
+					status: "created",
+				});
+			} else {
+				// Regular web navigation
+				navigate("/expenses");
+			}
+		},
+		onError: (error) => {
+			LogRocket.error("[ExpenseEdit] createMutation error", error);
+			console.error("Failed to create expense:", error);
+		},
+	});
+
+	const handleSaveChanges = () => {
+		const expenseData: Partial<components["schemas"]["Expense"]> = {
 			items: editingItems,
 		};
-		updateMutation.mutate(updatedExpense);
+
+		if (isEditMode) {
+			if (!expense) return;
+			const updatedExpense: Partial<components["schemas"]["Expense"]> = {
+				...expense,
+				items: editingItems,
+			};
+			updateMutation.mutate(updatedExpense);
+		} else {
+			// Add mode - create new expense
+			createMutation.mutate(expenseData);
+		}
 	};
 
 	const handleCancel = () => {
@@ -174,7 +230,8 @@ export const ExpenseEdit = () => {
 		}
 	};
 
-	if (isLoading) {
+	// Only show loading for edit mode
+	if (isEditMode && isLoading) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background">
 				<div className="text-center">
@@ -184,7 +241,8 @@ export const ExpenseEdit = () => {
 		);
 	}
 
-	if (error) {
+	// Only show error for edit mode
+	if (isEditMode && error) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background">
 				<div className="text-center">
@@ -199,7 +257,8 @@ export const ExpenseEdit = () => {
 		);
 	}
 
-	if (!expense) {
+	// Only check for expense existence in edit mode
+	if (isEditMode && !expense) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-background">
 				<div className="text-center">
@@ -225,7 +284,9 @@ export const ExpenseEdit = () => {
 					<Button variant="ghost" size="sm" onClick={handleCancel}>
 						<X className="h-5 w-5" />
 					</Button>
-					<h1 className="text-xl font-bold font-heading">Edit Expense</h1>
+					<h1 className="text-xl font-bold font-heading">
+						{isAddMode ? "Add Expense" : "Edit Expense"}
+					</h1>
 					<div className="w-8" />
 				</div>
 			</header>
@@ -243,7 +304,7 @@ export const ExpenseEdit = () => {
 							<div className="text-right">
 								<p className="text-sm text-muted-foreground">Date</p>
 								<p className="font-medium">
-									{expense.createdAt
+									{isEditMode && expense?.createdAt
 										? new Date(expense.createdAt).toLocaleDateString()
 										: "Today"}
 								</p>
@@ -447,9 +508,13 @@ export const ExpenseEdit = () => {
 					</Button>
 					<Button
 						onClick={handleSaveChanges}
-						disabled={updateMutation.isPending}
+						disabled={updateMutation.isPending || createMutation.isPending}
 					>
-						{updateMutation.isPending ? "Saving..." : "Save Changes"}
+						{updateMutation.isPending || createMutation.isPending
+							? "Saving..."
+							: isAddMode
+								? "Create Expense"
+								: "Save Changes"}
 					</Button>
 				</div>
 			</footer>

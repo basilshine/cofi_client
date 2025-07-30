@@ -133,6 +133,18 @@ function AppContent() {
 				}
 			/>
 			<Route
+				path="/expenses/add"
+				element={
+					isAuthenticated ? (
+						<AppLayout title="Add Expense" showBackButton={true}>
+							<ExpenseEdit />
+						</AppLayout>
+					) : (
+						getUnauthenticatedRedirect()
+					)
+				}
+			/>
+			<Route
 				path="/expenses/:id/edit"
 				element={
 					isAuthenticated ? (
