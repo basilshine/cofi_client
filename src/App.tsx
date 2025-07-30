@@ -1,3 +1,4 @@
+import { LoadingScreen } from "@components/LoadingScreen";
 import { AuthProvider, useAuth } from "@contexts/AuthContext";
 import { Analytics } from "@pages/Analytics";
 import { Debug } from "@pages/Debug";
@@ -26,13 +27,7 @@ function AppContent() {
 	const AppLayout = isWebAppUser ? WebAppLayout : Layout;
 
 	if (isLoading) {
-		return (
-			<div className="flex min-h-screen items-center justify-center">
-				<div className="text-center">
-					<p className="text-muted-foreground">Loading...</p>
-				</div>
-			</div>
-		);
+		return <LoadingScreen />;
 	}
 
 	// For Telegram WebApp users, redirect unauthenticated users to dashboard

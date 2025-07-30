@@ -1,3 +1,4 @@
+import { TelegramLoadingScreen } from "@/components/TelegramLoadingScreen";
 import { useTelegram } from "@/hooks/useTelegram";
 import { apiService } from "@/services/api";
 import type { components } from "@/types/api-types";
@@ -609,12 +610,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			}}
 		>
 			{isWebApp && state.isLoading && !state.isAuthenticated ? (
-				<div className="flex min-h-screen items-center justify-center">
-					<div className="text-center">
-						<p className="text-lg font-semibold">Logging in with Telegram...</p>
-						{state.error && <p className="text-red-500 mt-2">{state.error}</p>}
-					</div>
-				</div>
+				<TelegramLoadingScreen error={state.error} />
 			) : (
 				children
 			)}
