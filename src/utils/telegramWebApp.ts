@@ -103,7 +103,7 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 					"[getTelegramWebAppData] From hash - start_param:",
 					startParam,
 				);
-				
+
 				// Persist the start_param from hash if found
 				if (startParam) {
 					sessionStorage.setItem("cofi_telegram_startapp_param", startParam);
@@ -323,7 +323,10 @@ export const handleTelegramNavigation = (
 				setTimeout(() => {
 					if (typeof window !== "undefined") {
 						sessionStorage.removeItem("cofi_telegram_startapp_param");
-						console.log("[TelegramNavigation] Startapp parameter cleared after navigation to:", targetPath);
+						console.log(
+							"[TelegramNavigation] Startapp parameter cleared after navigation to:",
+							targetPath,
+						);
 					}
 				}, 100);
 				navigate(targetPath);
@@ -339,7 +342,10 @@ export const handleTelegramNavigation = (
 			setTimeout(() => {
 				if (typeof window !== "undefined") {
 					sessionStorage.removeItem("cofi_telegram_startapp_param");
-					console.log("[TelegramNavigation] Startapp parameter cleared after navigation to:", targetPath);
+					console.log(
+						"[TelegramNavigation] Startapp parameter cleared after navigation to:",
+						targetPath,
+					);
 				}
 			}, 100);
 			navigate(targetPath);
@@ -347,7 +353,10 @@ export const handleTelegramNavigation = (
 
 		case "add_expense":
 			targetPath = "/expenses/add";
-			console.log("[TelegramNavigation] Navigating to add expense:", targetPath);
+			console.log(
+				"[TelegramNavigation] Navigating to add expense:",
+				targetPath,
+			);
 			// If we have pre-filled data, we could store it in sessionStorage
 			// and have the ExpenseEdit component read it
 			if (parsed.data) {
@@ -360,7 +369,10 @@ export const handleTelegramNavigation = (
 			setTimeout(() => {
 				if (typeof window !== "undefined") {
 					sessionStorage.removeItem("cofi_telegram_startapp_param");
-					console.log("[TelegramNavigation] Startapp parameter cleared after navigation to:", targetPath);
+					console.log(
+						"[TelegramNavigation] Startapp parameter cleared after navigation to:",
+						targetPath,
+					);
 				}
 			}, 100);
 			navigate(targetPath);

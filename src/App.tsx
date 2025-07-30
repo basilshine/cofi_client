@@ -63,9 +63,13 @@ function AppContent() {
 	// Handle startapp parameter preservation for WebApp users
 	useEffect(() => {
 		if (isWebAppUser && !isAuthenticated && !isLoading) {
-			const startappParam = new URLSearchParams(window.location.search).get("startapp");
-			const persistedStartappParam = sessionStorage.getItem("cofi_telegram_startapp_param");
-			
+			const startappParam = new URLSearchParams(window.location.search).get(
+				"startapp",
+			);
+			const persistedStartappParam = sessionStorage.getItem(
+				"cofi_telegram_startapp_param",
+			);
+
 			console.log("[App] WebApp authentication state check:", {
 				startappParam,
 				persistedStartappParam,
@@ -78,7 +82,10 @@ function AppContent() {
 			// ensure it's preserved in sessionStorage
 			if (startappParam && !persistedStartappParam) {
 				sessionStorage.setItem("cofi_telegram_startapp_param", startappParam);
-				console.log("[App] Preserved startapp parameter in sessionStorage:", startappParam);
+				console.log(
+					"[App] Preserved startapp parameter in sessionStorage:",
+					startappParam,
+				);
 			}
 		}
 	}, [isWebAppUser, isAuthenticated, isLoading]);
@@ -92,9 +99,13 @@ function AppContent() {
 	const getUnauthenticatedRedirect = () => {
 		if (isWebAppUser) {
 			// For WebApp users, check if we have a startapp parameter
-			const startappParam = new URLSearchParams(window.location.search).get("startapp");
-			const persistedStartappParam = sessionStorage.getItem("cofi_telegram_startapp_param");
-			
+			const startappParam = new URLSearchParams(window.location.search).get(
+				"startapp",
+			);
+			const persistedStartappParam = sessionStorage.getItem(
+				"cofi_telegram_startapp_param",
+			);
+
 			console.log("[App] WebApp unauthenticated redirect check:", {
 				startappParam,
 				persistedStartappParam,
@@ -103,12 +114,18 @@ function AppContent() {
 
 			// If we have a startapp parameter or are on a specific route, don't redirect yet
 			// Let the AuthContext handle the navigation after authentication
-			if (startappParam || persistedStartappParam || window.location.pathname !== "/") {
-				console.log("[App] Preserving current location for WebApp authentication");
+			if (
+				startappParam ||
+				persistedStartappParam ||
+				window.location.pathname !== "/"
+			) {
+				console.log(
+					"[App] Preserving current location for WebApp authentication",
+				);
 				// Return null to prevent redirect, let the current route handle it
 				return null;
 			}
-			
+
 			// For WebApp users without specific parameters, redirect to dashboard where they'll be auto-logged in
 			return <Navigate to="/dashboard" replace />;
 		}
