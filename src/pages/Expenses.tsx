@@ -81,11 +81,6 @@ export const Expenses = () => {
 	const isLoading = isSummaryLoading || isCategoriesLoading;
 	const error = summaryError?.message || categoriesError?.message || null;
 
-	const handleExpenseAdded = () => {
-		LogRocket.log("[Expenses] Expense added, invalidating queries");
-		setIsDialogOpen(false);
-		queryClient.invalidateQueries({ queryKey: ["expenses"] });
-	};
 
 	// Show loading state while checking authentication
 	if (authLoading) {
