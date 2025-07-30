@@ -1,8 +1,9 @@
 import { parseTgWebAppData } from "@/hooks/useTelegram";
 import LogRocket from "logrocket";
 
-// Session storage key for persisting WebApp state
+// Session storage keys for persisting WebApp state and parameters
 const WEBAPP_STATE_KEY = "cofi_telegram_webapp_detected";
+const STARTAPP_PARAM_KEY = "cofi_telegram_startapp_param";
 
 export const isTelegramWebApp = (): boolean => {
 	if (typeof window === "undefined") {
@@ -128,5 +129,14 @@ export const clearTelegramWebAppState = (): void => {
 		sessionStorage.removeItem(WEBAPP_STATE_KEY);
 		console.log("[clearTelegramWebAppState] WebApp state cleared");
 		LogRocket.log("[clearTelegramWebAppState] WebApp state cleared");
+	}
+};
+
+// Function to clear the persisted startapp parameter after successful navigation
+export const clearStartappParameter = (): void => {
+	if (typeof window !== "undefined") {
+		sessionStorage.removeItem(STARTAPP_PARAM_KEY);
+		console.log("[clearStartappParameter] Startapp parameter cleared");
+		LogRocket.log("[clearStartappParameter] Startapp parameter cleared");
 	}
 };

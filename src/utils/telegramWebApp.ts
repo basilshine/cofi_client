@@ -61,7 +61,25 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 			"[getTelegramWebAppData] From URL search params - startapp:",
 			startParam,
 		);
-		console.log("[getTelegramWebAppData] All URL params:", Array.from(urlParams.entries()));
+		console.log(
+			"[getTelegramWebAppData] All URL params:",
+			Array.from(urlParams.entries()),
+		);
+		
+		// Persist startapp parameter if found
+		if (startParam) {
+			sessionStorage.setItem("cofi_telegram_startapp_param", startParam);
+			console.log("[getTelegramWebAppData] Persisted startapp parameter:", startParam);
+		}
+	}
+	
+	// Method 2.5: Check for persisted startapp parameter if not found in URL
+	if (!startParam) {
+		const persistedStartParam = sessionStorage.getItem("cofi_telegram_startapp_param");
+		if (persistedStartParam) {
+			startParam = persistedStartParam;
+			console.log("[getTelegramWebAppData] Using persisted startapp parameter:", startParam);
+		}
 	}
 
 	// Method 3: Check URL hash for tgWebAppData (fallback method)
@@ -171,16 +189,24 @@ export const handleTelegramNavigation = (
 ): boolean => {
 	console.log("[TelegramNavigation] === STARTING NAVIGATION CHECK ===");
 	console.log("[TelegramNavigation] Current URL:", window.location.href);
-	console.log("[TelegramNavigation] URL search params:", window.location.search);
+	console.log(
+		"[TelegramNavigation] URL search params:",
+		window.location.search,
+	);
 	console.log("[TelegramNavigation] URL hash:", window.location.hash);
 
 	// Direct check for startapp parameter
-	const directStartApp = new URLSearchParams(window.location.search).get("startapp");
+	const directStartApp = new URLSearchParams(window.location.search).get(
+		"startapp",
+	);
 	console.log("[TelegramNavigation] Direct startapp check:", directStartApp);
 
 	const webAppData = getTelegramWebAppData();
 	console.log("[TelegramNavigation] WebApp data:", webAppData);
-	console.log("[TelegramNavigation] Start param from WebApp data:", webAppData?.startParam);
+	console.log(
+		"[TelegramNavigation] Start param from WebApp data:",
+		webAppData?.startParam,
+	);
 
 	// If no WebApp data at all, we're not in a Telegram environment
 	if (!webAppData) {
@@ -232,8 +258,8 @@ export const handleTelegramNavigation = (
 			"[TelegramNavigation] Available hash params:",
 			window.location.hash
 				? Array.from(
-						new URLSearchParams(window.location.hash.substring(1)).entries(),
-					)
+					new URLSearchParams(window.location.hash.substring(1)).entries(),
+				)
 				: "none",
 		);
 		return false;
@@ -264,6 +290,11 @@ export const handleTelegramNavigation = (
 					parsed.expenseId,
 				);
 				navigate(`/expenses/${parsed.expenseId}/edit`);
+				// Clear the startapp parameter after successful navigation
+				if (typeof window !== "undefined") {
+					sessionStorage.removeItem("cofi_telegram_startapp_param");
+					console.log("[TelegramNavigation] Startapp parameter cleared");
+				}
 				return true;
 			}
 			console.log("[TelegramNavigation] Edit expense action but no expense ID");
@@ -272,6 +303,11 @@ export const handleTelegramNavigation = (
 		case "view_analytics":
 			console.log("[TelegramNavigation] Navigating to analytics");
 			navigate("/dashboard/analytics");
+			// Clear the startapp parameter after successful navigation
+			if (typeof window !== "undefined") {
+				sessionStorage.removeItem("cofi_telegram_startapp_param");
+				console.log("[TelegramNavigation] Startapp parameter cleared");
+			}
 			return true;
 
 		case "add_expense":
@@ -284,6 +320,11 @@ export const handleTelegramNavigation = (
 					"telegram_expense_data",
 					JSON.stringify(parsed.data),
 				);
+			}
+			// Clear the startapp parameter after successful navigation
+			if (typeof window !== "undefined") {
+				sessionStorage.removeItem("cofi_telegram_startapp_param");
+				console.log("[TelegramNavigation] Startapp parameter cleared");
 			}
 			return true;
 	}
