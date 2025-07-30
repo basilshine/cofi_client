@@ -1,12 +1,18 @@
 import { parseTgWebAppData } from "@/hooks/useTelegram";
 import LogRocket from "logrocket";
 
+// Session storage key for persisting WebApp state
+const WEBAPP_STATE_KEY = "cofi_telegram_webapp_detected";
+
 export const isTelegramWebApp = (): boolean => {
 	if (typeof window === "undefined") {
 		console.log("[isTelegramWebApp] Server-side rendering, returning false");
 		return false;
 	}
 
+	// Check if we've already detected WebApp mode in this session
+	const persistedState = sessionStorage.getItem(WEBAPP_STATE_KEY);
+	
 	const debugInfo = {
 		currentURL: window.location.href,
 		userAgent: navigator.userAgent,
@@ -17,6 +23,7 @@ export const isTelegramWebApp = (): boolean => {
 		hasHashTgData: window.location.hash.includes("tgWebAppData="),
 		referrer: document.referrer,
 		isTelegramUserAgent: navigator.userAgent.includes("Telegram"),
+		persistedState,
 	};
 
 	console.log("[isTelegramWebApp] Detection Debug:", debugInfo);
@@ -26,6 +33,7 @@ export const isTelegramWebApp = (): boolean => {
 	if (window.Telegram?.WebApp) {
 		console.log("[isTelegramWebApp] ✅ Detected via window.Telegram.WebApp");
 		LogRocket.log("[isTelegramWebApp] Detected via Telegram WebApp object");
+		sessionStorage.setItem(WEBAPP_STATE_KEY, "telegram_object");
 		return true;
 	}
 
@@ -40,6 +48,7 @@ export const isTelegramWebApp = (): boolean => {
 				LogRocket.log("[isTelegramWebApp] Detected via hash tgWebAppData", {
 					parsed,
 				});
+				sessionStorage.setItem(WEBAPP_STATE_KEY, "hash_data");
 				return true;
 			}
 		} catch (error) {
@@ -54,6 +63,7 @@ export const isTelegramWebApp = (): boolean => {
 		LogRocket.log("[isTelegramWebApp] Detected via startapp parameter", {
 			startapp: new URLSearchParams(window.location.search).get("startapp"),
 		});
+		sessionStorage.setItem(WEBAPP_STATE_KEY, "startapp_param");
 		return true;
 	}
 
@@ -63,6 +73,7 @@ export const isTelegramWebApp = (): boolean => {
 		LogRocket.log("[isTelegramWebApp] Detected via Telegram user agent", {
 			userAgent: navigator.userAgent,
 		});
+		sessionStorage.setItem(WEBAPP_STATE_KEY, "user_agent");
 		return true;
 	}
 
@@ -75,6 +86,7 @@ export const isTelegramWebApp = (): boolean => {
 		LogRocket.log("[isTelegramWebApp] Detected via Telegram referrer", {
 			referrer: document.referrer,
 		});
+		sessionStorage.setItem(WEBAPP_STATE_KEY, "referrer");
 		return true;
 	}
 
@@ -86,6 +98,17 @@ export const isTelegramWebApp = (): boolean => {
 		LogRocket.log(
 			"[isTelegramWebApp] Detected via webapp parameter (testing mode)",
 		);
+		sessionStorage.setItem(WEBAPP_STATE_KEY, "testing_mode");
+		return true;
+	}
+
+	// Check 7: Previously detected in this session (fallback for navigation)
+	if (persistedState) {
+		console.log(`[isTelegramWebApp] ✅ Using persisted WebApp state: ${persistedState}`);
+		LogRocket.log("[isTelegramWebApp] Using persisted WebApp state", { 
+			persistedState,
+			reason: "Navigation after initial detection"
+		});
 		return true;
 	}
 
@@ -95,4 +118,13 @@ export const isTelegramWebApp = (): boolean => {
 		debugInfo,
 	);
 	return false;
+};
+
+// Function to clear the persisted WebApp state (useful for testing or logout)
+export const clearTelegramWebAppState = (): void => {
+	if (typeof window !== "undefined") {
+		sessionStorage.removeItem(WEBAPP_STATE_KEY);
+		console.log("[clearTelegramWebAppState] WebApp state cleared");
+		LogRocket.log("[clearTelegramWebAppState] WebApp state cleared");
+	}
 };
