@@ -18,7 +18,10 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 	// Minimal debug logging to avoid performance issues
 	console.log("[getTelegramWebAppData] Current URL:", window.location.href);
 	console.log("[getTelegramWebAppData] URL search:", window.location.search);
-	console.log("[getTelegramWebAppData] Has Telegram WebApp:", !!window.Telegram?.WebApp);
+	console.log(
+		"[getTelegramWebAppData] Has Telegram WebApp:",
+		!!window.Telegram?.WebApp,
+	);
 
 	// LogRocket logging for production debugging (minimal)
 	LogRocket.log("[getTelegramWebAppData] WebApp Check", {
@@ -58,6 +61,7 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 			"[getTelegramWebAppData] From URL search params - startapp:",
 			startParam,
 		);
+		console.log("[getTelegramWebAppData] All URL params:", Array.from(urlParams.entries()));
 	}
 
 	// Method 3: Check URL hash for tgWebAppData (fallback method)
@@ -93,7 +97,10 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 	const isPersistedWebApp = !!persistedWebAppState;
 
 	console.log("[getTelegramWebAppData] Final startParam:", startParam);
-	console.log("[getTelegramWebAppData] Is WebApp:", isWebApp || isPersistedWebApp);
+	console.log(
+		"[getTelegramWebAppData] Is WebApp:",
+		isWebApp || isPersistedWebApp,
+	);
 
 	// Return data if we're in a WebApp environment (current or persisted)
 	if (isWebApp || isPersistedWebApp) {
@@ -162,20 +169,18 @@ export const parseStartParam = (
 export const handleTelegramNavigation = (
 	navigate: (path: string) => void,
 ): boolean => {
-	console.log("[TelegramNavigation] Starting navigation check");
+	console.log("[TelegramNavigation] === STARTING NAVIGATION CHECK ===");
 	console.log("[TelegramNavigation] Current URL:", window.location.href);
-	console.log(
-		"[TelegramNavigation] URL search params:",
-		window.location.search,
-	);
+	console.log("[TelegramNavigation] URL search params:", window.location.search);
 	console.log("[TelegramNavigation] URL hash:", window.location.hash);
+
+	// Direct check for startapp parameter
+	const directStartApp = new URLSearchParams(window.location.search).get("startapp");
+	console.log("[TelegramNavigation] Direct startapp check:", directStartApp);
 
 	const webAppData = getTelegramWebAppData();
 	console.log("[TelegramNavigation] WebApp data:", webAppData);
-	console.log(
-		"[TelegramNavigation] Start param from WebApp data:",
-		webAppData?.startParam,
-	);
+	console.log("[TelegramNavigation] Start param from WebApp data:", webAppData?.startParam);
 
 	// If no WebApp data at all, we're not in a Telegram environment
 	if (!webAppData) {
@@ -227,8 +232,8 @@ export const handleTelegramNavigation = (
 			"[TelegramNavigation] Available hash params:",
 			window.location.hash
 				? Array.from(
-					new URLSearchParams(window.location.hash.substring(1)).entries(),
-				)
+						new URLSearchParams(window.location.hash.substring(1)).entries(),
+					)
 				: "none",
 		);
 		return false;
