@@ -7,5 +7,7 @@ export const isTelegramWebApp = (): boolean => {
 		const parsed = parseTgWebAppData(window.location.hash);
 		if (parsed.initData) return true;
 	}
+	// Also check for startapp parameter which indicates Telegram WebApp
+	if (window.location.search.includes("startapp=")) return true;
 	return false;
 };

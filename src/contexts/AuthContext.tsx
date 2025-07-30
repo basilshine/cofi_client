@@ -54,19 +54,42 @@ interface AuthContextType extends AuthState {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-	const isWebApp = isTelegramWebApp();
 	const [state, setState] = useState<AuthState>({
 		user: null,
 		token: localStorage.getItem("token"),
 		isAuthenticated: false,
 		isLoading: true,
 		error: null,
-		isWebApp: isWebApp,
+		isWebApp: false, // Will be updated in useEffect
 	});
 
 	const navigate = useNavigate();
 	const { telegramUser, initData } = useTelegram();
 	const hasAttemptedTelegramLogin = useRef(false);
+
+	// Monitor WebApp state changes
+	useEffect(() => {
+		const checkWebAppState = () => {
+			const isWebApp = isTelegramWebApp();
+			setState((prev) => {
+				if (prev.isWebApp !== isWebApp) {
+					console.log("[AuthContext] WebApp state changed:", { from: prev.isWebApp, to: isWebApp });
+					LogRocket.log("[AuthContext] WebApp state changed:", { from: prev.isWebApp, to: isWebApp });
+					return { ...prev, isWebApp };
+				}
+				return prev;
+			});
+		};
+
+		// Check immediately
+		checkWebAppState();
+
+		// Check periodically in case Telegram WebApp object loads later
+		const interval = setInterval(checkWebAppState, 500);
+
+		// Cleanup
+		return () => clearInterval(interval);
+	}, []);
 
 	useEffect(() => {
 		const token = localStorage.getItem("token");
@@ -94,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 								// For Telegram WebApp, be more lenient with errors
 								// since we might be in the middle of auto-login process
-								if (isWebApp && !hasAttemptedTelegramLogin.current) {
+								if (state.isWebApp && !hasAttemptedTelegramLogin.current) {
 									// Don't logout yet, let Telegram auto-login try first
 									setState((prev) => ({
 										...prev,
@@ -135,7 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			}
 		} else {
 			// No token - for WebApp, keep loading to allow Telegram auto-login
-			if (isWebApp && !hasAttemptedTelegramLogin.current) {
+			if (state.isWebApp && !hasAttemptedTelegramLogin.current) {
 				console.log(
 					"[AuthContext] No token but WebApp detected, keeping loading state for auto-login",
 				);
@@ -147,7 +170,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				setState((prev) => ({ ...prev, isLoading: false }));
 			}
 		}
-	}, [state.user, isWebApp]);
+	}, [state.user, state.isWebApp]);
 
 	useEffect(() => {
 		// Log window unload/reload events
@@ -169,28 +192,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 	// Ensure loading state is correct on mount
 	useEffect(() => {
-		if (isWebApp && !state.isAuthenticated) {
+		if (state.isWebApp && !state.isAuthenticated) {
 			LogRocket.log("[AuthContext] Setting isLoading: true for WebApp");
 			setState((prev) => ({ ...prev, isLoading: true }));
 		}
-		if (!isWebApp && !state.isAuthenticated) {
+		if (!state.isWebApp && !state.isAuthenticated) {
 			LogRocket.log("[AuthContext] Setting isLoading: false for non-WebApp");
 			setState((prev) => ({ ...prev, isLoading: false }));
 		}
 		// eslint-disable-next-line
-	}, [isWebApp, state.isAuthenticated]);
+	}, [state.isWebApp, state.isAuthenticated]);
 
 	// Improved Telegram WebApp auto-login
 	useEffect(() => {
 		LogRocket.log("[AuthContext] Telegram auto-login effect triggered", {
-			isWebApp,
+			isWebApp: state.isWebApp,
 			telegramUser,
 			initData,
 			isAuthenticated: state.isAuthenticated,
 			hasAttemptedTelegramLogin: hasAttemptedTelegramLogin.current,
 		});
 		console.log("[AuthContext] Telegram auto-login effect triggered", {
-			isWebApp,
+			isWebApp: state.isWebApp,
 			telegramUser: telegramUser ? "present" : "missing",
 			initData: initData ? "present" : "missing",
 			isAuthenticated: state.isAuthenticated,
@@ -200,7 +223,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		let shortWaitTimeout: NodeJS.Timeout | null = null;
 		let longWaitTimeout: NodeJS.Timeout | null = null;
 
-		if (isWebApp && state.isAuthenticated) {
+		if (state.isWebApp && state.isAuthenticated) {
 			// User is already authenticated in WebApp, ensure loading is false and navigate
 			LogRocket.log(
 				"[AuthContext] User already authenticated in WebApp, setting isLoading: false and navigating",
@@ -229,7 +252,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				}
 			}, 100);
 		} else if (
-			isWebApp &&
+			state.isWebApp &&
 			telegramUser &&
 			initData &&
 			!state.isAuthenticated &&
@@ -337,7 +360,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 					}));
 				});
 		} else if (
-			isWebApp &&
+			state.isWebApp &&
 			!state.isAuthenticated &&
 			!hasAttemptedTelegramLogin.current &&
 			(!telegramUser || !initData)
@@ -384,7 +407,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				LogRocket.log("[AuthContext] Cleared long wait timeout");
 			}
 		};
-	}, [isWebApp, telegramUser, initData, state.isAuthenticated, navigate]);
+	}, [state.isWebApp, telegramUser, initData, state.isAuthenticated, navigate]);
 
 	const login = async (email: string, password: string) => {
 		try {
@@ -609,7 +632,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				handleTelegramWidgetAuth,
 			}}
 		>
-			{isWebApp && state.isLoading && !state.isAuthenticated ? (
+			{state.isWebApp && state.isLoading && !state.isAuthenticated ? (
 				<TelegramLoadingScreen error={state.error} />
 			) : (
 				children
