@@ -90,6 +90,22 @@ function AppContent() {
 		}
 	}, [isWebAppUser, isAuthenticated, isLoading]);
 
+	// Preserve startapp parameter immediately on mount for WebApp users
+	useEffect(() => {
+		if (isWebAppUser) {
+			const startappParam = new URLSearchParams(window.location.search).get(
+				"startapp",
+			);
+			if (startappParam) {
+				sessionStorage.setItem("cofi_telegram_startapp_param", startappParam);
+				console.log(
+					"[App] Immediately preserved startapp parameter:",
+					startappParam,
+				);
+			}
+		}
+	}, [isWebAppUser]);
+
 	if (isLoading) {
 		return <LoadingScreen />;
 	}
@@ -142,7 +158,36 @@ function AppContent() {
 
 				{/* For WebApp users, redirect root to dashboard */}
 				{isWebAppUser && (
-					<Route path="/" element={<Navigate to="/dashboard" replace />} />
+					<Route
+						path="/"
+						element={(() => {
+							// Check if we have a startapp parameter
+							const startappParam = new URLSearchParams(
+								window.location.search,
+							).get("startapp");
+							const persistedStartappParam = sessionStorage.getItem(
+								"cofi_telegram_startapp_param",
+							);
+
+							console.log("[App] Root route check for WebApp:", {
+								startappParam,
+								persistedStartappParam,
+								isAuthenticated,
+								isLoading,
+							});
+
+							// If we have a startapp parameter, preserve the location for authentication
+							if (startappParam || persistedStartappParam) {
+								console.log(
+									"[App] Root route preserving location for startapp parameter",
+								);
+								return <LoadingScreen />;
+							}
+
+							// Otherwise, redirect to dashboard
+							return <Navigate to="/dashboard" replace />;
+						})()}
+					/>
 				)}
 
 				{/* Auth routes - only for non-WebApp users */}

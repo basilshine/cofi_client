@@ -320,6 +320,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 							"[AuthContext] Telegram login success, checking for navigation parameters",
 						);
 						console.log("[AuthContext] About to check Telegram navigation");
+						console.log(
+							"[AuthContext] Current URL before navigation check:",
+							window.location.href,
+						);
+						console.log(
+							"[AuthContext] SessionStorage startapp:",
+							sessionStorage.getItem("cofi_telegram_startapp_param"),
+						);
 
 						// Small delay to ensure routing is ready
 						setTimeout(() => {

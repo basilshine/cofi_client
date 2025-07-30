@@ -65,6 +65,7 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 			"[getTelegramWebAppData] All URL params:",
 			Array.from(urlParams.entries()),
 		);
+		console.log("[getTelegramWebAppData] Current URL:", window.location.href);
 
 		// Persist startapp parameter if found
 		if (startParam) {
@@ -220,6 +221,10 @@ export const handleTelegramNavigation = (
 		window.location.search,
 	);
 	console.log("[TelegramNavigation] URL hash:", window.location.hash);
+	console.log(
+		"[TelegramNavigation] SessionStorage startapp:",
+		sessionStorage.getItem("cofi_telegram_startapp_param"),
+	);
 
 	// Direct check for startapp parameter
 	const directStartApp = new URLSearchParams(window.location.search).get(
