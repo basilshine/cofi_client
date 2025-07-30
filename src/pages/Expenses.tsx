@@ -2,7 +2,7 @@ import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { ExpenseList } from "@components/expenses/ExpenseList";
 import { Button } from "@components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { Card } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
@@ -20,11 +20,7 @@ export const Expenses = () => {
 	}, [isAuthenticated, authLoading]);
 
 	// Only fetch data if user is authenticated
-	const {
-		data: summary,
-		isLoading: isSummaryLoading,
-		error: summaryError,
-	} = useQuery({
+	const { data: summary, error: summaryError } = useQuery({
 		queryKey: ["expenses", "summary"],
 		queryFn: () => {
 			LogRocket.log("[Expenses] getSummary queryFn");
@@ -40,11 +36,9 @@ export const Expenses = () => {
 	});
 
 	// Fetch categories
-	const {
-		data: categories = [],
-		isLoading: isCategoriesLoading,
-		error: categoriesError,
-	} = useQuery<components["schemas"]["Category"][]>({
+	const { data: categories = [], error: categoriesError } = useQuery<
+		components["schemas"]["Category"][]
+	>({
 		queryKey: ["expenses", "categories"],
 		queryFn: () => {
 			LogRocket.log("[Expenses] getMostUsedCategories queryFn");
@@ -75,8 +69,7 @@ export const Expenses = () => {
 		}
 	}, [categories, categoriesError]);
 
-	const isLoading = isSummaryLoading || isCategoriesLoading;
-	const error = summaryError?.message || categoriesError?.message || null;
+	// Loading and error states handled individually in components
 
 	// Show loading state while checking authentication
 	if (authLoading) {
@@ -112,93 +105,155 @@ export const Expenses = () => {
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<h1 className="text-3xl font-bold tracking-tight">
-					{t("expenses.title")}
-				</h1>
-				<Button asChild>
-					<Link to="/expenses/add">
-						<Plus className="mr-2 h-4 w-4" />
-						{t("expenses.addExpense")}
-					</Link>
-				</Button>
+		<div className="flex flex-col min-h-screen bg-[#f8f8f8]">
+			{/* Spending Breakdown Section */}
+			<div className="px-4 py-6">
+				<Card className="bg-white rounded-3xl shadow-md p-6">
+					<h3 className="text-2xl font-semibold text-[#333333] mb-4">
+						Spending Breakdown
+					</h3>
+					<div className="flex flex-col items-center gap-4">
+						{/* Pie Chart Placeholder - could be enhanced with actual chart library */}
+						<div className="relative w-48 h-48">
+							<div className="w-full h-full rounded-full bg-gradient-conic from-[#69b4cd] via-[#f7a35c] to-[#90ed7d]" />
+							<div className="absolute inset-0 flex items-center justify-center">
+								<div className="bg-white rounded-full w-28 h-28 flex flex-col items-center justify-center shadow-inner">
+									<span className="text-sm text-[#666666]">Total</span>
+									<span className="text-2xl font-bold text-[#333333]">
+										${summary?.totalExpenses?.toFixed(2) ?? "0.00"}
+									</span>
+								</div>
+							</div>
+						</div>
+
+						{/* Legend */}
+						<div className="flex flex-wrap justify-center gap-4 text-sm">
+							{categories.slice(0, 3).map((category, index) => {
+								const colors = ["#69b4cd", "#f7a35c", "#90ed7d"];
+								return (
+									<div key={category.name} className="flex items-center gap-2">
+										<span
+											className="w-3 h-3 rounded-full"
+											style={{ backgroundColor: colors[index] }}
+										/>
+										<span>{category.name}</span>
+									</div>
+								);
+							})}
+						</div>
+					</div>
+				</Card>
 			</div>
 
-			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-				<Card>
-					<CardHeader>
-						<CardTitle>{t("expenses.recentExpenses")}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<ExpenseList />
-					</CardContent>
-				</Card>
+			{/* Tabs and Content */}
+			<div className="px-4 flex-1">
+				{/* Tab Navigation */}
+				<div className="flex rounded-full bg-gray-200 p-1 mb-4">
+					<button
+						type="button"
+						className="flex-1 rounded-full py-2 text-center text-sm font-semibold bg-[#69b4cd] text-white flex items-center justify-center gap-2"
+					>
+						<span>All Expenses</span>
+					</button>
+					<button
+						type="button"
+						className="flex-1 rounded-full py-2 text-center text-sm font-semibold text-[#666666]"
+					>
+						Snoozed
+					</button>
+				</div>
 
-				<Card>
-					<CardHeader>
-						<CardTitle>{t("expenses.monthlySummary")}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						{isLoading ? (
-							<p className="text-sm text-muted-foreground">
-								{t("common.loading")}
-							</p>
-						) : error ? (
-							<p className="text-sm text-red-500">{error}</p>
-						) : summary ? (
-							<div className="space-y-2">
-								<div className="flex justify-between">
-									<span className="text-sm text-muted-foreground">
-										{t("expenses.total")}
-									</span>
-									<span className="font-medium">
-										${summary.totalExpenses?.toFixed(2) ?? "0.00"}
-									</span>
-								</div>
-								<div className="flex justify-between">
-									<span className="text-sm text-muted-foreground">
-										{t("expenses.monthlyAverage")}
-									</span>
-									<span className="font-medium">
-										${summary.lastMonth?.toFixed(2) ?? "0.00"}
-									</span>
-								</div>
-							</div>
-						) : null}
-					</CardContent>
-				</Card>
+				{/* Search Bar */}
+				<div className="mb-4">
+					<div className="flex w-full items-stretch rounded-full h-12 shadow-sm">
+						<div className="text-[#666666] flex bg-white items-center justify-center pl-4 rounded-l-full border-r-0 border border-gray-200">
+							<svg
+								fill="currentColor"
+								height="24px"
+								viewBox="0 0 256 256"
+								width="24px"
+								aria-label="Search"
+								role="img"
+							>
+								<path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z" />
+							</svg>
+						</div>
+						<input
+							className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-full text-[#333333] focus:outline-0 focus:ring-0 border-none bg-white focus:border-none h-full placeholder:text-[#666666] px-4 pl-2 text-base font-normal leading-normal border border-l-0 border-gray-200"
+							placeholder="Search expenses"
+						/>
+					</div>
+				</div>
 
-				<Card>
-					<CardHeader>
-						<CardTitle>{t("expenses.mostUsedCategories")}</CardTitle>
-					</CardHeader>
-					<CardContent>
-						{isLoading ? (
-							<p className="text-sm text-muted-foreground">
-								{t("common.loading")}
-							</p>
-						) : error ? (
-							<p className="text-sm text-red-500">{error}</p>
-						) : categories && categories.length > 0 ? (
-							<div className="space-y-2">
-								{categories.map(
-									(category: components["schemas"]["Category"]) => (
-										<div key={category.name} className="flex justify-between">
-											<span className="text-sm text-muted-foreground">
-												{category.name}
-											</span>
-										</div>
-									),
-								)}
-							</div>
-						) : (
-							<p className="text-sm text-muted-foreground">
-								{t("expenses.noCategories")}
-							</p>
-						)}
-					</CardContent>
-				</Card>
+				{/* Filter Buttons */}
+				<div className="flex gap-3 mb-4 overflow-x-auto">
+					<button
+						type="button"
+						className="bg-[#e0f2f7] text-[#69b4cd] rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80"
+					>
+						<svg
+							fill="currentColor"
+							height="20px"
+							viewBox="0 0 256 256"
+							width="20px"
+							aria-label="Filter by category"
+							role="img"
+						>
+							<path d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm108.34,72.28A15.92,15.92,0,0,0,144,139.17v55.49L112,216V139.17a15.92,15.92,0,0,0-4.32-10.94L40,56H216Z" />
+						</svg>
+						<span>Category</span>
+					</button>
+					<button
+						type="button"
+						className="bg-[#e0f2f7] text-[#69b4cd] rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80"
+					>
+						<svg
+							fill="currentColor"
+							height="20px"
+							viewBox="0 0 256 256"
+							width="20px"
+							aria-label="Filter by date"
+							role="img"
+						>
+							<path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88v64a8,8,0,0,1-16,0V132.94l-4.42,2.22a8,8,0,0,1-7.16-14.32l16-8A8,8,0,0,1,112,120Zm59.16,30.45L152,176h16a8,8,0,0,1,0,16H136a8,8,0,0,1-6.4-12.8l28.78-38.37A8,8,0,1,0,145.07,132a8,8,0,1,1-13.85-8A24,24,0,0,1,176,136A23.76,23.76,0,0,1,171.16,150.45Z" />
+						</svg>
+						<span>Date</span>
+					</button>
+					<button
+						type="button"
+						className="bg-[#e0f2f7] text-[#69b4cd] rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80"
+					>
+						<svg
+							fill="currentColor"
+							height="20px"
+							viewBox="0 0 256 256"
+							width="20px"
+							aria-label="Filter by emotion"
+							role="img"
+						>
+							<path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM80,108a12,12,0,1,1,12,12A12,12,0,0,1,80,108Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,176,108Zm-1.07,48c-10.29,17.79-27.4,28-46.93,28s-36.63-10.2-46.92-28a8,8,0,1,1,13.84-8c7.47,12.91,19.21,20,33.08,20s25.61-7.1,33.07-20a8,8,0,0,1,13.86,8Z" />
+						</svg>
+						<span>Emotion</span>
+					</button>
+				</div>
+
+				{/* Add Expense Button */}
+				<div className="mb-4">
+					<Button
+						asChild
+						className="w-full bg-[#69b4cd] hover:bg-[#69b4cd]/90 text-white rounded-full"
+					>
+						<Link to="/expenses/add">
+							<Plus className="mr-2 h-4 w-4" />
+							{t("expenses.addExpense")}
+						</Link>
+					</Button>
+				</div>
+
+				{/* Expenses List */}
+				<div className="space-y-4 pb-32">
+					<ExpenseList />
+				</div>
 			</div>
 		</div>
 	);

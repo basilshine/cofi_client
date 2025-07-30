@@ -1,15 +1,6 @@
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@components/ui/table";
 import { useAuth } from "@contexts/AuthContext";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -87,113 +78,117 @@ export const ExpenseList = () => {
 	if (error) return <div>{t("common.error")}</div>;
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>{t("expenses.title")}</CardTitle>
-			</CardHeader>
-			<CardContent>
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>{t("expenses.date")}</TableHead>
-							<TableHead>{t("expenses.description")}</TableHead>
-							<TableHead>{t("expenses.items")}</TableHead>
-							<TableHead>{t("expenses.status")}</TableHead>
-							<TableHead className="text-right">
-								{t("expenses.amount")}
-							</TableHead>
-							<TableHead className="text-right">
-								{t("common.actions")}
-							</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{expenses?.map(
-							(expense: components["schemas"]["Expense"], index) => (
-								<TableRow key={expense.id ?? `expense-${index}`}>
-									<TableCell>
+		<div className="space-y-4">
+			{expenses?.map((expense: components["schemas"]["Expense"], index) => {
+				const borderColors = [
+					"#69b4cd",
+					"#f7a35c",
+					"#90ed7d",
+					"#7cb5ec",
+					"#f15c80",
+				];
+				const borderColor = borderColors[index % borderColors.length];
+				const mainItem = expense.items?.[0];
+				const itemsCount = expense.items?.length || 0;
+				const totalAmount =
+					typeof expense.amount === "number" ? expense.amount : 0;
+
+				return (
+					<div
+						key={expense.id ?? `expense-${index}`}
+						className="bg-white rounded-2xl p-4 shadow-sm border-l-4"
+						style={{ borderLeftColor: borderColor }}
+					>
+						{/* Main Content */}
+						<div className="flex items-center gap-4 mb-4">
+							{/* Emotion Icon */}
+							<div className="text-[#333333] flex items-center justify-center rounded-lg bg-[#e0f2f7] shrink-0 size-12">
+								{mainItem?.emotion || "😐"}
+							</div>
+
+							{/* Expense Details */}
+							<div className="flex-grow">
+								<div className="flex justify-between items-center">
+									<div className="flex items-center gap-2">
+										<p className="text-[#333333] text-base font-bold leading-normal">
+											{expense.description ||
+												mainItem?.name ||
+												t("expenses.noDescription")}
+										</p>
+										{/* Status indicators could go here */}
+									</div>
+									<p className="text-[#333333] text-base font-bold leading-normal">
+										${totalAmount.toFixed(2)}
+									</p>
+								</div>
+								<div className="flex justify-between items-center">
+									<p className="text-[#666666] text-sm font-normal leading-normal">
+										{mainItem?.category?.name || "Uncategorized"}
+									</p>
+									<p className="text-[#666666] text-sm font-normal leading-normal">
 										{expense.createdAt
-											? format(new Date(expense.createdAt), "MMM dd, yyyy")
-											: "-"}
-									</TableCell>
-									<TableCell>
-										{expense.description || t("expenses.noDescription")}
-									</TableCell>
-									<TableCell>
-										<div className="flex flex-col gap-1">
-											{expense.items?.slice(0, 2).map((item, index) => (
-												<div
-													key={
-														item.id ??
-														`item-${expense.id ?? "unknown"}-${index}`
-													}
-													className="text-xs text-muted-foreground"
-												>
-													{item.name} - $
-													{typeof item.amount === "number"
-														? item.amount.toFixed(2)
-														: "0.00"}
-													{item.emotion && (
-														<span className="ml-1">{item.emotion}</span>
-													)}
-												</div>
-											))}
-											{expense.items && expense.items.length > 2 && (
-												<div className="text-xs text-muted-foreground">
-													+{expense.items.length - 2} {t("expenses.moreItems")}
-												</div>
-											)}
-										</div>
-									</TableCell>
-									<TableCell>
-										<span
-											className={`px-2 py-1 text-xs rounded-full ${
-												expense.status === "draft"
-													? "bg-yellow-100 text-yellow-800"
-													: expense.status === "approved"
-														? "bg-green-100 text-green-800"
-														: "bg-gray-100 text-gray-800"
-											}`}
-										>
-											{expense.status || "unknown"}
-										</span>
-									</TableCell>
-									<TableCell className="text-right">
-										$
-										{typeof expense.amount === "number"
-											? expense.amount.toFixed(2)
-											: "0.00"}
-									</TableCell>
-									<TableCell className="text-right">
-										<div className="flex items-center justify-end gap-2">
-											<Button variant="ghost" size="sm" asChild>
-												<Link to={`/expenses/${expense.id ?? "unknown"}/edit`}>
-													<PencilSimple className="h-4 w-4" />
-												</Link>
-											</Button>
-											{expense.status !== "draft" && (
-												<Button
-													variant="ghost"
-													size="sm"
-													onClick={() =>
-														handleDelete(
-															(expense.id ?? "").toString(),
-															expense.description || "expense",
-														)
-													}
-													disabled={deleteMutation.isPending}
-												>
-													<Trash className="h-4 w-4" />
-												</Button>
-											)}
-										</div>
-									</TableCell>
-								</TableRow>
-							),
-						)}
-					</TableBody>
-				</Table>
-			</CardContent>
-		</Card>
+											? format(new Date(expense.createdAt), "MMM dd")
+											: "Today"}
+									</p>
+								</div>
+								{/* Additional items preview */}
+								{itemsCount > 1 && (
+									<div className="text-xs text-[#666666] mt-1">
+										+{itemsCount - 1} more items
+									</div>
+								)}
+							</div>
+						</div>
+
+						{/* Items Summary */}
+						<div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg mb-4">
+							<p className="text-[#666666] text-sm font-medium">
+								{itemsCount} {itemsCount === 1 ? "item" : "items"}
+							</p>
+							<p className="text-[#333333] text-sm font-semibold">
+								${totalAmount.toFixed(2)} total
+							</p>
+						</div>
+
+						{/* Action Buttons */}
+						<div className="flex justify-end gap-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								asChild
+								className="text-[#666666] hover:text-[#69b4cd]"
+							>
+								<Link to={`/expenses/${expense.id ?? "unknown"}/edit`}>
+									<PencilSimple className="h-6 w-6" />
+								</Link>
+							</Button>
+							{expense.status !== "draft" && (
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() =>
+										handleDelete(
+											(expense.id ?? "").toString(),
+											expense.description || "expense",
+										)
+									}
+									disabled={deleteMutation.isPending}
+									className="text-red-400 hover:text-red-600"
+								>
+									<Trash className="h-6 w-6" />
+								</Button>
+							)}
+						</div>
+					</div>
+				);
+			})}
+
+			{/* Empty State */}
+			{!expenses || expenses.length === 0 ? (
+				<div className="text-center py-8">
+					<p className="text-[#666666] text-sm">{t("expenses.noExpenses")}</p>
+				</div>
+			) : null}
+		</div>
 	);
 };
