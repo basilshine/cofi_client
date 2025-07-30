@@ -230,33 +230,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		let longWaitTimeout: NodeJS.Timeout | null = null;
 
 		if (state.isWebApp && state.isAuthenticated) {
-			// User is already authenticated in WebApp, ensure loading is false and navigate
+			// User is already authenticated in WebApp, ensure loading is false
 			LogRocket.log(
-				"[AuthContext] User already authenticated in WebApp, setting isLoading: false and navigating",
+				"[AuthContext] User already authenticated in WebApp, setting isLoading: false",
 			);
 			setState((prev) => ({ ...prev, isLoading: false }));
 
-			// Check for Telegram navigation parameters first
-			console.log(
-				"[AuthContext] Already authenticated, checking Telegram navigation",
-			);
-
-			// Small delay to ensure routing is ready
-			setTimeout(() => {
-				const hasNavigated = handleTelegramNavigation(navigate);
+			// Only check for navigation on initial load, not on every effect run
+			if (!hasAttemptedTelegramLogin.current) {
+				hasAttemptedTelegramLogin.current = true;
+				
+				// Check for Telegram navigation parameters first
 				console.log(
-					"[AuthContext] Already authenticated navigation result:",
-					hasNavigated,
+					"[AuthContext] Already authenticated, checking Telegram navigation (initial load)",
 				);
 
-				if (!hasNavigated) {
-					// Default navigation if no specific parameters
+				// Small delay to ensure routing is ready
+				setTimeout(() => {
+					const hasNavigated = handleTelegramNavigation(navigate);
 					console.log(
-						"[AuthContext] Already authenticated, no Telegram navigation, going to dashboard",
+						"[AuthContext] Already authenticated navigation result:",
+						hasNavigated,
 					);
-					navigate("/dashboard");
-				}
-			}, 100);
+
+					if (!hasNavigated) {
+						// Only navigate to dashboard if we're on the root path
+						const currentPath = window.location.pathname;
+						if (currentPath === "/" || currentPath === "") {
+							console.log(
+								"[AuthContext] On root path, no Telegram navigation, going to dashboard",
+							);
+							navigate("/dashboard");
+						} else {
+							console.log(
+								"[AuthContext] Already on valid path, not redirecting:",
+								currentPath,
+							);
+						}
+					}
+				}, 100);
+			}
 		} else if (
 			state.isWebApp &&
 			telegramUser &&
