@@ -60,6 +60,29 @@ function AppContent() {
 		LogRocket.log("[App] Layout Selection", layoutInfo);
 	}, [isWebAppUser, isAuthenticated, isLoading]);
 
+	// Handle startapp parameter preservation for WebApp users
+	useEffect(() => {
+		if (isWebAppUser && !isAuthenticated && !isLoading) {
+			const startappParam = new URLSearchParams(window.location.search).get("startapp");
+			const persistedStartappParam = sessionStorage.getItem("cofi_telegram_startapp_param");
+			
+			console.log("[App] WebApp authentication state check:", {
+				startappParam,
+				persistedStartappParam,
+				currentPath: window.location.pathname,
+				isAuthenticated,
+				isLoading,
+			});
+
+			// If we have a startapp parameter but user is not authenticated yet,
+			// ensure it's preserved in sessionStorage
+			if (startappParam && !persistedStartappParam) {
+				sessionStorage.setItem("cofi_telegram_startapp_param", startappParam);
+				console.log("[App] Preserved startapp parameter in sessionStorage:", startappParam);
+			}
+		}
+	}, [isWebAppUser, isAuthenticated, isLoading]);
+
 	if (isLoading) {
 		return <LoadingScreen />;
 	}
@@ -68,7 +91,25 @@ function AppContent() {
 	// (they will be auto-logged in by the AuthContext)
 	const getUnauthenticatedRedirect = () => {
 		if (isWebAppUser) {
-			// For WebApp users, redirect to dashboard where they'll be auto-logged in
+			// For WebApp users, check if we have a startapp parameter
+			const startappParam = new URLSearchParams(window.location.search).get("startapp");
+			const persistedStartappParam = sessionStorage.getItem("cofi_telegram_startapp_param");
+			
+			console.log("[App] WebApp unauthenticated redirect check:", {
+				startappParam,
+				persistedStartappParam,
+				currentPath: window.location.pathname,
+			});
+
+			// If we have a startapp parameter or are on a specific route, don't redirect yet
+			// Let the AuthContext handle the navigation after authentication
+			if (startappParam || persistedStartappParam || window.location.pathname !== "/") {
+				console.log("[App] Preserving current location for WebApp authentication");
+				// Return null to prevent redirect, let the current route handle it
+				return null;
+			}
+			
+			// For WebApp users without specific parameters, redirect to dashboard where they'll be auto-logged in
 			return <Navigate to="/dashboard" replace />;
 		}
 		// For regular web users, redirect to promo page
@@ -150,7 +191,7 @@ function AppContent() {
 								</Routes>
 							</AppLayout>
 						) : (
-							getUnauthenticatedRedirect()
+							getUnauthenticatedRedirect() || <LoadingScreen />
 						)
 					}
 				/>
@@ -164,7 +205,7 @@ function AppContent() {
 								<Expenses />
 							</AppLayout>
 						) : (
-							getUnauthenticatedRedirect()
+							getUnauthenticatedRedirect() || <LoadingScreen />
 						)
 					}
 				/>
@@ -176,7 +217,7 @@ function AppContent() {
 								<ExpenseEdit />
 							</AppLayout>
 						) : (
-							getUnauthenticatedRedirect()
+							getUnauthenticatedRedirect() || <LoadingScreen />
 						)
 					}
 				/>
@@ -188,7 +229,7 @@ function AppContent() {
 								<ExpenseEdit />
 							</AppLayout>
 						) : (
-							getUnauthenticatedRedirect()
+							getUnauthenticatedRedirect() || <LoadingScreen />
 						)
 					}
 				/>
@@ -200,7 +241,7 @@ function AppContent() {
 								<Profile />
 							</AppLayout>
 						) : (
-							getUnauthenticatedRedirect()
+							getUnauthenticatedRedirect() || <LoadingScreen />
 						)
 					}
 				/>

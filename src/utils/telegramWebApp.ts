@@ -65,20 +65,28 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 			"[getTelegramWebAppData] All URL params:",
 			Array.from(urlParams.entries()),
 		);
-		
+
 		// Persist startapp parameter if found
 		if (startParam) {
 			sessionStorage.setItem("cofi_telegram_startapp_param", startParam);
-			console.log("[getTelegramWebAppData] Persisted startapp parameter:", startParam);
+			console.log(
+				"[getTelegramWebAppData] Persisted startapp parameter:",
+				startParam,
+			);
 		}
 	}
-	
+
 	// Method 2.5: Check for persisted startapp parameter if not found in URL
 	if (!startParam) {
-		const persistedStartParam = sessionStorage.getItem("cofi_telegram_startapp_param");
+		const persistedStartParam = sessionStorage.getItem(
+			"cofi_telegram_startapp_param",
+		);
 		if (persistedStartParam) {
 			startParam = persistedStartParam;
-			console.log("[getTelegramWebAppData] Using persisted startapp parameter:", startParam);
+			console.log(
+				"[getTelegramWebAppData] Using persisted startapp parameter:",
+				startParam,
+			);
 		}
 	}
 
@@ -95,6 +103,15 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 					"[getTelegramWebAppData] From hash - start_param:",
 					startParam,
 				);
+				
+				// Persist the start_param from hash if found
+				if (startParam) {
+					sessionStorage.setItem("cofi_telegram_startapp_param", startParam);
+					console.log(
+						"[getTelegramWebAppData] Persisted start_param from hash:",
+						startParam,
+					);
+				}
 			}
 		} catch (error) {
 			console.error("[getTelegramWebAppData] Error parsing hash:", error);
@@ -113,6 +130,15 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 		"cofi_telegram_webapp_detected",
 	);
 	const isPersistedWebApp = !!persistedWebAppState;
+
+	// If we have a startParam, ensure we're marked as a WebApp
+	if (startParam) {
+		sessionStorage.setItem("cofi_telegram_webapp_detected", "hash_data");
+		console.log(
+			"[getTelegramWebAppData] Marked as WebApp due to startParam:",
+			startParam,
+		);
+	}
 
 	console.log("[getTelegramWebAppData] Final startParam:", startParam);
 	console.log(
@@ -258,8 +284,8 @@ export const handleTelegramNavigation = (
 			"[TelegramNavigation] Available hash params:",
 			window.location.hash
 				? Array.from(
-					new URLSearchParams(window.location.hash.substring(1)).entries(),
-				)
+						new URLSearchParams(window.location.hash.substring(1)).entries(),
+					)
 				: "none",
 		);
 		return false;
@@ -282,37 +308,46 @@ export const handleTelegramNavigation = (
 		parsed.action,
 	);
 
+	// Store the target path before navigation to ensure it's preserved
+	let targetPath = "";
+
 	switch (parsed.action) {
 		case "edit_expense":
 			if (parsed.expenseId) {
+				targetPath = `/expenses/${parsed.expenseId}/edit`;
 				console.log(
 					"[TelegramNavigation] Navigating to expense edit:",
-					parsed.expenseId,
+					targetPath,
 				);
-				navigate(`/expenses/${parsed.expenseId}/edit`);
-				// Clear the startapp parameter after successful navigation
-				if (typeof window !== "undefined") {
-					sessionStorage.removeItem("cofi_telegram_startapp_param");
-					console.log("[TelegramNavigation] Startapp parameter cleared");
-				}
+				// Clear the startapp parameter only after successful navigation
+				setTimeout(() => {
+					if (typeof window !== "undefined") {
+						sessionStorage.removeItem("cofi_telegram_startapp_param");
+						console.log("[TelegramNavigation] Startapp parameter cleared after navigation to:", targetPath);
+					}
+				}, 100);
+				navigate(targetPath);
 				return true;
 			}
 			console.log("[TelegramNavigation] Edit expense action but no expense ID");
 			break;
 
 		case "view_analytics":
-			console.log("[TelegramNavigation] Navigating to analytics");
-			navigate("/dashboard/analytics");
-			// Clear the startapp parameter after successful navigation
-			if (typeof window !== "undefined") {
-				sessionStorage.removeItem("cofi_telegram_startapp_param");
-				console.log("[TelegramNavigation] Startapp parameter cleared");
-			}
+			targetPath = "/dashboard/analytics";
+			console.log("[TelegramNavigation] Navigating to analytics:", targetPath);
+			// Clear the startapp parameter only after successful navigation
+			setTimeout(() => {
+				if (typeof window !== "undefined") {
+					sessionStorage.removeItem("cofi_telegram_startapp_param");
+					console.log("[TelegramNavigation] Startapp parameter cleared after navigation to:", targetPath);
+				}
+			}, 100);
+			navigate(targetPath);
 			return true;
 
 		case "add_expense":
-			console.log("[TelegramNavigation] Navigating to add expense");
-			navigate("/expenses/add");
+			targetPath = "/expenses/add";
+			console.log("[TelegramNavigation] Navigating to add expense:", targetPath);
 			// If we have pre-filled data, we could store it in sessionStorage
 			// and have the ExpenseEdit component read it
 			if (parsed.data) {
@@ -321,11 +356,14 @@ export const handleTelegramNavigation = (
 					JSON.stringify(parsed.data),
 				);
 			}
-			// Clear the startapp parameter after successful navigation
-			if (typeof window !== "undefined") {
-				sessionStorage.removeItem("cofi_telegram_startapp_param");
-				console.log("[TelegramNavigation] Startapp parameter cleared");
-			}
+			// Clear the startapp parameter only after successful navigation
+			setTimeout(() => {
+				if (typeof window !== "undefined") {
+					sessionStorage.removeItem("cofi_telegram_startapp_param");
+					console.log("[TelegramNavigation] Startapp parameter cleared after navigation to:", targetPath);
+				}
+			}, 100);
+			navigate(targetPath);
 			return true;
 	}
 
