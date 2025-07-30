@@ -1,6 +1,7 @@
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
+import { LoadingScreen } from "@components/LoadingScreen";
 import { useAuth } from "@contexts/AuthContext";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -74,7 +75,7 @@ export const ExpenseList = () => {
 		);
 	}
 
-	if (isLoading) return <div>{t("common.loading")}</div>;
+	if (isLoading) return <LoadingScreen />;
 	if (error) return <div>{t("common.error")}</div>;
 
 	return (

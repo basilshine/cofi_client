@@ -3,6 +3,7 @@ import type { components } from "@/types/api-types";
 import { ExpenseList } from "@components/expenses/ExpenseList";
 import { Button } from "@components/ui/button";
 import { Card } from "@components/ui/card";
+import { LoadingScreen } from "@components/LoadingScreen";
 import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
@@ -73,11 +74,7 @@ export const Expenses = () => {
 
 	// Show loading state while checking authentication
 	if (authLoading) {
-		return (
-			<div className="flex items-center justify-center py-8">
-				<p className="text-muted-foreground">{t("common.loading")}</p>
-			</div>
-		);
+		return <LoadingScreen />;
 	}
 
 	// Show login prompt if not authenticated

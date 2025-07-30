@@ -2,6 +2,7 @@ import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { Card, CardContent } from "@components/ui/card";
+import { LoadingScreen } from "@components/LoadingScreen";
 import { useAuth } from "@contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
@@ -122,11 +123,12 @@ export const Analytics = () => {
 
 	// Show loading state while checking authentication
 	if (authLoading) {
-		return (
-			<div className="flex items-center justify-center py-8">
-				<p className="text-muted-foreground">{t("common.loading")}</p>
-			</div>
-		);
+		return <LoadingScreen />;
+	}
+
+	// Show loading state while fetching data
+	if (isLoading) {
+		return <LoadingScreen />;
 	}
 
 	// Show login prompt if not authenticated

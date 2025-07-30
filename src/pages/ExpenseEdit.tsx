@@ -22,6 +22,7 @@ import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
+import { LoadingScreen } from "@components/LoadingScreen";
 
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
@@ -258,13 +259,7 @@ export const ExpenseEdit = () => {
 
 	// Only show loading for edit mode
 	if (isEditMode && isLoading) {
-		return (
-			<div className="flex min-h-screen items-center justify-center bg-background">
-				<div className="text-center">
-					<p className="text-muted-foreground">{t("common.loading")}</p>
-				</div>
-			</div>
-		);
+		return <LoadingScreen />;
 	}
 
 	// Only show error for edit mode
