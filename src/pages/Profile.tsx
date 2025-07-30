@@ -241,15 +241,6 @@ export const Profile = () => {
 					</button>
 				</div>
 			</section>
-
-			{/* Mascot Image */}
-			<div className="relative h-32 mt-10">
-				<img
-					alt="Friendly mascot"
-					className="absolute bottom-0 right-4 h-40 object-contain"
-					src="https://lh3.googleusercontent.com/aida-public/AB6AXuCL2QQm2j6zhP6Z0xVapTpLNn9D75VcnST3yeCAn6NsqS8fLpgEgR3ICEAckXFTYLD_SndP9zImXDWhlFDmg5kk2czJS0IhzHhjIpNHb_tdPUOyJAFp698E56N6SVjGT26GtJmOgdgK_4_sxLbKYOicEJxHgzsf6FIutfM0wn0TPWPG9Yn5g1NIkj52zI8fwWosNRLS9D9qIKYFc1wFe_XzLhoXR72r_u6h4SoizGwQaJabmswgQxAvLIYITICIu50Fwrc-Rll2nRA"
-				/>
-			</div>
 		</div>
 	);
 };

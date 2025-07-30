@@ -454,7 +454,14 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
 		// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete, need to access showAlert/close methods
 		const webApp = window.Telegram.WebApp as any;
-		const message = `✅ Expense saved successfully!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
+
+		// Create appropriate message based on status
+		let message: string;
+		if (expenseData.status === "saved") {
+			message = `✅ Expense saved to database!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: Saved`;
+		} else {
+			message = `✅ Expense ${expenseData.status} successfully!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
+		}
 
 		if (webApp.showAlert) {
 			webApp.showAlert(message, () => {

@@ -48,6 +48,12 @@ export const ExpenseEdit = () => {
 	const isEditMode = !!id;
 	const isWebApp = isTelegramWebApp();
 
+	// Check if user came through Telegram link (with startapp parameter)
+	const cameThroughTelegramLink =
+		isWebApp &&
+		(new URLSearchParams(window.location.search).get("startapp") ||
+			sessionStorage.getItem("cofi_telegram_startapp_param"));
+
 	const {
 		data: expense,
 		isLoading,
@@ -96,8 +102,8 @@ export const ExpenseEdit = () => {
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			queryClient.invalidateQueries({ queryKey: ["expense", id] });
 
-			// If in Telegram WebApp, show success message and close
-			if (isTelegramWebApp()) {
+			// If in Telegram WebApp and came through Telegram link, show success message and close
+			if (isTelegramWebApp() && cameThroughTelegramLink) {
 				const totalAmount = editingItems.reduce(
 					(sum, item) => sum + (item.amount ?? 0),
 					0,
@@ -105,7 +111,7 @@ export const ExpenseEdit = () => {
 				notifyExpenseSavedAndClose({
 					totalAmount,
 					itemsCount: editingItems.length,
-					status: "saved",
+					status: data.status || "saved",
 				});
 			} else {
 				// Regular web navigation
@@ -130,8 +136,8 @@ export const ExpenseEdit = () => {
 			LogRocket.log("[ExpenseEdit] createMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 
-			// If in Telegram WebApp, show success message and close
-			if (isTelegramWebApp()) {
+			// If in Telegram WebApp and came through Telegram link, show success message and close
+			if (isTelegramWebApp() && cameThroughTelegramLink) {
 				const totalAmount = editingItems.reduce(
 					(sum, item) => sum + (item.amount ?? 0),
 					0,
@@ -162,6 +168,10 @@ export const ExpenseEdit = () => {
 			const updatedExpense: Partial<components["schemas"]["Expense"]> = {
 				...expense,
 				items: editingItems,
+				// Change status from "draft" to "saved" when editing in WebApp mode and came through Telegram link
+				...(isWebApp && cameThroughTelegramLink && expense.status === "draft"
+					? { status: "saved" }
+					: {}),
 			};
 			updateMutation.mutate(updatedExpense);
 		} else {
@@ -171,8 +181,8 @@ export const ExpenseEdit = () => {
 	};
 
 	const handleCancel = () => {
-		// If in Telegram WebApp, show cancel message and close
-		if (isTelegramWebApp()) {
+		// If in Telegram WebApp and came through Telegram link, show cancel message and close
+		if (isTelegramWebApp() && cameThroughTelegramLink) {
 			notifyCancelAndClose();
 		} else {
 			// Regular web navigation
@@ -295,7 +305,7 @@ export const ExpenseEdit = () => {
 			)}
 
 			{/* Main Content */}
-			<main className={`flex-1 p-4 space-y-6 ${isWebApp ? 'pt-0' : ''}`}>
+			<main className={`flex-1 p-4 space-y-6 ${isWebApp ? "pt-0" : ""}`}>
 				{/* Total Amount Card */}
 				<Card className="bg-card">
 					<CardContent className="p-4">
