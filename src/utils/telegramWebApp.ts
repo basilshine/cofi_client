@@ -227,8 +227,8 @@ export const handleTelegramNavigation = (
 			"[TelegramNavigation] Available hash params:",
 			window.location.hash
 				? Array.from(
-					new URLSearchParams(window.location.hash.substring(1)).entries(),
-				)
+						new URLSearchParams(window.location.hash.substring(1)).entries(),
+					)
 				: "none",
 		);
 		return false;
