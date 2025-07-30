@@ -1,9 +1,8 @@
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import { Card, CardContent } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
-import { ChartBar, ChartLineUp, ChartPie } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
 import { useEffect } from "react";
