@@ -15,50 +15,17 @@ interface ParsedStartParam {
 export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 	if (typeof window === "undefined") return null;
 
-	// Enhanced debug logging
-	console.log("[getTelegramWebAppData] === DETAILED DEBUG START ===");
+	// Minimal debug logging to avoid performance issues
 	console.log("[getTelegramWebAppData] Current URL:", window.location.href);
-	console.log("[getTelegramWebAppData] URL search params:", window.location.search);
-	console.log("[getTelegramWebAppData] URL hash:", window.location.hash);
-	console.log("[getTelegramWebAppData] window.Telegram?.WebApp:", !!window.Telegram?.WebApp);
-	console.log("[getTelegramWebAppData] Full window.Telegram object:", window.Telegram);
-	
-	// LogRocket logging for production debugging
-	LogRocket.log("[getTelegramWebAppData] Detailed Debug", {
+	console.log("[getTelegramWebAppData] URL search:", window.location.search);
+	console.log("[getTelegramWebAppData] Has Telegram WebApp:", !!window.Telegram?.WebApp);
+
+	// LogRocket logging for production debugging (minimal)
+	LogRocket.log("[getTelegramWebAppData] WebApp Check", {
 		currentURL: window.location.href,
 		urlSearch: window.location.search,
-		urlHash: window.location.hash,
 		hasTelegramWebApp: !!window.Telegram?.WebApp,
-		telegramObject: window.Telegram,
-		userAgent: navigator.userAgent,
 	});
-	
-	// Log all URL search parameters individually
-	const urlParams = new URLSearchParams(window.location.search);
-	console.log("[getTelegramWebAppData] All URL search params:");
-	const searchParams: Record<string, string> = {};
-	for (const [key, value] of urlParams.entries()) {
-		console.log(`  ${key}: ${value}`);
-		searchParams[key] = value;
-	}
-	LogRocket.log("[getTelegramWebAppData] URL Search Params", searchParams);
-	
-	// Log hash parameters if present
-	if (window.location.hash) {
-		console.log("[getTelegramWebAppData] Hash parameters:");
-		const hashParams: Record<string, string> = {};
-		try {
-			const hashParamsObj = new URLSearchParams(window.location.hash.substring(1));
-			for (const [key, value] of hashParamsObj.entries()) {
-				console.log(`  ${key}: ${value}`);
-				hashParams[key] = value;
-			}
-			LogRocket.log("[getTelegramWebAppData] Hash Params", hashParams);
-		} catch (e) {
-			console.log("  Error parsing hash:", e);
-			LogRocket.error("[getTelegramWebAppData] Hash parsing error", e);
-		}
-	}
 
 	let startParam = "";
 	let initData = "";
@@ -126,11 +93,7 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 	const isPersistedWebApp = !!persistedWebAppState;
 
 	console.log("[getTelegramWebAppData] Final startParam:", startParam);
-	console.log("[getTelegramWebAppData] Is WebApp environment:", isWebApp);
-	console.log(
-		"[getTelegramWebAppData] Is persisted WebApp:",
-		isPersistedWebApp,
-	);
+	console.log("[getTelegramWebAppData] Is WebApp:", isWebApp || isPersistedWebApp);
 
 	// Return data if we're in a WebApp environment (current or persisted)
 	if (isWebApp || isPersistedWebApp) {
@@ -139,13 +102,10 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 			initDataUnsafe: initDataUnsafe,
 			startParam: startParam,
 		};
-		console.log("[getTelegramWebAppData] === RETURNING RESULT ===", result);
-		LogRocket.log("[getTelegramWebAppData] Returning WebApp data", result);
+		LogRocket.log("[getTelegramWebAppData] WebApp data found", { startParam });
 		return result;
 	}
 
-	console.log("[getTelegramWebAppData] === RETURNING NULL ===");
-	LogRocket.log("[getTelegramWebAppData] Returning null - not WebApp environment");
 	return null;
 };
 
@@ -267,8 +227,8 @@ export const handleTelegramNavigation = (
 			"[TelegramNavigation] Available hash params:",
 			window.location.hash
 				? Array.from(
-						new URLSearchParams(window.location.hash.substring(1)).entries(),
-					)
+					new URLSearchParams(window.location.hash.substring(1)).entries(),
+				)
 				: "none",
 		);
 		return false;
