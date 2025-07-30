@@ -15,9 +15,15 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 
 	// Debug logging
 	console.log("[getTelegramWebAppData] Current URL:", window.location.href);
-	console.log("[getTelegramWebAppData] URL search params:", window.location.search);
+	console.log(
+		"[getTelegramWebAppData] URL search params:",
+		window.location.search,
+	);
 	console.log("[getTelegramWebAppData] URL hash:", window.location.hash);
-	console.log("[getTelegramWebAppData] window.Telegram?.WebApp:", !!window.Telegram?.WebApp);
+	console.log(
+		"[getTelegramWebAppData] window.Telegram?.WebApp:",
+		!!window.Telegram?.WebApp,
+	);
 
 	let startParam = "";
 	let initData = "";
@@ -26,19 +32,30 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 	// Method 1: Try to get from Telegram WebApp object (if available)
 	if (window.Telegram?.WebApp) {
 		const tgWebApp = window.Telegram.WebApp;
-		startParam = (tgWebApp.initDataUnsafe as Record<string, unknown>)?.start_param as string || "";
+		startParam =
+			((tgWebApp.initDataUnsafe as Record<string, unknown>)
+				?.start_param as string) || "";
 		initData = tgWebApp.initData || "";
 		initDataUnsafe = tgWebApp.initDataUnsafe || {};
-		
-		console.log("[getTelegramWebAppData] From WebApp object - start_param:", startParam);
-		console.log("[getTelegramWebAppData] From WebApp object - initDataUnsafe:", initDataUnsafe);
+
+		console.log(
+			"[getTelegramWebAppData] From WebApp object - start_param:",
+			startParam,
+		);
+		console.log(
+			"[getTelegramWebAppData] From WebApp object - initDataUnsafe:",
+			initDataUnsafe,
+		);
 	}
 
 	// Method 2: Check URL search parameters (for ?startapp=edit_expense_100)
 	if (!startParam) {
 		const urlParams = new URLSearchParams(window.location.search);
 		startParam = urlParams.get("startapp") || "";
-		console.log("[getTelegramWebAppData] From URL search params - startapp:", startParam);
+		console.log(
+			"[getTelegramWebAppData] From URL search params - startapp:",
+			startParam,
+		);
 	}
 
 	// Method 3: Check URL hash for tgWebAppData (fallback method)
@@ -50,7 +67,10 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 				const decoded = decodeURIComponent(tgWebAppData);
 				const params = new URLSearchParams(decoded);
 				startParam = params.get("start_param") || "";
-				console.log("[getTelegramWebAppData] From hash - start_param:", startParam);
+				console.log(
+					"[getTelegramWebAppData] From hash - start_param:",
+					startParam,
+				);
 			}
 		} catch (error) {
 			console.error("[getTelegramWebAppData] Error parsing hash:", error);
@@ -59,10 +79,11 @@ export const getTelegramWebAppData = (): TelegramWebAppData | null => {
 
 	// Method 4: Check if we're in a Telegram WebApp environment at all
 	// Enhanced detection: check for Telegram WebApp object, hash data, or URL params
-	const isWebApp = window.Telegram?.WebApp || 
+	const isWebApp =
+		window.Telegram?.WebApp ||
 		window.location.hash.includes("tgWebAppData=") ||
 		window.location.search.includes("startapp=");
-	
+
 	console.log("[getTelegramWebAppData] Final startParam:", startParam);
 	console.log("[getTelegramWebAppData] Is WebApp environment:", isWebApp);
 
@@ -133,12 +154,18 @@ export const handleTelegramNavigation = (
 ): boolean => {
 	console.log("[TelegramNavigation] Starting navigation check");
 	console.log("[TelegramNavigation] Current URL:", window.location.href);
-	console.log("[TelegramNavigation] URL search params:", window.location.search);
+	console.log(
+		"[TelegramNavigation] URL search params:",
+		window.location.search,
+	);
 	console.log("[TelegramNavigation] URL hash:", window.location.hash);
-	
+
 	const webAppData = getTelegramWebAppData();
 	console.log("[TelegramNavigation] WebApp data:", webAppData);
-	console.log("[TelegramNavigation] Start param from WebApp data:", webAppData?.startParam);
+	console.log(
+		"[TelegramNavigation] Start param from WebApp data:",
+		webAppData?.startParam,
+	);
 
 	// If no WebApp data at all, we're not in a Telegram environment
 	if (!webAppData) {
@@ -152,7 +179,10 @@ export const handleTelegramNavigation = (
 		// Try to extract from URL search params as fallback
 		const urlParams = new URLSearchParams(window.location.search);
 		startParam = urlParams.get("startapp") || "";
-		console.log("[TelegramNavigation] Fallback start param from URL search:", startParam);
+		console.log(
+			"[TelegramNavigation] Fallback start param from URL search:",
+			startParam,
+		);
 	}
 
 	// Additional fallback: check URL hash for start_param
@@ -164,17 +194,33 @@ export const handleTelegramNavigation = (
 				const decoded = decodeURIComponent(tgWebAppData);
 				const params = new URLSearchParams(decoded);
 				startParam = params.get("start_param") || "";
-				console.log("[TelegramNavigation] Fallback start param from hash:", startParam);
+				console.log(
+					"[TelegramNavigation] Fallback start param from hash:",
+					startParam,
+				);
 			}
 		} catch (error) {
-			console.error("[TelegramNavigation] Error parsing hash for start param:", error);
+			console.error(
+				"[TelegramNavigation] Error parsing hash for start param:",
+				error,
+			);
 		}
 	}
 
 	if (!startParam) {
 		console.log("[TelegramNavigation] No start param found anywhere");
-		console.log("[TelegramNavigation] Available URL params:", Array.from(new URLSearchParams(window.location.search).entries()));
-		console.log("[TelegramNavigation] Available hash params:", window.location.hash ? Array.from(new URLSearchParams(window.location.hash.substring(1)).entries()) : "none");
+		console.log(
+			"[TelegramNavigation] Available URL params:",
+			Array.from(new URLSearchParams(window.location.search).entries()),
+		);
+		console.log(
+			"[TelegramNavigation] Available hash params:",
+			window.location.hash
+				? Array.from(
+						new URLSearchParams(window.location.hash.substring(1)).entries(),
+					)
+				: "none",
+		);
 		return false;
 	}
 
@@ -183,11 +229,17 @@ export const handleTelegramNavigation = (
 	console.log("[TelegramNavigation] Parsed start param:", parsed);
 
 	if (!parsed) {
-		console.log("[TelegramNavigation] Failed to parse start param:", startParam);
+		console.log(
+			"[TelegramNavigation] Failed to parse start param:",
+			startParam,
+		);
 		return false;
 	}
 
-	console.log("[TelegramNavigation] Successfully parsed action:", parsed.action);
+	console.log(
+		"[TelegramNavigation] Successfully parsed action:",
+		parsed.action,
+	);
 
 	switch (parsed.action) {
 		case "edit_expense":
@@ -221,7 +273,10 @@ export const handleTelegramNavigation = (
 			return true;
 	}
 
-	console.log("[TelegramNavigation] No matching action found for:", parsed.action);
+	console.log(
+		"[TelegramNavigation] No matching action found for:",
+		parsed.action,
+	);
 	return false;
 };
 

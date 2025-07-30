@@ -73,8 +73,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			const isWebApp = isTelegramWebApp();
 			setState((prev) => {
 				if (prev.isWebApp !== isWebApp) {
-					console.log("[AuthContext] WebApp state changed:", { from: prev.isWebApp, to: isWebApp });
-					LogRocket.log("[AuthContext] WebApp state changed:", { from: prev.isWebApp, to: isWebApp });
+					console.log("[AuthContext] WebApp state changed:", {
+						from: prev.isWebApp,
+						to: isWebApp,
+					});
+					LogRocket.log("[AuthContext] WebApp state changed:", {
+						from: prev.isWebApp,
+						to: isWebApp,
+					});
 					return { ...prev, isWebApp };
 				}
 				return prev;
