@@ -451,40 +451,63 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 	itemsCount: number;
 	status: string;
 }) => {
+	console.log("[notifyExpenseSavedAndClose] Called with:", expenseData);
 	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
 		// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete, need to access showAlert/close methods
 		const webApp = window.Telegram.WebApp as any;
 
 		// Create appropriate message based on status
 		let message: string;
-		if (expenseData.status === "saved") {
-			message = `✅ Expense saved to database!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: Saved`;
+		if (expenseData.status === "approved") {
+			message = `✅ Expense approved and saved to database!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: Approved`;
 		} else {
 			message = `✅ Expense ${expenseData.status} successfully!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
 		}
 
+		console.log(
+			"[notifyExpenseSavedAndClose] Showing alert with message:",
+			message,
+		);
 		if (webApp.showAlert) {
 			webApp.showAlert(message, () => {
+				console.log(
+					"[notifyExpenseSavedAndClose] Alert acknowledged, closing WebApp",
+				);
 				// Close the WebApp after user acknowledges the message
 				if (webApp.close) {
 					webApp.close();
 				}
 			});
+		} else {
+			console.log("[notifyExpenseSavedAndClose] showAlert not available");
 		}
+	} else {
+		console.log("[notifyExpenseSavedAndClose] Telegram WebApp not available");
 	}
 };
 
 // Show cancellation message and close WebApp
 export const notifyCancelAndClose = () => {
+	console.log("[notifyCancelAndClose] Called");
 	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
 		// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete, need to access showAlert/close methods
 		const webApp = window.Telegram.WebApp as any;
+		console.log(
+			"[notifyCancelAndClose] Telegram WebApp available, showing alert",
+		);
 		if (webApp.showAlert) {
 			webApp.showAlert("❌ Changes cancelled", () => {
+				console.log(
+					"[notifyCancelAndClose] Alert acknowledged, closing WebApp",
+				);
 				if (webApp.close) {
 					webApp.close();
 				}
 			});
+		} else {
+			console.log("[notifyCancelAndClose] showAlert not available");
 		}
+	} else {
+		console.log("[notifyCancelAndClose] Telegram WebApp not available");
 	}
 };

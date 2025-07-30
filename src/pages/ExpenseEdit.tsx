@@ -104,6 +104,7 @@ export const ExpenseEdit = () => {
 
 			// If in Telegram WebApp and came through Telegram link, show success message and close
 			if (isTelegramWebApp() && cameThroughTelegramLink) {
+				console.log("[ExpenseEdit] Came through Telegram link, closing WebApp");
 				const totalAmount = editingItems.reduce(
 					(sum, item) => sum + (item.amount ?? 0),
 					0,
@@ -111,7 +112,7 @@ export const ExpenseEdit = () => {
 				notifyExpenseSavedAndClose({
 					totalAmount,
 					itemsCount: editingItems.length,
-					status: data.status || "saved",
+					status: data.status || "approved",
 				});
 			} else {
 				// Regular web navigation
@@ -138,6 +139,7 @@ export const ExpenseEdit = () => {
 
 			// If in Telegram WebApp and came through Telegram link, show success message and close
 			if (isTelegramWebApp() && cameThroughTelegramLink) {
+				console.log("[ExpenseEdit] Came through Telegram link, closing WebApp");
 				const totalAmount = editingItems.reduce(
 					(sum, item) => sum + (item.amount ?? 0),
 					0,
@@ -145,7 +147,7 @@ export const ExpenseEdit = () => {
 				notifyExpenseSavedAndClose({
 					totalAmount,
 					itemsCount: editingItems.length,
-					status: "created",
+					status: "approved",
 				});
 			} else {
 				// Regular web navigation
@@ -168,11 +170,15 @@ export const ExpenseEdit = () => {
 			const updatedExpense: Partial<components["schemas"]["Expense"]> = {
 				...expense,
 				items: editingItems,
-				// Change status from "draft" to "saved" when editing in WebApp mode and came through Telegram link
+				// Change status from "draft" to "approved" when editing in WebApp mode and came through Telegram link
 				...(isWebApp && cameThroughTelegramLink && expense.status === "draft"
-					? { status: "saved" }
+					? { status: "approved" }
 					: {}),
 			};
+			console.log(
+				"[ExpenseEdit] Updating expense with status:",
+				updatedExpense.status,
+			);
 			updateMutation.mutate(updatedExpense);
 		} else {
 			// Add mode - create new expense
@@ -181,8 +187,17 @@ export const ExpenseEdit = () => {
 	};
 
 	const handleCancel = () => {
+		console.log(
+			"[ExpenseEdit] Cancel clicked, isWebApp:",
+			isWebApp,
+			"cameThroughTelegramLink:",
+			cameThroughTelegramLink,
+		);
 		// If in Telegram WebApp and came through Telegram link, show cancel message and close
 		if (isTelegramWebApp() && cameThroughTelegramLink) {
+			console.log(
+				"[ExpenseEdit] Came through Telegram link, closing WebApp on cancel",
+			);
 			notifyCancelAndClose();
 		} else {
 			// Regular web navigation
