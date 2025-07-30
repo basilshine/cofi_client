@@ -46,6 +46,7 @@ export const ExpenseEdit = () => {
 	// Determine if this is add mode (no ID) or edit mode (has ID)
 	const isAddMode = !id;
 	const isEditMode = !!id;
+	const isWebApp = isTelegramWebApp();
 
 	const {
 		data: expense,
@@ -278,21 +279,23 @@ export const ExpenseEdit = () => {
 
 	return (
 		<div className="min-h-screen bg-background flex flex-col">
-			{/* Header */}
-			<header className="sticky top-0 z-10 bg-background border-b">
-				<div className="flex items-center justify-between p-4">
-					<Button variant="ghost" size="sm" onClick={handleCancel}>
-						<X className="h-5 w-5" />
-					</Button>
-					<h1 className="text-xl font-bold font-heading">
-						{isAddMode ? "Add Expense" : "Edit Expense"}
-					</h1>
-					<div className="w-8" />
-				</div>
-			</header>
+			{/* Header - only show if not in WebApp mode */}
+			{!isWebApp && (
+				<header className="sticky top-0 z-10 bg-background border-b">
+					<div className="flex items-center justify-between p-4">
+						<Button variant="ghost" size="sm" onClick={handleCancel}>
+							<X className="h-5 w-5" />
+						</Button>
+						<h1 className="text-xl font-bold font-heading">
+							{isAddMode ? "Add Expense" : "Edit Expense"}
+						</h1>
+						<div className="w-8" />
+					</div>
+				</header>
+			)}
 
 			{/* Main Content */}
-			<main className="flex-1 p-4 space-y-6">
+			<main className={`flex-1 p-4 space-y-6 ${isWebApp ? 'pt-0' : ''}`}>
 				{/* Total Amount Card */}
 				<Card className="bg-card">
 					<CardContent className="p-4">
