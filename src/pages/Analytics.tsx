@@ -184,144 +184,152 @@ export const Analytics = () => {
 	}
 
 	return (
-		<div className="container mx-auto py-8">
-			<div className="mb-8">
-				<h1 className="text-3xl font-bold">{t("analytics.title")}</h1>
-				<p className="mt-2 text-muted-foreground">
-					{t("analytics.description")}
-				</p>
-			</div>
-
-			{isLoading ? (
-				<div className="flex items-center justify-center py-8">
-					<p className="text-muted-foreground">{t("common.loading")}</p>
+		<div className="min-h-screen bg-[#f8fafc]">
+			<div className="space-y-8">
+				{/* Header Section */}
+				<div className="px-4 pb-2">
+					<h1 className="text-[#1e3a8a] text-2xl font-bold leading-tight">
+						{t("analytics.title")}
+					</h1>
+					<p className="mt-2 text-[#64748b] text-sm">
+						{t("analytics.description")}
+					</p>
 				</div>
-			) : (
-				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-					<Card>
-						<CardHeader>
-							<CardTitle className="flex items-center gap-2">
-								<ChartLineUp className="h-5 w-5" />
+
+				{isLoading ? (
+					<div className="flex items-center justify-center py-8">
+						<p className="text-[#64748b]">{t("common.loading")}</p>
+					</div>
+				) : (
+					<div className="space-y-6">
+						{/* Spending Trends Card */}
+						<div className="mx-4">
+							<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight pb-2">
 								{t("analytics.spending_trends")}
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							{summary ? (
-								<div className="space-y-3">
-									<div className="flex justify-between items-center">
-										<span className="text-sm text-muted-foreground">
-											{t("expenses.total")}
-										</span>
-										<span className="text-2xl font-bold">
-											${summary.totalExpenses?.toFixed(2) ?? "0.00"}
-										</span>
-									</div>
-									<div className="flex justify-between items-center">
-										<span className="text-sm text-muted-foreground">
-											{t("expenses.monthlyAverage")}
-										</span>
-										<span className="text-lg font-semibold">
-											${((summary.thisMonth ?? 0) / 1).toFixed(2)}
-										</span>
-									</div>
-									<div className="flex justify-between items-center">
-										<span className="text-sm text-muted-foreground">
-											{t("analytics.totalTransactions")}
-										</span>
-										<span className="text-lg font-semibold">
-											{totalExpenses}
-										</span>
-									</div>
-								</div>
-							) : (
-								<p className="text-sm text-muted-foreground">
-									{t("analytics.noData")}
-								</p>
-							)}
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader>
-							<CardTitle className="flex items-center gap-2">
-								<ChartPie className="h-5 w-5" />
-								{t("analytics.category_breakdown")}
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							{categories.length > 0 ? (
-								<div className="space-y-3">
-									{categories.slice(0, 5).map((category, index) => (
-										<div
-											key={category.id}
-											className="flex justify-between items-center"
-										>
-											<div className="flex items-center gap-2">
-												<div
-													className={`w-3 h-3 rounded-full bg-blue-${(index + 1) * 100}`}
-												/>
-												<span className="text-sm font-medium">
-													{category.name}
-												</span>
-											</div>
+							</h2>
+							<div className="bg-white rounded-xl shadow-sm p-6">
+								{summary ? (
+									<div className="space-y-4">
+										<div className="flex justify-between items-center">
+											<span className="text-sm text-[#64748b]">
+												{t("expenses.total")}
+											</span>
+											<span className="text-2xl font-bold text-[#1e3a8a]">
+												${summary.totalExpenses?.toFixed(2) ?? "0.00"}
+											</span>
 										</div>
-									))}
-									{categories.length > 5 && (
-										<p className="text-xs text-muted-foreground mt-2">
-											{t("analytics.andMore", { count: categories.length - 5 })}
-										</p>
-									)}
-								</div>
-							) : (
-								<p className="text-sm text-muted-foreground">
-									{t("analytics.noCategories")}
-								</p>
-							)}
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader>
-							<CardTitle className="flex items-center gap-2">
-								<ChartBar className="h-5 w-5" />
-								{t("analytics.budget_analysis")}
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-3">
-								<div className="flex justify-between items-center">
-									<span className="text-sm text-muted-foreground">
-										{t("analytics.averageExpense")}
-									</span>
-									<span className="text-lg font-semibold">
-										${averageExpense.toFixed(2)}
-									</span>
-								</div>
-								{summary?.byCategory && (
-									<div className="space-y-2">
-										<p className="text-sm font-medium">
-											{t("analytics.topCategory")}
-										</p>
-										{Object.entries(summary.byCategory)
-											.sort(([, a], [, b]) => b - a)
-											.slice(0, 1)
-											.map(([category, amount]) => (
-												<div key={category} className="flex justify-between">
-													<span className="text-sm text-muted-foreground">
-														{category}
-													</span>
-													<span className="text-sm font-medium">
-														${amount.toFixed(2)}
-													</span>
-												</div>
-											))}
+										<div className="flex justify-between items-center">
+											<span className="text-sm text-[#64748b]">
+												{t("expenses.monthlyAverage")}
+											</span>
+											<span className="text-lg font-semibold text-[#1e3a8a]">
+												${((summary.thisMonth ?? 0) / 1).toFixed(2)}
+											</span>
+										</div>
+										<div className="flex justify-between items-center">
+											<span className="text-sm text-[#64748b]">
+												{t("analytics.totalTransactions")}
+											</span>
+											<span className="text-lg font-semibold text-[#1e3a8a]">
+												{totalExpenses}
+											</span>
+										</div>
 									</div>
+								) : (
+									<p className="text-sm text-[#64748b]">
+										{t("analytics.noData")}
+									</p>
 								)}
 							</div>
-						</CardContent>
-					</Card>
-				</div>
-			)}
+						</div>
+
+						{/* Category Breakdown Card */}
+						<div className="mx-4">
+							<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight pb-2">
+								{t("analytics.category_breakdown")}
+							</h2>
+							<div className="bg-white rounded-xl shadow-sm p-6">
+								{categories.length > 0 ? (
+									<div className="space-y-4">
+										{categories.slice(0, 5).map((category, index) => (
+											<div
+												key={category.id}
+												className="flex justify-between items-center"
+											>
+												<div className="flex items-center gap-3">
+													<div
+														className="w-3 h-3 rounded-full"
+														style={{
+															backgroundColor: [
+																"#69b4cd",
+																"#f7a35c",
+																"#90ed7d",
+																"#7cb5ec",
+																"#f15c80",
+															][index % 5],
+														}}
+													/>
+													<span className="text-sm font-medium text-[#1e3a8a]">
+														{category.name}
+													</span>
+												</div>
+											</div>
+										))}
+										{categories.length > 5 && (
+											<p className="text-xs text-[#64748b] mt-2">
+												{t("analytics.andMore", { count: categories.length - 5 })}
+											</p>
+										)}
+									</div>
+								) : (
+									<p className="text-sm text-[#64748b]">
+										{t("analytics.noCategories")}
+									</p>
+								)}
+							</div>
+						</div>
+
+						{/* Budget Analysis Card */}
+						<div className="mx-4">
+							<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight pb-2">
+								{t("analytics.budget_analysis")}
+							</h2>
+							<div className="bg-white rounded-xl shadow-sm p-6">
+								<div className="space-y-4">
+									<div className="flex justify-between items-center">
+										<span className="text-sm text-[#64748b]">
+											{t("analytics.averageExpense")}
+										</span>
+										<span className="text-lg font-semibold text-[#1e3a8a]">
+											${averageExpense.toFixed(2)}
+										</span>
+									</div>
+									{summary?.byCategory && (
+										<div className="space-y-3">
+											<p className="text-sm font-medium text-[#1e3a8a]">
+												{t("analytics.topCategory")}
+											</p>
+											{Object.entries(summary.byCategory)
+												.sort(([, a], [, b]) => b - a)
+												.slice(0, 1)
+												.map(([category, amount]) => (
+													<div key={category} className="flex justify-between">
+														<span className="text-sm text-[#64748b]">
+															{category}
+														</span>
+														<span className="text-sm font-medium text-[#1e3a8a]">
+															${amount.toFixed(2)}
+														</span>
+													</div>
+												))}
+										</div>
+									)}
+								</div>
+							</div>
+						</div>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 };
