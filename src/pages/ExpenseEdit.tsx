@@ -327,7 +327,9 @@ export const ExpenseEdit = () => {
 						<div className="flex items-center justify-between">
 							<div>
 								<p className="text-sm text-[#64748b]">Total Amount</p>
-								<p className="text-2xl font-bold text-[#1e3a8a]">${totalAmount.toFixed(2)}</p>
+								<p className="text-2xl font-bold text-[#1e3a8a]">
+									${totalAmount.toFixed(2)}
+								</p>
 							</div>
 							<div className="text-right">
 								<p className="text-sm text-[#64748b]">Date</p>
@@ -343,10 +345,15 @@ export const ExpenseEdit = () => {
 
 				{/* Items Section */}
 				<div className="mx-4">
-					<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight pb-2">Items</h2>
+					<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight pb-2">
+						Items
+					</h2>
 					<div className="space-y-3">
 						{editingItems.map((item, index) => (
-							<div key={item.id || `item-${index}`} className="bg-white rounded-xl shadow-sm">
+							<div
+								key={item.id || `item-${index}`}
+								className="bg-white rounded-xl shadow-sm"
+							>
 								{/* Collapsed View */}
 								<button
 									type="button"
@@ -354,7 +361,9 @@ export const ExpenseEdit = () => {
 									onClick={() => toggleItemExpansion(index)}
 								>
 									<div>
-										<p className="font-medium text-[#1e3a8a]">{item.name || "Unnamed Item"}</p>
+										<p className="font-medium text-[#1e3a8a]">
+											{item.name || "Unnamed Item"}
+										</p>
 										<p className="text-sm text-[#64748b]">
 											{item.category?.name || "Uncategorized"}
 										</p>
@@ -377,7 +386,9 @@ export const ExpenseEdit = () => {
 								{expandedItems.has(index) && (
 									<div className="p-4 border-t border-gray-200 space-y-4">
 										<div className="flex items-center justify-between">
-											<p className="font-bold text-lg text-[#1e3a8a]">Edit Item</p>
+											<p className="font-bold text-lg text-[#1e3a8a]">
+												Edit Item
+											</p>
 											<Button
 												variant="ghost"
 												size="sm"
@@ -393,7 +404,10 @@ export const ExpenseEdit = () => {
 
 										<div className="space-y-4">
 											<div>
-												<Label htmlFor={`item-description-${index}`} className="text-[#64748b] text-sm font-medium">
+												<Label
+													htmlFor={`item-description-${index}`}
+													className="text-[#64748b] text-sm font-medium"
+												>
 													Description
 												</Label>
 												<Input
@@ -408,7 +422,10 @@ export const ExpenseEdit = () => {
 											</div>
 
 											<div>
-												<Label htmlFor={`item-amount-${index}`} className="text-[#64748b] text-sm font-medium">
+												<Label
+													htmlFor={`item-amount-${index}`}
+													className="text-[#64748b] text-sm font-medium"
+												>
 													Amount
 												</Label>
 												<div className="relative">
@@ -434,7 +451,10 @@ export const ExpenseEdit = () => {
 											</div>
 
 											<div>
-												<Label htmlFor={`item-category-${index}`} className="text-[#64748b] text-sm font-medium">
+												<Label
+													htmlFor={`item-category-${index}`}
+													className="text-[#64748b] text-sm font-medium"
+												>
 													Category
 												</Label>
 												<Select
@@ -457,7 +477,10 @@ export const ExpenseEdit = () => {
 											</div>
 
 											<div>
-												<Label htmlFor={`item-feeling-${index}`} className="text-[#64748b] text-sm font-medium">
+												<Label
+													htmlFor={`item-feeling-${index}`}
+													className="text-[#64748b] text-sm font-medium"
+												>
 													Emotional Feeling
 												</Label>
 												<Select
@@ -531,7 +554,10 @@ export const ExpenseEdit = () => {
 						<CardContent className="space-y-4">
 							{newItemStep === 1 && (
 								<div>
-									<Label htmlFor="new-item-description" className="text-[#64748b] text-sm font-medium">
+									<Label
+										htmlFor="new-item-description"
+										className="text-[#64748b] text-sm font-medium"
+									>
 										Description
 									</Label>
 									<Input
@@ -548,7 +574,10 @@ export const ExpenseEdit = () => {
 
 							{newItemStep === 2 && (
 								<div>
-									<Label htmlFor="new-item-amount" className="text-[#64748b] text-sm font-medium">
+									<Label
+										htmlFor="new-item-amount"
+										className="text-[#64748b] text-sm font-medium"
+									>
 										Amount
 									</Label>
 									<div className="relative">
@@ -575,7 +604,10 @@ export const ExpenseEdit = () => {
 
 							{newItemStep === 3 && (
 								<div>
-									<Label htmlFor="new-item-category" className="text-[#64748b] text-sm font-medium">
+									<Label
+										htmlFor="new-item-category"
+										className="text-[#64748b] text-sm font-medium"
+									>
 										Category
 									</Label>
 									<Select
@@ -605,7 +637,10 @@ export const ExpenseEdit = () => {
 
 							{newItemStep === 4 && (
 								<div>
-									<Label htmlFor="new-item-feeling" className="text-[#64748b] text-sm font-medium">
+									<Label
+										htmlFor="new-item-feeling"
+										className="text-[#64748b] text-sm font-medium"
+									>
 										Emotional Feeling
 									</Label>
 									<Select
@@ -635,7 +670,7 @@ export const ExpenseEdit = () => {
 							>
 								Back
 							</Button>
-							<Button 
+							<Button
 								onClick={handleNewItemNext}
 								className="bg-[#47c1ea] hover:bg-[#3ba8d4] text-white"
 							>

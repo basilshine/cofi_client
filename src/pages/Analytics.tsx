@@ -277,7 +277,9 @@ export const Analytics = () => {
 										))}
 										{categories.length > 5 && (
 											<p className="text-xs text-[#64748b] mt-2">
-												{t("analytics.andMore", { count: categories.length - 5 })}
+												{t("analytics.andMore", {
+													count: categories.length - 5,
+												})}
 											</p>
 										)}
 									</div>
