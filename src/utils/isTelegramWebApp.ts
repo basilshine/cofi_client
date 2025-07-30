@@ -12,7 +12,7 @@ export const isTelegramWebApp = (): boolean => {
 
 	// Check if we've already detected WebApp mode in this session
 	const persistedState = sessionStorage.getItem(WEBAPP_STATE_KEY);
-	
+
 	const debugInfo = {
 		currentURL: window.location.href,
 		userAgent: navigator.userAgent,
@@ -104,10 +104,12 @@ export const isTelegramWebApp = (): boolean => {
 
 	// Check 7: Previously detected in this session (fallback for navigation)
 	if (persistedState) {
-		console.log(`[isTelegramWebApp] ✅ Using persisted WebApp state: ${persistedState}`);
-		LogRocket.log("[isTelegramWebApp] Using persisted WebApp state", { 
+		console.log(
+			`[isTelegramWebApp] ✅ Using persisted WebApp state: ${persistedState}`,
+		);
+		LogRocket.log("[isTelegramWebApp] Using persisted WebApp state", {
 			persistedState,
-			reason: "Navigation after initial detection"
+			reason: "Navigation after initial detection",
 		});
 		return true;
 	}
