@@ -6,6 +6,7 @@ const ENDPOINTS = {
 	login: "/api/v1/auth/login" as const,
 	register: "/api/v1/auth/register" as const,
 	me: "/api/v1/auth/me" as const,
+	profile: "/api/v1/auth/profile" as const,
 	refresh: "/api/v1/auth/refresh" as const,
 	telegramLogin: "/api/v1/auth/telegram" as const,
 	telegramLoginWidget: "/api/v1/auth/telegram/login" as const,
@@ -187,6 +188,16 @@ api.interceptors.response.use(
 	},
 );
 
+// Profile update request type
+export type ProfileUpdateRequest = {
+	email: string;
+	name: string;
+	country: string;
+	language: string;
+	timezone: string;
+	currency: string;
+};
+
 export const apiService = {
 	auth: {
 		login: (data: components["schemas"]["LoginRequest"]) =>
@@ -198,6 +209,8 @@ export const apiService = {
 				paths["/api/v1/auth/register"]["post"]["responses"]["200"]["content"]["application/json"]
 			>(ENDPOINTS.register, data),
 		me: () => api.get<components["schemas"]["User"]>(ENDPOINTS.me),
+		updateProfile: (data: ProfileUpdateRequest) =>
+			api.put<components["schemas"]["User"]>(ENDPOINTS.profile, data),
 		refresh: (data: { refreshToken?: string }) =>
 			api.post<
 				paths["/api/v1/auth/refresh"]["post"]["responses"]["200"]["content"]["application/json"]

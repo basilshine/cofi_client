@@ -1,6 +1,6 @@
 import { TelegramLoadingScreen } from "@/components/TelegramLoadingScreen";
 import { useTelegram } from "@/hooks/useTelegram";
-import { apiService } from "@/services/api";
+import { apiService, type ProfileUpdateRequest } from "@/services/api";
 import type { components } from "@/types/api-types";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { handleTelegramNavigation } from "@/utils/telegramWebApp";
@@ -49,6 +49,7 @@ interface AuthContextType extends AuthState {
 	setUser: (user: User | null) => void;
 	setToken: (token: string | null) => void;
 	handleTelegramWidgetAuth: (tgUser: TelegramWidgetUser) => Promise<void>;
+	updateUser: (profileData: ProfileUpdateRequest) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -571,6 +572,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		}
 	};
 
+	// Update user profile
+	const updateUser = async (profileData: ProfileUpdateRequest) => {
+		try {
+			setState((prev) => ({ ...prev, isLoading: true, error: null }));
+			const response = await apiService.auth.updateProfile(profileData);
+			setState((prev) => ({
+				...prev,
+				user: response.data,
+				isLoading: false,
+				error: null,
+			}));
+		} catch (error) {
+			setState((prev) => ({
+				...prev,
+				isLoading: false,
+				error: error instanceof Error ? error.message : "Profile update failed",
+			}));
+			throw error;
+		}
+	};
+
 	// Handle Telegram Login Widget (browser)
 	const handleTelegramWidgetAuth = async (tgUser: TelegramWidgetUser) => {
 		setState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -657,6 +679,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				setUser,
 				setToken,
 				handleTelegramWidgetAuth,
+				updateUser,
 			}}
 		>
 			{state.isWebApp && state.isLoading && !state.isAuthenticated ? (

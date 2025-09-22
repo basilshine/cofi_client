@@ -2183,6 +2183,8 @@ export interface components {
 			telegramPhotoUrl?: string;
 			country?: string;
 			language?: string;
+			timezone?: string;
+			currency?: string;
 		};
 		Category: {
 			/** Format: int64 */
