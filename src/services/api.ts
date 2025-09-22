@@ -7,6 +7,7 @@ const ENDPOINTS = {
 	register: "/api/v1/auth/register" as const,
 	me: "/api/v1/auth/me" as const,
 	profile: "/api/v1/auth/profile" as const,
+	deleteData: "/api/v1/auth/data" as const,
 	refresh: "/api/v1/auth/refresh" as const,
 	telegramLogin: "/api/v1/auth/telegram" as const,
 	telegramLoginWidget: "/api/v1/auth/telegram/login" as const,
@@ -214,6 +215,7 @@ export const apiService = {
 		me: () => api.get<components["schemas"]["User"]>(ENDPOINTS.me),
 		updateProfile: (data: ProfileUpdateRequest) =>
 			api.put<components["schemas"]["User"]>(ENDPOINTS.profile, data),
+		deleteAllData: () => api.delete<{ message: string }>(ENDPOINTS.deleteData),
 		refresh: (data: { refreshToken?: string }) =>
 			api.post<
 				paths["/api/v1/auth/refresh"]["post"]["responses"]["200"]["content"]["application/json"]

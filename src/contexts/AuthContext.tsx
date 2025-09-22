@@ -50,6 +50,7 @@ interface AuthContextType extends AuthState {
 	setToken: (token: string | null) => void;
 	handleTelegramWidgetAuth: (tgUser: TelegramWidgetUser) => Promise<void>;
 	updateUser: (profileData: ProfileUpdateRequest) => Promise<void>;
+	deleteAllData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -596,6 +597,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		}
 	};
 
+	// Delete all user data
+	const deleteAllData = async () => {
+		try {
+			setState((prev) => ({ ...prev, isLoading: true, error: null }));
+			console.log("[AuthContext] Deleting all user data");
+			await apiService.auth.deleteAllData();
+			console.log("[AuthContext] All user data deleted successfully");
+			setState((prev) => ({
+				...prev,
+				isLoading: false,
+				error: null,
+			}));
+		} catch (error) {
+			console.error("[AuthContext] Delete all data error:", error);
+			setState((prev) => ({
+				...prev,
+				isLoading: false,
+				error: error instanceof Error ? error.message : "Data deletion failed",
+			}));
+			throw error;
+		}
+	};
+
 	// Handle Telegram Login Widget (browser)
 	const handleTelegramWidgetAuth = async (tgUser: TelegramWidgetUser) => {
 		setState((prev) => ({ ...prev, isLoading: true, error: null }));
@@ -683,6 +707,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				setToken,
 				handleTelegramWidgetAuth,
 				updateUser,
+				deleteAllData,
 			}}
 		>
 			{state.isWebApp && state.isLoading && !state.isAuthenticated ? (

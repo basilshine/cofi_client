@@ -74,7 +74,8 @@ const getCurrencyName = (code: string): string => {
 };
 
 export const Profile = () => {
-	const { user, logout, updateUser, isLoading, error } = useAuth();
+	const { user, logout, updateUser, deleteAllData, isLoading, error } =
+		useAuth();
 	const [isEditing, setIsEditing] = useState(false);
 	const [formData, setFormData] = useState<ProfileUpdateRequest>({
 		email: "",
@@ -124,6 +125,36 @@ export const Profile = () => {
 			)
 		) {
 			console.log("Account deletion requested");
+		}
+	};
+
+	const handleDeleteAllData = async () => {
+		const confirmMessage = `⚠️ WARNING: This will permanently delete ALL your data including:
+
+• All expenses and expense items
+• All categories you've created
+• All tags and their associations
+• All recurring expense schedules
+• All goals and reminders
+• All notifications
+
+Your account and profile will remain, but all financial data will be lost forever.
+
+Type "DELETE ALL DATA" to confirm:`;
+
+		const userInput = window.prompt(confirmMessage);
+		if (userInput === "DELETE ALL DATA") {
+			try {
+				await deleteAllData();
+				alert("✅ All your data has been successfully deleted.");
+				// Refresh the page to clear any cached data
+				window.location.reload();
+			} catch (error) {
+				console.error("Data deletion failed:", error);
+				alert("❌ Failed to delete data. Please try again.");
+			}
+		} else if (userInput !== null) {
+			alert("❌ Incorrect confirmation text. Data deletion cancelled.");
 		}
 	};
 
@@ -652,6 +683,49 @@ export const Profile = () => {
 					>
 						<span className="font-medium text-[#ef4444]">Delete Account</span>
 					</button>
+				</div>
+			</section>
+
+			{/* Data Management Section */}
+			<section className="space-y-4">
+				<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight px-4 pb-2">
+					Data Management
+				</h2>
+				<div className="mx-4 space-y-4">
+					<div className="bg-white rounded-xl shadow-sm p-4">
+						<div className="space-y-3">
+							<div>
+								<h3 className="font-medium text-[#1e3a8a] mb-1">
+									Clean Up All Data
+								</h3>
+								<p className="text-sm text-[#64748b]">
+									Permanently delete all your financial data while keeping your
+									account.
+								</p>
+							</div>
+							<div className="bg-[#fef3c7] border border-[#f59e0b] rounded-lg p-3">
+								<p className="text-sm text-[#92400e]">
+									<strong>⚠️ This will delete:</strong>
+								</p>
+								<ul className="text-xs text-[#92400e] mt-1 space-y-1">
+									<li>• All expenses and expense items</li>
+									<li>• All categories you've created</li>
+									<li>• All tags and their associations</li>
+									<li>• All recurring expense schedules</li>
+									<li>• All goals and reminders</li>
+									<li>• All notifications</li>
+								</ul>
+							</div>
+							<button
+								type="button"
+								onClick={handleDeleteAllData}
+								disabled={isLoading}
+								className="w-full bg-[#fbbf24] hover:bg-[#f59e0b] text-[#92400e] font-medium py-3 px-4 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{isLoading ? "Deleting..." : "🗑️ Delete All My Data"}
+							</button>
+						</div>
+					</div>
 				</div>
 			</section>
 		</div>
