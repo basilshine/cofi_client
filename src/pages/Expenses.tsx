@@ -106,9 +106,11 @@ export const Expenses = () => {
 	useEffect(() => {
 		if (recurringExpenses && recurringExpenses.length > 0) {
 			LogRocket.log("[Expenses] Recurring expenses loaded:", recurringExpenses);
+			console.log("[Expenses] Recurring expenses data:", recurringExpenses);
 		}
 		if (recurringError) {
 			LogRocket.error("[Expenses] Recurring expenses error:", recurringError);
+			console.error("[Expenses] Recurring expenses error:", recurringError);
 		}
 	}, [recurringExpenses, recurringError]);
 

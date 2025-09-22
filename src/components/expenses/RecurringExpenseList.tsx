@@ -1,7 +1,10 @@
+import { apiService } from "@/services/api";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import LogRocket from "logrocket";
 import { Link } from "react-router-dom";
 
 interface RecurringExpenseListProps {
@@ -13,6 +16,36 @@ export const RecurringExpenseList = ({
 	recurringExpenses,
 	isLoading,
 }: RecurringExpenseListProps) => {
+	const queryClient = useQueryClient();
+
+	const deleteMutation = useMutation({
+		mutationFn: (id: string) => {
+			LogRocket.log("[RecurringExpenseList] deleteMutation.mutationFn", { id });
+			return apiService.recurring.delete(id).then((res) => {
+				LogRocket.log("[RecurringExpenseList] deleteMutation result", res);
+				return res;
+			});
+		},
+		onSuccess: () => {
+			LogRocket.log("[RecurringExpenseList] deleteMutation success");
+			queryClient.invalidateQueries({ queryKey: ["recurring"] });
+		},
+		onError: (error) => {
+			LogRocket.error("[RecurringExpenseList] deleteMutation error", error);
+			console.error("Failed to delete recurring expense:", error);
+		},
+	});
+
+	const handleDelete = (id: string, name: string) => {
+		if (
+			window.confirm(
+				`Are you sure you want to delete the schedule "${name}"? This will stop all future automatic expenses from this schedule.`,
+			)
+		) {
+			deleteMutation.mutate(id);
+		}
+	};
+
 	if (isLoading) {
 		return (
 			<div className="flex justify-center py-8">
@@ -83,9 +116,15 @@ export const RecurringExpenseList = ({
 									<p className="text-[#666666] text-sm font-normal leading-normal">
 										Started:{" "}
 										{expense.startDate
-											? format(new Date(expense.startDate), "MMM dd")
+											? format(new Date(expense.startDate), "MMM dd, yyyy")
 											: "Unknown"}
 									</p>
+								</div>
+								{/* Debug info */}
+								<div className="text-xs text-gray-400 mt-1">
+									Category: {expense.category?.name || "No category"} | ID:{" "}
+									{expense.id} | Raw NextRun: {expense.nextRun} | Raw StartDate:{" "}
+									{expense.startDate}
 								</div>
 							</div>
 						</div>
@@ -105,10 +144,13 @@ export const RecurringExpenseList = ({
 							<Button
 								variant="ghost"
 								size="sm"
-								onClick={() => {
-									// TODO: Add delete recurring expense functionality
-									console.log("Delete recurring expense:", expense.id);
-								}}
+								onClick={() =>
+									handleDelete(
+										(expense.id ?? "").toString(),
+										expense.name || "schedule",
+									)
+								}
+								disabled={deleteMutation.isPending}
 								className="text-red-400 hover:text-red-600"
 							>
 								<Trash className="h-6 w-6" />

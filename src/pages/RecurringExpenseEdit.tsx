@@ -13,13 +13,7 @@ import {
 	SelectValue,
 } from "@components/ui/select";
 import { useAuth } from "@contexts/AuthContext";
-import {
-	ArrowLeft,
-	Calendar,
-	CurrencyDollar,
-	Repeat,
-	Tag,
-} from "@phosphor-icons/react";
+import { Calendar, CurrencyDollar, Repeat, Tag } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isTelegramWebApp } from "@utils/isTelegramWebApp";
 import {
@@ -246,22 +240,6 @@ export const RecurringExpenseEdit = () => {
 
 	return (
 		<div className="flex flex-col min-h-screen bg-[#f8f8f8]">
-			{/* Header */}
-			<header className="bg-white shadow-sm border-b border-gray-200 p-4">
-				<div className="flex items-center gap-4">
-					<Button
-						variant="ghost"
-						onClick={handleCancel}
-						className="text-[#47c1ea] hover:bg-[#e0f2f7] p-2"
-					>
-						<ArrowLeft size={24} />
-					</Button>
-					<h1 className="text-xl font-semibold text-[#1e3a8a]">
-						{isEditMode ? "Edit Schedule" : "Create Schedule"}
-					</h1>
-				</div>
-			</header>
-
 			{/* Main Content */}
 			<main className="flex-1 p-4 space-y-6">
 				{/* Schedule Details Card */}
