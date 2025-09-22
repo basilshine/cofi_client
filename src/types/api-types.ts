@@ -2261,8 +2261,10 @@ export interface components {
 			/** Format: int64 */
 			chatId?: number;
 			amount?: number;
+			name?: string;
 			/** Format: int64 */
 			categoryId?: number;
+			category?: components["schemas"]["Category"];
 			/** Format: date-time */
 			startDate?: string;
 			interval?: string;

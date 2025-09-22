@@ -3,6 +3,7 @@ import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { ExpenseList } from "@components/expenses/ExpenseList";
+import { RecurringExpenseList } from "@components/expenses/RecurringExpenseList";
 import { Button } from "@components/ui/button";
 import { Card } from "@components/ui/card";
 import { useAuth } from "@contexts/AuthContext";
@@ -15,6 +16,7 @@ import { Link } from "react-router-dom";
 
 // Filter types
 type FilterType = "category" | "date" | "emotion" | null;
+type ExpenseType = "regular" | "recurring";
 
 interface ExpenseFilters {
 	category?: string;
@@ -29,6 +31,7 @@ export const Expenses = () => {
 	const [activeFilter, setActiveFilter] = useState<FilterType>(null);
 	const [filters, setFilters] = useState<ExpenseFilters>({});
 	const [searchTerm, setSearchTerm] = useState("");
+	const [expenseType, setExpenseType] = useState<ExpenseType>("regular");
 
 	// Log when Expenses page is loaded
 	useEffect(() => {
@@ -66,6 +69,21 @@ export const Expenses = () => {
 		enabled: isAuthenticated, // Only run query if authenticated
 	});
 
+	// Fetch recurring expenses
+	const { data: recurringExpenses = [], error: recurringError } = useQuery<
+		components["schemas"]["RecurringExpense"][]
+	>({
+		queryKey: ["recurring", "expenses"],
+		queryFn: () => {
+			LogRocket.log("[Expenses] getRecurringExpenses queryFn");
+			return apiService.recurring.list().then((res) => {
+				LogRocket.log("[Expenses] getRecurringExpenses result", res.data);
+				return res.data;
+			});
+		},
+		enabled: isAuthenticated && expenseType === "recurring",
+	});
+
 	// Log results
 	useEffect(() => {
 		if (summary) {
@@ -84,6 +102,15 @@ export const Expenses = () => {
 			LogRocket.error("[Expenses] Categories error:", categoriesError);
 		}
 	}, [categories, categoriesError]);
+
+	useEffect(() => {
+		if (recurringExpenses && recurringExpenses.length > 0) {
+			LogRocket.log("[Expenses] Recurring expenses loaded:", recurringExpenses);
+		}
+		if (recurringError) {
+			LogRocket.error("[Expenses] Recurring expenses error:", recurringError);
+		}
+	}, [recurringExpenses, recurringError]);
 
 	// Filter handlers
 	const handleFilterClick = (filterType: FilterType) => {
@@ -181,15 +208,25 @@ export const Expenses = () => {
 				<div className="flex rounded-full bg-gray-200 p-1 mb-4">
 					<button
 						type="button"
-						className="flex-1 rounded-full py-2 text-center text-sm font-semibold bg-[#69b4cd] text-white flex items-center justify-center gap-2"
+						onClick={() => setExpenseType("regular")}
+						className={`flex-1 rounded-full py-2 text-center text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+							expenseType === "regular"
+								? "bg-[#69b4cd] text-white"
+								: "text-[#666666] hover:text-[#69b4cd]"
+						}`}
 					>
-						<span>All Expenses</span>
+						<span>Regular Expenses</span>
 					</button>
 					<button
 						type="button"
-						className="flex-1 rounded-full py-2 text-center text-sm font-semibold text-[#666666]"
+						onClick={() => setExpenseType("recurring")}
+						className={`flex-1 rounded-full py-2 text-center text-sm font-semibold transition-colors ${
+							expenseType === "recurring"
+								? "bg-[#69b4cd] text-white"
+								: "text-[#666666] hover:text-[#69b4cd]"
+						}`}
 					>
-						Snoozed
+						<span>Recurring Expenses</span>
 					</button>
 				</div>
 
@@ -217,75 +254,77 @@ export const Expenses = () => {
 					</div>
 				</div>
 
-				{/* Filter Buttons */}
-				<div className="flex gap-3 mb-4 overflow-x-auto">
-					<button
-						type="button"
-						onClick={() => handleFilterClick("category")}
-						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
-							activeFilter === "category"
-								? "bg-[#69b4cd] text-white"
-								: "bg-[#e0f2f7] text-[#69b4cd]"
-						}`}
-					>
-						<svg
-							fill="currentColor"
-							height="20px"
-							viewBox="0 0 256 256"
-							width="20px"
-							aria-label="Filter by category"
-							role="img"
+				{/* Filter Buttons - Only show for regular expenses */}
+				{expenseType === "regular" && (
+					<div className="flex gap-3 mb-4 overflow-x-auto">
+						<button
+							type="button"
+							onClick={() => handleFilterClick("category")}
+							className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
+								activeFilter === "category"
+									? "bg-[#69b4cd] text-white"
+									: "bg-[#e0f2f7] text-[#69b4cd]"
+							}`}
 						>
-							<path d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm108.34,72.28A15.92,15.92,0,0,0,144,139.17v55.49L112,216V139.17a15.92,15.92,0,0,0-4.32-10.94L40,56H216Z" />
-						</svg>
-						<span>Category</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => handleFilterClick("date")}
-						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
-							activeFilter === "date"
-								? "bg-[#69b4cd] text-white"
-								: "bg-[#e0f2f7] text-[#69b4cd]"
-						}`}
-					>
-						<svg
-							fill="currentColor"
-							height="20px"
-							viewBox="0 0 256 256"
-							width="20px"
-							aria-label="Filter by date"
-							role="img"
+							<svg
+								fill="currentColor"
+								height="20px"
+								viewBox="0 0 256 256"
+								width="20px"
+								aria-label="Filter by category"
+								role="img"
+							>
+								<path d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm108.34,72.28A15.92,15.92,0,0,0,144,139.17v55.49L112,216V139.17a15.92,15.92,0,0,0-4.32-10.94L40,56H216Z" />
+							</svg>
+							<span>Category</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => handleFilterClick("date")}
+							className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
+								activeFilter === "date"
+									? "bg-[#69b4cd] text-white"
+									: "bg-[#e0f2f7] text-[#69b4cd]"
+							}`}
 						>
-							<path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88v64a8,8,0,0,1-16,0V132.94l-4.42,2.22a8,8,0,0,1-7.16-14.32l16-8A8,8,0,0,1,112,120Zm59.16,30.45L152,176h16a8,8,0,0,1,0,16H136a8,8,0,0,1-6.4-12.8l28.78-38.37A8,8,0,1,0,145.07,132a8,8,0,1,1-13.85-8A24,24,0,0,1,176,136A23.76,23.76,0,0,1,171.16,150.45Z" />
-						</svg>
-						<span>Date</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => handleFilterClick("emotion")}
-						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
-							activeFilter === "emotion"
-								? "bg-[#69b4cd] text-white"
-								: "bg-[#e0f2f7] text-[#69b4cd]"
-						}`}
-					>
-						<svg
-							fill="currentColor"
-							height="20px"
-							viewBox="0 0 256 256"
-							width="20px"
-							aria-label="Filter by emotion"
-							role="img"
+							<svg
+								fill="currentColor"
+								height="20px"
+								viewBox="0 0 256 256"
+								width="20px"
+								aria-label="Filter by date"
+								role="img"
+							>
+								<path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Zm-96-88v64a8,8,0,0,1-16,0V132.94l-4.42,2.22a8,8,0,0,1-7.16-14.32l16-8A8,8,0,0,1,112,120Zm59.16,30.45L152,176h16a8,8,0,0,1,0,16H136a8,8,0,0,1-6.4-12.8l28.78-38.37A8,8,0,1,0,145.07,132a8,8,0,1,1-13.85-8A24,24,0,0,1,176,136A23.76,23.76,0,0,1,171.16,150.45Z" />
+							</svg>
+							<span>Date</span>
+						</button>
+						<button
+							type="button"
+							onClick={() => handleFilterClick("emotion")}
+							className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
+								activeFilter === "emotion"
+									? "bg-[#69b4cd] text-white"
+									: "bg-[#e0f2f7] text-[#69b4cd]"
+							}`}
 						>
-							<path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM80,108a12,12,0,1,1,12,12A12,12,0,0,1,80,108Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,176,108Zm-1.07,48c-10.29,17.79-27.4,28-46.93,28s-36.63-10.2-46.92-28a8,8,0,1,1,13.84-8c7.47,12.91,19.21,20,33.08,20s25.61-7.1,33.07-20a8,8,0,0,1,13.86,8Z" />
-						</svg>
-						<span>Emotion</span>
-					</button>
-				</div>
+							<svg
+								fill="currentColor"
+								height="20px"
+								viewBox="0 0 256 256"
+								width="20px"
+								aria-label="Filter by emotion"
+								role="img"
+							>
+								<path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM80,108a12,12,0,1,1,12,12A12,12,0,0,1,80,108Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,176,108Zm-1.07,48c-10.29,17.79-27.4,28-46.93,28s-36.63-10.2-46.92-28a8,8,0,1,1,13.84-8c7.47,12.91,19.21,20,33.08,20s25.61-7.1,33.07-20a8,8,0,0,1,13.86,8Z" />
+							</svg>
+							<span>Emotion</span>
+						</button>
+					</div>
+				)}
 
-				{/* Filter Dropdowns */}
-				{activeFilter === "category" && (
+				{/* Filter Dropdowns - Only show for regular expenses */}
+				{expenseType === "regular" && activeFilter === "category" && (
 					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
 						<h4 className="text-sm font-medium text-[#64748b] mb-3">
 							Filter by Category
@@ -329,7 +368,7 @@ export const Expenses = () => {
 					</div>
 				)}
 
-				{activeFilter === "emotion" && (
+				{expenseType === "regular" && activeFilter === "emotion" && (
 					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
 						<h4 className="text-sm font-medium text-[#64748b] mb-3">
 							Filter by Emotion
@@ -378,7 +417,7 @@ export const Expenses = () => {
 					</div>
 				)}
 
-				{activeFilter === "date" && (
+				{expenseType === "regular" && activeFilter === "date" && (
 					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
 						<h4 className="text-sm font-medium text-[#64748b] mb-3">
 							Filter by Date
@@ -433,16 +472,29 @@ export const Expenses = () => {
 						asChild
 						className="w-full bg-[#69b4cd] hover:bg-[#69b4cd]/90 text-white rounded-full"
 					>
-						<Link to="/expenses/add">
+						<Link
+							to={
+								expenseType === "regular" ? "/expenses/add" : "/recurring/add"
+							}
+						>
 							<Plus className="mr-2 h-4 w-4" />
-							{t("expenses.addExpense")}
+							{expenseType === "regular"
+								? t("expenses.addExpense")
+								: "Add Recurring Expense"}
 						</Link>
 					</Button>
 				</div>
 
 				{/* Expenses List */}
 				<div className="space-y-4 pb-32">
-					<ExpenseList filters={filters} />
+					{expenseType === "regular" ? (
+						<ExpenseList filters={filters} />
+					) : (
+						<RecurringExpenseList
+							recurringExpenses={recurringExpenses}
+							isLoading={false}
+						/>
+					)}
 				</div>
 			</div>
 		</div>
