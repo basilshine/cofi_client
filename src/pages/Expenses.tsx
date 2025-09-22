@@ -28,7 +28,7 @@ export const Expenses = () => {
 	const [activeFilter, setActiveFilter] = useState<FilterType>(null);
 	const [filters, setFilters] = useState<ExpenseFilters>({});
 	const [searchTerm, setSearchTerm] = useState("");
-	
+
 	// Log when Expenses page is loaded
 	useEffect(() => {
 		LogRocket.log("[Expenses] Page loaded", { isAuthenticated, authLoading });
@@ -99,7 +99,7 @@ export const Expenses = () => {
 
 	const handleSearchChange = (value: string) => {
 		setSearchTerm(value);
-		setFilters(prev => ({ ...prev, search: value }));
+		setFilters((prev) => ({ ...prev, search: value }));
 	};
 
 	// Loading and error states handled individually in components
@@ -222,8 +222,8 @@ export const Expenses = () => {
 						type="button"
 						onClick={() => handleFilterClick("category")}
 						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
-							activeFilter === "category" 
-								? "bg-[#69b4cd] text-white" 
+							activeFilter === "category"
+								? "bg-[#69b4cd] text-white"
 								: "bg-[#e0f2f7] text-[#69b4cd]"
 						}`}
 					>
@@ -243,8 +243,8 @@ export const Expenses = () => {
 						type="button"
 						onClick={() => handleFilterClick("date")}
 						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
-							activeFilter === "date" 
-								? "bg-[#69b4cd] text-white" 
+							activeFilter === "date"
+								? "bg-[#69b4cd] text-white"
 								: "bg-[#e0f2f7] text-[#69b4cd]"
 						}`}
 					>
@@ -264,8 +264,8 @@ export const Expenses = () => {
 						type="button"
 						onClick={() => handleFilterClick("emotion")}
 						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
-							activeFilter === "emotion" 
-								? "bg-[#69b4cd] text-white" 
+							activeFilter === "emotion"
+								? "bg-[#69b4cd] text-white"
 								: "bg-[#e0f2f7] text-[#69b4cd]"
 						}`}
 					>
@@ -286,17 +286,19 @@ export const Expenses = () => {
 				{/* Filter Dropdowns */}
 				{activeFilter === "category" && (
 					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
-						<h4 className="text-sm font-medium text-[#64748b] mb-3">Filter by Category</h4>
+						<h4 className="text-sm font-medium text-[#64748b] mb-3">
+							Filter by Category
+						</h4>
 						<div className="grid grid-cols-2 gap-2">
 							<button
 								type="button"
 								onClick={() => {
-									setFilters(prev => ({ ...prev, category: undefined }));
+									setFilters((prev) => ({ ...prev, category: undefined }));
 									setActiveFilter(null);
 								}}
 								className={`p-2 rounded-lg text-sm transition-colors ${
-									!filters.category 
-										? "bg-[#69b4cd] text-white" 
+									!filters.category
+										? "bg-[#69b4cd] text-white"
 										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 								}`}
 							>
@@ -307,12 +309,15 @@ export const Expenses = () => {
 									key={category.id}
 									type="button"
 									onClick={() => {
-										setFilters(prev => ({ ...prev, category: category.name }));
+										setFilters((prev) => ({
+											...prev,
+											category: category.name,
+										}));
 										setActiveFilter(null);
 									}}
 									className={`p-2 rounded-lg text-sm transition-colors ${
-										filters.category === category.name 
-											? "bg-[#69b4cd] text-white" 
+										filters.category === category.name
+											? "bg-[#69b4cd] text-white"
 											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 									}`}
 								>
@@ -325,17 +330,19 @@ export const Expenses = () => {
 
 				{activeFilter === "emotion" && (
 					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
-						<h4 className="text-sm font-medium text-[#64748b] mb-3">Filter by Emotion</h4>
+						<h4 className="text-sm font-medium text-[#64748b] mb-3">
+							Filter by Emotion
+						</h4>
 						<div className="grid grid-cols-3 gap-2">
 							<button
 								type="button"
 								onClick={() => {
-									setFilters(prev => ({ ...prev, emotion: undefined }));
+									setFilters((prev) => ({ ...prev, emotion: undefined }));
 									setActiveFilter(null);
 								}}
 								className={`p-2 rounded-lg text-sm transition-colors ${
-									!filters.emotion 
-										? "bg-[#69b4cd] text-white" 
+									!filters.emotion
+										? "bg-[#69b4cd] text-white"
 										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 								}`}
 							>
@@ -354,12 +361,12 @@ export const Expenses = () => {
 									key={emotion.key}
 									type="button"
 									onClick={() => {
-										setFilters(prev => ({ ...prev, emotion: emotion.value }));
+										setFilters((prev) => ({ ...prev, emotion: emotion.value }));
 										setActiveFilter(null);
 									}}
 									className={`p-2 rounded-lg text-sm transition-colors ${
-										filters.emotion === emotion.value 
-											? "bg-[#69b4cd] text-white" 
+										filters.emotion === emotion.value
+											? "bg-[#69b4cd] text-white"
 											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 									}`}
 								>
@@ -372,17 +379,19 @@ export const Expenses = () => {
 
 				{activeFilter === "date" && (
 					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
-						<h4 className="text-sm font-medium text-[#64748b] mb-3">Filter by Date</h4>
+						<h4 className="text-sm font-medium text-[#64748b] mb-3">
+							Filter by Date
+						</h4>
 						<div className="grid grid-cols-2 gap-2">
 							<button
 								type="button"
 								onClick={() => {
-									setFilters(prev => ({ ...prev, dateRange: undefined }));
+									setFilters((prev) => ({ ...prev, dateRange: undefined }));
 									setActiveFilter(null);
 								}}
 								className={`p-2 rounded-lg text-sm transition-colors ${
-									!filters.dateRange 
-										? "bg-[#69b4cd] text-white" 
+									!filters.dateRange
+										? "bg-[#69b4cd] text-white"
 										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 								}`}
 							>
@@ -398,12 +407,15 @@ export const Expenses = () => {
 									key={period.key}
 									type="button"
 									onClick={() => {
-										setFilters(prev => ({ ...prev, dateRange: period.value }));
+										setFilters((prev) => ({
+											...prev,
+											dateRange: period.value,
+										}));
 										setActiveFilter(null);
 									}}
 									className={`p-2 rounded-lg text-sm transition-colors ${
-										filters.dateRange === period.value 
-											? "bg-[#69b4cd] text-white" 
+										filters.dateRange === period.value
+											? "bg-[#69b4cd] text-white"
 											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 									}`}
 								>
