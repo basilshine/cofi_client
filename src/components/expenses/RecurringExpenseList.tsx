@@ -51,10 +51,10 @@ export const RecurringExpenseList = ({
 								<div className="flex justify-between items-center">
 									<div className="flex items-center gap-2">
 										<p className="text-[#333333] text-base font-bold leading-normal">
-											{expense.name || "Recurring Expense"}
+											{expense.name || "Expense Schedule"}
 										</p>
 										<span className="bg-[#e0f2f7] text-[#69b4cd] text-xs px-2 py-1 rounded-full">
-											{expense.interval}
+											{expense.interval || "monthly"}
 										</span>
 									</div>
 									<p className="text-[#333333] text-base font-bold leading-normal">
@@ -109,9 +109,10 @@ export const RecurringExpenseList = ({
 			{/* Empty State */}
 			{recurringExpenses.length === 0 ? (
 				<div className="text-center py-8">
-					<p className="text-[#666666] text-sm">No recurring expenses found</p>
+					<p className="text-[#666666] text-sm">No expense schedules found</p>
 					<p className="text-[#666666] text-xs mt-2">
-						Set up recurring expenses to track regular payments
+						Create schedules to automatically track recurring payments like
+						rent, subscriptions, etc.
 					</p>
 				</div>
 			) : null}

@@ -75,8 +75,8 @@ export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 		enabled: isAuthenticated,
 	});
 
-	// Flatten all pages into a single array
-	const expenses = data?.pages.flatMap((page) => page.expenses) || [];
+	// Flatten all pages into a single array with safety checks
+	const expenses = data?.pages?.flatMap((page) => page?.expenses || []) || [];
 
 	// Intersection observer for infinite scroll
 	const handleObserver = useCallback(
@@ -141,10 +141,19 @@ export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 	}
 
 	if (isLoading) return <LoadingScreen />;
-	if (error) return <div>{t("common.error")}</div>;
+	if (error) {
+		return (
+			<div className="text-center py-8">
+				<p className="text-red-500 text-sm">Error loading expenses</p>
+				<p className="text-[#666666] text-xs mt-2">
+					Please try refreshing the page
+				</p>
+			</div>
+		);
+	}
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-4 min-h-[200px]">
 			{expenses.map((expense: components["schemas"]["Expense"], index) => {
 				const borderColors = [
 					"#69b4cd",

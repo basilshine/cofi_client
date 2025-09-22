@@ -215,7 +215,7 @@ export const Expenses = () => {
 								: "text-[#666666] hover:text-[#69b4cd]"
 						}`}
 					>
-						<span>Regular Expenses</span>
+						<span>Expenses</span>
 					</button>
 					<button
 						type="button"
@@ -226,7 +226,7 @@ export const Expenses = () => {
 								: "text-[#666666] hover:text-[#69b4cd]"
 						}`}
 					>
-						<span>Recurring Expenses</span>
+						<span>Schedules</span>
 					</button>
 				</div>
 
@@ -480,7 +480,7 @@ export const Expenses = () => {
 							<Plus className="mr-2 h-4 w-4" />
 							{expenseType === "regular"
 								? t("expenses.addExpense")
-								: "Add Recurring Expense"}
+								: "Add Schedule"}
 						</Link>
 					</Button>
 				</div>
