@@ -2185,6 +2185,9 @@ export interface components {
 			language?: string;
 			timezone?: string;
 			currency?: string;
+			dateFormat?: string;
+			emailNotifications?: boolean;
+			darkMode?: boolean;
 		};
 		Category: {
 			/** Format: int64 */

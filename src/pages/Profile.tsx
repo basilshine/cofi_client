@@ -5,8 +5,6 @@ import { useEffect, useState } from "react";
 
 export const Profile = () => {
 	const { user, logout, updateUser, isLoading, error } = useAuth();
-	const [emailNotifications, setEmailNotifications] = useState(true);
-	const [darkMode, setDarkMode] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [formData, setFormData] = useState<ProfileUpdateRequest>({
 		email: "",
@@ -15,6 +13,9 @@ export const Profile = () => {
 		language: "",
 		timezone: "",
 		currency: "",
+		dateFormat: "",
+		emailNotifications: true,
+		darkMode: false,
 	});
 	const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 	const [saveSuccess, setSaveSuccess] = useState(false);
@@ -29,6 +30,9 @@ export const Profile = () => {
 				language: user.language || "",
 				timezone: user.timezone || "",
 				currency: user.currency || "",
+				dateFormat: user.dateFormat || "MM/DD/YYYY",
+				emailNotifications: user.emailNotifications ?? true,
+				darkMode: user.darkMode ?? false,
 			});
 		}
 	}, [user]);
@@ -57,7 +61,13 @@ export const Profile = () => {
 		field: keyof ProfileUpdateRequest,
 		value: string,
 	) => {
-		setFormData((prev) => ({ ...prev, [field]: value }));
+		// Convert string values to appropriate types
+		let processedValue: string | boolean = value;
+		if (field === "emailNotifications" || field === "darkMode") {
+			processedValue = value === "true";
+		}
+
+		setFormData((prev) => ({ ...prev, [field]: processedValue }));
 		// Clear field error when user starts typing
 		if (formErrors[field]) {
 			setFormErrors((prev) => ({ ...prev, [field]: "" }));
@@ -93,6 +103,10 @@ export const Profile = () => {
 			errors.currency = "Currency is required";
 		}
 
+		if (!formData.dateFormat) {
+			errors.dateFormat = "Date format is required";
+		}
+
 		setFormErrors(errors);
 		return Object.keys(errors).length === 0;
 	};
@@ -124,6 +138,9 @@ export const Profile = () => {
 				language: user.language || "",
 				timezone: user.timezone || "",
 				currency: user.currency || "",
+				dateFormat: user.dateFormat || "MM/DD/YYYY",
+				emailNotifications: user.emailNotifications ?? true,
+				darkMode: user.darkMode ?? false,
 			});
 		}
 		setFormErrors({});
@@ -402,32 +419,52 @@ export const Profile = () => {
 					Preferences
 				</h2>
 				<div className="bg-white rounded-xl shadow-sm mx-4">
+					{/* Email Notifications Toggle */}
 					<div className="flex items-center justify-between p-4 border-b border-gray-200">
 						<p className="text-[#1e3a8a] font-medium">Email Notifications</p>
-						<label className="relative flex h-8 w-14 cursor-pointer items-center rounded-full bg-[#e0f2f7] p-1 has-[:checked]:bg-[#47c1ea] has-[:checked]:justify-end">
+						<label
+							className={`relative flex h-8 w-14 items-center rounded-full bg-[#e0f2f7] p-1 has-[:checked]:bg-[#47c1ea] has-[:checked]:justify-end transition-colors ${
+								!isEditing ? "opacity-50 pointer-events-none" : "cursor-pointer"
+							}`}
+						>
 							<div className="h-6 w-6 rounded-full bg-white shadow-md transition-transform" />
 							<input
-								checked={emailNotifications}
-								onChange={(e) => setEmailNotifications(e.target.checked)}
+								checked={formData.emailNotifications}
+								onChange={(e) =>
+									handleInputChange(
+										"emailNotifications",
+										e.target.checked.toString(),
+									)
+								}
 								className="invisible absolute"
 								type="checkbox"
+								disabled={!isEditing}
 							/>
 						</label>
 					</div>
 
+					{/* Dark Mode Toggle */}
 					<div className="flex items-center justify-between p-4 border-b border-gray-200">
 						<p className="text-[#1e3a8a] font-medium">Dark Mode</p>
-						<label className="relative flex h-8 w-14 cursor-pointer items-center rounded-full bg-[#e0f2f7] p-1 has-[:checked]:bg-[#47c1ea] has-[:checked]:justify-end">
+						<label
+							className={`relative flex h-8 w-14 items-center rounded-full bg-[#e0f2f7] p-1 has-[:checked]:bg-[#47c1ea] has-[:checked]:justify-end transition-colors ${
+								!isEditing ? "opacity-50 pointer-events-none" : "cursor-pointer"
+							}`}
+						>
 							<div className="h-6 w-6 rounded-full bg-white shadow-md transition-transform" />
 							<input
-								checked={darkMode}
-								onChange={(e) => setDarkMode(e.target.checked)}
+								checked={formData.darkMode}
+								onChange={(e) =>
+									handleInputChange("darkMode", e.target.checked.toString())
+								}
 								className="invisible absolute"
 								type="checkbox"
+								disabled={!isEditing}
 							/>
 						</label>
 					</div>
 
+					{/* Date Format Field */}
 					<div className="p-4 border-b border-gray-200">
 						<label
 							className="text-sm font-medium text-[#64748b]"
@@ -435,14 +472,31 @@ export const Profile = () => {
 						>
 							Date Format
 						</label>
-						<select
-							className="w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
-							id="date-format"
-						>
-							<option>MM/DD/YYYY</option>
-							<option>DD/MM/YYYY</option>
-							<option>YYYY-MM-DD</option>
-						</select>
+						<div className="mt-1">
+							<select
+								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
+									isEditing
+										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+										: "cursor-default"
+								} ${!isEditing ? "pointer-events-none" : ""}`}
+								id="date-format"
+								value={formData.dateFormat}
+								onChange={(e) =>
+									handleInputChange("dateFormat", e.target.value)
+								}
+								disabled={!isEditing}
+							>
+								<option value="">Select Date Format</option>
+								<option value="MM/DD/YYYY">MM/DD/YYYY</option>
+								<option value="DD/MM/YYYY">DD/MM/YYYY</option>
+								<option value="YYYY-MM-DD">YYYY-MM-DD</option>
+							</select>
+							{formErrors.dateFormat && (
+								<p className="text-red-500 text-xs mt-1">
+									{formErrors.dateFormat}
+								</p>
+							)}
+						</div>
 					</div>
 
 					<div className="flex items-center justify-between p-4">

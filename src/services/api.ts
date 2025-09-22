@@ -196,6 +196,9 @@ export type ProfileUpdateRequest = {
 	language: string;
 	timezone: string;
 	currency: string;
+	dateFormat: string;
+	emailNotifications: boolean;
+	darkMode: boolean;
 };
 
 export const apiService = {
