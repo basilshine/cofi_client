@@ -11,7 +11,39 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
-export const ExpenseList = () => {
+// Emotion mapping to emojis
+const getEmotionEmoji = (emotion: string): string => {
+	const emotions: Record<string, string> = {
+		like: "👍",
+		dislike: "👎", 
+		happy: "😊",
+		sad: "😢",
+		regret: "😤",
+		joy: "😄",
+		neutral: "😐",
+		// Additional common emotions
+		angry: "😠",
+		surprised: "😲",
+		worried: "😟",
+		excited: "🤩",
+		satisfied: "😌",
+		disappointed: "😞",
+	};
+	return emotions[emotion?.toLowerCase()] || emotions.neutral;
+};
+
+interface ExpenseFilters {
+	category?: string;
+	dateRange?: string;
+	emotion?: string;
+	search?: string;
+}
+
+interface ExpenseListProps {
+	filters?: ExpenseFilters;
+}
+
+export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 	const { t } = useTranslation();
 	const { isAuthenticated, user } = useAuth();
 	const queryClient = useQueryClient();
@@ -78,9 +110,70 @@ export const ExpenseList = () => {
 	if (isLoading) return <LoadingScreen />;
 	if (error) return <div>{t("common.error")}</div>;
 
+	// Filter expenses based on current filters
+	const filteredExpenses = expenses?.filter((expense) => {
+		// Search filter
+		if (filters.search) {
+			const searchLower = filters.search.toLowerCase();
+			const matchesDescription = expense.description?.toLowerCase().includes(searchLower);
+			const matchesCategory = expense.items?.some(item => 
+				item.category?.name?.toLowerCase().includes(searchLower)
+			);
+			const matchesItemName = expense.items?.some(item => 
+				item.name?.toLowerCase().includes(searchLower)
+			);
+			
+			if (!matchesDescription && !matchesCategory && !matchesItemName) {
+				return false;
+			}
+		}
+
+		// Category filter
+		if (filters.category) {
+			const hasCategory = expense.items?.some(item => 
+				item.category?.name === filters.category
+			);
+			if (!hasCategory) return false;
+		}
+
+		// Emotion filter
+		if (filters.emotion) {
+			const hasEmotion = expense.items?.some(item => 
+				item.emotion === filters.emotion
+			);
+			if (!hasEmotion) return false;
+		}
+
+		// Date filter
+		if (filters.dateRange) {
+			const now = new Date();
+			const expenseDate = expense.createdAt ? new Date(expense.createdAt) : now;
+			
+			switch (filters.dateRange) {
+				case "today":
+					if (expenseDate.toDateString() !== now.toDateString()) return false;
+					break;
+				case "week":
+					const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+					if (expenseDate < weekAgo) return false;
+					break;
+				case "month":
+					const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1);
+					if (expenseDate < monthAgo) return false;
+					break;
+				case "year":
+					const yearAgo = new Date(now.getFullYear(), 0, 1);
+					if (expenseDate < yearAgo) return false;
+					break;
+			}
+		}
+
+		return true;
+	}) || [];
+
 	return (
 		<div className="space-y-4">
-			{expenses?.map((expense: components["schemas"]["Expense"], index) => {
+			{filteredExpenses.map((expense: components["schemas"]["Expense"], index) => {
 				const borderColors = [
 					"#69b4cd",
 					"#f7a35c",
@@ -103,8 +196,8 @@ export const ExpenseList = () => {
 						{/* Main Content */}
 						<div className="flex items-center gap-4 mb-4">
 							{/* Emotion Icon */}
-							<div className="text-[#333333] flex items-center justify-center rounded-lg bg-[#e0f2f7] shrink-0 size-12">
-								{mainItem?.emotion || "😐"}
+							<div className="text-2xl flex items-center justify-center rounded-lg bg-[#e0f2f7] shrink-0 size-12">
+								{getEmotionEmoji(mainItem?.emotion || "neutral")}
 							</div>
 
 							{/* Expense Details */}
@@ -185,9 +278,19 @@ export const ExpenseList = () => {
 			})}
 
 			{/* Empty State */}
-			{!expenses || expenses.length === 0 ? (
+			{filteredExpenses.length === 0 ? (
 				<div className="text-center py-8">
-					<p className="text-[#666666] text-sm">{t("expenses.noExpenses")}</p>
+					<p className="text-[#666666] text-sm">
+						{filters.search || filters.category || filters.emotion 
+							? "No expenses match your filters" 
+							: t("expenses.noExpenses")
+						}
+					</p>
+					{(filters.search || filters.category || filters.emotion) && (
+						<p className="text-[#666666] text-xs mt-2">
+							Try adjusting your search or filters
+						</p>
+					)}
 				</div>
 			) : null}
 		</div>

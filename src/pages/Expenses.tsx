@@ -8,13 +8,27 @@ import { useAuth } from "@contexts/AuthContext";
 import { Plus } from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+
+// Filter types
+type FilterType = "category" | "date" | "emotion" | null;
+
+interface ExpenseFilters {
+	category?: string;
+	dateRange?: string;
+	emotion?: string;
+	search?: string;
+}
 
 export const Expenses = () => {
 	const { t } = useTranslation();
 	const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+	const [activeFilter, setActiveFilter] = useState<FilterType>(null);
+	const [filters, setFilters] = useState<ExpenseFilters>({});
+	const [searchTerm, setSearchTerm] = useState("");
+	
 	// Log when Expenses page is loaded
 	useEffect(() => {
 		LogRocket.log("[Expenses] Page loaded", { isAuthenticated, authLoading });
@@ -69,6 +83,24 @@ export const Expenses = () => {
 			LogRocket.error("[Expenses] Categories error:", categoriesError);
 		}
 	}, [categories, categoriesError]);
+
+	// Filter handlers
+	const handleFilterClick = (filterType: FilterType) => {
+		if (activeFilter === filterType) {
+			// If clicking the same filter, deactivate it
+			setActiveFilter(null);
+			setFilters({});
+		} else {
+			setActiveFilter(filterType);
+			// You could open a modal or dropdown here for filter selection
+			// For now, we'll implement basic filtering
+		}
+	};
+
+	const handleSearchChange = (value: string) => {
+		setSearchTerm(value);
+		setFilters(prev => ({ ...prev, search: value }));
+	};
 
 	// Loading and error states handled individually in components
 
@@ -178,6 +210,8 @@ export const Expenses = () => {
 						<input
 							className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-r-full text-[#333333] focus:outline-0 focus:ring-0 border-none bg-white focus:border-none h-full placeholder:text-[#666666] px-4 pl-2 text-base font-normal leading-normal border border-l-0 border-gray-200"
 							placeholder="Search expenses"
+							value={searchTerm}
+							onChange={(e) => handleSearchChange(e.target.value)}
 						/>
 					</div>
 				</div>
@@ -186,7 +220,12 @@ export const Expenses = () => {
 				<div className="flex gap-3 mb-4 overflow-x-auto">
 					<button
 						type="button"
-						className="bg-[#e0f2f7] text-[#69b4cd] rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80"
+						onClick={() => handleFilterClick("category")}
+						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
+							activeFilter === "category" 
+								? "bg-[#69b4cd] text-white" 
+								: "bg-[#e0f2f7] text-[#69b4cd]"
+						}`}
 					>
 						<svg
 							fill="currentColor"
@@ -202,7 +241,12 @@ export const Expenses = () => {
 					</button>
 					<button
 						type="button"
-						className="bg-[#e0f2f7] text-[#69b4cd] rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80"
+						onClick={() => handleFilterClick("date")}
+						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
+							activeFilter === "date" 
+								? "bg-[#69b4cd] text-white" 
+								: "bg-[#e0f2f7] text-[#69b4cd]"
+						}`}
 					>
 						<svg
 							fill="currentColor"
@@ -218,7 +262,12 @@ export const Expenses = () => {
 					</button>
 					<button
 						type="button"
-						className="bg-[#e0f2f7] text-[#69b4cd] rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80"
+						onClick={() => handleFilterClick("emotion")}
+						className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
+							activeFilter === "emotion" 
+								? "bg-[#69b4cd] text-white" 
+								: "bg-[#e0f2f7] text-[#69b4cd]"
+						}`}
 					>
 						<svg
 							fill="currentColor"
@@ -233,6 +282,137 @@ export const Expenses = () => {
 						<span>Emotion</span>
 					</button>
 				</div>
+
+				{/* Filter Dropdowns */}
+				{activeFilter === "category" && (
+					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
+						<h4 className="text-sm font-medium text-[#64748b] mb-3">Filter by Category</h4>
+						<div className="grid grid-cols-2 gap-2">
+							<button
+								type="button"
+								onClick={() => {
+									setFilters(prev => ({ ...prev, category: undefined }));
+									setActiveFilter(null);
+								}}
+								className={`p-2 rounded-lg text-sm transition-colors ${
+									!filters.category 
+										? "bg-[#69b4cd] text-white" 
+										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+								}`}
+							>
+								All Categories
+							</button>
+							{categories.map((category) => (
+								<button
+									key={category.id}
+									type="button"
+									onClick={() => {
+										setFilters(prev => ({ ...prev, category: category.name }));
+										setActiveFilter(null);
+									}}
+									className={`p-2 rounded-lg text-sm transition-colors ${
+										filters.category === category.name 
+											? "bg-[#69b4cd] text-white" 
+											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+									}`}
+								>
+									{category.name}
+								</button>
+							))}
+						</div>
+					</div>
+				)}
+
+				{activeFilter === "emotion" && (
+					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
+						<h4 className="text-sm font-medium text-[#64748b] mb-3">Filter by Emotion</h4>
+						<div className="grid grid-cols-3 gap-2">
+							<button
+								type="button"
+								onClick={() => {
+									setFilters(prev => ({ ...prev, emotion: undefined }));
+									setActiveFilter(null);
+								}}
+								className={`p-2 rounded-lg text-sm transition-colors ${
+									!filters.emotion 
+										? "bg-[#69b4cd] text-white" 
+										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+								}`}
+							>
+								All Emotions
+							</button>
+							{[
+								{ key: "happy", label: "😊 Happy", value: "happy" },
+								{ key: "sad", label: "😢 Sad", value: "sad" },
+								{ key: "neutral", label: "😐 Neutral", value: "neutral" },
+								{ key: "regret", label: "😤 Regret", value: "regret" },
+								{ key: "joy", label: "😄 Joy", value: "joy" },
+								{ key: "like", label: "👍 Like", value: "like" },
+								{ key: "dislike", label: "👎 Dislike", value: "dislike" },
+							].map((emotion) => (
+								<button
+									key={emotion.key}
+									type="button"
+									onClick={() => {
+										setFilters(prev => ({ ...prev, emotion: emotion.value }));
+										setActiveFilter(null);
+									}}
+									className={`p-2 rounded-lg text-sm transition-colors ${
+										filters.emotion === emotion.value 
+											? "bg-[#69b4cd] text-white" 
+											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+									}`}
+								>
+									{emotion.label}
+								</button>
+							))}
+						</div>
+					</div>
+				)}
+
+				{activeFilter === "date" && (
+					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
+						<h4 className="text-sm font-medium text-[#64748b] mb-3">Filter by Date</h4>
+						<div className="grid grid-cols-2 gap-2">
+							<button
+								type="button"
+								onClick={() => {
+									setFilters(prev => ({ ...prev, dateRange: undefined }));
+									setActiveFilter(null);
+								}}
+								className={`p-2 rounded-lg text-sm transition-colors ${
+									!filters.dateRange 
+										? "bg-[#69b4cd] text-white" 
+										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+								}`}
+							>
+								All Time
+							</button>
+							{[
+								{ key: "today", label: "Today", value: "today" },
+								{ key: "week", label: "This Week", value: "week" },
+								{ key: "month", label: "This Month", value: "month" },
+								{ key: "year", label: "This Year", value: "year" },
+							].map((period) => (
+								<button
+									key={period.key}
+									type="button"
+									onClick={() => {
+										setFilters(prev => ({ ...prev, dateRange: period.value }));
+										setActiveFilter(null);
+									}}
+									className={`p-2 rounded-lg text-sm transition-colors ${
+										filters.dateRange === period.value 
+											? "bg-[#69b4cd] text-white" 
+											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+									}`}
+								>
+									{period.label}
+								</button>
+							))}
+						</div>
+					</div>
+				)}
 
 				{/* Add Expense Button */}
 				<div className="mb-4">
@@ -249,7 +429,7 @@ export const Expenses = () => {
 
 				{/* Expenses List */}
 				<div className="space-y-4 pb-32">
-					<ExpenseList />
+					<ExpenseList filters={filters} />
 				</div>
 			</div>
 		</div>
