@@ -1,7 +1,7 @@
 import { useAuth } from "@contexts/AuthContext";
-import type { ProfileUpdateRequest } from "@services/api";
 import { Download } from "@phosphor-icons/react";
-import { useState, useEffect } from "react";
+import type { ProfileUpdateRequest } from "@services/api";
+import { useEffect, useState } from "react";
 
 export const Profile = () => {
 	const { user, logout, updateUser, isLoading, error } = useAuth();
@@ -53,11 +53,14 @@ export const Profile = () => {
 		}
 	};
 
-	const handleInputChange = (field: keyof ProfileUpdateRequest, value: string) => {
-		setFormData(prev => ({ ...prev, [field]: value }));
+	const handleInputChange = (
+		field: keyof ProfileUpdateRequest,
+		value: string,
+	) => {
+		setFormData((prev) => ({ ...prev, [field]: value }));
 		// Clear field error when user starts typing
 		if (formErrors[field]) {
-			setFormErrors(prev => ({ ...prev, [field]: "" }));
+			setFormErrors((prev) => ({ ...prev, [field]: "" }));
 		}
 	};
 
@@ -221,7 +224,9 @@ export const Profile = () => {
 						<div className="mt-1">
 							<select
 								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
-									isEditing ? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10" : "cursor-default"
+									isEditing
+										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+										: "cursor-default"
 								} ${!isEditing ? "pointer-events-none" : ""}`}
 								id="country"
 								value={formData.country}
@@ -241,7 +246,9 @@ export const Profile = () => {
 								<option value="Other">Other</option>
 							</select>
 							{formErrors.country && (
-								<p className="text-red-500 text-xs mt-1">{formErrors.country}</p>
+								<p className="text-red-500 text-xs mt-1">
+									{formErrors.country}
+								</p>
 							)}
 						</div>
 					</div>
@@ -257,7 +264,9 @@ export const Profile = () => {
 						<div className="mt-1">
 							<select
 								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
-									isEditing ? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10" : "cursor-default"
+									isEditing
+										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+										: "cursor-default"
 								} ${!isEditing ? "pointer-events-none" : ""}`}
 								id="currency"
 								value={formData.currency}
@@ -275,7 +284,9 @@ export const Profile = () => {
 								<option value="INR">INR (₹)</option>
 							</select>
 							{formErrors.currency && (
-								<p className="text-red-500 text-xs mt-1">{formErrors.currency}</p>
+								<p className="text-red-500 text-xs mt-1">
+									{formErrors.currency}
+								</p>
 							)}
 						</div>
 					</div>
@@ -299,7 +310,9 @@ export const Profile = () => {
 						<div className="mt-1">
 							<select
 								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
-									isEditing ? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10" : "cursor-default"
+									isEditing
+										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+										: "cursor-default"
 								} ${!isEditing ? "pointer-events-none" : ""}`}
 								id="language"
 								value={formData.language}
@@ -318,7 +331,9 @@ export const Profile = () => {
 								<option value="ja">日本語 (日本)</option>
 							</select>
 							{formErrors.language && (
-								<p className="text-red-500 text-xs mt-1">{formErrors.language}</p>
+								<p className="text-red-500 text-xs mt-1">
+									{formErrors.language}
+								</p>
 							)}
 						</div>
 					</div>
@@ -334,7 +349,9 @@ export const Profile = () => {
 						<div className="mt-1">
 							<select
 								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
-									isEditing ? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10" : "cursor-default"
+									isEditing
+										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+										: "cursor-default"
 								} ${!isEditing ? "pointer-events-none" : ""}`}
 								id="timezone"
 								value={formData.timezone}
@@ -342,19 +359,37 @@ export const Profile = () => {
 								disabled={!isEditing}
 							>
 								<option value="">Select Timezone</option>
-								<option value="America/Los_Angeles">(GMT-08:00) Pacific Time</option>
-								<option value="America/New_York">(GMT-05:00) Eastern Time</option>
-								<option value="Europe/London">(GMT+00:00) Greenwich Mean Time</option>
-								<option value="Europe/Berlin">(GMT+01:00) Central European Time</option>
+								<option value="America/Los_Angeles">
+									(GMT-08:00) Pacific Time
+								</option>
+								<option value="America/New_York">
+									(GMT-05:00) Eastern Time
+								</option>
+								<option value="Europe/London">
+									(GMT+00:00) Greenwich Mean Time
+								</option>
+								<option value="Europe/Berlin">
+									(GMT+01:00) Central European Time
+								</option>
 								<option value="Europe/Moscow">(GMT+03:00) Moscow Time</option>
 								<option value="Asia/Dubai">(GMT+04:00) Dubai Time</option>
-								<option value="Asia/Kolkata">(GMT+05:30) India Standard Time</option>
-								<option value="Asia/Shanghai">(GMT+08:00) China Standard Time</option>
-								<option value="Asia/Tokyo">(GMT+09:00) Japan Standard Time</option>
-								<option value="Australia/Sydney">(GMT+10:00) Australian Eastern Time</option>
+								<option value="Asia/Kolkata">
+									(GMT+05:30) India Standard Time
+								</option>
+								<option value="Asia/Shanghai">
+									(GMT+08:00) China Standard Time
+								</option>
+								<option value="Asia/Tokyo">
+									(GMT+09:00) Japan Standard Time
+								</option>
+								<option value="Australia/Sydney">
+									(GMT+10:00) Australian Eastern Time
+								</option>
 							</select>
 							{formErrors.timezone && (
-								<p className="text-red-500 text-xs mt-1">{formErrors.timezone}</p>
+								<p className="text-red-500 text-xs mt-1">
+									{formErrors.timezone}
+								</p>
 							)}
 						</div>
 					</div>

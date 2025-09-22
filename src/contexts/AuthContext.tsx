@@ -1,6 +1,6 @@
 import { TelegramLoadingScreen } from "@/components/TelegramLoadingScreen";
 import { useTelegram } from "@/hooks/useTelegram";
-import { apiService, type ProfileUpdateRequest } from "@/services/api";
+import { type ProfileUpdateRequest, apiService } from "@/services/api";
 import type { components } from "@/types/api-types";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { handleTelegramNavigation } from "@/utils/telegramWebApp";
