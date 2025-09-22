@@ -309,29 +309,30 @@ export const Profile = () => {
 							Country
 						</label>
 						<div className="mt-1">
-							<select
-								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
-									isEditing
-										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
-										: "cursor-default"
-								} ${!isEditing ? "pointer-events-none" : ""}`}
-								id="country"
-								value={formData.country}
-								onChange={(e) => handleInputChange("country", e.target.value)}
-								disabled={!isEditing}
-							>
-								<option value="">Select Country</option>
-								<option value="United States">United States</option>
-								<option value="United Kingdom">United Kingdom</option>
-								<option value="Canada">Canada</option>
-								<option value="Russia">Russia</option>
-								<option value="Germany">Germany</option>
-								<option value="France">France</option>
-								<option value="Spain">Spain</option>
-								<option value="Italy">Italy</option>
-								<option value="Netherlands">Netherlands</option>
-								<option value="Other">Other</option>
-							</select>
+							{isEditing ? (
+								<select
+									className="w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+									id="country"
+									value={formData.country}
+									onChange={(e) => handleInputChange("country", e.target.value)}
+								>
+									<option value="">Select Country</option>
+									<option value="United States">United States</option>
+									<option value="United Kingdom">United Kingdom</option>
+									<option value="Canada">Canada</option>
+									<option value="Russia">Russia</option>
+									<option value="Germany">Germany</option>
+									<option value="France">France</option>
+									<option value="Spain">Spain</option>
+									<option value="Italy">Italy</option>
+									<option value="Netherlands">Netherlands</option>
+									<option value="Other">Other</option>
+								</select>
+							) : (
+								<div className="w-full p-0 text-[#1e3a8a] cursor-default">
+									{getCountryName(formData.country)}
+								</div>
+							)}
 							{formErrors.country && (
 								<p className="text-red-500 text-xs mt-1">
 									{formErrors.country}
@@ -349,27 +350,30 @@ export const Profile = () => {
 							Default Currency
 						</label>
 						<div className="mt-1">
-							<select
-								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
-									isEditing
-										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
-										: "cursor-default"
-								} ${!isEditing ? "pointer-events-none" : ""}`}
-								id="currency"
-								value={formData.currency}
-								onChange={(e) => handleInputChange("currency", e.target.value)}
-								disabled={!isEditing}
-							>
-								<option value="">Select Currency</option>
-								<option value="USD">USD ($)</option>
-								<option value="EUR">EUR (€)</option>
-								<option value="GBP">GBP (£)</option>
-								<option value="RUB">RUB (₽)</option>
-								<option value="CAD">CAD ($)</option>
-								<option value="JPY">JPY (¥)</option>
-								<option value="CNY">CNY (¥)</option>
-								<option value="INR">INR (₹)</option>
-							</select>
+							{isEditing ? (
+								<select
+									className="w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+									id="currency"
+									value={formData.currency}
+									onChange={(e) =>
+										handleInputChange("currency", e.target.value)
+									}
+								>
+									<option value="">Select Currency</option>
+									<option value="USD">USD ($)</option>
+									<option value="EUR">EUR (€)</option>
+									<option value="GBP">GBP (£)</option>
+									<option value="RUB">RUB (₽)</option>
+									<option value="CAD">CAD ($)</option>
+									<option value="JPY">JPY (¥)</option>
+									<option value="CNY">CNY (¥)</option>
+									<option value="INR">INR (₹)</option>
+								</select>
+							) : (
+								<div className="w-full p-0 text-[#1e3a8a] cursor-default">
+									{getCurrencyName(formData.currency)}
+								</div>
+							)}
 							{formErrors.currency && (
 								<p className="text-red-500 text-xs mt-1">
 									{formErrors.currency}
@@ -395,28 +399,31 @@ export const Profile = () => {
 							Language
 						</label>
 						<div className="mt-1">
-							<select
-								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
-									isEditing
-										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
-										: "cursor-default"
-								} ${!isEditing ? "pointer-events-none" : ""}`}
-								id="language"
-								value={formData.language}
-								onChange={(e) => handleInputChange("language", e.target.value)}
-								disabled={!isEditing}
-							>
-								<option value="">Select Language</option>
-								<option value="en">English (United States)</option>
-								<option value="ru">Русский (Россия)</option>
-								<option value="es">Español (España)</option>
-								<option value="fr">Français (France)</option>
-								<option value="de">Deutsch (Deutschland)</option>
-								<option value="it">Italiano (Italia)</option>
-								<option value="pt">Português (Brasil)</option>
-								<option value="zh">中文 (简体)</option>
-								<option value="ja">日本語 (日本)</option>
-							</select>
+							{isEditing ? (
+								<select
+									className="w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+									id="language"
+									value={formData.language}
+									onChange={(e) =>
+										handleInputChange("language", e.target.value)
+									}
+								>
+									<option value="">Select Language</option>
+									<option value="en">English (United States)</option>
+									<option value="ru">Русский (Россия)</option>
+									<option value="es">Español (España)</option>
+									<option value="fr">Français (France)</option>
+									<option value="de">Deutsch (Deutschland)</option>
+									<option value="it">Italiano (Italia)</option>
+									<option value="pt">Português (Brasil)</option>
+									<option value="zh">中文 (简体)</option>
+									<option value="ja">日本語 (日本)</option>
+								</select>
+							) : (
+								<div className="w-full p-0 text-[#1e3a8a] cursor-default">
+									{getLanguageName(formData.language)}
+								</div>
+							)}
 							{formErrors.language && (
 								<p className="text-red-500 text-xs mt-1">
 									{formErrors.language}
@@ -434,45 +441,48 @@ export const Profile = () => {
 							Timezone
 						</label>
 						<div className="mt-1">
-							<select
-								className={`w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none ${
-									isEditing
-										? "bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
-										: "cursor-default"
-								} ${!isEditing ? "pointer-events-none" : ""}`}
-								id="timezone"
-								value={formData.timezone}
-								onChange={(e) => handleInputChange("timezone", e.target.value)}
-								disabled={!isEditing}
-							>
-								<option value="">Select Timezone</option>
-								<option value="America/Los_Angeles">
-									(GMT-08:00) Pacific Time
-								</option>
-								<option value="America/New_York">
-									(GMT-05:00) Eastern Time
-								</option>
-								<option value="Europe/London">
-									(GMT+00:00) Greenwich Mean Time
-								</option>
-								<option value="Europe/Berlin">
-									(GMT+01:00) Central European Time
-								</option>
-								<option value="Europe/Moscow">(GMT+03:00) Moscow Time</option>
-								<option value="Asia/Dubai">(GMT+04:00) Dubai Time</option>
-								<option value="Asia/Kolkata">
-									(GMT+05:30) India Standard Time
-								</option>
-								<option value="Asia/Shanghai">
-									(GMT+08:00) China Standard Time
-								</option>
-								<option value="Asia/Tokyo">
-									(GMT+09:00) Japan Standard Time
-								</option>
-								<option value="Australia/Sydney">
-									(GMT+10:00) Australian Eastern Time
-								</option>
-							</select>
+							{isEditing ? (
+								<select
+									className="w-full border-0 p-0 text-[#1e3a8a] focus:ring-0 bg-transparent appearance-none bg-[url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(30,58,138)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e')] bg-right bg-no-repeat pr-10"
+									id="timezone"
+									value={formData.timezone}
+									onChange={(e) =>
+										handleInputChange("timezone", e.target.value)
+									}
+								>
+									<option value="">Select Timezone</option>
+									<option value="America/Los_Angeles">
+										(GMT-08:00) Pacific Time
+									</option>
+									<option value="America/New_York">
+										(GMT-05:00) Eastern Time
+									</option>
+									<option value="Europe/London">
+										(GMT+00:00) Greenwich Mean Time
+									</option>
+									<option value="Europe/Berlin">
+										(GMT+01:00) Central European Time
+									</option>
+									<option value="Europe/Moscow">(GMT+03:00) Moscow Time</option>
+									<option value="Asia/Dubai">(GMT+04:00) Dubai Time</option>
+									<option value="Asia/Kolkata">
+										(GMT+05:30) India Standard Time
+									</option>
+									<option value="Asia/Shanghai">
+										(GMT+08:00) China Standard Time
+									</option>
+									<option value="Asia/Tokyo">
+										(GMT+09:00) Japan Standard Time
+									</option>
+									<option value="Australia/Sydney">
+										(GMT+10:00) Australian Eastern Time
+									</option>
+								</select>
+							) : (
+								<div className="w-full p-0 text-[#1e3a8a] cursor-default">
+									{getTimezoneName(formData.timezone)}
+								</div>
+							)}
 							{formErrors.timezone && (
 								<p className="text-red-500 text-xs mt-1">
 									{formErrors.timezone}
