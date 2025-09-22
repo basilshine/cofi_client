@@ -3,6 +3,24 @@ import type { components } from "@/types/api-types";
 import LogRocket from "logrocket";
 import { apiService } from "../api";
 
+// Expense filtering and pagination types
+export interface ExpenseFilters {
+	category?: string;
+	emotion?: string;
+	dateRange?: string;
+	search?: string;
+	page?: number;
+	limit?: number;
+}
+
+export interface PaginatedExpensesResponse {
+	expenses: components["schemas"]["Expense"][];
+	total_count: number;
+	page: number;
+	limit: number;
+	has_more: boolean;
+}
+
 export const expensesService = {
 	getExpenses: async () => {
 		try {
@@ -15,6 +33,41 @@ export const expensesService = {
 			return response.data as components["schemas"]["Expense"][];
 		} catch (error) {
 			LogRocket.error("[expensesService.getExpenses] Failed:", error);
+			throw error;
+		}
+	},
+
+	getExpensesWithFilters: async (
+		filters: ExpenseFilters,
+	): Promise<PaginatedExpensesResponse> => {
+		try {
+			LogRocket.log(
+				"[expensesService.getExpensesWithFilters] Starting request",
+				filters,
+			);
+
+			// Create query parameters
+			const params = new URLSearchParams();
+			if (filters.category) params.append("category", filters.category);
+			if (filters.emotion) params.append("emotion", filters.emotion);
+			if (filters.dateRange) params.append("date_range", filters.dateRange);
+			if (filters.search) params.append("search", filters.search);
+			if (filters.page) params.append("page", filters.page.toString());
+			if (filters.limit) params.append("limit", filters.limit.toString());
+
+			const url = `/api/v1/finances/expenses?${params.toString()}`;
+			const response = await apiService.expenses.listWithFilters(url);
+
+			LogRocket.log(
+				"[expensesService.getExpensesWithFilters] Success:",
+				response.data,
+			);
+			return response.data as PaginatedExpensesResponse;
+		} catch (error) {
+			LogRocket.error(
+				"[expensesService.getExpensesWithFilters] Failed:",
+				error,
+			);
 			throw error;
 		}
 	},

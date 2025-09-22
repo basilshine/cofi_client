@@ -1,3 +1,4 @@
+import { apiService } from "@/services/api";
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
@@ -12,6 +13,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@components/ui/select";
+import { Separator } from "@components/ui/separator";
+import { useAuth } from "@contexts/AuthContext";
 import { CaretDown, CaretUp, Plus, Trash, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { isTelegramWebApp } from "@utils/isTelegramWebApp";
@@ -29,6 +32,7 @@ export const ExpenseEdit = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	const { isAuthenticated } = useAuth();
 	const [editingItems, setEditingItems] = useState<
 		components["schemas"]["ExpenseItem"][]
 	>([]);
@@ -43,6 +47,7 @@ export const ExpenseEdit = () => {
 		emotion: "😐",
 		category: undefined,
 	});
+	const [newCategoryName, setNewCategoryName] = useState("");
 
 	// Determine if this is add mode (no ID) or edit mode (has ID)
 	const isAddMode = !id;
@@ -70,6 +75,21 @@ export const ExpenseEdit = () => {
 			});
 		},
 		enabled: isEditMode, // Only fetch if we're in edit mode
+	});
+
+	// Fetch user categories
+	const { data: categories = [] } = useQuery<
+		components["schemas"]["Category"][]
+	>({
+		queryKey: ["categories", "user"],
+		queryFn: () => {
+			LogRocket.log("[ExpenseEdit] getUserCategories queryFn");
+			return apiService.categories.list().then((res) => {
+				LogRocket.log("[ExpenseEdit] getUserCategories result", res.data);
+				return res.data;
+			});
+		},
+		enabled: isAuthenticated,
 	});
 
 	// Update editing items when expense data changes or initialize for add mode
@@ -461,12 +481,19 @@ export const ExpenseEdit = () => {
 														<SelectValue placeholder="Select category" />
 													</SelectTrigger>
 													<SelectContent>
-														<SelectItem value="Food">Food</SelectItem>
-														<SelectItem value="Groceries">Groceries</SelectItem>
-														<SelectItem value="Transport">Transport</SelectItem>
-														<SelectItem value="Entertainment">
-															Entertainment
-														</SelectItem>
+														{categories.map((category) => (
+															<SelectItem
+																key={category.id}
+																value={category.name || ""}
+															>
+																{category.name}
+															</SelectItem>
+														))}
+														{categories.length === 0 && (
+															<SelectItem value="" disabled>
+																No categories found
+															</SelectItem>
+														)}
 													</SelectContent>
 												</Select>
 											</div>
@@ -619,12 +646,40 @@ export const ExpenseEdit = () => {
 											<SelectValue placeholder="Select category" />
 										</SelectTrigger>
 										<SelectContent>
-											<SelectItem value="Food">Food</SelectItem>
-											<SelectItem value="Groceries">Groceries</SelectItem>
-											<SelectItem value="Transport">Transport</SelectItem>
-											<SelectItem value="Entertainment">
-												Entertainment
-											</SelectItem>
+											{categories.map((category) => (
+												<SelectItem
+													key={category.id}
+													value={category.name || ""}
+												>
+													{category.name}
+												</SelectItem>
+											))}
+											{categories.length === 0 && (
+												<SelectItem value="" disabled>
+													No categories found
+												</SelectItem>
+											)}
+											<Separator className="my-2" />
+											<div className="p-2">
+												<Input
+													placeholder="Create new category"
+													value={newCategoryName}
+													onChange={(e) => setNewCategoryName(e.target.value)}
+													onKeyDown={(e) => {
+														if (e.key === "Enter" && newCategoryName.trim()) {
+															// Create new category logic here
+															setNewItem({
+																...newItem,
+																category: {
+																	name: newCategoryName.trim(),
+																} as components["schemas"]["Category"],
+															});
+															setNewCategoryName("");
+														}
+													}}
+													className="text-sm"
+												/>
+											</div>
 										</SelectContent>
 									</Select>
 								</div>

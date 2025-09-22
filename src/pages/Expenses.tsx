@@ -1,3 +1,4 @@
+import { apiService } from "@/services/api";
 import { expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
@@ -50,16 +51,16 @@ export const Expenses = () => {
 		enabled: isAuthenticated, // Only run query if authenticated
 	});
 
-	// Fetch categories
+	// Fetch all user categories (not just most used)
 	const { data: categories = [], error: categoriesError } = useQuery<
 		components["schemas"]["Category"][]
 	>({
-		queryKey: ["expenses", "categories"],
+		queryKey: ["categories", "user"],
 		queryFn: () => {
-			LogRocket.log("[Expenses] getMostUsedCategories queryFn");
-			return expensesService.getMostUsedCategories().then((res) => {
-				LogRocket.log("[Expenses] getMostUsedCategories result", res);
-				return res;
+			LogRocket.log("[Expenses] getUserCategories queryFn");
+			return apiService.categories.list().then((res) => {
+				LogRocket.log("[Expenses] getUserCategories result", res.data);
+				return res.data;
 			});
 		},
 		enabled: isAuthenticated, // Only run query if authenticated

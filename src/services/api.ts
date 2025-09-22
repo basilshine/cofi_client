@@ -263,6 +263,7 @@ export const apiService = {
 	},
 	expenses: {
 		list: () => api.get<components["schemas"]["Expense"][]>(ENDPOINTS.expenses),
+		listWithFilters: (url: string) => api.get(url),
 		create: (data: components["schemas"]["Expense"]) =>
 			api.post<components["schemas"]["Expense"]>(ENDPOINTS.expenses, data),
 		getById: (id: number | string) =>
