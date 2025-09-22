@@ -31,9 +31,9 @@ const ENDPOINTS = {
 	categories: "/api/v1/finances/categories" as const,
 	categoryById: (id: number | string) =>
 		`/api/v1/finances/categories/${id}` as const,
-	recurring: "/api/v1/finances/recurring" as const,
+	recurring: "/api/v1/finances/recurring/crud" as const,
 	recurringById: (id: number | string) =>
-		`/api/v1/finances/recurring/${id}` as const,
+		`/api/v1/finances/recurring/crud/${id}` as const,
 	analyticsSummary: "/api/v1/analytics/stats/summary" as const,
 	analyticsWeek: "/api/v1/analytics/stats/week" as const,
 	analyticsMonth: "/api/v1/analytics/stats/month" as const,
