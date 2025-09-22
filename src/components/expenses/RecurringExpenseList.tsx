@@ -1,6 +1,6 @@
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
-import { PencilSimple, Trash } from "@phosphor-icons/react";
+import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 
@@ -23,6 +23,18 @@ export const RecurringExpenseList = ({
 
 	return (
 		<div className="space-y-4">
+			{/* Add Schedule Button */}
+			<div className="mb-4">
+				<Button
+					asChild
+					className="w-full bg-[#47c1ea] hover:bg-[#3ba3c7] text-white rounded-xl py-3"
+				>
+					<Link to="/recurring/add">
+						<Plus className="mr-2 h-4 w-4" />
+						Create New Schedule
+					</Link>
+				</Button>
+			</div>
 			{recurringExpenses.map((expense, index) => {
 				const borderColors = [
 					"#69b4cd",
@@ -86,7 +98,7 @@ export const RecurringExpenseList = ({
 								asChild
 								className="text-[#666666] hover:text-[#69b4cd]"
 							>
-								<Link to={`/recurring/${expense.id ?? "unknown"}/edit`}>
+								<Link to={`/recurring/${expense.id ?? "unknown"}`}>
 									<PencilSimple className="h-6 w-6" />
 								</Link>
 							</Button>

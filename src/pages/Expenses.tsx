@@ -466,24 +466,20 @@ export const Expenses = () => {
 					</div>
 				)}
 
-				{/* Add Expense Button */}
-				<div className="mb-4">
-					<Button
-						asChild
-						className="w-full bg-[#69b4cd] hover:bg-[#69b4cd]/90 text-white rounded-full"
-					>
-						<Link
-							to={
-								expenseType === "regular" ? "/expenses/add" : "/recurring/add"
-							}
+				{/* Add Expense Button - Only for regular expenses */}
+				{expenseType === "regular" && (
+					<div className="mb-4">
+						<Button
+							asChild
+							className="w-full bg-[#69b4cd] hover:bg-[#69b4cd]/90 text-white rounded-full"
 						>
-							<Plus className="mr-2 h-4 w-4" />
-							{expenseType === "regular"
-								? t("expenses.addExpense")
-								: "Add Schedule"}
-						</Link>
-					</Button>
-				</div>
+							<Link to="/expenses/add">
+								<Plus className="mr-2 h-4 w-4" />
+								{t("expenses.addExpense")}
+							</Link>
+						</Button>
+					</div>
+				)}
 
 				{/* Expenses List */}
 				<div className="space-y-4 pb-32">

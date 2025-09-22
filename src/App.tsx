@@ -6,6 +6,7 @@ import { Debug } from "@pages/Debug";
 import { ExpenseEdit } from "@pages/ExpenseEdit";
 import { Expenses } from "@pages/Expenses";
 import { Profile } from "@pages/Profile";
+import { RecurringExpenseEdit } from "@pages/RecurringExpenseEdit";
 import { Settings } from "@pages/Settings";
 import { ForgotPassword } from "@pages/auth/ForgotPassword";
 import { Login } from "@pages/auth/Login";
@@ -289,6 +290,30 @@ function AppContent() {
 						isAuthenticated ? (
 							<AppLayout title="Edit Expense" showBackButton={true}>
 								<ExpenseEdit />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect() || <LoadingScreen />
+						)
+					}
+				/>
+				<Route
+					path="/recurring/add"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Create Schedule" showBackButton={true}>
+								<RecurringExpenseEdit />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect() || <LoadingScreen />
+						)
+					}
+				/>
+				<Route
+					path="/recurring/:id"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Edit Schedule" showBackButton={true}>
+								<RecurringExpenseEdit />
 							</AppLayout>
 						) : (
 							getUnauthenticatedRedirect() || <LoadingScreen />
