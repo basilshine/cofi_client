@@ -576,7 +576,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const updateUser = async (profileData: ProfileUpdateRequest) => {
 		try {
 			setState((prev) => ({ ...prev, isLoading: true, error: null }));
+			console.log("[AuthContext] Updating profile with data:", profileData);
 			const response = await apiService.auth.updateProfile(profileData);
+			console.log("[AuthContext] Profile update response:", response.data);
 			setState((prev) => ({
 				...prev,
 				user: response.data,
@@ -584,6 +586,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				error: null,
 			}));
 		} catch (error) {
+			console.error("[AuthContext] Profile update error:", error);
 			setState((prev) => ({
 				...prev,
 				isLoading: false,
