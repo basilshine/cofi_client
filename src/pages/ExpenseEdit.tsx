@@ -125,7 +125,7 @@ export const ExpenseEdit = () => {
 			// Enable closing confirmation
 			if (webApp.enableClosingConfirmation) {
 				webApp.enableClosingConfirmation();
-				console.log("[ExpenseEdit] Enabled closing confirmation");
+				console.log("[ExpenseEdit] Enabled f closing confirmation");
 			}
 			const isTelegramEditMode = isWebApp && cameThroughTelegramLink;
 			console.log("[ExpenseEdit] isTelegramEditMode", isTelegramEditMode);
