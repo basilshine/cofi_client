@@ -76,32 +76,39 @@ export const ExpenseEdit = () => {
 	const isWebApp = isTelegramWebApp();
 
 	// Check if user came through Telegram link (with startapp parameter)
+	const startappParam =
+		typeof window !== "undefined"
+			? new URLSearchParams(window.location.search).get("startapp")
+			: null;
+	const sessionStartapp =
+		typeof window !== "undefined"
+			? sessionStorage.getItem("cofi_telegram_startapp_param")
+			: null;
+
 	const cameThroughTelegramLink =
 		isWebApp &&
-		(new URLSearchParams(window.location.search).get("startapp") ||
-			sessionStorage.getItem("cofi_telegram_startapp_param"));
+		(startappParam ||
+			sessionStartapp ||
+			// Additional check: if we have telegram_edit_flow marker and we're in edit mode
+			(isEditMode && sessionStorage.getItem("telegram_edit_flow")));
 
 	// Debug logging for Telegram link detection and set edit flow marker
 	useEffect(() => {
 		console.log("[ExpenseEdit] Telegram link detection:", {
 			isWebApp,
-			startappFromURL: new URLSearchParams(window.location.search).get(
-				"startapp",
-			),
-			startappFromSession: sessionStorage.getItem(
-				"cofi_telegram_startapp_param",
-			),
+			startappParam,
+			sessionStartapp,
+			telegramEditFlow: sessionStorage.getItem("telegram_edit_flow"),
 			cameThroughTelegramLink,
+			currentURL: window.location.href,
 		});
 		LogRocket.log("[ExpenseEdit] Telegram link detection:", {
 			isWebApp,
-			startappFromURL: new URLSearchParams(window.location.search).get(
-				"startapp",
-			),
-			startappFromSession: sessionStorage.getItem(
-				"cofi_telegram_startapp_param",
-			),
+			startappParam,
+			sessionStartapp,
+			telegramEditFlow: sessionStorage.getItem("telegram_edit_flow"),
 			cameThroughTelegramLink,
+			currentURL: window.location.href,
 		});
 
 		// Set marker for telegram edit flow if we came through Telegram and are editing
@@ -132,7 +139,13 @@ export const ExpenseEdit = () => {
 				console.log("[ExpenseEdit] WebApp ready called");
 			}
 		}
-	}, [isWebApp, cameThroughTelegramLink, isEditMode]);
+	}, [
+		isWebApp,
+		cameThroughTelegramLink,
+		isEditMode,
+		startappParam,
+		sessionStartapp,
+	]);
 
 	const {
 		data: expense,
