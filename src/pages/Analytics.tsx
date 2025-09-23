@@ -1,133 +1,61 @@
-import { expensesService } from "@/services/api/expenses";
-import type { components } from "@/types/api-types";
+import { type StatsResponse, analyticsService } from "@/services/api/analytics";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { Button } from "@components/ui/button";
-import { Card, CardContent } from "@components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@components/ui/select";
 import { useAuth } from "@contexts/AuthContext";
+import {
+	Calendar,
+	ChartPie,
+	CurrencyDollar,
+	Heart,
+	Minus,
+	TrendDown,
+	TrendUp,
+	Warning,
+} from "@phosphor-icons/react";
 import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 export const Analytics = () => {
 	const { t } = useTranslation();
-	const { isAuthenticated, isLoading: authLoading } = useAuth();
-	const { user } = useAuth();
+	const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+	const [selectedPeriod, setSelectedPeriod] = useState<"week" | "month">(
+		"week",
+	);
+
 	// Log when Analytics page is loaded
 	useEffect(() => {
 		LogRocket.log("[Analytics] Page loaded", { isAuthenticated, authLoading });
 	}, [isAuthenticated, authLoading]);
 
+	// Fetch analytics data
 	const {
-		data: summary,
-		isLoading: isSummaryLoading,
-		error: summaryError,
-	} = useQuery<components["schemas"]["AnalyticsSummary"]>({
-		queryKey: ["expenses", "summary"],
-		queryFn: () => {
-			LogRocket.log("[Analytics] getSummary queryFn");
-			if (!user?.id) {
-				throw new Error("User ID is required");
-			}
-			return expensesService.getSummary(Number(user?.id)).then((res) => {
-				LogRocket.log("[Analytics] getSummary result", res);
-				return res;
-			});
-		},
-		enabled: isAuthenticated,
+		data: stats,
+		isLoading: isStatsLoading,
+		error: statsError,
+		refetch: refetchStats,
+	} = useQuery<StatsResponse>({
+		queryKey: ["analytics", "stats", selectedPeriod],
+		queryFn: () => analyticsService.getStats(selectedPeriod),
+		enabled: isAuthenticated && !!user?.id,
+		retry: 2,
 	});
 
-	const {
-		data: categories = [],
-		isLoading: isCategoriesLoading,
-		error: categoriesError,
-	} = useQuery<components["schemas"]["Category"][]>({
-		queryKey: ["expenses", "categories"],
-		queryFn: () => {
-			LogRocket.log("[Analytics] getMostUsedCategories queryFn");
-			return expensesService.getMostUsedCategories().then((res) => {
-				LogRocket.log("[Analytics] getMostUsedCategories result", res);
-				return res;
-			});
-		},
-		enabled: isAuthenticated,
-	});
-
-	const {
-		data: expenses = [],
-		isLoading: isExpensesLoading,
-		error: expensesError,
-	} = useQuery<components["schemas"]["Expense"][]>({
-		queryKey: ["expenses"],
-		queryFn: () => {
-			LogRocket.log("[Analytics] getExpenses queryFn");
-			return expensesService.getExpenses().then((res) => {
-				LogRocket.log("[Analytics] getExpenses result", res);
-				return res;
-			});
-		},
-		enabled: isAuthenticated,
-	});
-
-	// Log fetch results
-	useEffect(() => {
-		if (summary) {
-			LogRocket.log("[Analytics] Summary loaded:", summary);
-		}
-		if (summaryError) {
-			LogRocket.error("[Analytics] Summary error:", summaryError);
-		}
-	}, [summary, summaryError]);
-
-	useEffect(() => {
-		if (categories.length > 0) {
-			LogRocket.log("[Analytics] Categories loaded:", categories);
-		}
-		if (categoriesError) {
-			LogRocket.error("[Analytics] Categories error:", categoriesError);
-		}
-	}, [categories, categoriesError]);
-
-	useEffect(() => {
-		if (expenses.length > 0) {
-			LogRocket.log("[Analytics] Expenses loaded:", { count: expenses.length });
-		}
-		if (expensesError) {
-			LogRocket.error("[Analytics] Expenses error:", expensesError);
-		}
-	}, [expenses, expensesError]);
-
-	const isLoading =
-		isSummaryLoading || isCategoriesLoading || isExpensesLoading;
-	const hasErrors = summaryError || categoriesError || expensesError;
-
-	// Calculate additional analytics
-	const totalExpenses = expenses.length;
-	const averageExpense =
-		expenses.length > 0
-			? expenses.reduce((sum, expense) => sum + (expense.amount ?? 0), 0) /
-				expenses.length
-			: 0;
-
-	LogRocket.log("[Analytics] Render state:", {
-		isLoading,
-		hasErrors,
-		totalExpenses,
-		averageExpense,
-		summaryData: summary,
-		categoriesCount: categories.length,
-		isAuthenticated,
-		authLoading,
-	});
+	const isLoading = isStatsLoading;
+	const hasData = stats && stats.total_spent > 0;
 
 	// Show loading state while checking authentication
 	if (authLoading) {
-		return <LoadingScreen />;
-	}
-
-	// Show loading state while fetching data
-	if (isLoading) {
 		return <LoadingScreen />;
 	}
 
@@ -153,8 +81,13 @@ export const Analytics = () => {
 		);
 	}
 
-	// Show error state if any API calls failed
-	if (hasErrors && !isLoading) {
+	// Show loading state while fetching data
+	if (isLoading) {
+		return <LoadingScreen />;
+	}
+
+	// Show error state if API calls failed
+	if (statsError && !isLoading) {
 		return (
 			<div className="container mx-auto py-8">
 				<div className="mb-8">
@@ -163,20 +96,16 @@ export const Analytics = () => {
 				<Card>
 					<CardContent className="pt-6">
 						<div className="text-center space-y-4">
+							<Warning className="mx-auto h-12 w-12 text-red-500" />
 							<p className="text-red-500 font-medium">
 								Error loading analytics data
 							</p>
-							<div className="text-sm text-muted-foreground space-y-2">
-								{summaryError && <p>Summary: {summaryError.message}</p>}
-								{categoriesError && (
-									<p>Categories: {categoriesError.message}</p>
-								)}
-								{expensesError && <p>Expenses: {expensesError.message}</p>}
-							</div>
-							<p className="text-xs text-muted-foreground">
-								Check browser console and LogRocket for detailed error
-								information.
+							<p className="text-sm text-muted-foreground">
+								{statsError.message}
 							</p>
+							<Button onClick={() => refetchStats()} variant="outline">
+								Try Again
+							</Button>
 						</div>
 					</CardContent>
 				</Card>
@@ -184,77 +113,174 @@ export const Analytics = () => {
 		);
 	}
 
+	// Show empty state if no data
+	if (!hasData && !isLoading) {
+		return (
+			<div className="min-h-screen bg-[#f8fafc]">
+				<div className="space-y-8">
+					{/* Header Section */}
+					<div className="px-4 pb-2">
+						<h1 className="text-[#1e3a8a] text-2xl font-bold leading-tight">
+							{t("analytics.title")}
+						</h1>
+						<p className="mt-2 text-[#64748b] text-sm">
+							{t("analytics.description")}
+						</p>
+					</div>
+
+					{/* Empty State */}
+					<div className="mx-4">
+						<Card>
+							<CardContent className="pt-6">
+								<div className="text-center space-y-4">
+									<ChartPie className="mx-auto h-16 w-16 text-[#64748b]" />
+									<div className="space-y-2">
+										<h3 className="text-lg font-semibold text-[#1e3a8a]">
+											No Analytics Data Available
+										</h3>
+										<p className="text-sm text-[#64748b]">
+											Start tracking expenses to see your analytics and insights
+										</p>
+									</div>
+									<div className="space-y-2">
+										<Button asChild className="w-full">
+											<Link to="/expenses">View Expenses</Link>
+										</Button>
+										<Button asChild variant="outline" className="w-full">
+											<Link to="/">Go Home</Link>
+										</Button>
+									</div>
+								</div>
+							</CardContent>
+						</Card>
+					</div>
+				</div>
+			</div>
+		);
+	}
+
+	// Calculate insights and trends (only if we have data)
+	if (!stats) {
+		return <LoadingScreen />;
+	}
+
+	const spendingTrend = analyticsService.calculateSpendingTrend(stats);
+	const insights = analyticsService.getSpendingInsights(stats);
+	const moodAnalysis = analyticsService.getMoodAnalysis(
+		stats.emotion_stats || [],
+	);
+
+	const getTrendIcon = () => {
+		switch (spendingTrend) {
+			case "up":
+				return <TrendUp className="h-4 w-4 text-red-500" />;
+			case "down":
+				return <TrendDown className="h-4 w-4 text-green-500" />;
+			default:
+				return <Minus className="h-4 w-4 text-yellow-500" />;
+		}
+	};
+
+	const getTrendColor = () => {
+		switch (spendingTrend) {
+			case "up":
+				return "text-red-500";
+			case "down":
+				return "text-green-500";
+			default:
+				return "text-yellow-600";
+		}
+	};
+
 	return (
 		<div className="min-h-screen bg-[#f8fafc]">
 			<div className="space-y-8">
 				{/* Header Section */}
 				<div className="px-4 pb-2">
-					<h1 className="text-[#1e3a8a] text-2xl font-bold leading-tight">
-						{t("analytics.title")}
-					</h1>
-					<p className="mt-2 text-[#64748b] text-sm">
-						{t("analytics.description")}
-					</p>
+					<div className="flex justify-between items-start">
+						<div>
+							<h1 className="text-[#1e3a8a] text-2xl font-bold leading-tight">
+								{t("analytics.title")}
+							</h1>
+							<p className="mt-2 text-[#64748b] text-sm">
+								{t("analytics.description")}
+							</p>
+						</div>
+						{/* Period Filter */}
+						<Select
+							value={selectedPeriod}
+							onValueChange={(value: "week" | "month") =>
+								setSelectedPeriod(value)
+							}
+						>
+							<SelectTrigger className="w-32">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="week">This Week</SelectItem>
+								<SelectItem value="month">This Month</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 				</div>
 
-				{isLoading ? (
-					<div className="flex items-center justify-center py-8">
-						<p className="text-[#64748b]">{t("common.loading")}</p>
-					</div>
-				) : (
-					<div className="space-y-6">
-						{/* Spending Trends Card */}
-						<div className="mx-4">
-							<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight pb-2">
-								{t("analytics.spending_trends")}
-							</h2>
-							<div className="bg-white rounded-xl shadow-sm p-6">
-								{summary ? (
-									<div className="space-y-4">
-										<div className="flex justify-between items-center">
-											<span className="text-sm text-[#64748b]">
-												{t("expenses.total")}
-											</span>
-											<span className="text-2xl font-bold text-[#1e3a8a]">
-												${summary.totalExpenses?.toFixed(2) ?? "0.00"}
-											</span>
-										</div>
-										<div className="flex justify-between items-center">
-											<span className="text-sm text-[#64748b]">
-												{t("expenses.monthlyAverage")}
-											</span>
-											<span className="text-lg font-semibold text-[#1e3a8a]">
-												${((summary.thisMonth ?? 0) / 1).toFixed(2)}
-											</span>
-										</div>
-										<div className="flex justify-between items-center">
-											<span className="text-sm text-[#64748b]">
-												{t("analytics.totalTransactions")}
-											</span>
-											<span className="text-lg font-semibold text-[#1e3a8a]">
-												{totalExpenses}
-											</span>
-										</div>
-									</div>
-								) : (
-									<p className="text-sm text-[#64748b]">
-										{t("analytics.noData")}
-									</p>
-								)}
-							</div>
-						</div>
+				<div className="space-y-6">
+					{/* Overview Cards */}
+					<div className="mx-4 grid grid-cols-2 gap-4">
+						<Card>
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium text-[#64748b] flex items-center gap-2">
+									<CurrencyDollar className="h-4 w-4" />
+									Total Spent
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold text-[#1e3a8a]">
+									{analyticsService.formatCurrency(stats.total_spent)}
+								</div>
+								<div
+									className={`text-sm flex items-center gap-1 mt-1 ${getTrendColor()}`}
+								>
+									{getTrendIcon()}
+									{Math.abs(stats.change_percent).toFixed(1)}% vs last{" "}
+									{stats.period}
+								</div>
+							</CardContent>
+						</Card>
 
-						{/* Category Breakdown Card */}
-						<div className="mx-4">
-							<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight pb-2">
-								{t("analytics.category_breakdown")}
-							</h2>
-							<div className="bg-white rounded-xl shadow-sm p-6">
-								{categories.length > 0 ? (
+						<Card>
+							<CardHeader className="pb-2">
+								<CardTitle className="text-sm font-medium text-[#64748b] flex items-center gap-2">
+									<Calendar className="h-4 w-4" />
+									Daily Average
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<div className="text-2xl font-bold text-[#1e3a8a]">
+									{analyticsService.formatCurrency(stats.average_daily)}
+								</div>
+								<div className="text-sm text-[#64748b] mt-1">
+									Max: {analyticsService.formatCurrency(stats.max_daily_spent)}
+								</div>
+							</CardContent>
+						</Card>
+					</div>
+
+					{/* Top Categories */}
+					<div className="mx-4">
+						<Card>
+							<CardHeader>
+								<CardTitle className="text-lg font-semibold text-[#1e3a8a] flex items-center gap-2">
+									<ChartPie className="h-5 w-5" />
+									Top Categories
+								</CardTitle>
+							</CardHeader>
+							<CardContent>
+								{stats.top_categories && stats.top_categories.length > 0 ? (
 									<div className="space-y-4">
-										{categories.slice(0, 5).map((category, index) => (
+										{stats.top_categories.slice(0, 5).map((category, index) => (
 											<div
-												key={category.id}
+												key={category.category}
 												className="flex justify-between items-center"
 											>
 												<div className="flex items-center gap-3">
@@ -271,67 +297,137 @@ export const Analytics = () => {
 														}}
 													/>
 													<span className="text-sm font-medium text-[#1e3a8a]">
-														{category.name}
+														{category.category}
 													</span>
+												</div>
+												<div className="text-right">
+													<div className="text-sm font-semibold text-[#1e3a8a]">
+														{analyticsService.formatCurrency(category.total)}
+													</div>
+													<div className="text-xs text-[#64748b]">
+														{category.percentage.toFixed(1)}% ({category.count}{" "}
+														items)
+													</div>
 												</div>
 											</div>
 										))}
-										{categories.length > 5 && (
-											<p className="text-xs text-[#64748b] mt-2">
-												{t("analytics.andMore", {
-													count: categories.length - 5,
-												})}
-											</p>
-										)}
 									</div>
 								) : (
-									<p className="text-sm text-[#64748b]">
-										{t("analytics.noCategories")}
+									<p className="text-sm text-[#64748b] text-center py-4">
+										No categories data available
 									</p>
 								)}
-							</div>
-						</div>
+							</CardContent>
+						</Card>
+					</div>
 
-						{/* Budget Analysis Card */}
+					{/* Mood Analysis */}
+					{stats.emotion_stats && stats.emotion_stats.length > 0 && (
 						<div className="mx-4">
-							<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight pb-2">
-								{t("analytics.budget_analysis")}
-							</h2>
-							<div className="bg-white rounded-xl shadow-sm p-6">
-								<div className="space-y-4">
-									<div className="flex justify-between items-center">
-										<span className="text-sm text-[#64748b]">
-											{t("analytics.averageExpense")}
-										</span>
-										<span className="text-lg font-semibold text-[#1e3a8a]">
-											${averageExpense.toFixed(2)}
-										</span>
-									</div>
-									{summary?.byCategory && (
-										<div className="space-y-3">
-											<p className="text-sm font-medium text-[#1e3a8a]">
-												{t("analytics.topCategory")}
-											</p>
-											{Object.entries(summary.byCategory)
-												.sort(([, a], [, b]) => b - a)
-												.slice(0, 1)
-												.map(([category, amount]) => (
-													<div key={category} className="flex justify-between">
-														<span className="text-sm text-[#64748b]">
-															{category}
-														</span>
-														<span className="text-sm font-medium text-[#1e3a8a]">
-															${amount.toFixed(2)}
-														</span>
-													</div>
-												))}
+							<Card>
+								<CardHeader>
+									<CardTitle className="text-lg font-semibold text-[#1e3a8a] flex items-center gap-2">
+										<Heart className="h-5 w-5" />
+										Spending Mood
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div className="space-y-4">
+										<div className="grid grid-cols-3 gap-4 text-center">
+											<div>
+												<div className="text-lg font-bold text-green-600">
+													{moodAnalysis.positive.toFixed(1)}%
+												</div>
+												<div className="text-xs text-[#64748b]">Positive</div>
+											</div>
+											<div>
+												<div className="text-lg font-bold text-yellow-600">
+													{moodAnalysis.neutral.toFixed(1)}%
+												</div>
+												<div className="text-xs text-[#64748b]">Neutral</div>
+											</div>
+											<div>
+												<div className="text-lg font-bold text-red-600">
+													{moodAnalysis.negative.toFixed(1)}%
+												</div>
+												<div className="text-xs text-[#64748b]">Negative</div>
+											</div>
 										</div>
-									)}
-								</div>
-							</div>
+
+										{stats.regret_amount > 0 && (
+											<div className="bg-red-50 border border-red-200 rounded-lg p-3">
+												<div className="flex items-center gap-2 text-red-700">
+													<Warning className="h-4 w-4" />
+													<span className="text-sm font-medium">
+														Regretful spending:{" "}
+														{analyticsService.formatCurrency(
+															stats.regret_amount,
+														)}
+													</span>
+												</div>
+											</div>
+										)}
+
+										{stats.most_common_emotion && (
+											<div className="text-center">
+												<div className="text-sm text-[#64748b]">
+													Most common feeling
+												</div>
+												<div className="text-lg font-semibold text-[#1e3a8a] capitalize">
+													{stats.most_common_emotion}
+												</div>
+											</div>
+										)}
+									</div>
+								</CardContent>
+							</Card>
+						</div>
+					)}
+
+					{/* Insights */}
+					{insights.length > 0 && (
+						<div className="mx-4">
+							<Card>
+								<CardHeader>
+									<CardTitle className="text-lg font-semibold text-[#1e3a8a]">
+										Insights & Tips
+									</CardTitle>
+								</CardHeader>
+								<CardContent>
+									<div className="space-y-3">
+										{insights.map((insight) => (
+											<div
+												key={insight}
+												className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+											>
+												<div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+												<p className="text-sm text-blue-800">{insight}</p>
+											</div>
+										))}
+									</div>
+								</CardContent>
+							</Card>
+						</div>
+					)}
+
+					{/* Quick Actions */}
+					<div className="mx-4 pb-8">
+						<div className="grid grid-cols-2 gap-4">
+							<Button asChild variant="outline" className="h-12">
+								<Link to="/expenses">
+									<CurrencyDollar className="h-4 w-4 mr-2" />
+									View Expenses
+								</Link>
+							</Button>
+							<Button asChild variant="outline" className="h-12">
+								<Link to="/expenses/new">
+									<Calendar className="h-4 w-4 mr-2" />
+									Add Expense
+								</Link>
+							</Button>
 						</div>
 					</div>
-				)}
+				</div>
 			</div>
 		</div>
 	);

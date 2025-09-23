@@ -348,27 +348,24 @@ export const apiService = {
 		delete: (id: number | string) => api.delete(ENDPOINTS.recurringById(id)),
 	},
 	analytics: {
-		summary: (user_id: number) =>
-			api.get<components["schemas"]["AnalyticsSummary"]>(
-				ENDPOINTS.analyticsSummary,
-				{ params: { user_id } },
-			),
-		week: (user_id: number) =>
-			api.get<components["schemas"]["AnalyticsSummary"]>(
-				ENDPOINTS.analyticsWeek,
-				{ params: { user_id } },
-			),
-		month: (user_id: number) =>
-			api.get<components["schemas"]["AnalyticsSummary"]>(
-				ENDPOINTS.analyticsMonth,
-				{ params: { user_id } },
-			),
-		emotions: (user_id: number) =>
+		summary: (period?: string, format?: string) =>
+			api.get<Record<string, unknown>>(ENDPOINTS.analyticsSummary, {
+				params: { period: period || "week", format: format || "json" },
+			}),
+		week: (format?: string) =>
+			api.get<Record<string, unknown>>(ENDPOINTS.analyticsWeek, {
+				params: { format: format || "json" },
+			}),
+		month: (format?: string) =>
+			api.get<Record<string, unknown>>(ENDPOINTS.analyticsMonth, {
+				params: { format: format || "json" },
+			}),
+		emotions: (period?: string) =>
 			api.get<{
 				emotions?: Record<string, unknown>;
 				most_common?: string;
 				regret_amount?: number;
-			}>(ENDPOINTS.analyticsEmotions, { params: { user_id } }),
+			}>(ENDPOINTS.analyticsEmotions, { params: { period: period || "week" } }),
 		reports: () =>
 			api.get<components["schemas"]["ReportSchedule"][]>(
 				ENDPOINTS.analyticsReports,

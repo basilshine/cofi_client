@@ -199,7 +199,7 @@ export const expensesService = {
 			LogRocket.log("[expensesService.getSummary] Starting request", {
 				userId,
 			});
-			const response = await apiService.analytics.summary(userId);
+			const response = await apiService.analytics.summary("week");
 			LogRocket.log("[expensesService.getSummary] Success:", response.data);
 			return response.data as components["schemas"]["ExpenseSummary"];
 		} catch (error) {
