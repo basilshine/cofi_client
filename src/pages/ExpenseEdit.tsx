@@ -127,9 +127,11 @@ export const ExpenseEdit = () => {
 				webApp.enableClosingConfirmation();
 				console.log("[ExpenseEdit] Enabled closing confirmation");
 			}
+			const isTelegramEditMode = isWebApp && cameThroughTelegramLink;
+			console.log("[ExpenseEdit] isTelegramEditMode", isTelegramEditMode);
 
 			// Auto-setup MainButton for Telegram edit mode (broader detection)
-			if (webApp.MainButton && isTelegramEditMode) {
+			if (webApp.MainButton && cameThroughTelegramLink) {
 				console.log(
 					"[ExpenseEdit] Setting up MainButton automatically for Telegram edit mode",
 				);
