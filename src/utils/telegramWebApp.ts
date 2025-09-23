@@ -1,4 +1,7 @@
+import type { components } from "@/types/api-types";
 import LogRocket from "logrocket";
+
+type User = components["schemas"]["User"];
 
 interface TelegramWebAppData {
 	initData: string;
@@ -324,6 +327,10 @@ export const handleTelegramNavigation = (
 					"[TelegramNavigation] Navigating to expense edit:",
 					targetPath,
 				);
+
+				// Set marker for telegram edit flow
+				sessionStorage.setItem("telegram_edit_flow", "true");
+
 				// Clear the startapp parameter only after successful navigation
 				setTimeout(() => {
 					if (typeof window !== "undefined") {
@@ -450,37 +457,75 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 	totalAmount: number;
 	itemsCount: number;
 	status: string;
+	user?: User | null; // User data for currency formatting
 }) => {
 	console.log("[notifyExpenseSavedAndClose] Called with:", expenseData);
 	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
 		// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete, need to access showAlert/close methods
 		const webApp = window.Telegram.WebApp as any;
 
-		// Create appropriate message based on status
-		let message: string;
-		if (expenseData.status === "approved") {
-			message = `✅ Expense approved and saved to database!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: Approved`;
-		} else {
-			message = `✅ Expense ${expenseData.status} successfully!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
-		}
-
-		console.log(
-			"[notifyExpenseSavedAndClose] Showing alert with message:",
-			message,
-		);
-		if (webApp.showAlert) {
-			webApp.showAlert(message, () => {
-				console.log(
-					"[notifyExpenseSavedAndClose] Alert acknowledged, closing WebApp",
+		// Import currency service dynamically to avoid circular dependencies
+		import("../services/currency")
+			.then(({ currencyService }) => {
+				const formattedAmount = currencyService.formatCurrency(
+					expenseData.totalAmount,
+					expenseData.user,
 				);
-				// Close the WebApp after user acknowledges the message
-				if (webApp.close) {
-					webApp.close();
+
+				// Create appropriate message based on status
+				let message: string;
+				if (expenseData.status === "approved") {
+					message = `✅ Expense approved and saved to database!\n\n💰 Total: ${formattedAmount}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: Approved`;
+				} else {
+					message = `✅ Expense ${expenseData.status} successfully!\n\n💰 Total: ${formattedAmount}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
+				}
+
+				console.log(
+					"[notifyExpenseSavedAndClose] Showing alert with message:",
+					message,
+				);
+
+				if (webApp.showAlert) {
+					webApp.showAlert(message, () => {
+						console.log(
+							"[notifyExpenseSavedAndClose] Alert acknowledged, closing WebApp",
+						);
+						// Close the WebApp after user acknowledges the message
+						if (webApp.close) {
+							console.log("[notifyExpenseSavedAndClose] Closing WebApp...");
+							webApp.close();
+						} else {
+							console.log(
+								"[notifyExpenseSavedAndClose] webApp.close not available",
+							);
+						}
+					});
+				} else {
+					console.log(
+						"[notifyExpenseSavedAndClose] showAlert not available, trying direct close",
+					);
+					// If showAlert is not available, try direct close
+					if (webApp.close) {
+						console.log("[notifyExpenseSavedAndClose] Direct close WebApp...");
+						webApp.close();
+					}
+				}
+			})
+			.catch((error) => {
+				console.error(
+					"[notifyExpenseSavedAndClose] Failed to import currency service:",
+					error,
+				);
+				// Fallback without currency formatting
+				const message = `✅ Expense ${expenseData.status} successfully!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
+				if (webApp.showAlert) {
+					webApp.showAlert(message, () => {
+						if (webApp.close) {
+							webApp.close();
+						}
+					});
 				}
 			});
-		} else {
-			console.log("[notifyExpenseSavedAndClose] showAlert not available");
-		}
 	} else {
 		console.log("[notifyExpenseSavedAndClose] Telegram WebApp not available");
 	}

@@ -119,6 +119,7 @@ export const RecurringExpenseEdit = () => {
 					totalAmount: data.amount || 0,
 					itemsCount: 1,
 					status: "scheduled",
+					user,
 				});
 			} else {
 				navigate("/expenses");
@@ -145,6 +146,7 @@ export const RecurringExpenseEdit = () => {
 					totalAmount: data.amount || 0,
 					itemsCount: 1,
 					status: "scheduled",
+					user,
 				});
 			} else {
 				navigate("/expenses");

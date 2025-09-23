@@ -61,6 +61,36 @@ export const ExpenseEdit = () => {
 		(new URLSearchParams(window.location.search).get("startapp") ||
 			sessionStorage.getItem("cofi_telegram_startapp_param"));
 
+	// Debug logging for Telegram link detection and set edit flow marker
+	useEffect(() => {
+		console.log("[ExpenseEdit] Telegram link detection:", {
+			isWebApp,
+			startappFromURL: new URLSearchParams(window.location.search).get(
+				"startapp",
+			),
+			startappFromSession: sessionStorage.getItem(
+				"cofi_telegram_startapp_param",
+			),
+			cameThroughTelegramLink,
+		});
+		LogRocket.log("[ExpenseEdit] Telegram link detection:", {
+			isWebApp,
+			startappFromURL: new URLSearchParams(window.location.search).get(
+				"startapp",
+			),
+			startappFromSession: sessionStorage.getItem(
+				"cofi_telegram_startapp_param",
+			),
+			cameThroughTelegramLink,
+		});
+
+		// Set marker for telegram edit flow if we came through Telegram and are editing
+		if (isWebApp && isEditMode && cameThroughTelegramLink) {
+			sessionStorage.setItem("telegram_edit_flow", "true");
+			console.log("[ExpenseEdit] Set telegram_edit_flow marker");
+		}
+	}, [isWebApp, cameThroughTelegramLink, isEditMode]);
+
 	const {
 		data: expense,
 		isLoading,
@@ -124,17 +154,32 @@ export const ExpenseEdit = () => {
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			queryClient.invalidateQueries({ queryKey: ["expense", id] });
 
-			// If in Telegram WebApp and came through Telegram link, show success message and close
-			if (isTelegramWebApp() && cameThroughTelegramLink) {
-				console.log("[ExpenseEdit] Came through Telegram link, closing WebApp");
+			// Enhanced detection for Telegram WebApp flows
+			const shouldCloseWebApp =
+				isWebApp &&
+				(cameThroughTelegramLink ||
+					// Additional checks for edit flows
+					(isEditMode && sessionStorage.getItem("telegram_edit_flow")) ||
+					// Check if we're in a Telegram environment
+					(isWebApp && window.location.pathname.includes("/edit")));
+
+			if (shouldCloseWebApp) {
+				console.log(
+					"[ExpenseEdit] Telegram WebApp detected, closing after save",
+				);
 				const totalAmount = editingItems.reduce(
 					(sum, item) => sum + (item.amount ?? 0),
 					0,
 				);
+
+				// Clear telegram edit flow marker
+				sessionStorage.removeItem("telegram_edit_flow");
+
 				notifyExpenseSavedAndClose({
 					totalAmount,
 					itemsCount: editingItems.length,
 					status: data.status || "approved",
+					user,
 				});
 			} else {
 				// Regular web navigation
@@ -159,9 +204,17 @@ export const ExpenseEdit = () => {
 			LogRocket.log("[ExpenseEdit] createMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 
-			// If in Telegram WebApp and came through Telegram link, show success message and close
-			if (isTelegramWebApp() && cameThroughTelegramLink) {
-				console.log("[ExpenseEdit] Came through Telegram link, closing WebApp");
+			// Enhanced detection for Telegram WebApp flows (creation)
+			const shouldCloseWebApp =
+				isWebApp &&
+				(cameThroughTelegramLink ||
+					// Check if we're in a Telegram environment
+					(isWebApp && window.location.pathname.includes("/add")));
+
+			if (shouldCloseWebApp) {
+				console.log(
+					"[ExpenseEdit] Telegram WebApp detected, closing after create",
+				);
 				const totalAmount = editingItems.reduce(
 					(sum, item) => sum + (item.amount ?? 0),
 					0,
@@ -170,6 +223,7 @@ export const ExpenseEdit = () => {
 					totalAmount,
 					itemsCount: editingItems.length,
 					status: "approved",
+					user,
 				});
 			} else {
 				// Regular web navigation
