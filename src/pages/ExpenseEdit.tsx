@@ -128,9 +128,21 @@ export const ExpenseEdit = () => {
 				console.log("[ExpenseEdit] Enabled closing confirmation");
 			}
 
-			// Set main button if available
-			if (webApp.MainButton) {
-				console.log("[ExpenseEdit] MainButton available");
+			// Auto-setup MainButton for Telegram edit mode
+			if (webApp.MainButton && cameThroughTelegramLink) {
+				console.log("[ExpenseEdit] Setting up MainButton automatically");
+				webApp.MainButton.text = "Save & Close";
+				webApp.MainButton.show();
+
+				// Handle main button click
+				webApp.MainButton.onClick(() => {
+					console.log("[ExpenseEdit] MainButton clicked, saving expense");
+					handleSaveChanges();
+				});
+
+				console.log(
+					"[ExpenseEdit] MainButton configured for Telegram edit mode",
+				);
 			}
 
 			// Ready the webapp
@@ -532,8 +544,13 @@ export const ExpenseEdit = () => {
 		0,
 	);
 
+	// Determine if this is a clean Telegram edit mode (no header/footer)
+	const isTelegramEditMode = isWebApp && cameThroughTelegramLink;
+
 	return (
-		<div className="min-h-screen bg-[#f8fafc] flex flex-col">
+		<div
+			className={`min-h-screen bg-[#f8fafc] ${isTelegramEditMode ? "" : "flex flex-col"}`}
+		>
 			{/* Debug Section - only show in WebApp mode */}
 			{isWebApp && (
 				<div className="bg-yellow-100 border border-yellow-400 p-3 m-4 rounded-lg">
@@ -542,6 +559,7 @@ export const ExpenseEdit = () => {
 						<div>WebApp: {isWebApp ? "✅" : "❌"}</div>
 						<div>Telegram Link: {cameThroughTelegramLink ? "✅" : "❌"}</div>
 						<div>Edit Mode: {isEditMode ? "✅" : "❌"}</div>
+						<div>Telegram Edit Mode: {isTelegramEditMode ? "✅" : "❌"}</div>
 						<div>
 							Edit Flow Marker:{" "}
 							{sessionStorage.getItem("telegram_edit_flow") ? "✅" : "❌"}
@@ -574,8 +592,8 @@ export const ExpenseEdit = () => {
 				</div>
 			)}
 
-			{/* Header - only show if not in WebApp mode */}
-			{!isWebApp && (
+			{/* Header - hide in Telegram edit mode */}
+			{!isTelegramEditMode && (
 				<header className="sticky top-0 z-10 bg-[#f8fafc] border-b border-gray-200">
 					<div className="flex items-center justify-between p-4">
 						<Button variant="ghost" size="sm" onClick={handleCancel}>
@@ -590,7 +608,9 @@ export const ExpenseEdit = () => {
 			)}
 
 			{/* Main Content */}
-			<main className={`flex-1 p-4 space-y-6 ${isWebApp ? "pt-0" : ""}`}>
+			<main
+				className={`${isTelegramEditMode ? "p-4 space-y-6" : "flex-1 p-4 space-y-6"} ${isWebApp ? "pt-0" : ""}`}
+			>
 				{/* Total Amount Card */}
 				<div className="mx-4">
 					<div className="bg-white rounded-xl shadow-sm p-6">
@@ -795,37 +815,55 @@ export const ExpenseEdit = () => {
 					</Button>
 				</div>
 
-				{/* Action Buttons */}
-				<div className="mx-4 space-y-3">
-					<Button
-						onClick={handleSaveChanges}
-						className="w-full bg-[#47c1ea] hover:bg-[#3ba8d4] text-white rounded-xl py-3"
-						disabled={updateMutation.isPending || createMutation.isPending}
-					>
-						{updateMutation.isPending || createMutation.isPending
-							? "Saving..."
-							: "Save Changes"}
-					</Button>
-
-					{/* Debug button - only show in WebApp mode */}
-					{isWebApp && (
+				{/* Action Buttons - conditional based on mode */}
+				{!isTelegramEditMode ? (
+					/* Regular web mode - show normal buttons */
+					<div className="mx-4 space-y-3">
 						<Button
-							onClick={handleTestTelegramClose}
-							variant="outline"
-							className="w-full border-yellow-400 text-yellow-600 hover:bg-yellow-50 rounded-xl py-3"
+							onClick={handleSaveChanges}
+							className="w-full bg-[#47c1ea] hover:bg-[#3ba8d4] text-white rounded-xl py-3"
+							disabled={updateMutation.isPending || createMutation.isPending}
 						>
-							🧪 Test Telegram Close Flow
+							{updateMutation.isPending || createMutation.isPending
+								? "Saving..."
+								: "Save Changes"}
 						</Button>
-					)}
 
-					<Button
-						onClick={handleCancel}
-						variant="outline"
-						className="w-full border-[#47c1ea] text-[#47c1ea] hover:bg-[#e0f2f7] rounded-xl py-3"
-					>
-						Cancel
-					</Button>
-				</div>
+						<Button
+							onClick={handleCancel}
+							variant="outline"
+							className="w-full border-[#47c1ea] text-[#47c1ea] hover:bg-[#e0f2f7] rounded-xl py-3"
+						>
+							Cancel
+						</Button>
+					</div>
+				) : (
+					/* Telegram edit mode - minimal interface, MainButton handles save */
+					<div className="mx-4 space-y-3">
+						<div className="text-center text-[#64748b] text-sm py-4">
+							💡 Use the <strong>"Save & Close"</strong> button below to save
+							your changes
+						</div>
+
+						{/* Debug buttons for testing */}
+						<div className="space-y-2">
+							<Button
+								onClick={handleTestTelegramClose}
+								variant="outline"
+								className="w-full border-yellow-400 text-yellow-600 hover:bg-yellow-50 rounded-xl py-2 text-xs"
+							>
+								🧪 Test Telegram Close Flow
+							</Button>
+							<Button
+								onClick={handleTelegramMainButton}
+								variant="outline"
+								className="w-full border-blue-400 text-blue-600 hover:bg-blue-50 rounded-xl py-2 text-xs"
+							>
+								🔧 Setup MainButton
+							</Button>
+						</div>
+					</div>
+				)}
 			</main>
 
 			{/* New Item Modal */}

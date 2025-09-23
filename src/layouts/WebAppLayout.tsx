@@ -1,4 +1,5 @@
 import { ArrowLeft, ChartPie, UserCircle, Wallet } from "@phosphor-icons/react";
+import { isTelegramWebApp } from "@utils/isTelegramWebApp";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -15,6 +16,15 @@ export const WebAppLayout = ({
 }: WebAppLayoutProps) => {
 	const navigate = useNavigate();
 	const location = useLocation();
+
+	// Detect if this is a Telegram edit mode (clean interface)
+	const isTelegramEditMode =
+		isTelegramWebApp() &&
+		(location.pathname.includes("/edit") ||
+			location.pathname.includes("/add")) &&
+		(new URLSearchParams(window.location.search).get("startapp") ||
+			sessionStorage.getItem("cofi_telegram_startapp_param") ||
+			sessionStorage.getItem("telegram_edit_flow"));
 
 	const handleBack = () => {
 		navigate(-1);
@@ -45,6 +55,12 @@ export const WebAppLayout = ({
 		},
 	];
 
+	// For Telegram edit mode, use clean interface without header/navigation
+	if (isTelegramEditMode) {
+		return <div className="min-h-screen bg-[#f8fafc]">{children}</div>;
+	}
+
+	// Regular layout with header and navigation
 	return (
 		<div className="relative flex size-full min-h-screen flex-col justify-between overflow-x-hidden bg-[#f8fafc]">
 			<div className="flex-grow">
