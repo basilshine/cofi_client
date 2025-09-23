@@ -18,13 +18,32 @@ export const WebAppLayout = ({
 	const location = useLocation();
 
 	// Detect if this is a Telegram edit mode (clean interface)
+	const isWebApp = isTelegramWebApp();
+	const startappParam = new URLSearchParams(window.location.search).get(
+		"startapp",
+	);
+	const sessionStartapp = sessionStorage.getItem(
+		"cofi_telegram_startapp_param",
+	);
+	const telegramEditFlow = sessionStorage.getItem("telegram_edit_flow");
+	const isEditPath =
+		location.pathname.includes("/edit") || location.pathname.includes("/add");
+
 	const isTelegramEditMode =
-		isTelegramWebApp() &&
-		(location.pathname.includes("/edit") ||
-			location.pathname.includes("/add")) &&
-		(new URLSearchParams(window.location.search).get("startapp") ||
-			sessionStorage.getItem("cofi_telegram_startapp_param") ||
-			sessionStorage.getItem("telegram_edit_flow"));
+		isWebApp &&
+		isEditPath &&
+		(startappParam || sessionStartapp || telegramEditFlow);
+
+	// Debug logging for layout detection
+	console.log("[WebAppLayout] Mode detection:", {
+		isWebApp,
+		isEditPath,
+		startappParam,
+		sessionStartapp,
+		telegramEditFlow,
+		pathname: location.pathname,
+		isTelegramEditMode,
+	});
 
 	const handleBack = () => {
 		navigate(-1);
@@ -57,7 +76,16 @@ export const WebAppLayout = ({
 
 	// For Telegram edit mode, use clean interface without header/navigation
 	if (isTelegramEditMode) {
-		return <div className="min-h-screen bg-[#f8fafc]">{children}</div>;
+		console.log("[WebAppLayout] Using clean Telegram edit mode layout");
+		return (
+			<div className="min-h-screen bg-[#f8fafc]">
+				{/* Debug indicator for clean mode */}
+				<div className="bg-green-100 border border-green-400 p-2 m-2 rounded text-xs">
+					🎯 Clean Telegram Edit Mode Active
+				</div>
+				{children}
+			</div>
+		);
 	}
 
 	// Regular layout with header and navigation

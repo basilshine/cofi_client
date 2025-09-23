@@ -128,9 +128,11 @@ export const ExpenseEdit = () => {
 				console.log("[ExpenseEdit] Enabled closing confirmation");
 			}
 
-			// Auto-setup MainButton for Telegram edit mode
-			if (webApp.MainButton && cameThroughTelegramLink) {
-				console.log("[ExpenseEdit] Setting up MainButton automatically");
+			// Auto-setup MainButton for Telegram edit mode (broader detection)
+			if (webApp.MainButton && isTelegramEditMode) {
+				console.log(
+					"[ExpenseEdit] Setting up MainButton automatically for Telegram edit mode",
+				);
 				webApp.MainButton.text = "Save & Close";
 				webApp.MainButton.show();
 
@@ -141,8 +143,14 @@ export const ExpenseEdit = () => {
 				});
 
 				console.log(
-					"[ExpenseEdit] MainButton configured for Telegram edit mode",
+					"[ExpenseEdit] MainButton configured and shown for Telegram edit mode",
 				);
+			} else if (webApp.MainButton) {
+				console.log(
+					"[ExpenseEdit] MainButton available but not in Telegram edit mode",
+				);
+			} else {
+				console.log("[ExpenseEdit] MainButton not available");
 			}
 
 			// Ready the webapp
@@ -545,7 +553,12 @@ export const ExpenseEdit = () => {
 	);
 
 	// Determine if this is a clean Telegram edit mode (no header/footer)
-	const isTelegramEditMode = isWebApp && cameThroughTelegramLink;
+	// Use broader detection that matches the layout logic
+	const isTelegramEditMode =
+		isWebApp &&
+		(startappParam ||
+			sessionStartapp ||
+			sessionStorage.getItem("telegram_edit_flow"));
 
 	return (
 		<div
@@ -560,9 +573,17 @@ export const ExpenseEdit = () => {
 						<div>Telegram Link: {cameThroughTelegramLink ? "✅" : "❌"}</div>
 						<div>Edit Mode: {isEditMode ? "✅" : "❌"}</div>
 						<div>Telegram Edit Mode: {isTelegramEditMode ? "✅" : "❌"}</div>
+						<div>URL startapp: {startappParam || "none"}</div>
+						<div>Session startapp: {sessionStartapp || "none"}</div>
 						<div>
 							Edit Flow Marker:{" "}
 							{sessionStorage.getItem("telegram_edit_flow") ? "✅" : "❌"}
+						</div>
+						<div>
+							Current path:{" "}
+							{typeof window !== "undefined"
+								? window.location.pathname
+								: "unknown"}
 						</div>
 						<div>
 							Telegram Object:{" "}
@@ -587,6 +608,18 @@ export const ExpenseEdit = () => {
 							className="text-xs h-8 bg-blue-600 hover:bg-blue-700 w-full"
 						>
 							🔧 Setup MainButton
+						</Button>
+						<Button
+							onClick={() => {
+								sessionStorage.setItem("telegram_edit_flow", "true");
+								console.log(
+									"[ExpenseEdit] Manually set telegram_edit_flow marker",
+								);
+								window.location.reload(); // Reload to see the effect
+							}}
+							className="text-xs h-8 bg-green-600 hover:bg-green-700 w-full"
+						>
+							🎯 Force Telegram Mode
 						</Button>
 					</div>
 				</div>
