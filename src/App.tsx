@@ -18,7 +18,6 @@ import { useEffect } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./layouts/Layout";
 import { WebAppLayout } from "./layouts/WebAppLayout";
-import { Home } from "./pages/Home";
 import { Promo } from "./pages/Promo";
 import { QueryProvider } from "./providers/QueryProvider";
 import "./i18n/config";
