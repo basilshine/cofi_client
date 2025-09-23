@@ -1,5 +1,6 @@
 import { apiService } from "@/services/api";
 import { expensesService } from "@/services/api/expenses";
+import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { Button } from "@components/ui/button";
@@ -343,7 +344,7 @@ export const ExpenseEdit = () => {
 							<div>
 								<p className="text-sm text-[#64748b]">Total Amount</p>
 								<p className="text-2xl font-bold text-[#1e3a8a]">
-									${totalAmount.toFixed(2)}
+									{currencyService.formatCurrency(totalAmount)}
 								</p>
 							</div>
 							<div className="text-right">
@@ -386,7 +387,7 @@ export const ExpenseEdit = () => {
 									<div className="flex items-center gap-2">
 										<div className="text-right">
 											<p className="font-bold text-[#1e3a8a]">
-												${(item.amount || 0).toFixed(2)}
+												{currencyService.formatCurrency(item.amount || 0)}
 											</p>
 										</div>
 										{expandedItems.has(index) ? (

@@ -1,4 +1,5 @@
 import { apiService } from "@/services/api";
+import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
 import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
@@ -103,7 +104,7 @@ export const RecurringExpenseList = ({
 										</span>
 									</div>
 									<p className="text-[#333333] text-base font-bold leading-normal">
-										${expense.amount?.toFixed(2) || "0.00"}
+										{currencyService.formatCurrency(expense.amount || 0)}
 									</p>
 								</div>
 								<div className="flex justify-between items-center">

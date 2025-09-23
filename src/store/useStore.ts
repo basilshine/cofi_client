@@ -1,13 +1,9 @@
+import type { components } from "@/types/api-types";
 import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface User {
-	id: string;
-	name: string;
-	email?: string;
-	auth_type?: string; // Добавлено для поддержки Telegram/email auth
-}
+type User = components["schemas"]["User"];
 
 interface AuthState {
 	user: User | null;

@@ -102,6 +102,31 @@ const resources = {
 			"analytics.noCategories": "No categories found",
 			"analytics.andMore": "and {{count}} more...",
 
+			// New Analytics translations
+			"analytics.totalSpent": "Total Spent",
+			"analytics.dailyAverage": "Daily Average",
+			"analytics.topCategories": "Top Categories",
+			"analytics.spendingMood": "Spending Mood",
+			"analytics.insightsAndTips": "Insights & Tips",
+			"analytics.quickActions": "Quick Actions",
+			"analytics.viewExpenses": "View Expenses",
+			"analytics.addExpense": "Add Expense",
+			"analytics.noAnalyticsData": "No Analytics Data Available",
+			"analytics.startTracking":
+				"Start tracking expenses to see your analytics and insights",
+			"analytics.errorLoading": "Error loading analytics data",
+			"analytics.tryAgain": "Try Again",
+			"analytics.thisWeek": "This Week",
+			"analytics.thisMonth": "This Month",
+			"analytics.vsLast": "vs last",
+			"analytics.max": "Max",
+			"analytics.positive": "Positive",
+			"analytics.neutral": "Neutral",
+			"analytics.negative": "Negative",
+			"analytics.regretfulSpending": "Regretful spending",
+			"analytics.mostCommonFeeling": "Most common feeling",
+			"analytics.items": "items",
+
 			// Auth
 			"auth.login": "Login",
 			"auth.register": "Register",
@@ -213,6 +238,31 @@ const resources = {
 			"analytics.noCategories": "Категории не найдены",
 			"analytics.andMore": "и еще {{count}}...",
 
+			// New Analytics translations
+			"analytics.totalSpent": "Всего потрачено",
+			"analytics.dailyAverage": "Средний в день",
+			"analytics.topCategories": "Топ категории",
+			"analytics.spendingMood": "Настроение трат",
+			"analytics.insightsAndTips": "Аналитика и советы",
+			"analytics.quickActions": "Быстрые действия",
+			"analytics.viewExpenses": "Посмотреть расходы",
+			"analytics.addExpense": "Добавить расход",
+			"analytics.noAnalyticsData": "Нет данных для аналитики",
+			"analytics.startTracking":
+				"Начните отслеживать расходы, чтобы увидеть аналитику и советы",
+			"analytics.errorLoading": "Ошибка загрузки аналитики",
+			"analytics.tryAgain": "Попробовать снова",
+			"analytics.thisWeek": "На этой неделе",
+			"analytics.thisMonth": "В этом месяце",
+			"analytics.vsLast": "по сравнению с прошлым",
+			"analytics.max": "Макс",
+			"analytics.positive": "Позитивные",
+			"analytics.neutral": "Нейтральные",
+			"analytics.negative": "Негативные",
+			"analytics.regretfulSpending": "Сожаления о тратах",
+			"analytics.mostCommonFeeling": "Самое частое чувство",
+			"analytics.items": "позиций",
+
 			// Auth
 			"auth.login": "Вход",
 			"auth.register": "Регистрация",
@@ -253,15 +303,41 @@ const getBrowserLanguage = () => {
 	return browserLang.toLowerCase().split("-")[0];
 };
 
-// Initialize i18n with browser language
+// Get user language from localStorage or browser
+const getUserLanguage = () => {
+	// Try to get from localStorage first (set by auth context)
+	const storedLang = localStorage.getItem("userLanguage");
+	if (storedLang && ["en", "ru"].includes(storedLang)) {
+		return storedLang;
+	}
+
+	// Fallback to browser language
+	const browserLang = getBrowserLanguage();
+	if (["en", "ru"].includes(browserLang)) {
+		return browserLang;
+	}
+
+	// Final fallback
+	return "en";
+};
+
+// Initialize i18n with user language
 i18n.use(initReactI18next).init({
 	resources,
-	lng: getBrowserLanguage(),
+	lng: getUserLanguage(),
 	fallbackLng: "en",
 	supportedLngs: ["en", "ru"],
 	interpolation: {
 		escapeValue: false,
 	},
 });
+
+// Function to change language dynamically
+export const changeLanguage = (language: string) => {
+	if (["en", "ru"].includes(language)) {
+		i18n.changeLanguage(language);
+		localStorage.setItem("userLanguage", language);
+	}
+};
 
 export default i18n;

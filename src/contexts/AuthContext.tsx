@@ -1,5 +1,6 @@
 import { TelegramLoadingScreen } from "@/components/TelegramLoadingScreen";
 import { useTelegram } from "@/hooks/useTelegram";
+import { changeLanguage } from "@/i18n/config";
 import { type ProfileUpdateRequest, apiService } from "@/services/api";
 import type { components } from "@/types/api-types";
 import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
@@ -66,6 +67,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	});
 
 	const navigate = useNavigate();
+
+	// Helper function to set user language when user data is available
+	const setUserLanguage = (user: User | null) => {
+		if (user?.language && ["en", "ru"].includes(user.language)) {
+			changeLanguage(user.language);
+			LogRocket.log("[AuthContext] Set user language:", user.language);
+		}
+	};
 	const { telegramUser, initData } = useTelegram();
 	const hasAttemptedTelegramLogin = useRef(false);
 
@@ -445,6 +454,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 			localStorage.setItem("token", response.data.token ?? "");
 			const user = response.data.user ?? null;
+
+			// Set user language
+			setUserLanguage(user);
+
 			setState((prev: AuthState) => ({
 				...prev,
 				user: user as User,
@@ -479,6 +492,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 			localStorage.setItem("token", response.data.token ?? "");
 			const user = response.data.user ?? null;
+
+			// Set user language
+			setUserLanguage(user);
+
 			setState({
 				...state,
 				user: user as User,
@@ -674,6 +691,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			const response = await apiService.auth.telegramLoginWidget(loginData);
 			const { token, user } = response.data;
 			localStorage.setItem("token", token ?? "");
+
+			// Set user language
+			setUserLanguage(user ?? null);
+
 			setState((prev: AuthState) => ({
 				...prev,
 				user: user ?? null,

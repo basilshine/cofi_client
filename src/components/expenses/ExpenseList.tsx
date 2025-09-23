@@ -1,4 +1,5 @@
 import { type ExpenseFilters, expensesService } from "@/services/api/expenses";
+import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { Button } from "@components/ui/button";
@@ -193,7 +194,7 @@ export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 										{/* Status indicators could go here */}
 									</div>
 									<p className="text-[#333333] text-base font-bold leading-normal">
-										${totalAmount.toFixed(2)}
+										{currencyService.formatCurrency(totalAmount)}
 									</p>
 								</div>
 								<div className="flex justify-between items-center">
@@ -221,7 +222,7 @@ export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 								{itemsCount} {itemsCount === 1 ? "item" : "items"}
 							</p>
 							<p className="text-[#333333] text-sm font-semibold">
-								${totalAmount.toFixed(2)} total
+								{currencyService.formatCurrency(totalAmount)} total
 							</p>
 						</div>
 

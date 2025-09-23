@@ -117,10 +117,6 @@ export const analyticsService = {
 		return "stable";
 	},
 
-	formatCurrency: (amount: number): string => {
-		return `$${amount.toFixed(2)}`;
-	},
-
 	getTopCategory: (categories: CategoryStats[]): CategoryStats | null => {
 		return categories.length > 0 ? categories[0] : null;
 	},

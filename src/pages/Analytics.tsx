@@ -1,4 +1,5 @@
 import { type StatsResponse, analyticsService } from "@/services/api/analytics";
+import { currencyService } from "@/services/currency";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { Button } from "@components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
@@ -98,13 +99,13 @@ export const Analytics = () => {
 						<div className="text-center space-y-4">
 							<Warning className="mx-auto h-12 w-12 text-red-500" />
 							<p className="text-red-500 font-medium">
-								Error loading analytics data
+								{t("analytics.errorLoading")}
 							</p>
 							<p className="text-sm text-muted-foreground">
 								{statsError.message}
 							</p>
 							<Button onClick={() => refetchStats()} variant="outline">
-								Try Again
+								{t("analytics.tryAgain")}
 							</Button>
 						</div>
 					</CardContent>
@@ -136,18 +137,18 @@ export const Analytics = () => {
 									<ChartPie className="mx-auto h-16 w-16 text-[#64748b]" />
 									<div className="space-y-2">
 										<h3 className="text-lg font-semibold text-[#1e3a8a]">
-											No Analytics Data Available
+											{t("analytics.noAnalyticsData")}
 										</h3>
 										<p className="text-sm text-[#64748b]">
-											Start tracking expenses to see your analytics and insights
+											{t("analytics.startTracking")}
 										</p>
 									</div>
 									<div className="space-y-2">
 										<Button asChild className="w-full">
-											<Link to="/expenses">View Expenses</Link>
+											<Link to="/expenses">{t("analytics.viewExpenses")}</Link>
 										</Button>
 										<Button asChild variant="outline" className="w-full">
-											<Link to="/">Go Home</Link>
+											<Link to="/">{t("common.goHome")}</Link>
 										</Button>
 									</div>
 								</div>
@@ -217,8 +218,10 @@ export const Analytics = () => {
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="week">This Week</SelectItem>
-								<SelectItem value="month">This Month</SelectItem>
+								<SelectItem value="week">{t("analytics.thisWeek")}</SelectItem>
+								<SelectItem value="month">
+									{t("analytics.thisMonth")}
+								</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -231,19 +234,19 @@ export const Analytics = () => {
 							<CardHeader className="pb-2">
 								<CardTitle className="text-sm font-medium text-[#64748b] flex items-center gap-2">
 									<CurrencyDollar className="h-4 w-4" />
-									Total Spent
+									{t("analytics.totalSpent")}
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
 								<div className="text-2xl font-bold text-[#1e3a8a]">
-									{analyticsService.formatCurrency(stats.total_spent)}
+									{currencyService.formatCurrency(stats.total_spent)}
 								</div>
 								<div
 									className={`text-sm flex items-center gap-1 mt-1 ${getTrendColor()}`}
 								>
 									{getTrendIcon()}
-									{Math.abs(stats.change_percent).toFixed(1)}% vs last{" "}
-									{stats.period}
+									{Math.abs(stats.change_percent).toFixed(1)}%{" "}
+									{t("analytics.vsLast")} {stats.period}
 								</div>
 							</CardContent>
 						</Card>
@@ -252,15 +255,16 @@ export const Analytics = () => {
 							<CardHeader className="pb-2">
 								<CardTitle className="text-sm font-medium text-[#64748b] flex items-center gap-2">
 									<Calendar className="h-4 w-4" />
-									Daily Average
+									{t("analytics.dailyAverage")}
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
 								<div className="text-2xl font-bold text-[#1e3a8a]">
-									{analyticsService.formatCurrency(stats.average_daily)}
+									{currencyService.formatCurrency(stats.average_daily)}
 								</div>
 								<div className="text-sm text-[#64748b] mt-1">
-									Max: {analyticsService.formatCurrency(stats.max_daily_spent)}
+									{t("analytics.max")}:{" "}
+									{currencyService.formatCurrency(stats.max_daily_spent)}
 								</div>
 							</CardContent>
 						</Card>
@@ -272,7 +276,7 @@ export const Analytics = () => {
 							<CardHeader>
 								<CardTitle className="text-lg font-semibold text-[#1e3a8a] flex items-center gap-2">
 									<ChartPie className="h-5 w-5" />
-									Top Categories
+									{t("analytics.topCategories")}
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
@@ -302,11 +306,11 @@ export const Analytics = () => {
 												</div>
 												<div className="text-right">
 													<div className="text-sm font-semibold text-[#1e3a8a]">
-														{analyticsService.formatCurrency(category.total)}
+														{currencyService.formatCurrency(category.total)}
 													</div>
 													<div className="text-xs text-[#64748b]">
 														{category.percentage.toFixed(1)}% ({category.count}{" "}
-														items)
+														{t("analytics.items")})
 													</div>
 												</div>
 											</div>
@@ -314,7 +318,7 @@ export const Analytics = () => {
 									</div>
 								) : (
 									<p className="text-sm text-[#64748b] text-center py-4">
-										No categories data available
+										{t("analytics.noCategories")}
 									</p>
 								)}
 							</CardContent>
@@ -328,7 +332,7 @@ export const Analytics = () => {
 								<CardHeader>
 									<CardTitle className="text-lg font-semibold text-[#1e3a8a] flex items-center gap-2">
 										<Heart className="h-5 w-5" />
-										Spending Mood
+										{t("analytics.spendingMood")}
 									</CardTitle>
 								</CardHeader>
 								<CardContent>
@@ -338,19 +342,25 @@ export const Analytics = () => {
 												<div className="text-lg font-bold text-green-600">
 													{moodAnalysis.positive.toFixed(1)}%
 												</div>
-												<div className="text-xs text-[#64748b]">Positive</div>
+												<div className="text-xs text-[#64748b]">
+													{t("analytics.positive")}
+												</div>
 											</div>
 											<div>
 												<div className="text-lg font-bold text-yellow-600">
 													{moodAnalysis.neutral.toFixed(1)}%
 												</div>
-												<div className="text-xs text-[#64748b]">Neutral</div>
+												<div className="text-xs text-[#64748b]">
+													{t("analytics.neutral")}
+												</div>
 											</div>
 											<div>
 												<div className="text-lg font-bold text-red-600">
 													{moodAnalysis.negative.toFixed(1)}%
 												</div>
-												<div className="text-xs text-[#64748b]">Negative</div>
+												<div className="text-xs text-[#64748b]">
+													{t("analytics.negative")}
+												</div>
 											</div>
 										</div>
 
@@ -359,8 +369,8 @@ export const Analytics = () => {
 												<div className="flex items-center gap-2 text-red-700">
 													<Warning className="h-4 w-4" />
 													<span className="text-sm font-medium">
-														Regretful spending:{" "}
-														{analyticsService.formatCurrency(
+														{t("analytics.regretfulSpending")}:{" "}
+														{currencyService.formatCurrency(
 															stats.regret_amount,
 														)}
 													</span>
@@ -371,7 +381,7 @@ export const Analytics = () => {
 										{stats.most_common_emotion && (
 											<div className="text-center">
 												<div className="text-sm text-[#64748b]">
-													Most common feeling
+													{t("analytics.mostCommonFeeling")}
 												</div>
 												<div className="text-lg font-semibold text-[#1e3a8a] capitalize">
 													{stats.most_common_emotion}
@@ -390,7 +400,7 @@ export const Analytics = () => {
 							<Card>
 								<CardHeader>
 									<CardTitle className="text-lg font-semibold text-[#1e3a8a]">
-										Insights & Tips
+										{t("analytics.insightsAndTips")}
 									</CardTitle>
 								</CardHeader>
 								<CardContent>
@@ -416,13 +426,13 @@ export const Analytics = () => {
 							<Button asChild variant="outline" className="h-12">
 								<Link to="/expenses">
 									<CurrencyDollar className="h-4 w-4 mr-2" />
-									View Expenses
+									{t("analytics.viewExpenses")}
 								</Link>
 							</Button>
 							<Button asChild variant="outline" className="h-12">
 								<Link to="/expenses/new">
 									<Calendar className="h-4 w-4 mr-2" />
-									Add Expense
+									{t("analytics.addExpense")}
 								</Link>
 							</Button>
 						</div>

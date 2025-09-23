@@ -1,5 +1,6 @@
 import { apiService } from "@/services/api";
 import { expensesService } from "@/services/api/expenses";
+import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { ExpenseList } from "@components/expenses/ExpenseList";
@@ -179,7 +180,9 @@ export const Expenses = () => {
 								<div className="bg-white rounded-full w-28 h-28 flex flex-col items-center justify-center shadow-inner">
 									<span className="text-sm text-[#666666]">Total</span>
 									<span className="text-2xl font-bold text-[#333333]">
-										${summary?.totalExpenses?.toFixed(2) ?? "0.00"}
+										{currencyService.formatCurrency(
+											summary?.totalExpenses ?? 0,
+										)}
 									</span>
 								</div>
 							</div>
