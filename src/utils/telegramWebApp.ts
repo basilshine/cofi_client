@@ -481,11 +481,26 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 				}
 
 				console.log(
-					"[notifyExpenseSavedAndClose] Showing alert with message:",
+					"[notifyExpenseSavedAndClose] Sending data to bot:",
 					message,
 				);
 
-				if (webApp.showAlert) {
+				// Send data back to the bot first
+				const dataToSend = JSON.stringify({
+					action: "expense_saved",
+					message: message,
+					totalAmount: expenseData.totalAmount,
+					itemsCount: expenseData.itemsCount,
+					status: expenseData.status,
+				});
+
+				if (webApp.sendData) {
+					console.log("[notifyExpenseSavedAndClose] Sending data via sendData");
+					webApp.sendData(dataToSend);
+				} else if (webApp.showAlert) {
+					console.log(
+						"[notifyExpenseSavedAndClose] sendData not available, showing alert",
+					);
 					webApp.showAlert(message, () => {
 						console.log(
 							"[notifyExpenseSavedAndClose] Alert acknowledged, closing WebApp",
@@ -494,17 +509,13 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 						if (webApp.close) {
 							console.log("[notifyExpenseSavedAndClose] Closing WebApp...");
 							webApp.close();
-						} else {
-							console.log(
-								"[notifyExpenseSavedAndClose] webApp.close not available",
-							);
 						}
 					});
 				} else {
 					console.log(
-						"[notifyExpenseSavedAndClose] showAlert not available, trying direct close",
+						"[notifyExpenseSavedAndClose] No sendData or showAlert available, trying direct close",
 					);
-					// If showAlert is not available, try direct close
+					// If neither sendData nor showAlert is available, try direct close
 					if (webApp.close) {
 						console.log("[notifyExpenseSavedAndClose] Direct close WebApp...");
 						webApp.close();
