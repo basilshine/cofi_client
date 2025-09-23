@@ -244,7 +244,7 @@ function AppContent() {
 						isAuthenticated ? (
 							<AppLayout title="Dashboard">
 								<Routes>
-									<Route path="/" element={<Home />} />
+									<Route path="/" element={<Expenses />} />
 									<Route path="/analytics" element={<Analytics />} />
 									<Route
 										path="/settings"
