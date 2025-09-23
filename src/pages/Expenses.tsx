@@ -182,6 +182,7 @@ export const Expenses = () => {
 									<span className="text-2xl font-bold text-[#333333]">
 										{currencyService.formatCurrency(
 											summary?.totalExpenses ?? 0,
+											user,
 										)}
 									</span>
 								</div>
@@ -494,6 +495,7 @@ export const Expenses = () => {
 						<RecurringExpenseList
 							recurringExpenses={recurringExpenses}
 							isLoading={false}
+							user={user}
 						/>
 					)}
 				</div>

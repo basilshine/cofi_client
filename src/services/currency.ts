@@ -1,7 +1,10 @@
-import { useAuthStore } from "@/store/useStore";
 import type { components } from "@/types/api-types";
 
 type User = components["schemas"]["User"];
+
+// We need to get user data from AuthContext, but since this is a service file
+// we can't use React hooks directly. We'll need to pass the user data as parameter
+// or use a different approach.
 
 // Currency configurations
 export const CURRENCY_CONFIG = {
@@ -30,11 +33,9 @@ export const CURRENCY_CONFIG = {
 
 export type CurrencyCode = keyof typeof CURRENCY_CONFIG;
 
-// Get user's currency from auth store, fallback to USD
-export const getUserCurrency = (): CurrencyCode => {
-	const { user } = useAuthStore.getState();
-	const userCurrency = ((user as User)?.currency?.toUpperCase() ??
-		"USD") as CurrencyCode;
+// Get user's currency from user object, fallback to USD
+export const getUserCurrency = (user?: User | null): CurrencyCode => {
+	const userCurrency = (user?.currency?.toUpperCase() ?? "USD") as CurrencyCode;
 
 	// Validate that the currency is supported
 	if (userCurrency && userCurrency in CURRENCY_CONFIG) {
@@ -46,18 +47,21 @@ export const getUserCurrency = (): CurrencyCode => {
 };
 
 // Get currency configuration for the user
-export const getUserCurrencyConfig = () => {
-	const currencyCode = getUserCurrency();
+export const getUserCurrencyConfig = (user?: User | null) => {
+	const currencyCode = getUserCurrency(user);
 	return CURRENCY_CONFIG[currencyCode];
 };
 
 // Format amount with user's currency
-export const formatCurrency = (amount: number | undefined | null): string => {
+export const formatCurrency = (
+	amount: number | undefined | null,
+	user?: User | null,
+): string => {
 	if (amount === undefined || amount === null || Number.isNaN(amount)) {
-		return formatCurrency(0);
+		return formatCurrency(0, user);
 	}
 
-	const config = getUserCurrencyConfig();
+	const config = getUserCurrencyConfig(user);
 
 	// Format with proper locale and currency
 	try {
@@ -111,8 +115,8 @@ export const formatCurrencyWithCode = (
 };
 
 // Get just the currency symbol for display
-export const getCurrencySymbol = (): string => {
-	const config = getUserCurrencyConfig();
+export const getCurrencySymbol = (user?: User | null): string => {
+	const config = getUserCurrencyConfig(user);
 	return config.symbol;
 };
 
@@ -125,7 +129,7 @@ export const getAvailableCurrencies = () => {
 	}));
 };
 
-// Currency service object
+// Currency service object - these require user to be passed
 export const currencyService = {
 	formatCurrency,
 	formatCurrencyWithCode,

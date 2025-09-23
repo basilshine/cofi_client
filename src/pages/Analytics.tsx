@@ -239,7 +239,7 @@ export const Analytics = () => {
 							</CardHeader>
 							<CardContent>
 								<div className="text-2xl font-bold text-[#1e3a8a]">
-									{currencyService.formatCurrency(stats.total_spent)}
+									{currencyService.formatCurrency(stats.total_spent, user)}
 								</div>
 								<div
 									className={`text-sm flex items-center gap-1 mt-1 ${getTrendColor()}`}
@@ -260,11 +260,11 @@ export const Analytics = () => {
 							</CardHeader>
 							<CardContent>
 								<div className="text-2xl font-bold text-[#1e3a8a]">
-									{currencyService.formatCurrency(stats.average_daily)}
+									{currencyService.formatCurrency(stats.average_daily, user)}
 								</div>
 								<div className="text-sm text-[#64748b] mt-1">
 									{t("analytics.max")}:{" "}
-									{currencyService.formatCurrency(stats.max_daily_spent)}
+									{currencyService.formatCurrency(stats.max_daily_spent, user)}
 								</div>
 							</CardContent>
 						</Card>
@@ -306,7 +306,10 @@ export const Analytics = () => {
 												</div>
 												<div className="text-right">
 													<div className="text-sm font-semibold text-[#1e3a8a]">
-														{currencyService.formatCurrency(category.total)}
+														{currencyService.formatCurrency(
+															category.total,
+															user,
+														)}
 													</div>
 													<div className="text-xs text-[#64748b]">
 														{category.percentage.toFixed(1)}% ({category.count}{" "}
@@ -372,6 +375,7 @@ export const Analytics = () => {
 														{t("analytics.regretfulSpending")}:{" "}
 														{currencyService.formatCurrency(
 															stats.regret_amount,
+															user,
 														)}
 													</span>
 												</div>

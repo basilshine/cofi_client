@@ -8,7 +8,14 @@ import { handleTelegramNavigation } from "@/utils/telegramWebApp";
 import { jwtDecode } from "jwt-decode";
 import LogRocket from "logrocket";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
 
 // Use only types from api-types.ts
@@ -69,12 +76,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const navigate = useNavigate();
 
 	// Helper function to set user language when user data is available
-	const setUserLanguage = (user: User | null) => {
+	const setUserLanguage = useCallback((user: User | null) => {
 		if (user?.language && ["en", "ru"].includes(user.language)) {
 			changeLanguage(user.language);
 			LogRocket.log("[AuthContext] Set user language:", user.language);
 		}
-	};
+	}, []);
 	const { telegramUser, initData } = useTelegram();
 	const hasAttemptedTelegramLogin = useRef(false);
 
@@ -122,6 +129,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 						apiService.auth
 							.me()
 							.then((response) => {
+								// Set user language when loading from token
+								setUserLanguage(response.data);
+
 								setState((prev) => ({
 									...prev,
 									user: response.data,
@@ -187,7 +197,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 				setState((prev) => ({ ...prev, isLoading: false }));
 			}
 		}
-	}, [state.user, state.isWebApp]);
+	}, [state.user, state.isWebApp, setUserLanguage]);
 
 	useEffect(() => {
 		// Log window unload/reload events
@@ -597,6 +607,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			console.log("[AuthContext] Updating profile with data:", profileData);
 			const response = await apiService.auth.updateProfile(profileData);
 			console.log("[AuthContext] Profile update response:", response.data);
+			// Set user language if it changed
+			setUserLanguage(response.data);
+
 			setState((prev) => ({
 				...prev,
 				user: response.data,

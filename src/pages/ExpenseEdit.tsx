@@ -33,7 +33,7 @@ export const ExpenseEdit = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-	const { isAuthenticated } = useAuth();
+	const { isAuthenticated, user } = useAuth();
 	const [editingItems, setEditingItems] = useState<
 		components["schemas"]["ExpenseItem"][]
 	>([]);
@@ -344,7 +344,7 @@ export const ExpenseEdit = () => {
 							<div>
 								<p className="text-sm text-[#64748b]">Total Amount</p>
 								<p className="text-2xl font-bold text-[#1e3a8a]">
-									{currencyService.formatCurrency(totalAmount)}
+									{currencyService.formatCurrency(totalAmount, user)}
 								</p>
 							</div>
 							<div className="text-right">
@@ -387,7 +387,7 @@ export const ExpenseEdit = () => {
 									<div className="flex items-center gap-2">
 										<div className="text-right">
 											<p className="font-bold text-[#1e3a8a]">
-												{currencyService.formatCurrency(item.amount || 0)}
+												{currencyService.formatCurrency(item.amount || 0, user)}
 											</p>
 										</div>
 										{expandedItems.has(index) ? (

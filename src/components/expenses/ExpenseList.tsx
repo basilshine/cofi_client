@@ -43,7 +43,7 @@ interface ExpenseListProps {
 
 export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 	const { t } = useTranslation();
-	const { isAuthenticated } = useAuth();
+	const { isAuthenticated, user } = useAuth();
 	const queryClient = useQueryClient();
 	const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -194,7 +194,7 @@ export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 										{/* Status indicators could go here */}
 									</div>
 									<p className="text-[#333333] text-base font-bold leading-normal">
-										{currencyService.formatCurrency(totalAmount)}
+										{currencyService.formatCurrency(totalAmount, user)}
 									</p>
 								</div>
 								<div className="flex justify-between items-center">
@@ -222,7 +222,7 @@ export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 								{itemsCount} {itemsCount === 1 ? "item" : "items"}
 							</p>
 							<p className="text-[#333333] text-sm font-semibold">
-								{currencyService.formatCurrency(totalAmount)} total
+								{currencyService.formatCurrency(totalAmount, user)} total
 							</p>
 						</div>
 

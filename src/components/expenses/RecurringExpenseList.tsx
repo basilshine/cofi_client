@@ -11,11 +11,13 @@ import { Link } from "react-router-dom";
 interface RecurringExpenseListProps {
 	recurringExpenses: components["schemas"]["RecurringExpense"][];
 	isLoading: boolean;
+	user?: components["schemas"]["User"] | null;
 }
 
 export const RecurringExpenseList = ({
 	recurringExpenses,
 	isLoading,
+	user,
 }: RecurringExpenseListProps) => {
 	const queryClient = useQueryClient();
 
@@ -104,7 +106,7 @@ export const RecurringExpenseList = ({
 										</span>
 									</div>
 									<p className="text-[#333333] text-base font-bold leading-normal">
-										{currencyService.formatCurrency(expense.amount || 0)}
+										{currencyService.formatCurrency(expense.amount || 0, user)}
 									</p>
 								</div>
 								<div className="flex justify-between items-center">
