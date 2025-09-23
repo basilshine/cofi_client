@@ -28,6 +28,26 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
 
+// Telegram WebApp types for proper typing (flexible interface)
+interface TelegramWebApp {
+	initData?: string;
+	sendData?: (data: string) => void;
+	close?: () => void;
+	showAlert?: (message: string, callback?: () => void) => void;
+	ready?: () => void;
+	enableClosingConfirmation?: () => void;
+	isExpanded?: boolean;
+	viewportHeight?: number;
+	MainButton?: {
+		text: string;
+		show: () => void;
+		hide: () => void;
+		onClick: (callback: () => void) => void;
+	};
+	// Allow additional properties that might exist
+	[key: string]: unknown;
+}
+
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
 	const { id } = useParams<{ id: string }>();
@@ -88,6 +108,29 @@ export const ExpenseEdit = () => {
 		if (isWebApp && isEditMode && cameThroughTelegramLink) {
 			sessionStorage.setItem("telegram_edit_flow", "true");
 			console.log("[ExpenseEdit] Set telegram_edit_flow marker");
+		}
+
+		// Initialize Telegram WebApp if available
+		if (isWebApp && window.Telegram?.WebApp) {
+			const webApp = window.Telegram.WebApp as TelegramWebApp;
+			console.log("[ExpenseEdit] Initializing Telegram WebApp");
+
+			// Enable closing confirmation
+			if (webApp.enableClosingConfirmation) {
+				webApp.enableClosingConfirmation();
+				console.log("[ExpenseEdit] Enabled closing confirmation");
+			}
+
+			// Set main button if available
+			if (webApp.MainButton) {
+				console.log("[ExpenseEdit] MainButton available");
+			}
+
+			// Ready the webapp
+			if (webApp.ready) {
+				webApp.ready();
+				console.log("[ExpenseEdit] WebApp ready called");
+			}
 		}
 	}, [isWebApp, cameThroughTelegramLink, isEditMode]);
 
@@ -150,6 +193,10 @@ export const ExpenseEdit = () => {
 			});
 		},
 		onSuccess: (data) => {
+			console.log("[ExpenseEdit] ✅ UPDATE MUTATION SUCCESS!");
+			console.log("[ExpenseEdit] Success data:", data);
+			console.log("[ExpenseEdit] About to check shouldCloseWebApp");
+
 			LogRocket.log("[ExpenseEdit] updateMutation success", data);
 			queryClient.invalidateQueries({ queryKey: ["expenses"] });
 			queryClient.invalidateQueries({ queryKey: ["expense", id] });
@@ -162,6 +209,15 @@ export const ExpenseEdit = () => {
 					(isEditMode && sessionStorage.getItem("telegram_edit_flow")) ||
 					// Check if we're in a Telegram environment
 					(isWebApp && window.location.pathname.includes("/edit")));
+
+			console.log("[ExpenseEdit] shouldCloseWebApp evaluation:", {
+				isWebApp,
+				cameThroughTelegramLink,
+				isEditMode,
+				telegramEditFlow: sessionStorage.getItem("telegram_edit_flow"),
+				pathIncludes: window.location.pathname.includes("/edit"),
+				finalResult: shouldCloseWebApp,
+			});
 
 			if (shouldCloseWebApp) {
 				console.log(
@@ -237,6 +293,17 @@ export const ExpenseEdit = () => {
 	});
 
 	const handleSaveChanges = () => {
+		console.log("[ExpenseEdit] Save button clicked - Starting save process");
+		console.log("[ExpenseEdit] Save context:", {
+			isWebApp,
+			cameThroughTelegramLink,
+			isEditMode,
+			isAddMode,
+			telegramEditFlow: sessionStorage.getItem("telegram_edit_flow"),
+			editingItemsCount: editingItems.length,
+			expenseStatus: expense?.status,
+		});
+
 		const expenseData: Partial<components["schemas"]["Expense"]> = {
 			items: editingItems,
 		};
@@ -278,6 +345,86 @@ export const ExpenseEdit = () => {
 		} else {
 			// Regular web navigation
 			navigate("/expenses");
+		}
+	};
+
+	// Debug function to test telegram close manually
+	const handleTestTelegramClose = () => {
+		console.log("[ExpenseEdit] Testing Telegram close manually");
+		console.log("[ExpenseEdit] Debug info:", {
+			isWebApp,
+			cameThroughTelegramLink,
+			isEditMode,
+			telegramEditFlow: sessionStorage.getItem("telegram_edit_flow"),
+			windowTelegram: !!window.Telegram,
+			webApp: !!window.Telegram?.WebApp,
+			currentURL: window.location.href,
+			pathname: window.location.pathname,
+		});
+
+		if (window.Telegram?.WebApp) {
+			const webApp = window.Telegram.WebApp as TelegramWebApp;
+			console.log("[ExpenseEdit] WebApp object:", {
+				initData: webApp.initData,
+				sendData: !!webApp.sendData,
+				close: !!webApp.close,
+				showAlert: !!webApp.showAlert,
+				isExpanded: webApp.isExpanded,
+				viewportHeight: webApp.viewportHeight,
+			});
+
+			// Test data send
+			const testData = JSON.stringify({
+				action: "expense_saved",
+				message: "🧪 Test message from manual button",
+				totalAmount: 100,
+				itemsCount: 1,
+				status: "test",
+			});
+
+			if (webApp.sendData) {
+				console.log("[ExpenseEdit] Testing sendData with:", testData);
+				webApp.sendData(testData);
+			} else if (webApp.showAlert) {
+				console.log("[ExpenseEdit] sendData not available, testing showAlert");
+				webApp.showAlert("🧪 Test alert - this should work", () => {
+					console.log("[ExpenseEdit] Alert callback triggered");
+					if (webApp.close) {
+						console.log("[ExpenseEdit] Testing close");
+						webApp.close();
+					}
+				});
+			} else {
+				console.log("[ExpenseEdit] No WebApp methods available");
+			}
+		} else {
+			console.log("[ExpenseEdit] Telegram WebApp not available");
+		}
+	};
+
+	// Alternative method using MainButton
+	const handleTelegramMainButton = () => {
+		console.log("[ExpenseEdit] Setting up Telegram MainButton");
+
+		if (window.Telegram?.WebApp) {
+			const webApp = window.Telegram.WebApp as TelegramWebApp;
+
+			if (webApp.MainButton) {
+				console.log("[ExpenseEdit] MainButton available, setting up");
+
+				webApp.MainButton.text = "Save & Close";
+				webApp.MainButton.show();
+
+				// Handle main button click
+				webApp.MainButton.onClick(() => {
+					console.log("[ExpenseEdit] MainButton clicked, saving expense");
+					handleSaveChanges();
+				});
+
+				console.log("[ExpenseEdit] MainButton configured");
+			} else {
+				console.log("[ExpenseEdit] MainButton not available");
+			}
 		}
 	};
 
@@ -374,6 +521,46 @@ export const ExpenseEdit = () => {
 
 	return (
 		<div className="min-h-screen bg-[#f8fafc] flex flex-col">
+			{/* Debug Section - only show in WebApp mode */}
+			{isWebApp && (
+				<div className="bg-yellow-100 border border-yellow-400 p-3 m-4 rounded-lg">
+					<h3 className="font-bold text-yellow-800 mb-2">🧪 Debug Info</h3>
+					<div className="text-xs text-yellow-700 space-y-1">
+						<div>WebApp: {isWebApp ? "✅" : "❌"}</div>
+						<div>Telegram Link: {cameThroughTelegramLink ? "✅" : "❌"}</div>
+						<div>Edit Mode: {isEditMode ? "✅" : "❌"}</div>
+						<div>
+							Edit Flow Marker:{" "}
+							{sessionStorage.getItem("telegram_edit_flow") ? "✅" : "❌"}
+						</div>
+						<div>
+							Telegram Object:{" "}
+							{typeof window !== "undefined" && window.Telegram ? "✅" : "❌"}
+						</div>
+						<div>
+							WebApp Object:{" "}
+							{typeof window !== "undefined" && window.Telegram?.WebApp
+								? "✅"
+								: "❌"}
+						</div>
+					</div>
+					<div className="space-y-2">
+						<Button
+							onClick={handleTestTelegramClose}
+							className="mt-2 text-xs h-8 bg-yellow-600 hover:bg-yellow-700 w-full"
+						>
+							🧪 Test Telegram Close
+						</Button>
+						<Button
+							onClick={handleTelegramMainButton}
+							className="text-xs h-8 bg-blue-600 hover:bg-blue-700 w-full"
+						>
+							🔧 Setup MainButton
+						</Button>
+					</div>
+				</div>
+			)}
+
 			{/* Header - only show if not in WebApp mode */}
 			{!isWebApp && (
 				<header className="sticky top-0 z-10 bg-[#f8fafc] border-b border-gray-200">
@@ -606,6 +793,18 @@ export const ExpenseEdit = () => {
 							? "Saving..."
 							: "Save Changes"}
 					</Button>
+
+					{/* Debug button - only show in WebApp mode */}
+					{isWebApp && (
+						<Button
+							onClick={handleTestTelegramClose}
+							variant="outline"
+							className="w-full border-yellow-400 text-yellow-600 hover:bg-yellow-50 rounded-xl py-3"
+						>
+							🧪 Test Telegram Close Flow
+						</Button>
+					)}
+
 					<Button
 						onClick={handleCancel}
 						variant="outline"
