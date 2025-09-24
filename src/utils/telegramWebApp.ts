@@ -534,31 +534,18 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 					);
 				}
 
-				// Show alert and close WebApp
-				if (webApp.showAlert) {
-					console.log(
-						"[notifyExpenseSavedAndClose] Showing alert and closing WebApp",
-					);
-					webApp.showAlert(message, () => {
-						console.log(
-							"[notifyExpenseSavedAndClose] Alert acknowledged, closing WebApp",
-						);
-						// Close the WebApp after user acknowledges the message
-						if (webApp.close) {
-							console.log("[notifyExpenseSavedAndClose] Closing WebApp...");
-							webApp.close();
-						}
-					});
-				} else {
-					console.log(
-						"[notifyExpenseSavedAndClose] showAlert not available, trying direct close",
-					);
-					// If showAlert is not available, try direct close
+				// Close WebApp directly after sending message to Telegram
+				console.log(
+					"[notifyExpenseSavedAndClose] Closing WebApp after sending message to Telegram",
+				);
+
+				// Add a small delay to ensure message is sent before closing
+				setTimeout(() => {
 					if (webApp.close) {
-						console.log("[notifyExpenseSavedAndClose] Direct close WebApp...");
+						console.log("[notifyExpenseSavedAndClose] Closing WebApp...");
 						webApp.close();
 					}
-				}
+				}, 1000); // 1 second delay
 			})
 			.catch((error) => {
 				console.error(
@@ -607,13 +594,18 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 						});
 				}
 
-				if (webApp.showAlert) {
-					webApp.showAlert(message, () => {
-						if (webApp.close) {
-							webApp.close();
-						}
-					});
-				}
+				// Close WebApp directly after sending fallback message to Telegram
+				console.log(
+					"[notifyExpenseSavedAndClose] Closing WebApp after sending fallback message to Telegram",
+				);
+
+				// Add a small delay to ensure message is sent before closing
+				setTimeout(() => {
+					if (webApp.close) {
+						console.log("[notifyExpenseSavedAndClose] Closing WebApp...");
+						webApp.close();
+					}
+				}, 1000); // 1 second delay
 			});
 	} else {
 		console.log("[notifyExpenseSavedAndClose] Telegram WebApp not available");

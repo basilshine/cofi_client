@@ -139,8 +139,23 @@ export const ExpenseEdit = () => {
 				console.log(
 					"[ExpenseEdit] Setting up MainButton automatically for Telegram edit mode",
 				);
-				webApp.MainButton.text = "Save & Close";
-				webApp.MainButton.show();
+
+				// Function to update MainButton state based on mutation status
+				const updateMainButtonState = () => {
+					const isPending =
+						updateMutation.isPending || createMutation.isPending;
+					if (webApp.MainButton) {
+						webApp.MainButton.text = isPending ? "Saving..." : "Save & Close";
+						if (isPending) {
+							webApp.MainButton.hide();
+						} else {
+							webApp.MainButton.show();
+						}
+					}
+				};
+
+				// Initial state
+				updateMainButtonState();
 
 				// Handle main button click
 				webApp.MainButton.onClick(() => {
@@ -153,8 +168,17 @@ export const ExpenseEdit = () => {
 						telegramEditFlow: sessionStorage.getItem("telegram_edit_flow"),
 						editingItemsCount: editingItems.length,
 					});
+
+					// Update button state immediately
+					updateMainButtonState();
+
 					handleSaveChanges();
 				});
+
+				// Store the update function for later use
+				(
+					window as { updateMainButtonState?: () => void }
+				).updateMainButtonState = updateMainButtonState;
 
 				console.log(
 					"[ExpenseEdit] MainButton configured and shown for Telegram edit mode",
@@ -379,6 +403,17 @@ export const ExpenseEdit = () => {
 			console.error("Failed to create expense:", error);
 		},
 	});
+
+	// Update MainButton state when mutations change
+	useEffect(() => {
+		if (
+			(window as { updateMainButtonState?: () => void }).updateMainButtonState
+		) {
+			(
+				window as { updateMainButtonState?: () => void }
+			).updateMainButtonState?.();
+		}
+	}, []);
 
 	const handleSaveChanges = () => {
 		console.log("[ExpenseEdit] ===== HANDLE SAVE CHANGES STARTED =====");
