@@ -247,9 +247,15 @@ Type "DELETE ALL DATA" to confirm:`;
 					if (webApp.showAlert) {
 						console.log("[Profile] Showing confirmation alert...");
 						webApp.showAlert(
-							"✅ Test message sent to bot!\n\nCheck your Telegram chat to see if the bot received it.\n\n📝 Check console for detailed logs.",
+							"✅ Test message sent to bot!\n\nThis will close the WebApp and send the data to the bot.\n\nCheck your Telegram chat for the bot's response!",
 							() => {
-								console.log("[Profile] Test message alert acknowledged");
+								console.log(
+									"[Profile] Test message alert acknowledged, closing WebApp...",
+								);
+								// Close the WebApp to trigger the data sending
+								if (webApp.close) {
+									webApp.close();
+								}
 							},
 						);
 					}
@@ -268,9 +274,13 @@ Type "DELETE ALL DATA" to confirm:`;
 			} else if (webApp.showAlert) {
 				console.log("[Profile] sendData not available, showing test alert");
 				webApp.showAlert(
-					"🧪 Test alert from Profile page\n\nsendData method is not available, but showAlert works!",
+					"🧪 Test alert from Profile page\n\nThis will close the WebApp and send test data to the bot!",
 					() => {
-						console.log("[Profile] Test alert acknowledged");
+						console.log("[Profile] Test alert acknowledged, closing WebApp...");
+						// Close the WebApp to trigger the data sending
+						if (webApp.close) {
+							webApp.close();
+						}
 					},
 				);
 			} else {
