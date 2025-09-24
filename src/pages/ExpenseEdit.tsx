@@ -144,7 +144,15 @@ export const ExpenseEdit = () => {
 
 				// Handle main button click
 				webApp.MainButton.onClick(() => {
+					console.log("[ExpenseEdit] ===== MAINBUTTON CLICKED =====");
 					console.log("[ExpenseEdit] MainButton clicked, saving expense");
+					console.log("[ExpenseEdit] Current context:", {
+						isWebApp,
+						cameThroughTelegramLink,
+						isEditMode,
+						telegramEditFlow: sessionStorage.getItem("telegram_edit_flow"),
+						editingItemsCount: editingItems.length,
+					});
 					handleSaveChanges();
 				});
 
@@ -171,6 +179,7 @@ export const ExpenseEdit = () => {
 		isEditMode,
 		startappParam,
 		sessionStartapp,
+		editingItems.length,
 	]);
 
 	const {
@@ -277,6 +286,9 @@ export const ExpenseEdit = () => {
 
 			if (shouldCloseWebApp) {
 				console.log(
+					"[ExpenseEdit] ===== TELEGRAM WEBAPP CLOSING AFTER SAVE =====",
+				);
+				console.log(
 					"[ExpenseEdit] Telegram WebApp detected, closing after save",
 				);
 				const totalAmount = editingItems.reduce(
@@ -286,6 +298,16 @@ export const ExpenseEdit = () => {
 
 				// Clear telegram edit flow marker
 				sessionStorage.removeItem("telegram_edit_flow");
+
+				console.log(
+					"[ExpenseEdit] Calling notifyExpenseSavedAndClose with data:",
+					{
+						totalAmount,
+						itemsCount: editingItems.length,
+						status: data.status || "approved",
+						user: user?.id,
+					},
+				);
 
 				notifyExpenseSavedAndClose({
 					totalAmount,
@@ -359,6 +381,7 @@ export const ExpenseEdit = () => {
 	});
 
 	const handleSaveChanges = () => {
+		console.log("[ExpenseEdit] ===== HANDLE SAVE CHANGES STARTED =====");
 		console.log("[ExpenseEdit] Save button clicked - Starting save process");
 		console.log("[ExpenseEdit] Save context:", {
 			isWebApp,

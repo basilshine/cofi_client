@@ -491,39 +491,40 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 					"[notifyExpenseSavedAndClose] Using Backend → Bot communication",
 				);
 
-				// Send the message to the bot via backend API
+				// Send the message to the bot via backend API using apiService
 				if (expenseData.user?.telegramId) {
 					console.log(
 						"[notifyExpenseSavedAndClose] Sending message via backend API to chat:",
 						expenseData.user.telegramId,
 					);
 
-					// Use the same API endpoint we use in Profile page
-					fetch(`${import.meta.env.VITE_API_URL}/api/v1/notify/test-message`, {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({
-							chat_id: expenseData.user.telegramId,
-							message: message,
-						}),
-					})
-						.then((response) => {
-							if (response.ok) {
-								console.log(
-									"[notifyExpenseSavedAndClose] ✅ Message sent to bot via backend",
-								);
-							} else {
-								console.error(
-									"[notifyExpenseSavedAndClose] ❌ Failed to send message to bot:",
-									response.status,
-								);
-							}
+					// Import apiService dynamically to avoid circular dependencies
+					import("../services/api")
+						.then(({ apiService }) => {
+							console.log(
+								"[notifyExpenseSavedAndClose] Using apiService for bot communication",
+							);
+							apiService.notify
+								.testMessage({
+									chat_id: expenseData.user?.telegramId || 0,
+									message: message,
+								})
+								.then((response) => {
+									console.log(
+										"[notifyExpenseSavedAndClose] ✅ Message sent to bot via backend:",
+										response.data,
+									);
+								})
+								.catch((error) => {
+									console.error(
+										"[notifyExpenseSavedAndClose] ❌ Error sending message to bot:",
+										error,
+									);
+								});
 						})
 						.catch((error) => {
 							console.error(
-								"[notifyExpenseSavedAndClose] ❌ Error sending message to bot:",
+								"[notifyExpenseSavedAndClose] ❌ Failed to import apiService:",
 								error,
 							);
 						});
@@ -567,38 +568,40 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 				// Fallback without currency formatting
 				const message = `✅ Expense ${expenseData.status} successfully!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
 
-				// Send the message to the bot via backend API
+				// Send the message to the bot via backend API using apiService
 				if (expenseData.user?.telegramId) {
 					console.log(
 						"[notifyExpenseSavedAndClose] Sending fallback message via backend API to chat:",
 						expenseData.user.telegramId,
 					);
 
-					fetch(`${import.meta.env.VITE_API_URL}/api/v1/notify/test-message`, {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({
-							chat_id: expenseData.user.telegramId,
-							message: message,
-						}),
-					})
-						.then((response) => {
-							if (response.ok) {
-								console.log(
-									"[notifyExpenseSavedAndClose] ✅ Fallback message sent to bot via backend",
-								);
-							} else {
-								console.error(
-									"[notifyExpenseSavedAndClose] ❌ Failed to send fallback message to bot:",
-									response.status,
-								);
-							}
+					// Import apiService dynamically to avoid circular dependencies
+					import("../services/api")
+						.then(({ apiService }) => {
+							console.log(
+								"[notifyExpenseSavedAndClose] Using apiService for fallback bot communication",
+							);
+							apiService.notify
+								.testMessage({
+									chat_id: expenseData.user?.telegramId || 0,
+									message: message,
+								})
+								.then((response) => {
+									console.log(
+										"[notifyExpenseSavedAndClose] ✅ Fallback message sent to bot via backend:",
+										response.data,
+									);
+								})
+								.catch((error) => {
+									console.error(
+										"[notifyExpenseSavedAndClose] ❌ Error sending fallback message to bot:",
+										error,
+									);
+								});
 						})
 						.catch((error) => {
 							console.error(
-								"[notifyExpenseSavedAndClose] ❌ Error sending fallback message to bot:",
+								"[notifyExpenseSavedAndClose] ❌ Failed to import apiService for fallback:",
 								error,
 							);
 						});
