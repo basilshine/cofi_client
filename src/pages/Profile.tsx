@@ -4,6 +4,7 @@ import {
 	getLanguageName,
 	getTimezoneName,
 } from "@/utils/helper";
+import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { useAuth } from "@contexts/AuthContext";
 import { Download } from "@phosphor-icons/react";
 import type { ProfileUpdateRequest } from "@services/api";
@@ -91,6 +92,71 @@ Type "DELETE ALL DATA" to confirm:`;
 			}
 		} else if (userInput !== null) {
 			alert("❌ Incorrect confirmation text. Data deletion cancelled.");
+		}
+	};
+
+	const handleTestBotMessage = () => {
+		console.log("[Profile] Testing bot message functionality");
+
+		if (!isTelegramWebApp()) {
+			alert("❌ This feature is only available in Telegram WebApp");
+			return;
+		}
+
+		if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+			// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete
+			const webApp = window.Telegram.WebApp as any;
+
+			console.log("[Profile] WebApp object:", {
+				initData: webApp.initData,
+				sendData: !!webApp.sendData,
+				close: !!webApp.close,
+				showAlert: !!webApp.showAlert,
+				isExpanded: webApp.isExpanded,
+				viewportHeight: webApp.viewportHeight,
+			});
+
+			// Test data to send to bot
+			const testData = JSON.stringify({
+				action: "test_message",
+				message: "🧪 Test message from Profile page",
+				timestamp: new Date().toISOString(),
+				user: {
+					id: user?.id,
+					name: user?.name,
+					telegramId: user?.telegramId,
+				},
+				source: "profile_page",
+			});
+
+			if (webApp.sendData) {
+				console.log("[Profile] Sending test data to bot:", testData);
+				webApp.sendData(testData);
+
+				// Show confirmation alert
+				if (webApp.showAlert) {
+					webApp.showAlert(
+						"✅ Test message sent to bot!\n\nCheck your Telegram chat to see if the bot received it.",
+						() => {
+							console.log("[Profile] Test message alert acknowledged");
+						},
+					);
+				}
+			} else if (webApp.showAlert) {
+				console.log("[Profile] sendData not available, showing test alert");
+				webApp.showAlert(
+					"🧪 Test alert from Profile page\n\nsendData method is not available, but showAlert works!",
+					() => {
+						console.log("[Profile] Test alert acknowledged");
+					},
+				);
+			} else {
+				console.log("[Profile] No WebApp methods available");
+				alert("❌ No Telegram WebApp methods available");
+			}
+		} else {
+			console.log("[Profile] Telegram WebApp not available");
+			alert("❌ Telegram WebApp not available");
 		}
 	};
 
@@ -621,6 +687,47 @@ Type "DELETE ALL DATA" to confirm:`;
 					</button>
 				</div>
 			</section>
+
+			{/* Bot Communication Test Section */}
+			{isTelegramWebApp() && (
+				<section className="space-y-4">
+					<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight px-4 pb-2">
+						Bot Communication Test
+					</h2>
+					<div className="mx-4 space-y-4">
+						<div className="bg-white rounded-xl shadow-sm p-4">
+							<div className="space-y-3">
+								<div>
+									<h3 className="font-medium text-[#1e3a8a] mb-1">
+										Test Bot Message
+									</h3>
+									<p className="text-sm text-[#64748b]">
+										Send a test message to the bot to verify communication is
+										working.
+									</p>
+								</div>
+								<div className="bg-[#ecfdf5] border border-[#10b981] rounded-lg p-3">
+									<p className="text-sm text-[#065f46]">
+										<strong>ℹ️ This will:</strong>
+									</p>
+									<ul className="text-xs text-[#065f46] mt-1 space-y-1">
+										<li>• Send a test message to the bot via WebApp</li>
+										<li>• Show debug information in console</li>
+										<li>• Display confirmation if successful</li>
+									</ul>
+								</div>
+								<button
+									type="button"
+									onClick={handleTestBotMessage}
+									className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-medium py-3 px-4 rounded-xl transition-colors"
+								>
+									🧪 Test Bot Message
+								</button>
+							</div>
+						</div>
+					</div>
+				</section>
+			)}
 
 			{/* Data Management Section */}
 			<section className="space-y-4">
