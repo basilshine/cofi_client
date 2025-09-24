@@ -192,14 +192,37 @@ Type "DELETE ALL DATA" to confirm:`;
 			console.log("[Profile] Test data object:", testData);
 			console.log("[Profile] Test data string:", testDataString);
 			console.log("[Profile] Test data length:", testDataString.length);
+			console.log("[Profile] Test data bytes:", new TextEncoder().encode(testDataString).length);
+			console.log("[Profile] JSON validity:", (() => {
+				try {
+					JSON.parse(testDataString);
+					return "VALID";
+				} catch (e) {
+					return `INVALID: ${e}`;
+				}
+			})());
 
 			if (webApp.sendData) {
 				console.log(
 					"[Profile] sendData method is available, attempting to send...",
 				);
+				console.log("[Profile] sendData function type:", typeof webApp.sendData);
+				console.log("[Profile] sendData function length:", webApp.sendData.length);
+				
 				try {
+					const startTime = Date.now();
+					console.log("[Profile] Calling webApp.sendData() at:", new Date().toISOString());
+					
 					webApp.sendData(testDataString);
+					
+					const endTime = Date.now();
 					console.log("[Profile] ✅ sendData() called successfully");
+					console.log("[Profile] SendData execution time:", endTime - startTime, "ms");
+					console.log("[Profile] WebApp state after sendData:", {
+						isExpanded: webApp.isExpanded,
+						viewportHeight: webApp.viewportHeight,
+						viewportStableHeight: webApp.viewportStableHeight,
+					});
 
 					// Show confirmation alert
 					if (webApp.showAlert) {
@@ -213,6 +236,12 @@ Type "DELETE ALL DATA" to confirm:`;
 					}
 				} catch (error) {
 					console.error("[Profile] ❌ Error calling sendData():", error);
+					console.error("[Profile] Error details:", {
+						name: (error as any)?.name,
+						message: (error as any)?.message,
+						stack: (error as any)?.stack,
+						type: typeof error,
+					});
 					alert(
 						`❌ Error sending data: ${error instanceof Error ? error.message : String(error)}`,
 					);
