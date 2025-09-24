@@ -139,11 +139,23 @@ export const ExpenseEdit = () => {
 				console.log(
 					"[ExpenseEdit] Setting up MainButton automatically for Telegram edit mode",
 				);
+				console.log("[ExpenseEdit] MainButton object:", webApp.MainButton);
+				console.log("[ExpenseEdit] MainButton methods:", {
+					onClick: typeof webApp.MainButton.onClick,
+					show: typeof webApp.MainButton.show,
+					hide: typeof webApp.MainButton.hide,
+					text: typeof webApp.MainButton.text,
+				});
 
 				// Function to update MainButton state based on mutation status
 				const updateMainButtonState = () => {
 					const isPending =
 						updateMutation.isPending || createMutation.isPending;
+					console.log("[ExpenseEdit] updateMainButtonState called:", {
+						isPending,
+						updatePending: updateMutation.isPending,
+						createPending: createMutation.isPending,
+					});
 					if (webApp.MainButton) {
 						webApp.MainButton.text = isPending ? "Saving..." : "Save & Close";
 						if (isPending) {
@@ -151,6 +163,10 @@ export const ExpenseEdit = () => {
 						} else {
 							webApp.MainButton.show();
 						}
+						console.log("[ExpenseEdit] MainButton state updated:", {
+							text: webApp.MainButton.text,
+							visible: !isPending,
+						});
 					}
 				};
 
@@ -158,6 +174,7 @@ export const ExpenseEdit = () => {
 				updateMainButtonState();
 
 				// Handle main button click
+				console.log("[ExpenseEdit] Attaching MainButton onClick handler...");
 				webApp.MainButton.onClick(() => {
 					console.log("[ExpenseEdit] ===== MAINBUTTON CLICKED =====");
 					console.log("[ExpenseEdit] MainButton clicked, saving expense");
@@ -174,6 +191,9 @@ export const ExpenseEdit = () => {
 
 					handleSaveChanges();
 				});
+				console.log(
+					"[ExpenseEdit] MainButton onClick handler attached successfully",
+				);
 
 				// Store the update function for later use
 				(
@@ -679,6 +699,46 @@ export const ExpenseEdit = () => {
 						<div>
 							Telegram Object:{" "}
 							{typeof window !== "undefined" && window.Telegram ? "✅" : "❌"}
+						</div>
+						<div className="mt-3 space-y-2">
+							<button
+								type="button"
+								onClick={() => {
+									console.log("[ExpenseEdit] ===== DEBUG BUTTON CLICKED =====");
+									console.log(
+										"[ExpenseEdit] Testing save functionality manually",
+									);
+									handleSaveChanges();
+								}}
+								className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm mr-2"
+							>
+								🧪 Test Save Manually
+							</button>
+							<button
+								type="button"
+								onClick={() => {
+									console.log("[ExpenseEdit] ===== MAINBUTTON DEBUG =====");
+									if (
+										typeof window !== "undefined" &&
+										window.Telegram?.WebApp?.MainButton
+									) {
+										const mb = window.Telegram.WebApp.MainButton;
+										console.log("[ExpenseEdit] MainButton debug:", {
+											text: mb.text,
+											isVisible: mb.isVisible,
+											color: mb.color,
+											textColor: mb.textColor,
+											isActive: mb.isActive,
+											isProgressVisible: mb.isProgressVisible,
+										});
+									} else {
+										console.log("[ExpenseEdit] MainButton not available");
+									}
+								}}
+								className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+							>
+								🔍 Check MainButton
+							</button>
 						</div>
 						<div>
 							WebApp Object:{" "}
