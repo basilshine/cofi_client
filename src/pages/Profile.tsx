@@ -8,12 +8,35 @@ import { isTelegramWebApp } from "@/utils/isTelegramWebApp";
 import { useAuth } from "@contexts/AuthContext";
 import { Download } from "@phosphor-icons/react";
 import type { ProfileUpdateRequest } from "@services/api";
+import { apiService } from "@services/api";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
 export const Profile = () => {
 	const { user, logout, updateUser, deleteAllData, isLoading, error } =
 		useAuth();
 	const [isEditing, setIsEditing] = useState(false);
+
+	// TanStack Query mutation for test message
+	const testMessageMutation = useMutation({
+		mutationFn: (data: { chat_id: number; message?: string }) =>
+			apiService.notify.testMessage(data),
+		onSuccess: (response) => {
+			console.log("[Profile] Test message sent successfully:", response.data);
+			alert(
+				"✅ Test message sent via backend!\n\nCheck your Telegram chat to see if the bot received it.",
+			);
+		},
+		onError: (error) => {
+			console.error(
+				"[Profile] ❌ Error sending test message via backend:",
+				error,
+			);
+			alert(
+				`❌ Error sending test message via backend: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		},
+	});
 	const [formData, setFormData] = useState<ProfileUpdateRequest>({
 		email: "",
 		name: "",
@@ -216,7 +239,7 @@ Type "DELETE ALL DATA" to confirm:`;
 		console.log("[Profile] ===== BOT MESSAGE TEST COMPLETE =====");
 	};
 
-	const handleTestBackendToBot = async () => {
+	const handleTestBackendToBot = () => {
 		console.log("[Profile] ===== TESTING BACKEND TO BOT MESSAGE =====");
 
 		if (!user?.telegramId) {
@@ -224,41 +247,13 @@ Type "DELETE ALL DATA" to confirm:`;
 			return;
 		}
 
-		try {
-			console.log("[Profile] Sending test message via backend API...");
+		console.log("[Profile] Sending test message via backend API...");
 
-			const response = await fetch("/api/v1/notify/test-message", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${localStorage.getItem("token")}`,
-				},
-				body: JSON.stringify({
-					chat_id: user.telegramId,
-					message:
-						"🧪 Test message from Profile page via Backend!\n\n✅ Backend → Bot → User communication test",
-				}),
-			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-
-			const result = await response.json();
-			console.log("[Profile] Backend response:", result);
-
-			alert(
-				"✅ Test message sent via backend!\n\nCheck your Telegram chat to see if the bot received it.",
-			);
-		} catch (error) {
-			console.error(
-				"[Profile] ❌ Error sending test message via backend:",
-				error,
-			);
-			alert(
-				`❌ Error sending test message via backend: ${error instanceof Error ? error.message : String(error)}`,
-			);
-		}
+		testMessageMutation.mutate({
+			chat_id: user.telegramId,
+			message:
+				"🧪 Test message from Profile page via Backend!\n\n✅ Backend → Bot → User communication test",
+		});
 
 		console.log("[Profile] ===== BACKEND TO BOT TEST COMPLETE =====");
 	};
@@ -837,9 +832,12 @@ Type "DELETE ALL DATA" to confirm:`;
 									<button
 										type="button"
 										onClick={handleTestBackendToBot}
-										className="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white font-medium py-3 px-4 rounded-xl transition-colors"
+										disabled={testMessageMutation.isPending}
+										className="w-full bg-[#3b82f6] hover:bg-[#2563eb] disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-xl transition-colors"
 									>
-										🔗 Test Backend → Bot
+										{testMessageMutation.isPending
+											? "⏳ Sending..."
+											: "🔗 Test Backend → Bot"}
 									</button>
 								</div>
 							</div>
