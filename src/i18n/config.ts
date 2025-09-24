@@ -57,7 +57,11 @@ const resources = {
 			"expenses.amount": "Amount",
 			"expenses.total": "Total",
 			"expenses.monthlyAverage": "Monthly Average",
+			"expenses.noExpenses": "No expenses",
 			"expenses.addExpense": "Add Expense",
+			"expenses.createSchedules": "Create Schedules",
+			"expenses.createSchedulesDescription":
+				"Create schedules to automatically track recurring payments like rent, subscriptions, etc.",
 			"expenses.recentExpenses": "Recent Expenses",
 			"expenses.monthlySummary": "Monthly Summary",
 			"expenses.mostUsedCategories": "Most Used Categories",
@@ -193,7 +197,11 @@ const resources = {
 			"expenses.amount": "Сумма",
 			"expenses.total": "Всего",
 			"expenses.monthlyAverage": "Среднемесячные",
+			"expenses.noExpenses": "Нет расходов",
 			"expenses.addExpense": "Добавить расход",
+			"expenses.createSchedules": "Создать расписания",
+			"expenses.createSchedulesDescription":
+				"Создайте расписания для автоматического отслеживания регулярных платежей, таких как аренда, подписки и т.д.",
 			"expenses.recentExpenses": "Последние расходы",
 			"expenses.monthlySummary": "Месячный итог",
 			"expenses.mostUsedCategories": "Часто используемые категории",

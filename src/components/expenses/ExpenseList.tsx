@@ -15,27 +15,8 @@ import LogRocket from "logrocket";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import { getEmotionEmoji } from "@/utils/helper";
 
-// Emotion mapping to emojis
-const getEmotionEmoji = (emotion: string): string => {
-	const emotions: Record<string, string> = {
-		like: "👍",
-		dislike: "👎",
-		happy: "😊",
-		sad: "😢",
-		regret: "😤",
-		joy: "😄",
-		neutral: "😐",
-		// Additional common emotions
-		angry: "😠",
-		surprised: "😲",
-		worried: "😟",
-		excited: "🤩",
-		satisfied: "😌",
-		disappointed: "😞",
-	};
-	return emotions[emotion?.toLowerCase()] || emotions.neutral;
-};
 
 interface ExpenseListProps {
 	filters?: ExpenseFilters;

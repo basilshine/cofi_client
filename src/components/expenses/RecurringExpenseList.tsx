@@ -6,6 +6,7 @@ import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import LogRocket from "logrocket";
+import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
 interface RecurringExpenseListProps {
@@ -20,6 +21,7 @@ export const RecurringExpenseList = ({
 	user,
 }: RecurringExpenseListProps) => {
 	const queryClient = useQueryClient();
+	const { t } = useTranslation();
 
 	const deleteMutation = useMutation({
 		mutationFn: (id: string) => {
@@ -67,7 +69,7 @@ export const RecurringExpenseList = ({
 				>
 					<Link to="/recurring/add">
 						<Plus className="mr-2 h-4 w-4" />
-						Create New Schedule
+						{t("expenses.addExpense")}
 					</Link>
 				</Button>
 			</div>
@@ -166,10 +168,9 @@ export const RecurringExpenseList = ({
 			{/* Empty State */}
 			{recurringExpenses.length === 0 ? (
 				<div className="text-center py-8">
-					<p className="text-[#666666] text-sm">No expense schedules found</p>
+					<p className="text-[#666666] text-sm">{t("expenses.noExpenses")}</p>
 					<p className="text-[#666666] text-xs mt-2">
-						Create schedules to automatically track recurring payments like
-						rent, subscriptions, etc.
+						{t("expenses.createSchedulesDescription")}
 					</p>
 				</div>
 			) : null}
