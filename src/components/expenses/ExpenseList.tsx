@@ -1,6 +1,7 @@
 import { type ExpenseFilters, expensesService } from "@/services/api/expenses";
 import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
+import { getEmotionEmoji } from "@/utils/helper";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { Button } from "@components/ui/button";
 import { useAuth } from "@contexts/AuthContext";
@@ -15,8 +16,6 @@ import LogRocket from "logrocket";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { getEmotionEmoji } from "@/utils/helper";
-
 
 interface ExpenseListProps {
 	filters?: ExpenseFilters;

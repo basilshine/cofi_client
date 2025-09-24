@@ -1,8 +1,13 @@
+import {
+	getCountryName,
+	getCurrencyName,
+	getLanguageName,
+	getTimezoneName,
+} from "@/utils/helper";
 import { useAuth } from "@contexts/AuthContext";
 import { Download } from "@phosphor-icons/react";
 import type { ProfileUpdateRequest } from "@services/api";
 import { useEffect, useState } from "react";
-import { getCountryName, getLanguageName, getCurrencyName, getTimezoneName } from "@/utils/helper";
 
 export const Profile = () => {
 	const { user, logout, updateUser, deleteAllData, isLoading, error } =

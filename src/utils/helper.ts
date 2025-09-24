@@ -1,4 +1,3 @@
-
 // Emotion mapping to emojis
 const getEmotionEmoji = (emotion: string): string => {
 	const emotions: Record<string, string> = {
@@ -19,7 +18,6 @@ const getEmotionEmoji = (emotion: string): string => {
 	};
 	return emotions[emotion?.toLowerCase()] || emotions.neutral;
 };
-
 
 // Helper functions to format display names
 const getCountryName = (code: string): string => {
@@ -91,5 +89,10 @@ const getCurrencyName = (code: string): string => {
 	return currencies[code] || code || "N/A";
 };
 
-
-export { getEmotionEmoji, getCountryName, getLanguageName, getTimezoneName, getCurrencyName };
+export {
+	getEmotionEmoji,
+	getCountryName,
+	getLanguageName,
+	getTimezoneName,
+	getCurrencyName,
+};
