@@ -15,17 +15,16 @@ interface ExpenseCardProps {
 	isDeleting: boolean;
 }
 
-export const ExpenseCard = ({ expense, index, onDelete, isDeleting }: ExpenseCardProps) => {
+export const ExpenseCard = ({
+	expense,
+	index,
+	onDelete,
+	isDeleting,
+}: ExpenseCardProps) => {
 	const { t } = useTranslation();
 	const { user } = useAuth();
 
-	const borderColors = [
-		"#69b4cd",
-		"#f7a35c",
-		"#90ed7d",
-		"#7cb5ec",
-		"#f15c80",
-	];
+	const borderColors = ["#69b4cd", "#f7a35c", "#90ed7d", "#7cb5ec", "#f15c80"];
 	const borderColor = borderColors[index % borderColors.length];
 	const mainItem = expense.items?.[0];
 	const itemsCount = expense.items?.length || 0;

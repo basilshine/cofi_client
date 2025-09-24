@@ -1,8 +1,8 @@
 import { type ExpenseFilters, expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
-import { useAuth } from "@contexts/AuthContext";
 import { ExpenseItemCard } from "@components/expenses/ExpenseItemCard";
+import { useAuth } from "@contexts/AuthContext";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
 import { useCallback, useEffect, useRef } from "react";

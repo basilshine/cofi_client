@@ -1,8 +1,8 @@
 import { type ExpenseFilters, expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
-import { useAuth } from "@contexts/AuthContext";
 import { ExpenseCard } from "@components/expenses/ExpenseCard";
+import { useAuth } from "@contexts/AuthContext";
 import {
 	useInfiniteQuery,
 	useMutation,

@@ -13,19 +13,18 @@ interface ExpenseItemCardProps {
 	onEdit: (expenseItem: components["schemas"]["ExpenseItem"]) => void;
 }
 
-export const ExpenseItemCard = ({ expenseItem, index, onEdit }: ExpenseItemCardProps) => {
+export const ExpenseItemCard = ({
+	expenseItem,
+	index,
+	onEdit,
+}: ExpenseItemCardProps) => {
 	const { t } = useTranslation();
 	const { user } = useAuth();
 
-	const borderColors = [
-		"#69b4cd",
-		"#f7a35c",
-		"#90ed7d",
-		"#7cb5ec",
-		"#f15c80",
-	];
+	const borderColors = ["#69b4cd", "#f7a35c", "#90ed7d", "#7cb5ec", "#f15c80"];
 	const borderColor = borderColors[index % borderColors.length];
-	const amount = typeof expenseItem.amount === "number" ? expenseItem.amount : 0;
+	const amount =
+		typeof expenseItem.amount === "number" ? expenseItem.amount : 0;
 
 	return (
 		<div
