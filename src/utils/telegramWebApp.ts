@@ -485,21 +485,58 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 					message,
 				);
 
-				// Send data back to the bot first
-				const dataToSend = JSON.stringify({
-					action: "expense_saved",
-					message: message,
-					totalAmount: expenseData.totalAmount,
-					itemsCount: expenseData.itemsCount,
-					status: expenseData.status,
-				});
+				// Since sendData() doesn't work with InlineKeyboardButton-launched WebApps,
+				// we'll use Backend → Bot communication instead
+				console.log(
+					"[notifyExpenseSavedAndClose] Using Backend → Bot communication",
+				);
 
-				if (webApp.sendData) {
-					console.log("[notifyExpenseSavedAndClose] Sending data via sendData");
-					webApp.sendData(dataToSend);
-				} else if (webApp.showAlert) {
+				// Send the message to the bot via backend API
+				if (expenseData.user?.telegramId) {
 					console.log(
-						"[notifyExpenseSavedAndClose] sendData not available, showing alert",
+						"[notifyExpenseSavedAndClose] Sending message via backend API to chat:",
+						expenseData.user.telegramId,
+					);
+
+					// Use the same API endpoint we use in Profile page
+					fetch(`${import.meta.env.VITE_API_URL}/api/v1/notify/test-message`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							chat_id: expenseData.user.telegramId,
+							message: message,
+						}),
+					})
+						.then((response) => {
+							if (response.ok) {
+								console.log(
+									"[notifyExpenseSavedAndClose] ✅ Message sent to bot via backend",
+								);
+							} else {
+								console.error(
+									"[notifyExpenseSavedAndClose] ❌ Failed to send message to bot:",
+									response.status,
+								);
+							}
+						})
+						.catch((error) => {
+							console.error(
+								"[notifyExpenseSavedAndClose] ❌ Error sending message to bot:",
+								error,
+							);
+						});
+				} else {
+					console.log(
+						"[notifyExpenseSavedAndClose] No telegramId found for user",
+					);
+				}
+
+				// Show alert and close WebApp
+				if (webApp.showAlert) {
+					console.log(
+						"[notifyExpenseSavedAndClose] Showing alert and closing WebApp",
 					);
 					webApp.showAlert(message, () => {
 						console.log(
@@ -513,9 +550,9 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 					});
 				} else {
 					console.log(
-						"[notifyExpenseSavedAndClose] No sendData or showAlert available, trying direct close",
+						"[notifyExpenseSavedAndClose] showAlert not available, trying direct close",
 					);
-					// If neither sendData nor showAlert is available, try direct close
+					// If showAlert is not available, try direct close
 					if (webApp.close) {
 						console.log("[notifyExpenseSavedAndClose] Direct close WebApp...");
 						webApp.close();
@@ -529,6 +566,44 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 				);
 				// Fallback without currency formatting
 				const message = `✅ Expense ${expenseData.status} successfully!\n\n💰 Total: $${expenseData.totalAmount.toFixed(2)}\n📝 Items: ${expenseData.itemsCount}\n📊 Status: ${expenseData.status}`;
+
+				// Send the message to the bot via backend API
+				if (expenseData.user?.telegramId) {
+					console.log(
+						"[notifyExpenseSavedAndClose] Sending fallback message via backend API to chat:",
+						expenseData.user.telegramId,
+					);
+
+					fetch(`${import.meta.env.VITE_API_URL}/api/v1/notify/test-message`, {
+						method: "POST",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							chat_id: expenseData.user.telegramId,
+							message: message,
+						}),
+					})
+						.then((response) => {
+							if (response.ok) {
+								console.log(
+									"[notifyExpenseSavedAndClose] ✅ Fallback message sent to bot via backend",
+								);
+							} else {
+								console.error(
+									"[notifyExpenseSavedAndClose] ❌ Failed to send fallback message to bot:",
+									response.status,
+								);
+							}
+						})
+						.catch((error) => {
+							console.error(
+								"[notifyExpenseSavedAndClose] ❌ Error sending fallback message to bot:",
+								error,
+							);
+						});
+				}
+
 				if (webApp.showAlert) {
 					webApp.showAlert(message, () => {
 						if (webApp.close) {

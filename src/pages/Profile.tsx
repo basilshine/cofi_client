@@ -119,8 +119,8 @@ Type "DELETE ALL DATA" to confirm:`;
 	};
 
 	const handleTestBotMessage = () => {
-		console.log("[Profile] ===== STARTING BOT MESSAGE TEST =====");
-		console.log("[Profile] Testing bot message functionality");
+		console.log("[Profile] ===== STARTING WEBAPP → BOT TEST =====");
+		console.log("[Profile] Testing WebApp → Bot communication via Backend");
 		console.log("[Profile] Current environment:", {
 			userAgent: navigator.userAgent,
 			url: window.location.href,
@@ -138,163 +138,27 @@ Type "DELETE ALL DATA" to confirm:`;
 			return;
 		}
 
-		// Check Telegram WebApp availability
-		console.log("[Profile] Checking Telegram WebApp availability...");
-		console.log("[Profile] window.Telegram:", !!window.Telegram);
-		console.log("[Profile] window.Telegram.WebApp:", !!window.Telegram?.WebApp);
+		// Since sendData() doesn't work with InlineKeyboardButton-launched WebApps,
+		// we'll use the Backend → Bot communication we already have working
+		console.log("[Profile] Using Backend → Bot communication method");
+		console.log("[Profile] This bypasses the sendData() limitation");
 
-		if (typeof window !== "undefined" && window.Telegram?.WebApp) {
-			// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete
-			const webApp = window.Telegram.WebApp as any;
-
-			console.log("[Profile] ===== WEBAPP OBJECT DEBUG =====");
-			console.log("[Profile] WebApp object keys:", Object.keys(webApp));
-			console.log("[Profile] WebApp detailed info:", {
-				initData: webApp.initData,
-				initDataUnsafe: webApp.initDataUnsafe,
-				sendData: !!webApp.sendData,
-				close: !!webApp.close,
-				showAlert: !!webApp.showAlert,
-				showConfirm: !!webApp.showConfirm,
-				showPopup: !!webApp.showPopup,
-				isExpanded: webApp.isExpanded,
-				viewportHeight: webApp.viewportHeight,
-				viewportStableHeight: webApp.viewportStableHeight,
-				headerColor: webApp.headerColor,
-				backgroundColor: webApp.backgroundColor,
-				themeParams: webApp.themeParams,
-				isClosingConfirmationEnabled: webApp.isClosingConfirmationEnabled,
-				version: webApp.version,
-				platform: webApp.platform,
-			});
-
-			// Test data to send to bot
-			const testData = {
-				action: "test_message",
-				message: "🧪 Test message from Profile page",
-				timestamp: new Date().toISOString(),
-				user: {
-					id: user?.id,
-					name: user?.name,
-					telegramId: user?.telegramId,
-				},
-				source: "profile_page",
-				debug: {
-					userAgent: navigator.userAgent,
-					url: window.location.href,
-					webAppVersion: webApp.version,
-					platform: webApp.platform,
-				},
-			};
-
-			const testDataString = JSON.stringify(testData);
-			console.log("[Profile] ===== SENDING TEST DATA =====");
-			console.log("[Profile] Test data object:", testData);
-			console.log("[Profile] Test data string:", testDataString);
-			console.log("[Profile] Test data length:", testDataString.length);
-			console.log(
-				"[Profile] Test data bytes:",
-				new TextEncoder().encode(testDataString).length,
-			);
-			console.log(
-				"[Profile] JSON validity:",
-				(() => {
-					try {
-						JSON.parse(testDataString);
-						return "VALID";
-					} catch (e) {
-						return `INVALID: ${e}`;
-					}
-				})(),
-			);
-
-			if (webApp.sendData) {
-				console.log(
-					"[Profile] sendData method is available, attempting to send...",
-				);
-				console.log(
-					"[Profile] sendData function type:",
-					typeof webApp.sendData,
-				);
-				console.log(
-					"[Profile] sendData function length:",
-					webApp.sendData.length,
-				);
-
-				try {
-					const startTime = Date.now();
-					console.log(
-						"[Profile] Calling webApp.sendData() at:",
-						new Date().toISOString(),
-					);
-
-					webApp.sendData(testDataString);
-
-					const endTime = Date.now();
-					console.log("[Profile] ✅ sendData() called successfully");
-					console.log(
-						"[Profile] SendData execution time:",
-						endTime - startTime,
-						"ms",
-					);
-					console.log("[Profile] WebApp state after sendData:", {
-						isExpanded: webApp.isExpanded,
-						viewportHeight: webApp.viewportHeight,
-						viewportStableHeight: webApp.viewportStableHeight,
-					});
-
-					// Show confirmation alert
-					if (webApp.showAlert) {
-						console.log("[Profile] Showing confirmation alert...");
-						webApp.showAlert(
-							"✅ Test message sent to bot!\n\nThis will close the WebApp and send the data to the bot.\n\nCheck your Telegram chat for the bot's response!",
-							() => {
-								console.log(
-									"[Profile] Test message alert acknowledged, closing WebApp...",
-								);
-								// Close the WebApp to trigger the data sending
-								if (webApp.close) {
-									webApp.close();
-								}
-							},
-						);
-					}
-				} catch (error) {
-					console.error("[Profile] ❌ Error calling sendData():", error);
-					console.error("[Profile] Error details:", {
-						name: error instanceof Error ? error.name : "Unknown",
-						message: error instanceof Error ? error.message : String(error),
-						stack: error instanceof Error ? error.stack : undefined,
-						type: typeof error,
-					});
-					alert(
-						`❌ Error sending data: ${error instanceof Error ? error.message : String(error)}`,
-					);
-				}
-			} else if (webApp.showAlert) {
-				console.log("[Profile] sendData not available, showing test alert");
-				webApp.showAlert(
-					"🧪 Test alert from Profile page\n\nThis will close the WebApp and send test data to the bot!",
-					() => {
-						console.log("[Profile] Test alert acknowledged, closing WebApp...");
-						// Close the WebApp to trigger the data sending
-						if (webApp.close) {
-							webApp.close();
-						}
-					},
-				);
-			} else {
-				console.log("[Profile] ❌ No WebApp methods available");
-				alert("❌ No Telegram WebApp methods available");
-			}
-		} else {
-			console.log("[Profile] ❌ Telegram WebApp not available");
-			console.log("[Profile] window object:", typeof window);
-			console.log("[Profile] window.Telegram:", window.Telegram);
-			alert("❌ Telegram WebApp not available");
+		if (!user?.telegramId) {
+			console.log("[Profile] ❌ No Telegram ID found for user");
+			alert("❌ No Telegram ID found for user");
+			return;
 		}
 
-		console.log("[Profile] ===== BOT MESSAGE TEST COMPLETE =====");
+		console.log("[Profile] Sending test message via backend API...");
+
+		// Use the same testMessageMutation we already have
+		testMessageMutation.mutate({
+			chat_id: user.telegramId,
+			message:
+				"🧪 Test message from WebApp via Backend!\n\n✅ WebApp → Backend → Bot → User communication test\n\nThis bypasses the sendData() limitation!",
+		});
+
+		console.log("[Profile] ===== WEBAPP → BOT TEST COMPLETE =====");
 	};
 
 	const handleTestBackendToBot = () => {
@@ -885,7 +749,7 @@ Type "DELETE ALL DATA" to confirm:`;
 										onClick={handleTestBotMessage}
 										className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-medium py-3 px-4 rounded-xl transition-colors"
 									>
-										🧪 Test WebApp → Bot
+										🧪 Test WebApp → Bot (via Backend)
 									</button>
 									<button
 										type="button"
