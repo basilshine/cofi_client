@@ -96,28 +96,57 @@ Type "DELETE ALL DATA" to confirm:`;
 	};
 
 	const handleTestBotMessage = () => {
+		console.log("[Profile] ===== STARTING BOT MESSAGE TEST =====");
 		console.log("[Profile] Testing bot message functionality");
+		console.log("[Profile] Current environment:", {
+			userAgent: navigator.userAgent,
+			url: window.location.href,
+			protocol: window.location.protocol,
+			host: window.location.host,
+		});
 
-		if (!isTelegramWebApp()) {
+		// Check if we're in Telegram WebApp
+		const isWebApp = isTelegramWebApp();
+		console.log("[Profile] isTelegramWebApp() result:", isWebApp);
+
+		if (!isWebApp) {
+			console.log("[Profile] Not in Telegram WebApp, showing error");
 			alert("❌ This feature is only available in Telegram WebApp");
 			return;
 		}
+
+		// Check Telegram WebApp availability
+		console.log("[Profile] Checking Telegram WebApp availability...");
+		console.log("[Profile] window.Telegram:", !!window.Telegram);
+		console.log("[Profile] window.Telegram.WebApp:", !!window.Telegram?.WebApp);
 
 		if (typeof window !== "undefined" && window.Telegram?.WebApp) {
 			// biome-ignore lint/suspicious/noExplicitAny: Telegram WebApp types are incomplete
 			const webApp = window.Telegram.WebApp as any;
 
-			console.log("[Profile] WebApp object:", {
+			console.log("[Profile] ===== WEBAPP OBJECT DEBUG =====");
+			console.log("[Profile] WebApp object keys:", Object.keys(webApp));
+			console.log("[Profile] WebApp detailed info:", {
 				initData: webApp.initData,
+				initDataUnsafe: webApp.initDataUnsafe,
 				sendData: !!webApp.sendData,
 				close: !!webApp.close,
 				showAlert: !!webApp.showAlert,
+				showConfirm: !!webApp.showConfirm,
+				showPopup: !!webApp.showPopup,
 				isExpanded: webApp.isExpanded,
 				viewportHeight: webApp.viewportHeight,
+				viewportStableHeight: webApp.viewportStableHeight,
+				headerColor: webApp.headerColor,
+				backgroundColor: webApp.backgroundColor,
+				themeParams: webApp.themeParams,
+				isClosingConfirmationEnabled: webApp.isClosingConfirmationEnabled,
+				version: webApp.version,
+				platform: webApp.platform,
 			});
 
 			// Test data to send to bot
-			const testData = JSON.stringify({
+			const testData = {
 				action: "test_message",
 				message: "🧪 Test message from Profile page",
 				timestamp: new Date().toISOString(),
@@ -127,19 +156,42 @@ Type "DELETE ALL DATA" to confirm:`;
 					telegramId: user?.telegramId,
 				},
 				source: "profile_page",
-			});
+				debug: {
+					userAgent: navigator.userAgent,
+					url: window.location.href,
+					webAppVersion: webApp.version,
+					platform: webApp.platform,
+				},
+			};
+
+			const testDataString = JSON.stringify(testData);
+			console.log("[Profile] ===== SENDING TEST DATA =====");
+			console.log("[Profile] Test data object:", testData);
+			console.log("[Profile] Test data string:", testDataString);
+			console.log("[Profile] Test data length:", testDataString.length);
 
 			if (webApp.sendData) {
-				console.log("[Profile] Sending test data to bot:", testData);
-				webApp.sendData(testData);
+				console.log(
+					"[Profile] sendData method is available, attempting to send...",
+				);
+				try {
+					webApp.sendData(testDataString);
+					console.log("[Profile] ✅ sendData() called successfully");
 
-				// Show confirmation alert
-				if (webApp.showAlert) {
-					webApp.showAlert(
-						"✅ Test message sent to bot!\n\nCheck your Telegram chat to see if the bot received it.",
-						() => {
-							console.log("[Profile] Test message alert acknowledged");
-						},
+					// Show confirmation alert
+					if (webApp.showAlert) {
+						console.log("[Profile] Showing confirmation alert...");
+						webApp.showAlert(
+							"✅ Test message sent to bot!\n\nCheck your Telegram chat to see if the bot received it.\n\n📝 Check console for detailed logs.",
+							() => {
+								console.log("[Profile] Test message alert acknowledged");
+							},
+						);
+					}
+				} catch (error) {
+					console.error("[Profile] ❌ Error calling sendData():", error);
+					alert(
+						`❌ Error sending data: ${error instanceof Error ? error.message : String(error)}`,
 					);
 				}
 			} else if (webApp.showAlert) {
@@ -151,13 +203,64 @@ Type "DELETE ALL DATA" to confirm:`;
 					},
 				);
 			} else {
-				console.log("[Profile] No WebApp methods available");
+				console.log("[Profile] ❌ No WebApp methods available");
 				alert("❌ No Telegram WebApp methods available");
 			}
 		} else {
-			console.log("[Profile] Telegram WebApp not available");
+			console.log("[Profile] ❌ Telegram WebApp not available");
+			console.log("[Profile] window object:", typeof window);
+			console.log("[Profile] window.Telegram:", window.Telegram);
 			alert("❌ Telegram WebApp not available");
 		}
+
+		console.log("[Profile] ===== BOT MESSAGE TEST COMPLETE =====");
+	};
+
+	const handleTestBackendToBot = async () => {
+		console.log("[Profile] ===== TESTING BACKEND TO BOT MESSAGE =====");
+
+		if (!user?.telegramId) {
+			alert("❌ No Telegram ID found for user");
+			return;
+		}
+
+		try {
+			console.log("[Profile] Sending test message via backend API...");
+
+			const response = await fetch("/api/v1/bot/test-message", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${localStorage.getItem("token")}`,
+				},
+				body: JSON.stringify({
+					chat_id: user.telegramId,
+					message:
+						"🧪 Test message from Profile page via Backend!\n\n✅ Backend → Bot → User communication test",
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			const result = await response.json();
+			console.log("[Profile] Backend response:", result);
+
+			alert(
+				"✅ Test message sent via backend!\n\nCheck your Telegram chat to see if the bot received it.",
+			);
+		} catch (error) {
+			console.error(
+				"[Profile] ❌ Error sending test message via backend:",
+				error,
+			);
+			alert(
+				`❌ Error sending test message via backend: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+
+		console.log("[Profile] ===== BACKEND TO BOT TEST COMPLETE =====");
 	};
 
 	const handleInputChange = (
@@ -702,8 +805,8 @@ Type "DELETE ALL DATA" to confirm:`;
 										Test Bot Message
 									</h3>
 									<p className="text-sm text-[#64748b]">
-										Send a test message to the bot to verify communication is
-										working.
+										Test different ways to send messages to the bot and verify
+										communication is working.
 									</p>
 								</div>
 								<div className="bg-[#ecfdf5] border border-[#10b981] rounded-lg p-3">
@@ -711,18 +814,34 @@ Type "DELETE ALL DATA" to confirm:`;
 										<strong>ℹ️ This will:</strong>
 									</p>
 									<ul className="text-xs text-[#065f46] mt-1 space-y-1">
-										<li>• Send a test message to the bot via WebApp</li>
+										<li>
+											• <strong>WebApp → Bot:</strong> Direct communication from
+											Telegram WebApp
+										</li>
+										<li>
+											• <strong>Backend → Bot:</strong> Server-initiated
+											messages to users
+										</li>
 										<li>• Show debug information in console</li>
 										<li>• Display confirmation if successful</li>
 									</ul>
 								</div>
-								<button
-									type="button"
-									onClick={handleTestBotMessage}
-									className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-medium py-3 px-4 rounded-xl transition-colors"
-								>
-									🧪 Test Bot Message
-								</button>
+								<div className="space-y-2">
+									<button
+										type="button"
+										onClick={handleTestBotMessage}
+										className="w-full bg-[#10b981] hover:bg-[#059669] text-white font-medium py-3 px-4 rounded-xl transition-colors"
+									>
+										🧪 Test WebApp → Bot
+									</button>
+									<button
+										type="button"
+										onClick={handleTestBackendToBot}
+										className="w-full bg-[#3b82f6] hover:bg-[#2563eb] text-white font-medium py-3 px-4 rounded-xl transition-colors"
+									>
+										🔗 Test Backend → Bot
+									</button>
+								</div>
 							</div>
 						</div>
 					</div>
