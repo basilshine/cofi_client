@@ -227,7 +227,7 @@ Type "DELETE ALL DATA" to confirm:`;
 		try {
 			console.log("[Profile] Sending test message via backend API...");
 
-			const response = await fetch("/api/v1/bot/test-message", {
+			const response = await fetch("/api/v1/notify/test-message", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
