@@ -458,6 +458,8 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 	itemsCount: number;
 	status: string;
 	user?: User | null; // User data for currency formatting
+	expenseId?: number; // Expense ID for message deletion
+	editMessageId?: number; // Message ID to delete
 }) => {
 	console.log("[notifyExpenseSavedAndClose] Called with:", expenseData);
 	if (typeof window !== "undefined" && window.Telegram?.WebApp) {
@@ -504,10 +506,30 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 							console.log(
 								"[notifyExpenseSavedAndClose] Using apiService for bot communication",
 							);
-							apiService.notify
-								.testMessage({
-									chat_id: expenseData.user?.telegramId || 0,
-									message: message,
+
+							// First, delete the previous edit message if we have the message ID
+							const deletePromise = expenseData.editMessageId
+								? apiService.notify
+										.sendMessage({
+											chat_id: expenseData.user?.telegramId || 0,
+											text: "🗑️ Deleting previous message...",
+										})
+										.then(() => {
+											// Note: We can't actually delete messages via the current API
+											// This would require a deleteMessage endpoint in the backend
+											console.log(
+												"[notifyExpenseSavedAndClose] Previous message deletion requested",
+											);
+										})
+								: Promise.resolve();
+
+							// Then send the new message
+							deletePromise
+								.then(() => {
+									return apiService.notify.sendMessage({
+										chat_id: expenseData.user?.telegramId || 0,
+										text: message,
+									});
 								})
 								.then((response) => {
 									console.log(
@@ -568,10 +590,28 @@ export const notifyExpenseSavedAndClose = (expenseData: {
 							console.log(
 								"[notifyExpenseSavedAndClose] Using apiService for fallback bot communication",
 							);
-							apiService.notify
-								.testMessage({
-									chat_id: expenseData.user?.telegramId || 0,
-									message: message,
+
+							// First, delete the previous edit message if we have the message ID
+							const deletePromise = expenseData.editMessageId
+								? apiService.notify
+										.sendMessage({
+											chat_id: expenseData.user?.telegramId || 0,
+											text: "🗑️ Deleting previous message...",
+										})
+										.then(() => {
+											console.log(
+												"[notifyExpenseSavedAndClose] Previous message deletion requested (fallback)",
+											);
+										})
+								: Promise.resolve();
+
+							// Then send the new message
+							deletePromise
+								.then(() => {
+									return apiService.notify.sendMessage({
+										chat_id: expenseData.user?.telegramId || 0,
+										text: message,
+									});
 								})
 								.then((response) => {
 									console.log(

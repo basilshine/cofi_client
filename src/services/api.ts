@@ -49,6 +49,7 @@ const ENDPOINTS = {
 	notificationById: (id: number | string) =>
 		`/api/v1/notify/notifications/${id}` as const,
 	testMessage: "/api/v1/notify/test-message" as const,
+	sendMessage: "/api/v1/notify/send-message" as const,
 };
 
 const api = axios.create({
@@ -429,6 +430,11 @@ export const apiService = {
 		testMessage: (data: { chat_id: number; message?: string }) =>
 			api.post<{ success: boolean; message: string; chat_id: number }>(
 				ENDPOINTS.testMessage,
+				data,
+			),
+		sendMessage: (data: { chat_id: number; text: string }) =>
+			api.post<{ success: boolean; message: string }>(
+				ENDPOINTS.sendMessage,
 				data,
 			),
 	},

@@ -40,6 +40,11 @@ interface TelegramWebApp {
 	viewportHeight?: number;
 	MainButton?: {
 		text: string;
+		isVisible: boolean;
+		color: string;
+		textColor: string;
+		isActive: boolean;
+		isProgressVisible: boolean;
 		show: () => void;
 		hide: () => void;
 		onClick: (callback: () => void) => void;
@@ -358,6 +363,8 @@ export const ExpenseEdit = () => {
 					itemsCount: editingItems.length,
 					status: data.status || "approved",
 					user,
+					expenseId: data.id,
+					editMessageId: undefined, // TODO: Get from URL params or session storage
 				});
 			} else {
 				// Regular web navigation - return to where we came from
@@ -407,6 +414,8 @@ export const ExpenseEdit = () => {
 					itemsCount: editingItems.length,
 					status: "approved",
 					user,
+					expenseId: undefined, // New expense, no ID yet
+					editMessageId: undefined, // TODO: Get from URL params or session storage
 				});
 			} else {
 				// Regular web navigation - return to where we came from
@@ -720,17 +729,21 @@ export const ExpenseEdit = () => {
 									console.log("[ExpenseEdit] ===== MAINBUTTON DEBUG =====");
 									if (
 										typeof window !== "undefined" &&
-										window.Telegram?.WebApp?.MainButton
+										window.Telegram?.WebApp &&
+										(window.Telegram.WebApp as TelegramWebApp).MainButton
 									) {
-										const mb = window.Telegram.WebApp.MainButton;
-										console.log("[ExpenseEdit] MainButton debug:", {
-											text: mb.text,
-											isVisible: mb.isVisible,
-											color: mb.color,
-											textColor: mb.textColor,
-											isActive: mb.isActive,
-											isProgressVisible: mb.isProgressVisible,
-										});
+										const mb = (window.Telegram.WebApp as TelegramWebApp)
+											.MainButton;
+										if (mb) {
+											console.log("[ExpenseEdit] MainButton debug:", {
+												text: mb.text,
+												isVisible: mb.isVisible,
+												color: mb.color,
+												textColor: mb.textColor,
+												isActive: mb.isActive,
+												isProgressVisible: mb.isProgressVisible,
+											});
+										}
 									} else {
 										console.log("[ExpenseEdit] MainButton not available");
 									}
