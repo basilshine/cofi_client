@@ -79,6 +79,9 @@ export const ExpenseEdit = () => {
 	// Get item ID from URL parameters for anchoring to specific item
 	const itemId = searchParams.get("item");
 
+	// Get message ID from URL parameters for deletion after save
+	const messageId = searchParams.get("message_id");
+
 	// Determine if this is add mode (no ID) or edit mode (has ID)
 	const isAddMode = !id;
 	const isEditMode = !!id;
@@ -364,7 +367,7 @@ export const ExpenseEdit = () => {
 					status: data.status || "approved",
 					user,
 					expenseId: data.id,
-					editMessageId: undefined, // TODO: Get from URL params or session storage
+					editMessageId: messageId ? Number.parseInt(messageId, 10) : undefined,
 				});
 			} else {
 				// Regular web navigation - return to where we came from
@@ -415,7 +418,7 @@ export const ExpenseEdit = () => {
 					status: "approved",
 					user,
 					expenseId: undefined, // New expense, no ID yet
-					editMessageId: undefined, // TODO: Get from URL params or session storage
+					editMessageId: messageId ? Number.parseInt(messageId, 10) : undefined,
 				});
 			} else {
 				// Regular web navigation - return to where we came from

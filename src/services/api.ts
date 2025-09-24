@@ -50,6 +50,7 @@ const ENDPOINTS = {
 		`/api/v1/notify/notifications/${id}` as const,
 	testMessage: "/api/v1/notify/test-message" as const,
 	sendMessage: "/api/v1/notify/send-message" as const,
+	deleteMessage: "/api/v1/notify/delete-message" as const,
 };
 
 const api = axios.create({
@@ -437,5 +438,12 @@ export const apiService = {
 				ENDPOINTS.sendMessage,
 				data,
 			),
+		deleteMessage: (data: { chat_id: number; message_id: number }) =>
+			api.post<{
+				success: boolean;
+				message: string;
+				chat_id: number;
+				message_id: number;
+			}>(ENDPOINTS.deleteMessage, data),
 	},
 };
