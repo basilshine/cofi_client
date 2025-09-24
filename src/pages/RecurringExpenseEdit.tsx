@@ -193,7 +193,7 @@ export const RecurringExpenseEdit = () => {
 		const saveData: components["schemas"]["RecurringExpense"] = {
 			...formData,
 			userId: Number(user?.id),
-			chatId: 0, // Default chat ID for web app
+			chatId: user?.telegramId || 0, // Use user's Telegram ID as chatId
 		} as components["schemas"]["RecurringExpense"];
 
 		if (isEditMode) {
