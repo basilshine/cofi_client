@@ -2213,6 +2213,10 @@ export interface components {
 			tags?: components["schemas"]["Tag"][];
 			/** Format: date-time */
 			expenseDate?: string;
+			/** Format: date-time */
+			createdAt?: string;
+			/** Format: date-time */
+			updatedAt?: string;
 			isRecurring?: boolean;
 			interval?: string;
 		};

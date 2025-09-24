@@ -18,6 +18,7 @@ const ENDPOINTS = {
 	parser: "/api/v1/parser" as const,
 	parserImage: "/api/v1/parser/image" as const,
 	expenses: "/api/v1/finances/expenses" as const,
+	expenseItems: "/api/v1/finances/expenses/items" as const,
 	expenseById: (id: number | string) =>
 		`/api/v1/finances/expenses/${id}` as const,
 	expensesSummary: "/api/v1/finances/expenses/summary" as const,
@@ -266,6 +267,9 @@ export const apiService = {
 	expenses: {
 		list: () => api.get<components["schemas"]["Expense"][]>(ENDPOINTS.expenses),
 		listWithFilters: (url: string) => api.get(url),
+		listItems: () =>
+			api.get<components["schemas"]["ExpenseItem"][]>(ENDPOINTS.expenseItems),
+		listItemsWithFilters: (url: string) => api.get(url),
 		create: (data: components["schemas"]["Expense"]) =>
 			api.post<components["schemas"]["Expense"]>(ENDPOINTS.expenses, data),
 		getById: (id: number | string) =>

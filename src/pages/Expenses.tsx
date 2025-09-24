@@ -3,6 +3,7 @@ import { expensesService } from "@/services/api/expenses";
 import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
 import { LoadingScreen } from "@components/LoadingScreen";
+import { ExpenseItemsList } from "@components/expenses/ExpenseItemsList";
 import { ExpenseList } from "@components/expenses/ExpenseList";
 import { RecurringExpenseList } from "@components/expenses/RecurringExpenseList";
 import { Button } from "@components/ui/button";
@@ -17,7 +18,7 @@ import { Link } from "react-router-dom";
 
 // Filter types
 type FilterType = "category" | "date" | "emotion" | null;
-type ExpenseType = "regular" | "recurring";
+type ExpenseType = "regular" | "items" | "recurring";
 
 interface ExpenseFilters {
 	category?: string;
@@ -225,6 +226,17 @@ export const Expenses = () => {
 					</button>
 					<button
 						type="button"
+						onClick={() => setExpenseType("items")}
+						className={`flex-1 rounded-full py-2 text-center text-sm font-semibold transition-colors ${
+							expenseType === "items"
+								? "bg-[#69b4cd] text-white"
+								: "text-[#666666] hover:text-[#69b4cd]"
+						}`}
+					>
+						<span>Items</span>
+					</button>
+					<button
+						type="button"
 						onClick={() => setExpenseType("recurring")}
 						className={`flex-1 rounded-full py-2 text-center text-sm font-semibold transition-colors ${
 							expenseType === "recurring"
@@ -260,8 +272,8 @@ export const Expenses = () => {
 					</div>
 				</div>
 
-				{/* Filter Buttons - Only show for regular expenses */}
-				{expenseType === "regular" && (
+				{/* Filter Buttons - Only show for regular expenses and items */}
+				{(expenseType === "regular" || expenseType === "items") && (
 					<div className="flex gap-3 mb-4 overflow-x-auto">
 						<button
 							type="button"
@@ -329,148 +341,154 @@ export const Expenses = () => {
 					</div>
 				)}
 
-				{/* Filter Dropdowns - Only show for regular expenses */}
-				{expenseType === "regular" && activeFilter === "category" && (
-					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
-						<h4 className="text-sm font-medium text-[#64748b] mb-3">
-							Filter by Category
-						</h4>
-						<div className="grid grid-cols-2 gap-2">
-							<button
-								type="button"
-								onClick={() => {
-									setFilters((prev) => ({ ...prev, category: undefined }));
-									setActiveFilter(null);
-								}}
-								className={`p-2 rounded-lg text-sm transition-colors ${
-									!filters.category
-										? "bg-[#69b4cd] text-white"
-										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
-								}`}
-							>
-								All Categories
-							</button>
-							{categories.map((category) => (
+				{/* Filter Dropdowns - Only show for regular expenses and items */}
+				{(expenseType === "regular" || expenseType === "items") &&
+					activeFilter === "category" && (
+						<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
+							<h4 className="text-sm font-medium text-[#64748b] mb-3">
+								Filter by Category
+							</h4>
+							<div className="grid grid-cols-2 gap-2">
 								<button
-									key={category.id}
 									type="button"
 									onClick={() => {
-										setFilters((prev) => ({
-											...prev,
-											category: category.name,
-										}));
+										setFilters((prev) => ({ ...prev, category: undefined }));
 										setActiveFilter(null);
 									}}
 									className={`p-2 rounded-lg text-sm transition-colors ${
-										filters.category === category.name
+										!filters.category
 											? "bg-[#69b4cd] text-white"
 											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 									}`}
 								>
-									{category.name}
+									All Categories
 								</button>
-							))}
+								{categories.map((category) => (
+									<button
+										key={category.id}
+										type="button"
+										onClick={() => {
+											setFilters((prev) => ({
+												...prev,
+												category: category.name,
+											}));
+											setActiveFilter(null);
+										}}
+										className={`p-2 rounded-lg text-sm transition-colors ${
+											filters.category === category.name
+												? "bg-[#69b4cd] text-white"
+												: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+										}`}
+									>
+										{category.name}
+									</button>
+								))}
+							</div>
 						</div>
-					</div>
-				)}
+					)}
 
-				{expenseType === "regular" && activeFilter === "emotion" && (
-					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
-						<h4 className="text-sm font-medium text-[#64748b] mb-3">
-							Filter by Emotion
-						</h4>
-						<div className="grid grid-cols-3 gap-2">
-							<button
-								type="button"
-								onClick={() => {
-									setFilters((prev) => ({ ...prev, emotion: undefined }));
-									setActiveFilter(null);
-								}}
-								className={`p-2 rounded-lg text-sm transition-colors ${
-									!filters.emotion
-										? "bg-[#69b4cd] text-white"
-										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
-								}`}
-							>
-								All Emotions
-							</button>
-							{[
-								{ key: "happy", label: "😊 Happy", value: "happy" },
-								{ key: "sad", label: "😢 Sad", value: "sad" },
-								{ key: "neutral", label: "😐 Neutral", value: "neutral" },
-								{ key: "regret", label: "😤 Regret", value: "regret" },
-								{ key: "joy", label: "😄 Joy", value: "joy" },
-								{ key: "like", label: "👍 Like", value: "like" },
-								{ key: "dislike", label: "👎 Dislike", value: "dislike" },
-							].map((emotion) => (
+				{(expenseType === "regular" || expenseType === "items") &&
+					activeFilter === "emotion" && (
+						<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
+							<h4 className="text-sm font-medium text-[#64748b] mb-3">
+								Filter by Emotion
+							</h4>
+							<div className="grid grid-cols-3 gap-2">
 								<button
-									key={emotion.key}
 									type="button"
 									onClick={() => {
-										setFilters((prev) => ({ ...prev, emotion: emotion.value }));
+										setFilters((prev) => ({ ...prev, emotion: undefined }));
 										setActiveFilter(null);
 									}}
 									className={`p-2 rounded-lg text-sm transition-colors ${
-										filters.emotion === emotion.value
+										!filters.emotion
 											? "bg-[#69b4cd] text-white"
 											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 									}`}
 								>
-									{emotion.label}
+									All Emotions
 								</button>
-							))}
+								{[
+									{ key: "happy", label: "😊 Happy", value: "happy" },
+									{ key: "sad", label: "😢 Sad", value: "sad" },
+									{ key: "neutral", label: "😐 Neutral", value: "neutral" },
+									{ key: "regret", label: "😤 Regret", value: "regret" },
+									{ key: "joy", label: "😄 Joy", value: "joy" },
+									{ key: "like", label: "👍 Like", value: "like" },
+									{ key: "dislike", label: "👎 Dislike", value: "dislike" },
+								].map((emotion) => (
+									<button
+										key={emotion.key}
+										type="button"
+										onClick={() => {
+											setFilters((prev) => ({
+												...prev,
+												emotion: emotion.value,
+											}));
+											setActiveFilter(null);
+										}}
+										className={`p-2 rounded-lg text-sm transition-colors ${
+											filters.emotion === emotion.value
+												? "bg-[#69b4cd] text-white"
+												: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+										}`}
+									>
+										{emotion.label}
+									</button>
+								))}
+							</div>
 						</div>
-					</div>
-				)}
+					)}
 
-				{expenseType === "regular" && activeFilter === "date" && (
-					<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
-						<h4 className="text-sm font-medium text-[#64748b] mb-3">
-							Filter by Date
-						</h4>
-						<div className="grid grid-cols-2 gap-2">
-							<button
-								type="button"
-								onClick={() => {
-									setFilters((prev) => ({ ...prev, dateRange: undefined }));
-									setActiveFilter(null);
-								}}
-								className={`p-2 rounded-lg text-sm transition-colors ${
-									!filters.dateRange
-										? "bg-[#69b4cd] text-white"
-										: "bg-gray-100 text-gray-700 hover:bg-gray-200"
-								}`}
-							>
-								All Time
-							</button>
-							{[
-								{ key: "today", label: "Today", value: "today" },
-								{ key: "week", label: "This Week", value: "week" },
-								{ key: "month", label: "This Month", value: "month" },
-								{ key: "year", label: "This Year", value: "year" },
-							].map((period) => (
+				{(expenseType === "regular" || expenseType === "items") &&
+					activeFilter === "date" && (
+						<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
+							<h4 className="text-sm font-medium text-[#64748b] mb-3">
+								Filter by Date
+							</h4>
+							<div className="grid grid-cols-2 gap-2">
 								<button
-									key={period.key}
 									type="button"
 									onClick={() => {
-										setFilters((prev) => ({
-											...prev,
-											dateRange: period.value,
-										}));
+										setFilters((prev) => ({ ...prev, dateRange: undefined }));
 										setActiveFilter(null);
 									}}
 									className={`p-2 rounded-lg text-sm transition-colors ${
-										filters.dateRange === period.value
+										!filters.dateRange
 											? "bg-[#69b4cd] text-white"
 											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 									}`}
 								>
-									{period.label}
+									All Time
 								</button>
-							))}
+								{[
+									{ key: "today", label: "Today", value: "today" },
+									{ key: "week", label: "This Week", value: "week" },
+									{ key: "month", label: "This Month", value: "month" },
+									{ key: "year", label: "This Year", value: "year" },
+								].map((period) => (
+									<button
+										key={period.key}
+										type="button"
+										onClick={() => {
+											setFilters((prev) => ({
+												...prev,
+												dateRange: period.value,
+											}));
+											setActiveFilter(null);
+										}}
+										className={`p-2 rounded-lg text-sm transition-colors ${
+											filters.dateRange === period.value
+												? "bg-[#69b4cd] text-white"
+												: "bg-gray-100 text-gray-700 hover:bg-gray-200"
+										}`}
+									>
+										{period.label}
+									</button>
+								))}
+							</div>
 						</div>
-					</div>
-				)}
+					)}
 
 				{/* Add Expense Button - Only for regular expenses */}
 				{expenseType === "regular" && (
@@ -491,6 +509,8 @@ export const Expenses = () => {
 				<div className="space-y-4 pb-32">
 					{expenseType === "regular" ? (
 						<ExpenseList filters={filters} />
+					) : expenseType === "items" ? (
+						<ExpenseItemsList filters={filters} />
 					) : (
 						<RecurringExpenseList
 							recurringExpenses={recurringExpenses}

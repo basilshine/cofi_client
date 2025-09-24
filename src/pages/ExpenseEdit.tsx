@@ -26,7 +26,7 @@ import {
 import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 // Telegram WebApp types for proper typing (flexible interface)
 interface TelegramWebApp {
@@ -51,6 +51,7 @@ interface TelegramWebApp {
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
 	const { id } = useParams<{ id: string }>();
+	const [searchParams] = useSearchParams();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const { isAuthenticated, user } = useAuth();
@@ -69,6 +70,9 @@ export const ExpenseEdit = () => {
 		category: undefined,
 	});
 	const [newCategoryName, setNewCategoryName] = useState("");
+
+	// Get item ID from URL parameters for anchoring to specific item
+	const itemId = searchParams.get("item");
 
 	// Determine if this is add mode (no ID) or edit mode (has ID)
 	const isAddMode = !id;
@@ -205,6 +209,23 @@ export const ExpenseEdit = () => {
 	useEffect(() => {
 		if (isEditMode && expense?.items) {
 			setEditingItems(expense.items);
+
+			// If there's an item ID in the URL, expand that specific item
+			if (itemId) {
+				const itemIndex = expense.items.findIndex(
+					(item) => item.id?.toString() === itemId,
+				);
+				if (itemIndex !== -1) {
+					setExpandedItems(new Set([itemIndex]));
+					// Scroll to the item after a short delay to ensure it's rendered
+					setTimeout(() => {
+						const element = document.getElementById(`item-${itemIndex}`);
+						if (element) {
+							element.scrollIntoView({ behavior: "smooth", block: "center" });
+						}
+					}, 100);
+				}
+			}
 		} else if (isAddMode && editingItems.length === 0) {
 			// Initialize with one empty item for add mode
 			setEditingItems([
@@ -216,7 +237,7 @@ export const ExpenseEdit = () => {
 				} as components["schemas"]["ExpenseItem"],
 			]);
 		}
-	}, [expense, isAddMode, isEditMode, editingItems.length]);
+	}, [expense, isAddMode, isEditMode, editingItems.length, itemId]);
 
 	const updateMutation = useMutation({
 		mutationFn: (data: Partial<components["schemas"]["Expense"]>) => {
@@ -273,8 +294,13 @@ export const ExpenseEdit = () => {
 					user,
 				});
 			} else {
-				// Regular web navigation
-				navigate("/expenses");
+				// Regular web navigation - return to where we came from
+				const returnTo = searchParams.get("returnTo");
+				if (returnTo) {
+					navigate(returnTo);
+				} else {
+					navigate("/expenses");
+				}
 			}
 		},
 		onError: (error) => {
@@ -317,8 +343,13 @@ export const ExpenseEdit = () => {
 					user,
 				});
 			} else {
-				// Regular web navigation
-				navigate("/expenses");
+				// Regular web navigation - return to where we came from
+				const returnTo = searchParams.get("returnTo");
+				if (returnTo) {
+					navigate(returnTo);
+				} else {
+					navigate("/expenses");
+				}
 			}
 		},
 		onError: (error) => {
@@ -677,6 +708,7 @@ export const ExpenseEdit = () => {
 						{editingItems.map((item, index) => (
 							<div
 								key={item.id || `item-${index}`}
+								id={`item-${index}`}
 								className="bg-white rounded-xl shadow-sm"
 							>
 								{/* Collapsed View */}

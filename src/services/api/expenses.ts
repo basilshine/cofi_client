@@ -21,6 +21,14 @@ export interface PaginatedExpensesResponse {
 	has_more: boolean;
 }
 
+export interface PaginatedExpenseItemsResponse {
+	expense_items: components["schemas"]["ExpenseItem"][];
+	total_count: number;
+	page: number;
+	limit: number;
+	has_more: boolean;
+}
+
 export const expensesService = {
 	getExpenses: async () => {
 		try {
@@ -219,6 +227,56 @@ export const expensesService = {
 			return response.data as components["schemas"]["Category"][];
 		} catch (error) {
 			LogRocket.error("[expensesService.getMostUsedCategories] Failed:", error);
+			throw error;
+		}
+	},
+
+	getExpenseItems: async () => {
+		try {
+			LogRocket.log("[expensesService.getExpenseItems] Starting request");
+			const response = await apiService.expenses.listItems();
+			LogRocket.log("[expensesService.getExpenseItems] Success:", {
+				count: response.data?.length || 0,
+				data: response.data,
+			});
+			return response.data as components["schemas"]["ExpenseItem"][];
+		} catch (error) {
+			LogRocket.error("[expensesService.getExpenseItems] Failed:", error);
+			throw error;
+		}
+	},
+
+	getExpenseItemsWithFilters: async (
+		filters: ExpenseFilters,
+	): Promise<PaginatedExpenseItemsResponse> => {
+		try {
+			LogRocket.log(
+				"[expensesService.getExpenseItemsWithFilters] Starting request",
+				filters,
+			);
+
+			// Create query parameters
+			const params = new URLSearchParams();
+			if (filters.category) params.append("category", filters.category);
+			if (filters.emotion) params.append("emotion", filters.emotion);
+			if (filters.dateRange) params.append("date_range", filters.dateRange);
+			if (filters.search) params.append("search", filters.search);
+			if (filters.page) params.append("page", filters.page.toString());
+			if (filters.limit) params.append("limit", filters.limit.toString());
+
+			const url = `/api/v1/finances/expenses/items?${params.toString()}`;
+			const response = await apiService.expenses.listItemsWithFilters(url);
+
+			LogRocket.log(
+				"[expensesService.getExpenseItemsWithFilters] Success:",
+				response.data,
+			);
+			return response.data as PaginatedExpenseItemsResponse;
+		} catch (error) {
+			LogRocket.error(
+				"[expensesService.getExpenseItemsWithFilters] Failed:",
+				error,
+			);
 			throw error;
 		}
 	},
