@@ -11,7 +11,7 @@ interface WebAppLayoutProps {
 
 export const WebAppLayout = ({
 	children,
-	title = "Cofilance",
+	title = "Ceits",
 	showBackButton = false,
 }: WebAppLayoutProps) => {
 	const navigate = useNavigate();
@@ -58,7 +58,9 @@ export const WebAppLayout = ({
 			path: "/expenses",
 			icon: Wallet,
 			label: "Expenses",
-			isActive: isActive("/expenses"),
+			isActive:
+				isActive("/expenses") ||
+				/^\/spaces\/[^/]+\/expenses/.test(location.pathname),
 		},
 		{
 			path: "/dashboard/analytics",

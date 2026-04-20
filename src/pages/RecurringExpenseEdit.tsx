@@ -36,8 +36,7 @@ export const RecurringExpenseEdit = () => {
 		amount: 0,
 		interval: "monthly",
 		startDate: new Date().toISOString().split("T")[0], // Today's date in YYYY-MM-DD format
-		categoryId: undefined,
-		category: undefined,
+		tagLabel: "",
 	});
 	const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -66,20 +65,16 @@ export const RecurringExpenseEdit = () => {
 		enabled: isEditMode,
 	});
 
-	// Fetch user categories
-	const { data: categories = [] } = useQuery<
-		components["schemas"]["Category"][]
-	>({
-		queryKey: ["categories", "user"],
+	const { data: userTags = [] } = useQuery<components["schemas"]["Tag"][]>({
+		queryKey: ["expenses", "tags", user?.language],
 		queryFn: () => {
-			LogRocket.log("[RecurringExpenseEdit] getUserCategories queryFn");
-			return apiService.categories.list().then((res) => {
-				LogRocket.log(
-					"[RecurringExpenseEdit] getUserCategories result",
-					res.data,
-				);
-				return res.data;
-			});
+			LogRocket.log("[RecurringExpenseEdit] getUserTags queryFn");
+			return apiService.expenses
+				.tags({ language: user?.language ?? "en" })
+				.then((res) => {
+					LogRocket.log("[RecurringExpenseEdit] getUserTags result", res.data);
+					return res.data;
+				});
 		},
 		enabled: isAuthenticated,
 	});
@@ -87,6 +82,9 @@ export const RecurringExpenseEdit = () => {
 	// Initialize form data when recurring expense data is available
 	useEffect(() => {
 		if (isEditMode && recurringExpense) {
+			const raw = recurringExpense as {
+				tag_label?: string;
+			};
 			setFormData({
 				name: recurringExpense.name || "",
 				amount: recurringExpense.amount || 0,
@@ -94,8 +92,7 @@ export const RecurringExpenseEdit = () => {
 				startDate: recurringExpense.startDate
 					? new Date(recurringExpense.startDate).toISOString().split("T")[0]
 					: new Date().toISOString().split("T")[0],
-				categoryId: recurringExpense.categoryId,
-				category: recurringExpense.category,
+				tagLabel: recurringExpense.tagLabel ?? raw.tag_label ?? "recurring",
 			});
 		}
 	}, [recurringExpense, isEditMode]);
@@ -177,8 +174,8 @@ export const RecurringExpenseEdit = () => {
 			errors.startDate = "Start date is required";
 		}
 
-		if (!formData.categoryId) {
-			errors.category = "Category is required";
+		if (!formData.tagLabel?.trim()) {
+			errors.tagLabel = "Tag label is required";
 		}
 
 		setFormErrors(errors);
@@ -213,7 +210,7 @@ export const RecurringExpenseEdit = () => {
 
 	const handleInputChange = (
 		field: keyof components["schemas"]["RecurringExpense"],
-		value: string | number | components["schemas"]["Category"] | undefined,
+		value: string | number | undefined,
 	) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 		// Clear field error when user starts typing
@@ -307,46 +304,41 @@ export const RecurringExpenseEdit = () => {
 							)}
 						</div>
 
-						{/* Category Field */}
+						{/* Tag label (stored on recurring; applied to generated items) */}
 						<div>
 							<Label
-								htmlFor="category"
+								htmlFor="tagLabel"
 								className="text-[#64748b] text-sm font-medium"
 							>
-								Category
+								Tag label
 							</Label>
-							<Select
-								value={formData.category?.name || ""}
-								onValueChange={(value) => {
-									const selectedCategory = categories.find(
-										(cat) => cat.name === value,
-									);
-									handleInputChange("categoryId", selectedCategory?.id);
-									handleInputChange("category", selectedCategory);
-								}}
-							>
-								<SelectTrigger className="bg-[#f8fafc] border-gray-200 focus:border-[#47c1ea] focus:ring-[#47c1ea] text-[#1e3a8a]">
-									<div className="flex items-center gap-2">
-										<Tag size={16} className="text-[#64748b]" />
-										<SelectValue placeholder="Select category" />
-									</div>
-								</SelectTrigger>
-								<SelectContent>
-									{categories.map((category) => (
-										<SelectItem key={category.id} value={category.name || ""}>
-											{category.name}
-										</SelectItem>
+							<Input
+								id="tagLabel"
+								value={formData.tagLabel ?? ""}
+								onChange={(e) => handleInputChange("tagLabel", e.target.value)}
+								placeholder="e.g. food, rent, subscription"
+								className="bg-[#f8fafc] border-gray-200 focus:border-[#47c1ea] focus:ring-[#47c1ea] text-[#1e3a8a]"
+							/>
+							{userTags.length > 0 && (
+								<div className="mt-2 flex flex-wrap gap-2">
+									{userTags.slice(0, 8).map((tag) => (
+										<button
+											key={tag.id ?? tag.name}
+											type="button"
+											onClick={() =>
+												handleInputChange("tagLabel", tag.name ?? "")
+											}
+											className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-[#1e3a8a] hover:bg-[#e0f2f7]"
+										>
+											<Tag size={14} className="text-[#64748b]" />
+											{tag.name}
+										</button>
 									))}
-									{categories.length === 0 && (
-										<SelectItem value="" disabled>
-											No categories found
-										</SelectItem>
-									)}
-								</SelectContent>
-							</Select>
-							{formErrors.category && (
+								</div>
+							)}
+							{formErrors.tagLabel && (
 								<p className="text-red-500 text-xs mt-1">
-									{formErrors.category}
+									{formErrors.tagLabel}
 								</p>
 							)}
 						</div>

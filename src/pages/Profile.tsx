@@ -92,7 +92,7 @@ export const Profile = () => {
 		const confirmMessage = `⚠️ WARNING: This will permanently delete ALL your data including:
 
 • All expenses and expense items
-• All categories you've created
+• All tags you've created
 • All tags and their associations
 • All recurring expense schedules
 • All goals and reminders
@@ -791,7 +791,7 @@ Type "DELETE ALL DATA" to confirm:`;
 								</p>
 								<ul className="text-xs text-[#92400e] mt-1 space-y-1">
 									<li>• All expenses and expense items</li>
-									<li>• All categories you've created</li>
+									<li>• All tags you've created</li>
 									<li>• All tags and their associations</li>
 									<li>• All recurring expense schedules</li>
 									<li>• All goals and reminders</li>

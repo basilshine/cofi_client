@@ -2,6 +2,7 @@ import { apiService } from "@/services/api";
 import { expensesService } from "@/services/api/expenses";
 import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
+import { expenseAddPath } from "@/utils/expenseRoutes";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { ExpenseItemsList } from "@components/expenses/ExpenseItemsList";
 import { ExpenseList } from "@components/expenses/ExpenseList";
@@ -14,14 +15,14 @@ import { useQuery } from "@tanstack/react-query";
 import LogRocket from "logrocket";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 // Filter types
-type FilterType = "category" | "date" | "emotion" | null;
+type FilterType = "tag" | "date" | "emotion" | null;
 type ExpenseType = "regular" | "items" | "recurring";
 
-interface ExpenseFilters {
-	category?: string;
+interface LocalExpenseFilters {
+	tag?: string;
 	dateRange?: string;
 	emotion?: string;
 	search?: string;
@@ -29,9 +30,15 @@ interface ExpenseFilters {
 
 export const Expenses = () => {
 	const { t } = useTranslation();
+	const { spaceId: spaceIdParam } = useParams<{ spaceId?: string }>();
+	const spaceId = (() => {
+		if (!spaceIdParam) return undefined;
+		const n = Number.parseInt(spaceIdParam, 10);
+		return Number.isFinite(n) ? n : undefined;
+	})();
 	const { isAuthenticated, isLoading: authLoading, user } = useAuth();
 	const [activeFilter, setActiveFilter] = useState<FilterType>(null);
-	const [filters, setFilters] = useState<ExpenseFilters>({});
+	const [filters, setFilters] = useState<LocalExpenseFilters>({});
 	const [searchTerm, setSearchTerm] = useState("");
 	const [expenseType, setExpenseType] = useState<ExpenseType>("regular");
 
@@ -56,26 +63,28 @@ export const Expenses = () => {
 		enabled: isAuthenticated, // Only run query if authenticated
 	});
 
-	// Fetch all user categories (not just most used)
-	const { data: categories = [], error: categoriesError } = useQuery<
-		components["schemas"]["Category"][]
+	// User tags for filters and legend
+	const { data: userTags = [], error: userTagsError } = useQuery<
+		components["schemas"]["Tag"][]
 	>({
-		queryKey: ["categories", "user"],
+		queryKey: ["expenses", "tags", user?.language],
 		queryFn: () => {
-			LogRocket.log("[Expenses] getUserCategories queryFn");
-			return apiService.categories.list().then((res) => {
-				LogRocket.log("[Expenses] getUserCategories result", res.data);
-				return res.data;
-			});
+			LogRocket.log("[Expenses] getUserTags queryFn");
+			return apiService.expenses
+				.tags({ language: user?.language ?? "en" })
+				.then((res) => {
+					LogRocket.log("[Expenses] getUserTags result", res.data);
+					return res.data;
+				});
 		},
-		enabled: isAuthenticated, // Only run query if authenticated
+		enabled: isAuthenticated,
 	});
 
 	// Fetch recurring expenses
 	const { data: recurringExpenses = [], error: recurringError } = useQuery<
 		components["schemas"]["RecurringExpense"][]
 	>({
-		queryKey: ["recurring", "expenses"],
+		queryKey: ["recurring", "expenses", user?.id],
 		queryFn: () => {
 			LogRocket.log("[Expenses] getRecurringExpenses queryFn");
 			return apiService.recurring.list().then((res) => {
@@ -83,7 +92,7 @@ export const Expenses = () => {
 				return res.data;
 			});
 		},
-		enabled: isAuthenticated && expenseType === "recurring",
+		enabled: isAuthenticated && expenseType === "recurring" && user?.id != null,
 	});
 
 	// Log results
@@ -97,13 +106,13 @@ export const Expenses = () => {
 	}, [summary, summaryError]);
 
 	useEffect(() => {
-		if (categories && categories.length > 0) {
-			LogRocket.log("[Expenses] Categories loaded:", categories);
+		if (userTags && userTags.length > 0) {
+			LogRocket.log("[Expenses] Tags loaded:", userTags);
 		}
-		if (categoriesError) {
-			LogRocket.error("[Expenses] Categories error:", categoriesError);
+		if (userTagsError) {
+			LogRocket.error("[Expenses] Tags error:", userTagsError);
 		}
-	}, [categories, categoriesError]);
+	}, [userTags, userTagsError]);
 
 	useEffect(() => {
 		if (recurringExpenses && recurringExpenses.length > 0) {
@@ -190,20 +199,39 @@ export const Expenses = () => {
 							</div>
 						</div>
 
-						{/* Legend */}
+						{/* Legend — top tags by spend from summary */}
 						<div className="flex flex-wrap justify-center gap-4 text-sm">
-							{categories.slice(0, 3).map((category, index) => {
-								const colors = ["#69b4cd", "#f7a35c", "#90ed7d"];
-								return (
-									<div key={category.name} className="flex items-center gap-2">
-										<span
-											className="w-3 h-3 rounded-full"
-											style={{ backgroundColor: colors[index] }}
-										/>
-										<span>{category.name}</span>
-									</div>
-								);
-							})}
+							{Object.entries(summary?.byTag ?? {})
+								.sort((a, b) => b[1] - a[1])
+								.slice(0, 3)
+								.map(([tagName], index) => {
+									const colors = ["#69b4cd", "#f7a35c", "#90ed7d"];
+									return (
+										<div key={tagName} className="flex items-center gap-2">
+											<span
+												className="w-3 h-3 rounded-full"
+												style={{ backgroundColor: colors[index % 3] }}
+											/>
+											<span>{tagName}</span>
+										</div>
+									);
+								})}
+							{Object.keys(summary?.byTag ?? {}).length === 0 &&
+								userTags.slice(0, 3).map((tag, index) => {
+									const colors = ["#69b4cd", "#f7a35c", "#90ed7d"];
+									return (
+										<div
+											key={tag.id ?? tag.name}
+											className="flex items-center gap-2"
+										>
+											<span
+												className="w-3 h-3 rounded-full"
+												style={{ backgroundColor: colors[index % 3] }}
+											/>
+											<span>{tag.name}</span>
+										</div>
+									);
+								})}
 						</div>
 					</div>
 				</Card>
@@ -277,9 +305,9 @@ export const Expenses = () => {
 					<div className="flex gap-3 mb-4 overflow-x-auto">
 						<button
 							type="button"
-							onClick={() => handleFilterClick("category")}
+							onClick={() => handleFilterClick("tag")}
 							className={`rounded-full px-4 py-2 flex items-center gap-x-2 shrink-0 hover:bg-opacity-80 transition-colors ${
-								activeFilter === "category"
+								activeFilter === "tag"
 									? "bg-[#69b4cd] text-white"
 									: "bg-[#e0f2f7] text-[#69b4cd]"
 							}`}
@@ -289,12 +317,12 @@ export const Expenses = () => {
 								height="20px"
 								viewBox="0 0 256 256"
 								width="20px"
-								aria-label="Filter by category"
+								aria-label="Filter by tag"
 								role="img"
 							>
 								<path d="M230.6,49.53A15.81,15.81,0,0,0,216,40H40A16,16,0,0,0,28.19,66.76l.08.09L96,139.17V216a16,16,0,0,0,24.87,13.32l32-21.34A16,16,0,0,0,160,194.66V139.17l67.74-72.32.08-.09A15.8,15.8,0,0,0,230.6,49.53ZM40,56h0Zm108.34,72.28A15.92,15.92,0,0,0,144,139.17v55.49L112,216V139.17a15.92,15.92,0,0,0-4.32-10.94L40,56H216Z" />
 							</svg>
-							<span>Category</span>
+							<span>{t("expenses.tag")}</span>
 						</button>
 						<button
 							type="button"
@@ -343,44 +371,44 @@ export const Expenses = () => {
 
 				{/* Filter Dropdowns - Only show for regular expenses and items */}
 				{(expenseType === "regular" || expenseType === "items") &&
-					activeFilter === "category" && (
+					activeFilter === "tag" && (
 						<div className="mb-4 bg-white rounded-xl p-4 shadow-sm">
 							<h4 className="text-sm font-medium text-[#64748b] mb-3">
-								Filter by Category
+								{t("expenses.filterByTag")}
 							</h4>
 							<div className="grid grid-cols-2 gap-2">
 								<button
 									type="button"
 									onClick={() => {
-										setFilters((prev) => ({ ...prev, category: undefined }));
+										setFilters((prev) => ({ ...prev, tag: undefined }));
 										setActiveFilter(null);
 									}}
 									className={`p-2 rounded-lg text-sm transition-colors ${
-										!filters.category
+										!filters.tag
 											? "bg-[#69b4cd] text-white"
 											: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 									}`}
 								>
-									All Categories
+									{t("expenses.allTags")}
 								</button>
-								{categories.map((category) => (
+								{userTags.map((tag) => (
 									<button
-										key={category.id}
+										key={tag.id ?? tag.name}
 										type="button"
 										onClick={() => {
 											setFilters((prev) => ({
 												...prev,
-												category: category.name,
+												tag: tag.name,
 											}));
 											setActiveFilter(null);
 										}}
 										className={`p-2 rounded-lg text-sm transition-colors ${
-											filters.category === category.name
+											filters.tag === tag.name
 												? "bg-[#69b4cd] text-white"
 												: "bg-gray-100 text-gray-700 hover:bg-gray-200"
 										}`}
 									>
-										{category.name}
+										{tag.name}
 									</button>
 								))}
 							</div>
@@ -497,7 +525,7 @@ export const Expenses = () => {
 							asChild
 							className="w-full bg-[#69b4cd] hover:bg-[#69b4cd]/90 text-white rounded-full"
 						>
-							<Link to="/expenses/add">
+							<Link to={expenseAddPath(spaceId)}>
 								<Plus className="mr-2 h-4 w-4" />
 								{t("expenses.addExpense")}
 							</Link>
@@ -508,9 +536,9 @@ export const Expenses = () => {
 				{/* Expenses List */}
 				<div className="space-y-4 pb-32">
 					{expenseType === "regular" ? (
-						<ExpenseList filters={filters} />
+						<ExpenseList filters={filters} spaceId={spaceId} />
 					) : expenseType === "items" ? (
-						<ExpenseItemsList filters={filters} />
+						<ExpenseItemsList filters={filters} spaceId={spaceId} />
 					) : (
 						<RecurringExpenseList
 							recurringExpenses={recurringExpenses}

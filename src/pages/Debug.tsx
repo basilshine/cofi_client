@@ -98,15 +98,15 @@ export const Debug = () => {
 				}
 			}
 
-			// Fetch analytics: most used categories
+			// Most-used tags (B9)
 			try {
-				const categories = await expensesService.getMostUsedCategories();
-				results.analyticsCategories = {
+				const tagUsage = await expensesService.getMostUsedTags();
+				results.mostUsedTags = {
 					success: true,
-					data: categories,
+					data: tagUsage,
 				};
 			} catch (error: unknown) {
-				results.analyticsCategories = {
+				results.mostUsedTags = {
 					success: false,
 					error: error instanceof Error ? error.message : "Unknown error",
 				};

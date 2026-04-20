@@ -295,6 +295,43 @@ function AppContent() {
 						)
 					}
 				/>
+				{/* Space-scoped expense routes (same screens; `spaceId` in path for vendors / tenant context) */}
+				<Route
+					path="/spaces/:spaceId/expenses"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Expenses">
+								<Expenses />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect() || <LoadingScreen />
+						)
+					}
+				/>
+				<Route
+					path="/spaces/:spaceId/expenses/add"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Add Expense" showBackButton={true}>
+								<ExpenseEdit />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect() || <LoadingScreen />
+						)
+					}
+				/>
+				<Route
+					path="/spaces/:spaceId/expenses/:id/edit"
+					element={
+						isAuthenticated ? (
+							<AppLayout title="Edit Expense" showBackButton={true}>
+								<ExpenseEdit />
+							</AppLayout>
+						) : (
+							getUnauthenticatedRedirect() || <LoadingScreen />
+						)
+					}
+				/>
 				<Route
 					path="/recurring/add"
 					element={

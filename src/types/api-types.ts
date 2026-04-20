@@ -100,9 +100,73 @@ export interface paths {
 				cookie?: never;
 			};
 			requestBody?: never;
-			responses: never;
+			responses: {
+				/** @description Current user */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["User"];
+					};
+				};
+				/** @description Unauthorized */
+				401: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
 		};
 		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/auth/profile": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		/** Update current user profile */
+		put: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["ProfileUpdateRequest"];
+				};
+			};
+			responses: {
+				/** @description Updated user */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["User"];
+					};
+				};
+				/** @description Unauthorized */
+				401: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
 		post?: never;
 		delete?: never;
 		options?: never;
@@ -163,66 +227,6 @@ export interface paths {
 					};
 					content: {
 						"application/json": components["schemas"]["Expense"];
-					};
-				};
-			};
-		};
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/api/v1/categories": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** Get categories */
-		get: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path?: never;
-				cookie?: never;
-			};
-			requestBody?: never;
-			responses: {
-				/** @description List of categories */
-				200: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Category"][];
-					};
-				};
-			};
-		};
-		put?: never;
-		/** Create category */
-		post: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path?: never;
-				cookie?: never;
-			};
-			requestBody: {
-				content: {
-					"application/json": components["schemas"]["Category"];
-				};
-			};
-			responses: {
-				/** @description Category created */
-				201: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Category"];
 					};
 				};
 			};
@@ -877,6 +881,97 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	"/api/v1/finances/vendors": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** List vendors (personal tenant, or space tenant when space_id is set) */
+		get: {
+			parameters: {
+				query?: {
+					/** @description When set, lists vendors for that space’s tenant (requires space membership). */
+					space_id?: number;
+				};
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description Vendors ordered by name */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Vendor"][];
+					};
+				};
+				/** @description Forbidden (e.g. not a member of the space) */
+				403: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		put?: never;
+		/** Create a vendor */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": {
+						name: string;
+						/**
+						 * Format: int64
+						 * @description When set, creates the vendor in that space’s tenant.
+						 */
+						space_id?: number;
+					};
+				};
+			};
+			responses: {
+				/** @description Vendor created */
+				201: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Vendor"];
+					};
+				};
+				/** @description Bad request */
+				400: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+				/** @description Forbidden */
+				403: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	"/api/v1/finances/expenses": {
 		parameters: {
 			query?: never;
@@ -981,7 +1076,7 @@ export interface paths {
 			};
 			requestBody: {
 				content: {
-					"application/json": components["schemas"]["Expense"];
+					"application/json": components["schemas"]["ExpensePatch"];
 				};
 			};
 			responses: {
@@ -993,6 +1088,13 @@ export interface paths {
 					content: {
 						"application/json": components["schemas"]["Expense"];
 					};
+				};
+				/** @description Invalid patch (currency, txn_date, status transition, vendor, etc.) */
+				400: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
 				};
 			};
 		};
@@ -1270,42 +1372,6 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	"/api/v1/finances/expenses/most-used-categories": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** Get most used categories */
-		get: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path?: never;
-				cookie?: never;
-			};
-			requestBody?: never;
-			responses: {
-				/** @description List of categories */
-				200: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Category"][];
-					};
-				};
-			};
-		};
-		put?: never;
-		post?: never;
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
 	"/api/v1/finances/expenses/most-used-tags": {
 		parameters: {
 			query?: never;
@@ -1337,153 +1403,6 @@ export interface paths {
 		put?: never;
 		post?: never;
 		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/api/v1/finances/categories": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** Get all categories */
-		get: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path?: never;
-				cookie?: never;
-			};
-			requestBody?: never;
-			responses: {
-				/** @description List of categories */
-				200: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Category"][];
-					};
-				};
-			};
-		};
-		put?: never;
-		/** Create a new category */
-		post: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path?: never;
-				cookie?: never;
-			};
-			requestBody: {
-				content: {
-					"application/json": components["schemas"]["Category"];
-				};
-			};
-			responses: {
-				/** @description Category created */
-				201: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Category"];
-					};
-				};
-			};
-		};
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/api/v1/finances/categories/{id}": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** Get category by ID */
-		get: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path: {
-					/** @description Category ID */
-					id: number;
-				};
-				cookie?: never;
-			};
-			requestBody?: never;
-			responses: {
-				/** @description Category */
-				200: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Category"];
-					};
-				};
-			};
-		};
-		/** Update category by ID */
-		put: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path: {
-					/** @description Category ID */
-					id: number;
-				};
-				cookie?: never;
-			};
-			requestBody: {
-				content: {
-					"application/json": components["schemas"]["Category"];
-				};
-			};
-			responses: {
-				/** @description Updated category */
-				200: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content: {
-						"application/json": components["schemas"]["Category"];
-					};
-				};
-			};
-		};
-		post?: never;
-		/** Delete category by ID */
-		delete: {
-			parameters: {
-				query?: never;
-				header?: never;
-				path: {
-					/** @description Category ID */
-					id: number;
-				};
-				cookie?: never;
-			};
-			requestBody?: never;
-			responses: {
-				/** @description Category deleted */
-				204: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content?: never;
-				};
-			};
-		};
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -1609,8 +1528,26 @@ export interface paths {
 			};
 		};
 		post?: never;
-		/** Delete recurring expense by ID */
-		delete: {
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/finances/recurring/{id}/pause": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/**
+		 * Pause recurring schedule
+		 * @description Stops future automatic runs until resumed. Does not delete the schedule.
+		 */
+		post: {
 			parameters: {
 				query?: never;
 				header?: never;
@@ -1622,15 +1559,57 @@ export interface paths {
 			};
 			requestBody?: never;
 			responses: {
-				/** @description Recurring expense deleted */
-				204: {
+				/** @description Updated recurring expense */
+				200: {
 					headers: {
 						[name: string]: unknown;
 					};
-					content?: never;
+					content: {
+						"application/json": components["schemas"]["RecurringExpense"];
+					};
 				};
 			};
 		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/finances/recurring/{id}/resume": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Resume paused recurring schedule */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					/** @description Recurring expense ID */
+					id: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description Updated recurring expense */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["RecurringExpense"];
+					};
+				};
+			};
+		};
+		delete?: never;
 		options?: never;
 		head?: never;
 		patch?: never;
@@ -2151,6 +2130,315 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	"/api/v1/spaces/{spaceId}/expenses/{expenseId}/thread": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Expense thread summary (counts, approvers) */
+		get: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					spaceId: number;
+					expenseId: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description Thread summary */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		put?: never;
+		/** Get or create expense discussion thread */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					spaceId: number;
+					expenseId: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description Thread record */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/spaces/{spaceId}/my-share": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Aggregate split amounts for current user in space (date range) */
+		get: {
+			parameters: {
+				query: {
+					from: string;
+					to: string;
+				};
+				header?: never;
+				path: {
+					spaceId: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description Total share for window */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/threads/{threadId}/messages": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** Paginated thread messages (cursor = message id) */
+		get: {
+			parameters: {
+				query?: {
+					cursor?: number;
+					limit?: number;
+				};
+				header?: never;
+				path: {
+					threadId: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: never;
+		};
+		put?: never;
+		/** Post a message in expense thread */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					threadId: number;
+				};
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": {
+						body?: string;
+					};
+				};
+			};
+			responses: {
+				/** @description Created message */
+				201: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/threads/{threadId}/approve": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Approve thread (idempotent) */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					threadId: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description OK */
+				204: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		/** Remove approval */
+		delete: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					threadId: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description OK */
+				204: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/threads/{threadId}/finalize": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/** Finalize thread (creator only); confirms draft expense if still draft */
+		post: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					threadId: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description OK */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
+	"/api/v1/finances/expenses/{id}/splits": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/** List expense split rows */
+		get: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					id: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description Split lines */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		/** Replace expense splits (creator only); amounts must sum to expense total */
+		put: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					id: number;
+				};
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": {
+						user_id?: number;
+						amount?: number;
+					}[];
+				};
+			};
+			responses: {
+				/** @description Saved */
+				204: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2188,60 +2476,169 @@ export interface components {
 			dateFormat?: string;
 			emailNotifications?: boolean;
 			darkMode?: boolean;
-		};
-		Category: {
-			/** Format: int64 */
-			id?: number;
-			name?: string;
-			color?: string;
-			icon?: string;
-			/** Format: int64 */
-			parentId?: number;
-			description?: string;
-		};
-		ExpenseItem: {
-			/** Format: int64 */
-			id?: number;
-			/** Format: int64 */
-			expenseId?: number;
-			amount?: number;
-			name?: string;
-			/** Format: int64 */
-			categoryId?: number;
-			category?: components["schemas"]["Category"];
-			emotion?: string;
-			tags?: components["schemas"]["Tag"][];
-			/** Format: date-time */
-			expenseDate?: string;
+			/** @description Versioned JSON preferences (financial reporting hints, optional tax hints when consented) */
+			userPreferences?: {
+				[key: string]: unknown;
+			};
+			/** @description Opt-in for storing tax-oriented hints under userPreferences.tax */
+			taxPreferencesConsent?: boolean;
 			/** Format: date-time */
 			createdAt?: string;
 			/** Format: date-time */
 			updatedAt?: string;
-			isRecurring?: boolean;
-			interval?: string;
+		};
+		ProfileUpdateRequest: {
+			/** Format: email */
+			email: string;
+			name: string;
+			country: string;
+			language: string;
+			/** @description IANA time zone name (e.g. Europe/London) */
+			timezone: string;
+			/** @description ISO 4217 alphabetic code (e.g. USD) */
+			currency: string;
+			/** @description One of MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD */
+			dateFormat: string;
+			emailNotifications?: boolean;
+			darkMode?: boolean;
+			userPreferences?: {
+				[key: string]: unknown;
+			};
+			taxPreferencesConsent?: boolean;
+		};
+		/** @description Line item on an expense (JSON uses snake_case from the API). */
+		ExpenseItem: {
+			/** Format: int64 */
+			id?: number;
+			/** Format: int64 */
+			tenant_id?: number;
+			/** Format: int64 */
+			expense_id?: number;
+			amount?: number;
+			name?: string;
+			emotion?: string;
+			tags?: components["schemas"]["Tag"][];
+			/** Format: date-time */
+			expense_date?: string;
+			/** Format: date-time */
+			created_at?: string;
+			/** Format: date-time */
+			updated_at?: string;
 		};
 		Tag: {
 			/** Format: int64 */
 			id?: number;
 			/** Format: int64 */
-			userId?: number;
+			tenant_id?: number;
+			/** Format: int64 */
+			user_id?: number;
 			name?: string;
 			color?: string;
 			language?: string;
+			/** Format: date-time */
+			created_at?: string;
+			/** Format: date-time */
+			updated_at?: string;
 		};
+		Vendor: {
+			/** Format: int64 */
+			id?: number;
+			/** Format: int64 */
+			tenant_id?: number;
+			name?: string;
+			/** Format: date-time */
+			created_at?: string;
+			/** Format: date-time */
+			updated_at?: string;
+		};
+		/** @description Vendor embedded in expense responses (id + display name). */
+		ExpenseVendorBrief: {
+			/** Format: int64 */
+			id?: number;
+			name?: string;
+		};
+		/** @description Business fields returned on expense GET/create/update (no expense_id). */
+		ExpenseBusinessMetaNested: {
+			invoice_ref?: string;
+			notes?: string;
+			extra?: {
+				[key: string]: unknown;
+			};
+		};
+		/** @description Full expense_business_meta row (when loaded from DB). */
+		ExpenseBusinessMeta: {
+			/** Format: int64 */
+			expense_id?: number;
+			/** Format: int64 */
+			tenant_id?: number;
+			invoice_ref?: string;
+			notes?: string;
+			extra?: {
+				[key: string]: unknown;
+			};
+			/** Format: date-time */
+			created_at?: string;
+			/** Format: date-time */
+			updated_at?: string;
+		};
+		/** @description Partial update for expense business meta (PUT expense). */
+		ExpenseBusinessMetaPatch: {
+			invoice_ref?: string;
+			notes?: string;
+			extra?: {
+				[key: string]: unknown;
+			};
+		};
+		/** @description Partial update for PUT /finances/expenses/{id}. Omitted keys are unchanged. Omit items to leave line items unchanged; send items (including []) to replace all lines. */
+		ExpensePatch: {
+			description?: string;
+			title?: string;
+			payee_text?: string;
+			currency?: string;
+			/** @description YYYY-MM-DD; empty string resets txn_date to today (UTC date). */
+			txn_date?: string;
+			/** @description Allowed transitions from draft — approved or cancelled. */
+			status?: string;
+			/** Format: int64 */
+			vendor_id?: number;
+			/** @description When true, clears vendor_id on the expense. */
+			vendor_id_clear?: boolean;
+			business_meta?: components["schemas"]["ExpenseBusinessMetaPatch"];
+			/** @description When true, deletes the expense_business_meta row. */
+			business_meta_clear?: boolean;
+			items?: components["schemas"]["ExpenseItem"][];
+		};
+		/** @description Expense wire shape (snake_case). Responses include computed amount and optional recurring/vendor/meta fields. */
 		Expense: {
 			/** Format: int64 */
 			id?: number;
 			/** Format: int64 */
-			userId?: number;
+			user_id?: number;
+			/** Format: int64 */
+			tenant_id?: number;
+			/** @description Sum of line item amounts (server-computed on reads). */
 			amount?: number;
+			title?: string;
+			payee_text?: string;
+			currency?: string;
+			/** Format: date */
+			txn_date?: string;
 			description?: string;
 			status?: string;
+			/** Format: int64 */
+			vendor_id?: number;
+			/** Format: int64 */
+			recurring_expense_id?: number;
 			/** Format: date-time */
-			createdAt?: string;
+			created_at?: string;
 			/** Format: date-time */
-			updatedAt?: string;
+			updated_at?: string;
 			items?: components["schemas"]["ExpenseItem"][];
+			/** Format: int64 */
+			recurring_id?: number;
+			recurring_paused?: boolean;
+			vendor?: components["schemas"]["ExpenseVendorBrief"];
+			business_meta?: components["schemas"]["ExpenseBusinessMetaNested"];
 		};
 		Goal: {
 			/** Format: int64 */
@@ -2262,18 +2659,32 @@ export interface components {
 			id?: number;
 			/** Format: int64 */
 			userId?: number;
-			/** Format: int64 */
+			/**
+			 * Format: int64
+			 * @description Telegram chat id for bot notification delivery; not the web Space id (use spaceId).
+			 */
 			chatId?: number;
+			/**
+			 * Format: int64
+			 * @description Web Space id when recurring originates from Chat; null for Telegram-only legacy rows.
+			 */
+			spaceId?: number;
+			/**
+			 * Format: int64
+			 * @description Optional chat message this recurring was created from (same space as spaceId).
+			 */
+			originMessageId?: number;
 			amount?: number;
 			name?: string;
-			/** Format: int64 */
-			categoryId?: number;
-			category?: components["schemas"]["Category"];
+			tagLabel?: string;
 			/** Format: date-time */
 			startDate?: string;
+			/** @description daily, weekly, monthly, yearly; minute and test only when RECURRING_ALLOW_TEST_INTERVALS or non-production. */
 			interval?: string;
 			/** Format: date-time */
 			nextRun?: string;
+			/** @description When true, the scheduler skips this schedule until resumed. */
+			paused?: boolean;
 		};
 		Notification: {
 			/** Format: int64 */
@@ -2297,7 +2708,7 @@ export interface components {
 		};
 		AnalyticsSummary: {
 			totalExpenses?: number;
-			byCategory?: {
+			byTag?: {
 				[key: string]: number;
 			};
 			lastMonth?: number;
@@ -2375,9 +2786,6 @@ export interface components {
 			expense_id?: number;
 		};
 		ExpenseSummary: {
-			byCategory?: {
-				[key: string]: number;
-			};
 			byTag?: {
 				[key: string]: number;
 			};

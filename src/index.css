@@ -6,65 +6,155 @@
 
 @layer base {
 	:root {
-		--background: 36 50% 90%; /* Cream background */
-		--foreground: 25 45% 25%; /* Coffee text */
+		/* Semantic tokens */
+		--bg: 36 50% 90%;
+		--surface: 33 35% 85%;
+		--surface-muted: 25 30% 85%;
+		--text-primary: 25 45% 25%;
+		--text-secondary: 25 35% 40%;
+		--accent: 28 90% 55%;
+		--accent-contrast: 36 50% 90%;
+		--border-subtle: 25 30% 80%;
+		--danger: 0 84.2% 60.2%;
+		--danger-contrast: 36 50% 90%;
+		--focus-ring: 28 90% 55%;
 
-		--card: 33 35% 85%; /* Latte */
-		--card-foreground: 25 45% 25%; /* Coffee text */
-
-		--popover: 33 35% 85%;
-		--popover-foreground: 25 45% 25%;
-
-		--primary: 28 90% 55%; /* Fox orange */
-		--primary-foreground: 36 50% 90%; /* Cream */
-
-		--secondary: 25 40% 30%; /* Sweater brown */
-		--secondary-foreground: 33 35% 85%; /* Latte */
-
-		--muted: 25 30% 85%;
-		--muted-foreground: 25 35% 40%;
-
-		--accent: 28 80% 60%; /* Lighter fox orange */
-		--accent-foreground: 36 50% 90%; /* Cream */
-
-		--destructive: 0 84.2% 60.2%;
-		--destructive-foreground: 36 50% 90%;
-
-		--border: 25 30% 80%;
-		--input: 25 30% 80%;
-		--ring: 28 90% 55%; /* Fox orange */
-
+		/* Compatibility tokens used by existing components */
+		--background: var(--bg);
+		--foreground: var(--text-primary);
+		--card: var(--surface);
+		--card-foreground: var(--text-primary);
+		--popover: var(--surface);
+		--popover-foreground: var(--text-primary);
+		--primary: var(--accent);
+		--primary-foreground: var(--accent-contrast);
+		--secondary: 25 40% 30%;
+		--secondary-foreground: 33 35% 85%;
+		--muted: var(--surface-muted);
+		--muted-foreground: var(--text-secondary);
+		--accent-foreground: var(--accent-contrast);
+		--destructive: var(--danger);
+		--destructive-foreground: var(--danger-contrast);
+		--border: var(--border-subtle);
+		--input: var(--border-subtle);
+		--ring: var(--focus-ring);
 		--radius: 0.75rem;
 	}
 
-	.dark {
-		--background: 25 45% 25%; /* Coffee */
-		--foreground: 33 35% 85%; /* Latte */
+	:root[data-theme="legacy-technical"] {
+		--bg: 36 50% 90%;
+		--surface: 33 35% 85%;
+		--surface-muted: 25 30% 85%;
+		--text-primary: 25 45% 25%;
+		--text-secondary: 25 35% 40%;
+		--accent: 28 90% 55%;
+		--accent-contrast: 36 50% 90%;
+		--border-subtle: 25 30% 80%;
+		--focus-ring: 28 90% 55%;
+		--secondary: 25 40% 30%;
+		--secondary-foreground: 33 35% 85%;
+	}
 
-		--card: 25 40% 30%; /* Sweater brown */
-		--card-foreground: 33 35% 85%; /* Latte */
+	:root[data-theme="ceits-editorial"] {
+		--bg: 32 33% 96%;
+		--surface: 34 28% 92%;
+		--surface-muted: 34 18% 88%;
+		--text-primary: 28 38% 16%;
+		--text-secondary: 26 20% 34%;
+		--accent: 22 78% 44%;
+		--accent-contrast: 38 46% 96%;
+		--border-subtle: 28 18% 80%;
+		--focus-ring: 22 78% 44%;
+		--secondary: 31 30% 25%;
+		--secondary-foreground: 38 46% 96%;
+	}
 
-		--popover: 25 40% 30%;
-		--popover-foreground: 33 35% 85%;
+	/*
+	 * Console workspace tint (set on html by ConsoleWorkspaceTheme).
+	 * Personal reinforces warm accents; Organization uses a rich emerald-tinted console.
+	 */
+	:root[data-console-workspace="personal"] {
+		--accent: 28 92% 52%;
+		--accent-contrast: 40 40% 98%;
+		--focus-ring: 28 92% 52%;
+	}
 
-		--primary: 28 90% 55%; /* Fox orange */
-		--primary-foreground: 36 50% 90%; /* Cream */
+	:root[data-console-workspace="business"] {
+		--bg: 156 22% 94%;
+		--surface: 154 20% 91%;
+		--surface-muted: 152 18% 86%;
+		--text-primary: 155 28% 15%;
+		--text-secondary: 150 14% 34%;
+		--accent: 158 58% 34%;
+		--accent-contrast: 138 40% 98%;
+		--border-subtle: 150 16% 78%;
+		--focus-ring: 156 55% 40%;
+		--secondary: 152 28% 22%;
+		--secondary-foreground: 138 40% 98%;
+		--background: var(--bg);
+		--foreground: var(--text-primary);
+		--card: var(--surface);
+		--card-foreground: var(--text-primary);
+		--popover: var(--surface);
+		--popover-foreground: var(--text-primary);
+		--primary: var(--accent);
+		--primary-foreground: var(--accent-contrast);
+		--muted: var(--surface-muted);
+		--muted-foreground: var(--text-secondary);
+		--accent-foreground: var(--accent-contrast);
+		--border: var(--border-subtle);
+		--input: var(--border-subtle);
+		--ring: var(--focus-ring);
+	}
 
-		--secondary: 33 35% 85%; /* Latte */
-		--secondary-foreground: 25 45% 25%; /* Coffee */
+	/* Quick capture hero: inverted surface for the primary capture surface */
+	.dashboard-qc-hero--personal {
+		--text-primary: 40 45% 98%;
+		--text-secondary: 36 28% 78%;
+		--surface: 25 52% 9%;
+		--surface-muted: 28 42% 15%;
+		--border-subtle: 32 38% 28%;
+		--bg: 25 48% 7%;
+		--accent: 38 96% 56%;
+		--accent-contrast: 25 52% 9%;
+		--focus-ring: 38 96% 68%;
+		border-radius: 1rem;
+		background: linear-gradient(
+			135deg,
+			hsl(25 58% 7%) 0%,
+			hsl(28 72% 14%) 42%,
+			hsl(18 48% 6%) 100%
+		);
+		box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5), 0 0 0 1px
+			hsl(32 85% 42% / 0.45), inset 0 1px 0 0 hsl(38 90% 55% / 0.12);
+		padding: 2px;
+	}
 
-		--muted: 25 35% 35%;
-		--muted-foreground: 33 35% 85%;
+	.dashboard-qc-hero--business {
+		--text-primary: 138 35% 97%;
+		--text-secondary: 145 22% 76%;
+		--surface: 150 42% 8%;
+		--surface-muted: 152 36% 13%;
+		--border-subtle: 148 30% 26%;
+		--bg: 148 45% 6%;
+		--accent: 151 68% 46%;
+		--accent-contrast: 150 42% 8%;
+		--focus-ring: 149 72% 52%;
+		border-radius: 1rem;
+		background: linear-gradient(
+			135deg,
+			hsl(150 48% 6%) 0%,
+			hsl(158 42% 11%) 45%,
+			hsl(142 38% 7%) 100%
+		);
+		box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.55), 0 0 0 1px
+			hsl(152 50% 32% / 0.5), inset 0 1px 0 0 hsl(151 65% 48% / 0.18);
+		padding: 2px;
+	}
 
-		--accent: 28 80% 60%; /* Lighter fox orange */
-		--accent-foreground: 36 50% 90%; /* Cream */
-
-		--destructive: 0 62.8% 30.6%;
-		--destructive-foreground: 33 35% 85%;
-
-		--border: 25 35% 35%;
-		--input: 25 35% 35%;
-		--ring: 28 90% 55%;
+	.dashboard-qc-hero__inner {
+		border-radius: 0.875rem;
+		background: hsl(var(--surface) / 0.94);
 	}
 }
 
@@ -94,26 +184,75 @@
 	}
 }
 
+@layer utilities {
+	/*
+	 * Chat / thread scrollbars — visible track + thumb so position is obvious.
+	 * Firefox: scrollbar-color thumb track. WebKit: styled track + pill thumb.
+	 */
+	.scrollbar-chat {
+		scrollbar-width: thin;
+		scrollbar-color: hsl(var(--primary) / 0.42) hsl(var(--muted) / 0.45);
+		overscroll-behavior-y: contain;
+		scroll-behavior: auto;
+	}
+	.scrollbar-chat::-webkit-scrollbar {
+		width: 9px;
+	}
+	.scrollbar-chat::-webkit-scrollbar-track {
+		margin: 6px 0;
+		border-radius: 9999px;
+		background: hsl(var(--muted) / 0.4);
+		border: 1px solid hsl(var(--border) / 0.35);
+	}
+	.scrollbar-chat::-webkit-scrollbar-thumb {
+		border-radius: 9999px;
+		background: linear-gradient(
+			180deg,
+			hsl(var(--primary) / 0.55),
+			hsl(var(--primary) / 0.3)
+		);
+		border: 2px solid hsl(var(--background));
+		background-clip: padding-box;
+		box-shadow: 0 0 0 1px hsl(var(--primary) / 0.12);
+	}
+	.scrollbar-chat::-webkit-scrollbar-thumb:hover {
+		background: linear-gradient(
+			180deg,
+			hsl(var(--primary) / 0.72),
+			hsl(var(--primary) / 0.45)
+		);
+	}
+	.scrollbar-chat::-webkit-scrollbar-thumb:active {
+		background: hsl(var(--primary) / 0.65);
+	}
+
+	/* Compact preview (dashboard widget): slightly narrower */
+	.scrollbar-chat-compact {
+		scrollbar-width: thin;
+		scrollbar-color: hsl(var(--primary) / 0.38) hsl(var(--muted) / 0.35);
+		overscroll-behavior-y: contain;
+	}
+	.scrollbar-chat-compact::-webkit-scrollbar {
+		width: 7px;
+	}
+	.scrollbar-chat-compact::-webkit-scrollbar-track {
+		margin: 4px 0;
+		border-radius: 9999px;
+		background: hsl(var(--muted) / 0.35);
+	}
+	.scrollbar-chat-compact::-webkit-scrollbar-thumb {
+		border-radius: 9999px;
+		background: hsl(var(--primary) / 0.42);
+		border: 2px solid transparent;
+		background-clip: padding-box;
+	}
+	.scrollbar-chat-compact::-webkit-scrollbar-thumb:hover {
+		background: hsl(var(--primary) / 0.58);
+	}
+}
+
 body {
 	margin: 0;
 	min-width: 320px;
 	min-height: 100vh;
-}
-
-:root {
-	color-scheme: light dark;
-	color: rgba(255, 255, 255, 0.87);
-	background-color: #242424;
-
-	font-synthesis: none;
-	text-rendering: optimizeLegibility;
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: light) {
-	:root {
-		color: #213547;
-		background-color: #ffffff;
-	}
 }

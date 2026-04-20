@@ -15,7 +15,7 @@ export type AuthProfile = {
 	lastUsedAt: number;
 };
 
-const readJson = <T,>(key: string): T | null => {
+const readJson = <T>(key: string): T | null => {
 	try {
 		const raw = localStorage.getItem(key);
 		if (!raw) return null;
@@ -30,7 +30,8 @@ const writeJson = (key: string, value: unknown) => {
 };
 
 const makeProfileId = () => {
-	if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+	if (typeof crypto !== "undefined" && "randomUUID" in crypto)
+		return crypto.randomUUID();
 	return `p_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 };
 
@@ -54,7 +55,8 @@ export const tokenStorage = {
 	listProfiles: (): AuthProfile[] => {
 		return readJson<AuthProfile[]>(PROFILES_KEY) ?? [];
 	},
-	getActiveProfileId: (): string | null => localStorage.getItem(ACTIVE_PROFILE_ID_KEY),
+	getActiveProfileId: (): string | null =>
+		localStorage.getItem(ACTIVE_PROFILE_ID_KEY),
 	getActiveProfile: (): AuthProfile | null => {
 		const activeId = tokenStorage.getActiveProfileId();
 		if (!activeId) return null;
@@ -77,7 +79,11 @@ export const tokenStorage = {
 		const now = Date.now();
 		const existing = tokenStorage
 			.listProfiles()
-			.find((p) => (input.email ? p.email === input.email : false) || p.label === input.label);
+			.find(
+				(p) =>
+					(input.email ? p.email === input.email : false) ||
+					p.label === input.label,
+			);
 
 		const next: AuthProfile = existing
 			? {
@@ -152,4 +158,3 @@ export const tokenStorage = {
 		localStorage.removeItem(REFRESH_TOKEN_KEY);
 	},
 };
-

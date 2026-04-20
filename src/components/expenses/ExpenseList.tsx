@@ -14,9 +14,11 @@ import { useTranslation } from "react-i18next";
 
 interface ExpenseListProps {
 	filters?: ExpenseFilters;
+	/** When set, edit links use `/spaces/:spaceId/expenses/...` for vendor context. */
+	spaceId?: number;
 }
 
-export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
+export const ExpenseList = ({ filters = {}, spaceId }: ExpenseListProps) => {
 	const { t } = useTranslation();
 	const { isAuthenticated } = useAuth();
 	const queryClient = useQueryClient();
@@ -137,6 +139,7 @@ export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 					index={index}
 					onDelete={handleDelete}
 					isDeleting={deleteMutation.isPending}
+					spaceId={spaceId}
 				/>
 			))}
 
@@ -164,11 +167,11 @@ export const ExpenseList = ({ filters = {} }: ExpenseListProps) => {
 			{expenses.length === 0 && !isLoading ? (
 				<div className="text-center py-8">
 					<p className="text-[#666666] text-sm">
-						{filters?.search || filters?.category || filters?.emotion
+						{filters?.search || filters?.tag || filters?.emotion
 							? "No expenses match your filters"
 							: t("expenses.noExpenses")}
 					</p>
-					{(filters?.search || filters?.category || filters?.emotion) && (
+					{(filters?.search || filters?.tag || filters?.emotion) && (
 						<p className="text-[#666666] text-xs mt-2">
 							Try adjusting your search or filters
 						</p>

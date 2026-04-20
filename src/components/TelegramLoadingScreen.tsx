@@ -65,7 +65,7 @@ export const TelegramLoadingScreen = ({
 				{/* Loading Text */}
 				<div className="mb-6">
 					<h2 className="text-2xl font-bold text-[#1e3a8a] mb-2">
-						Welcome to Cofilance
+						Welcome to Ceits
 					</h2>
 					<p className="text-[#64748b] text-lg min-h-[28px] transition-all duration-500">
 						{steps[currentStep]}
@@ -148,9 +148,9 @@ export const TelegramLoadingScreen = ({
 					</div>
 				)}
 
-				{/* Cofilance Branding */}
+				{/* Ceits Branding */}
 				<div className="mt-8 text-xs text-[#94a3b8]">
-					<p>Powered by Cofilance</p>
+					<p>Powered by Ceits</p>
 					<p>Your personal finance assistant</p>
 				</div>
 			</div>

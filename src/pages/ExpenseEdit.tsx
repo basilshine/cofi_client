@@ -2,6 +2,10 @@ import { apiService } from "@/services/api";
 import { expensesService } from "@/services/api/expenses";
 import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
+import { expenseListPath } from "@/utils/expenseRoutes";
+import { formatItemTagLabel } from "@/utils/expenseTags";
+
+type ExpensePatch = components["schemas"]["ExpensePatch"];
 import { LoadingScreen } from "@components/LoadingScreen";
 import { Button } from "@components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@components/ui/card";
@@ -14,7 +18,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@components/ui/select";
-import { Separator } from "@components/ui/separator";
 import { useAuth } from "@contexts/AuthContext";
 import { CaretDown, CaretUp, Plus, Trash, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -55,11 +58,28 @@ interface TelegramWebApp {
 
 export const ExpenseEdit = () => {
 	const { t } = useTranslation();
-	const { id } = useParams<{ id: string }>();
+	const { id, spaceId: spaceIdParam } = useParams<{
+		id?: string;
+		spaceId?: string;
+	}>();
 	const [searchParams] = useSearchParams();
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const { isAuthenticated, user } = useAuth();
+
+	const spaceIdFromRoute = (() => {
+		if (!spaceIdParam) return undefined;
+		const n = Number.parseInt(spaceIdParam, 10);
+		return Number.isFinite(n) ? n : undefined;
+	})();
+	const spaceIdRaw = searchParams.get("space_id");
+	const spaceIdFromQuery = (() => {
+		if (!spaceIdRaw) return undefined;
+		const n = Number.parseInt(spaceIdRaw, 10);
+		return Number.isFinite(n) ? n : undefined;
+	})();
+	const spaceId = spaceIdFromRoute ?? spaceIdFromQuery;
+	const expensesHomePath = expenseListPath(spaceId);
 	const [editingItems, setEditingItems] = useState<
 		components["schemas"]["ExpenseItem"][]
 	>([]);
@@ -72,9 +92,15 @@ export const ExpenseEdit = () => {
 		name: "",
 		amount: 0,
 		emotion: "😐",
-		category: undefined,
+		tags: [],
 	});
-	const [newCategoryName, setNewCategoryName] = useState("");
+
+	const [selectedVendorId, setSelectedVendorId] = useState<number | null>(null);
+	const [invoiceRef, setInvoiceRef] = useState("");
+	const [notes, setNotes] = useState("");
+	const [extraJson, setExtraJson] = useState("");
+	const [showVendorCreate, setShowVendorCreate] = useState(false);
+	const [newVendorName, setNewVendorName] = useState("");
 
 	// Get item ID from URL parameters for anchoring to specific item
 	const itemId = searchParams.get("item");
@@ -251,19 +277,41 @@ export const ExpenseEdit = () => {
 		enabled: isEditMode, // Only fetch if we're in edit mode
 	});
 
-	// Fetch user categories
-	const { data: categories = [] } = useQuery<
-		components["schemas"]["Category"][]
-	>({
-		queryKey: ["categories", "user"],
+	const { data: userTags = [] } = useQuery<components["schemas"]["Tag"][]>({
+		queryKey: ["expenses", "tags", user?.language],
 		queryFn: () => {
-			LogRocket.log("[ExpenseEdit] getUserCategories queryFn");
-			return apiService.categories.list().then((res) => {
-				LogRocket.log("[ExpenseEdit] getUserCategories result", res.data);
-				return res.data;
-			});
+			LogRocket.log("[ExpenseEdit] getUserTags queryFn");
+			return apiService.expenses
+				.tags({ language: user?.language ?? "en" })
+				.then((res) => {
+					LogRocket.log("[ExpenseEdit] getUserTags result", res.data);
+					return res.data;
+				});
 		},
 		enabled: isAuthenticated,
+	});
+
+	const { data: vendors = [] } = useQuery<components["schemas"]["Vendor"][]>({
+		queryKey: ["vendors", spaceId],
+		queryFn: () => expensesService.listVendors(spaceId),
+		enabled: isAuthenticated,
+	});
+
+	const sortedVendors = [...vendors].sort((a, b) =>
+		(a.name ?? "").localeCompare(b.name ?? ""),
+	);
+
+	const createVendorMutation = useMutation({
+		mutationFn: (name: string) =>
+			expensesService.createVendor(name.trim(), spaceId),
+		onSuccess: (created) => {
+			queryClient.invalidateQueries({ queryKey: ["vendors", spaceId] });
+			if (created.id !== undefined) {
+				setSelectedVendorId(created.id);
+			}
+			setShowVendorCreate(false);
+			setNewVendorName("");
+		},
 	});
 
 	// Update editing items when expense data changes or initialize for add mode
@@ -294,14 +342,27 @@ export const ExpenseEdit = () => {
 					name: "",
 					amount: 0,
 					emotion: "😐",
-					category: undefined,
+					tags: [],
 				} as components["schemas"]["ExpenseItem"],
 			]);
 		}
 	}, [expense, isAddMode, isEditMode, editingItems.length, itemId]);
 
+	useEffect(() => {
+		if (!expense?.id) return;
+		setSelectedVendorId(expense.vendor_id ?? expense.vendor?.id ?? null);
+		setInvoiceRef(expense.business_meta?.invoice_ref ?? "");
+		setNotes(expense.business_meta?.notes ?? "");
+		const extra = expense.business_meta?.extra;
+		setExtraJson(
+			extra && Object.keys(extra).length > 0
+				? JSON.stringify(extra, null, 2)
+				: "",
+		);
+	}, [expense?.id]);
+
 	const updateMutation = useMutation({
-		mutationFn: (data: Partial<components["schemas"]["Expense"]>) => {
+		mutationFn: (data: ExpensePatch) => {
 			LogRocket.log("[ExpenseEdit] updateMutation.mutationFn", { id, data });
 			if (!id) throw new Error("No expense ID provided");
 			return expensesService.updateExpense(id, data).then((res) => {
@@ -375,7 +436,7 @@ export const ExpenseEdit = () => {
 				if (returnTo) {
 					navigate(returnTo);
 				} else {
-					navigate("/expenses");
+					navigate(expensesHomePath);
 				}
 			}
 		},
@@ -386,7 +447,9 @@ export const ExpenseEdit = () => {
 	});
 
 	const createMutation = useMutation({
-		mutationFn: (data: Partial<components["schemas"]["Expense"]>) => {
+		mutationFn: (
+			data: Omit<components["schemas"]["Expense"], "id" | "user_id">,
+		) => {
 			LogRocket.log("[ExpenseEdit] createMutation.mutationFn", { data });
 			return expensesService.createExpense(data).then((res) => {
 				LogRocket.log("[ExpenseEdit] createMutation result", res);
@@ -426,7 +489,7 @@ export const ExpenseEdit = () => {
 				if (returnTo) {
 					navigate(returnTo);
 				} else {
-					navigate("/expenses");
+					navigate(expensesHomePath);
 				}
 			}
 		},
@@ -447,6 +510,39 @@ export const ExpenseEdit = () => {
 		}
 	}, []);
 
+	const parseExtraObject = (): Record<string, unknown> | null => {
+		const raw = extraJson.trim();
+		if (!raw) {
+			return {};
+		}
+		try {
+			const v = JSON.parse(raw) as unknown;
+			if (v === null || typeof v !== "object" || Array.isArray(v)) {
+				return null;
+			}
+			return v as Record<string, unknown>;
+		} catch {
+			return null;
+		}
+	};
+
+	const handleVendorSelectChange = (value: string) => {
+		if (value === "__none__") {
+			setSelectedVendorId(null);
+			return;
+		}
+		const n = Number.parseInt(value, 10);
+		if (Number.isFinite(n)) {
+			setSelectedVendorId(n);
+		}
+	};
+
+	const handleCreateVendor = () => {
+		const name = newVendorName.trim();
+		if (!name) return;
+		createVendorMutation.mutate(name);
+	};
+
 	const handleSaveChanges = () => {
 		console.log("[ExpenseEdit] ===== HANDLE SAVE CHANGES STARTED =====");
 		console.log("[ExpenseEdit] Save button clicked - Starting save process");
@@ -460,29 +556,94 @@ export const ExpenseEdit = () => {
 			expenseStatus: expense?.status,
 		});
 
-		const expenseData: Partial<components["schemas"]["Expense"]> = {
-			items: editingItems,
-		};
+		for (const it of editingItems) {
+			const tagNames = (it.tags ?? [])
+				.map((x) => x.name)
+				.filter(Boolean) as string[];
+			if (tagNames.length === 0) {
+				window.alert(t("expenses.tagRequired"));
+				return;
+			}
+		}
+
+		const extraObj = parseExtraObject();
+		if (extraObj === null) {
+			window.alert(t("expenses.extraJsonInvalid"));
+			return;
+		}
+
+		const allMetaEmpty =
+			!invoiceRef.trim() && !notes.trim() && Object.keys(extraObj).length === 0;
 
 		if (isEditMode) {
 			if (!expense) return;
-			const updatedExpense: Partial<components["schemas"]["Expense"]> = {
-				...expense,
-				items: editingItems,
-				// Change status from "draft" to "approved" when editing in WebApp mode and came through Telegram link
-				...(isWebApp && cameThroughTelegramLink && expense.status === "draft"
-					? { status: "approved" }
-					: {}),
-			};
-			console.log(
-				"[ExpenseEdit] Updating expense with status:",
-				updatedExpense.status,
+
+			const hadMeta = Boolean(
+				expense.business_meta &&
+					(expense.business_meta.invoice_ref ||
+						expense.business_meta.notes ||
+						(expense.business_meta.extra &&
+							Object.keys(expense.business_meta.extra).length > 0)),
 			);
-			updateMutation.mutate(updatedExpense);
-		} else {
-			// Add mode - create new expense
-			createMutation.mutate(expenseData);
+			const hadVendor = Boolean(expense.vendor_id ?? expense.vendor?.id);
+
+			const patch: ExpensePatch = {
+				items: editingItems,
+			};
+
+			if (isWebApp && cameThroughTelegramLink && expense.status === "draft") {
+				patch.status = "approved";
+			}
+
+			if (selectedVendorId !== null) {
+				patch.vendor_id = selectedVendorId;
+			} else if (hadVendor) {
+				patch.vendor_id_clear = true;
+			}
+
+			if (allMetaEmpty) {
+				if (hadMeta) {
+					patch.business_meta_clear = true;
+				}
+			} else {
+				patch.business_meta = {
+					invoice_ref: invoiceRef.trim(),
+					notes: notes.trim(),
+					...(Object.keys(extraObj).length > 0 ? { extra: extraObj } : {}),
+				};
+			}
+
+			console.log("[ExpenseEdit] Updating expense with patch:", patch);
+			updateMutation.mutate(patch);
+			return;
 		}
+
+		const itemsPayload = editingItems.map((item) => ({
+			amount: item.amount ?? 0,
+			name: item.name ?? "",
+			emotion: item.emotion ?? "",
+			tags: (item.tags ?? []).map((x) => x.name).filter(Boolean) as string[],
+		}));
+
+		const createBody: Omit<components["schemas"]["Expense"], "id" | "user_id"> =
+			{
+				items:
+					itemsPayload as unknown as components["schemas"]["ExpenseItem"][],
+			};
+
+		if (selectedVendorId !== null) {
+			createBody.vendor_id = selectedVendorId;
+		}
+
+		if (!allMetaEmpty) {
+			createBody.business_meta = {
+				invoice_ref: invoiceRef.trim(),
+				notes: notes.trim(),
+				...(Object.keys(extraObj).length > 0 ? { extra: extraObj } : {}),
+			};
+		}
+
+		createMutation.mutate(createBody);
 	};
 
 	const handleCancel = () => {
@@ -500,7 +661,7 @@ export const ExpenseEdit = () => {
 			notifyCancelAndClose();
 		} else {
 			// Regular web navigation
-			navigate("/expenses");
+			navigate(expensesHomePath);
 		}
 	};
 
@@ -594,6 +755,15 @@ export const ExpenseEdit = () => {
 		setEditingItems(newItems);
 	};
 
+	const updateItemTags = (
+		index: number,
+		tags: components["schemas"]["Tag"][],
+	) => {
+		const newItems = [...editingItems];
+		newItems[index] = { ...newItems[index], tags };
+		setEditingItems(newItems);
+	};
+
 	const removeItem = (index: number) => {
 		const newItems = editingItems.filter((_, i) => i !== index);
 		setEditingItems(newItems);
@@ -615,7 +785,7 @@ export const ExpenseEdit = () => {
 				...editingItems,
 				newItem as components["schemas"]["ExpenseItem"],
 			]);
-			setNewItem({ name: "", amount: 0, emotion: "😐", category: undefined });
+			setNewItem({ name: "", amount: 0, emotion: "😐", tags: [] });
 			setNewItemStep(1);
 			setShowNewItemModal(false);
 		}
@@ -648,8 +818,8 @@ export const ExpenseEdit = () => {
 					<p className="text-destructive">
 						{error.message || t("expenses.notFound")}
 					</p>
-					<Button onClick={() => navigate("/expenses")} className="mt-4">
-						{t("common.goBack")}
+					<Button onClick={() => navigate(expensesHomePath)} className="mt-4">
+						{t("common.back")}
 					</Button>
 				</div>
 			</div>
@@ -662,8 +832,8 @@ export const ExpenseEdit = () => {
 			<div className="flex min-h-screen items-center justify-center bg-background">
 				<div className="text-center">
 					<p className="text-destructive">{t("expenses.notFound")}</p>
-					<Button onClick={() => navigate("/expenses")} className="mt-4">
-						{t("common.goBack")}
+					<Button onClick={() => navigate(expensesHomePath)} className="mt-4">
+						{t("common.back")}
 					</Button>
 				</div>
 			</div>
@@ -824,11 +994,144 @@ export const ExpenseEdit = () => {
 							<div className="text-right">
 								<p className="text-sm text-[#64748b]">Date</p>
 								<p className="font-medium text-[#1e3a8a]">
-									{isEditMode && expense?.createdAt
-										? new Date(expense.createdAt).toLocaleDateString()
+									{isEditMode && expense?.created_at
+										? new Date(expense.created_at).toLocaleDateString()
 										: "Today"}
 								</p>
 							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Vendor & business meta */}
+				<div className="mx-4">
+					<div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+						<h2 className="text-[#1e3a8a] text-lg font-semibold leading-tight">
+							{t("expenses.vendorSectionTitle")}
+						</h2>
+
+						<div className="space-y-2">
+							<Label
+								htmlFor="expense-vendor"
+								className="text-[#64748b] text-sm font-medium"
+							>
+								{t("expenses.vendor")}
+							</Label>
+							<Select
+								value={
+									selectedVendorId === null
+										? "__none__"
+										: String(selectedVendorId)
+								}
+								onValueChange={handleVendorSelectChange}
+							>
+								<SelectTrigger
+									id="expense-vendor"
+									className="bg-[#f8fafc] border-gray-200 focus:border-[#47c1ea] focus:ring-[#47c1ea] text-[#1e3a8a]"
+								>
+									<SelectValue placeholder={t("expenses.selectVendor")} />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="__none__">
+										{t("expenses.vendorNone")}
+									</SelectItem>
+									{sortedVendors
+										.filter((v) => v.id != null)
+										.map((v) => (
+											<SelectItem key={v.id} value={String(v.id)}>
+												{v.name}
+											</SelectItem>
+										))}
+								</SelectContent>
+							</Select>
+							<Button
+								type="button"
+								variant="outline"
+								className="w-full border-[#47c1ea] text-[#47c1ea] hover:bg-[#e0f2f7]"
+								onClick={() => setShowVendorCreate((x) => !x)}
+							>
+								<Plus className="h-4 w-4 mr-2" />
+								{t("expenses.addVendor")}
+							</Button>
+							{showVendorCreate && (
+								<div className="flex gap-2 pt-1">
+									<Input
+										id="new-vendor-name"
+										value={newVendorName}
+										onChange={(e) => setNewVendorName(e.target.value)}
+										placeholder={t("expenses.newVendorNamePlaceholder")}
+										className="bg-[#f8fafc] border-gray-200 flex-1"
+										onKeyDown={(e) => {
+											if (e.key === "Enter") {
+												e.preventDefault();
+												handleCreateVendor();
+											}
+										}}
+										aria-label={t("expenses.newVendorNamePlaceholder")}
+									/>
+									<Button
+										type="button"
+										className="bg-[#47c1ea] hover:bg-[#3ba8d4] text-white shrink-0"
+										disabled={
+											!newVendorName.trim() || createVendorMutation.isPending
+										}
+										onClick={handleCreateVendor}
+									>
+										{t("expenses.createVendor")}
+									</Button>
+								</div>
+							)}
+						</div>
+
+						<div className="space-y-2">
+							<Label
+								htmlFor="expense-invoice-ref"
+								className="text-[#64748b] text-sm font-medium"
+							>
+								{t("expenses.invoiceRef")}
+							</Label>
+							<Input
+								id="expense-invoice-ref"
+								value={invoiceRef}
+								onChange={(e) => setInvoiceRef(e.target.value)}
+								placeholder={t("expenses.invoiceRefPlaceholder")}
+								className="bg-[#f8fafc] border-gray-200"
+							/>
+						</div>
+
+						<div className="space-y-2">
+							<Label
+								htmlFor="expense-notes"
+								className="text-[#64748b] text-sm font-medium"
+							>
+								{t("expenses.businessNotes")}
+							</Label>
+							<textarea
+								id="expense-notes"
+								value={notes}
+								onChange={(e) => setNotes(e.target.value)}
+								rows={3}
+								placeholder={t("expenses.businessNotesPlaceholder")}
+								className="flex min-h-[80px] w-full rounded-md border border-gray-200 bg-[#f8fafc] px-3 py-2 text-sm text-[#1e3a8a] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#47c1ea]"
+							/>
+						</div>
+
+						<div className="space-y-2">
+							<Label
+								htmlFor="expense-extra-json"
+								className="text-[#64748b] text-sm font-medium"
+							>
+								{t("expenses.extraJson")}
+							</Label>
+							<textarea
+								id="expense-extra-json"
+								value={extraJson}
+								onChange={(e) => setExtraJson(e.target.value)}
+								rows={4}
+								placeholder={'{"key": "value"}'}
+								spellCheck={false}
+								className="font-mono flex min-h-[96px] w-full rounded-md border border-gray-200 bg-[#f8fafc] px-3 py-2 text-sm text-[#1e3a8a] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#47c1ea]"
+							/>
 						</div>
 					</div>
 				</div>
@@ -856,7 +1159,7 @@ export const ExpenseEdit = () => {
 											{item.name || "Unnamed Item"}
 										</p>
 										<p className="text-sm text-[#64748b]">
-											{item.category?.name || "Uncategorized"}
+											{formatItemTagLabel(item)}
 										</p>
 									</div>
 									<div className="flex items-center gap-2">
@@ -943,31 +1246,40 @@ export const ExpenseEdit = () => {
 
 											<div>
 												<Label
-													htmlFor={`item-category-${index}`}
+													htmlFor={`item-tag-${index}`}
 													className="text-[#64748b] text-sm font-medium"
 												>
-													Category
+													{t("expenses.tag")}
 												</Label>
 												<Select
-													onValueChange={(value) =>
-														updateItem(index, "category", value)
-													}
+													value={item.tags?.[0]?.name ?? ""}
+													onValueChange={(value) => {
+														const selected = userTags.find(
+															(t) => t.name === value,
+														);
+														updateItemTags(index, selected ? [selected] : []);
+													}}
 												>
-													<SelectTrigger className="bg-[#f8fafc] border-gray-200 focus:border-[#47c1ea] focus:ring-[#47c1ea] text-[#1e3a8a]">
-														<SelectValue placeholder="Select category" />
+													<SelectTrigger
+														id={`item-tag-${index}`}
+														className="bg-[#f8fafc] border-gray-200 focus:border-[#47c1ea] focus:ring-[#47c1ea] text-[#1e3a8a]"
+													>
+														<SelectValue
+															placeholder={t("expenses.selectTag")}
+														/>
 													</SelectTrigger>
 													<SelectContent>
-														{categories.map((category) => (
+														{userTags.map((tag) => (
 															<SelectItem
-																key={category.id}
-																value={category.name || ""}
+																key={tag.id ?? tag.name}
+																value={tag.name || ""}
 															>
-																{category.name}
+																{tag.name}
 															</SelectItem>
 														))}
-														{categories.length === 0 && (
+														{userTags.length === 0 && (
 															<SelectItem value="" disabled>
-																No categories found
+																{t("expenses.noTagsYet")}
 															</SelectItem>
 														)}
 													</SelectContent>
@@ -1075,7 +1387,7 @@ export const ExpenseEdit = () => {
 							<CardTitle className="text-[#1e3a8a]">
 								{newItemStep === 1 && "Item Description"}
 								{newItemStep === 2 && "Item Amount"}
-								{newItemStep === 3 && "Item Category"}
+								{newItemStep === 3 && t("expenses.itemTagStep")}
 								{newItemStep === 4 && "Emotional Feeling"}
 							</CardTitle>
 						</CardHeader>
@@ -1133,59 +1445,41 @@ export const ExpenseEdit = () => {
 							{newItemStep === 3 && (
 								<div>
 									<Label
-										htmlFor="new-item-category"
+										htmlFor="new-item-tag"
 										className="text-[#64748b] text-sm font-medium"
 									>
-										Category
+										{t("expenses.tag")}
 									</Label>
 									<Select
-										onValueChange={(value) =>
+										value={newItem.tags?.[0]?.name ?? ""}
+										onValueChange={(value) => {
+											const selected = userTags.find((t) => t.name === value);
 											setNewItem({
 												...newItem,
-												category: {
-													name: value,
-												} as components["schemas"]["Category"],
-											})
-										}
+												tags: selected ? [selected] : [],
+											});
+										}}
 									>
-										<SelectTrigger className="bg-[#f8fafc] border-gray-200 focus:border-[#47c1ea] focus:ring-[#47c1ea] text-[#1e3a8a]">
-											<SelectValue placeholder="Select category" />
+										<SelectTrigger
+											id="new-item-tag"
+											className="bg-[#f8fafc] border-gray-200 focus:border-[#47c1ea] focus:ring-[#47c1ea] text-[#1e3a8a]"
+										>
+											<SelectValue placeholder={t("expenses.selectTag")} />
 										</SelectTrigger>
 										<SelectContent>
-											{categories.map((category) => (
+											{userTags.map((tag) => (
 												<SelectItem
-													key={category.id}
-													value={category.name || ""}
+													key={tag.id ?? tag.name}
+													value={tag.name || ""}
 												>
-													{category.name}
+													{tag.name}
 												</SelectItem>
 											))}
-											{categories.length === 0 && (
+											{userTags.length === 0 && (
 												<SelectItem value="" disabled>
-													No categories found
+													{t("expenses.noTagsYet")}
 												</SelectItem>
 											)}
-											<Separator className="my-2" />
-											<div className="p-2">
-												<Input
-													placeholder="Create new category"
-													value={newCategoryName}
-													onChange={(e) => setNewCategoryName(e.target.value)}
-													onKeyDown={(e) => {
-														if (e.key === "Enter" && newCategoryName.trim()) {
-															// Create new category logic here
-															setNewItem({
-																...newItem,
-																category: {
-																	name: newCategoryName.trim(),
-																} as components["schemas"]["Category"],
-															});
-															setNewCategoryName("");
-														}
-													}}
-													className="text-sm"
-												/>
-											</div>
 										</SelectContent>
 									</Select>
 								</div>

@@ -1,11 +1,13 @@
 import { useAuthStore } from "@/store/useStore";
 import type { components } from "@/types/api-types";
+import { pickExpenseSummaryNumbers } from "@/utils/expenseTags";
 import LogRocket from "logrocket";
 import { apiService } from "../api";
 
 // Expense filtering and pagination types
 export interface ExpenseFilters {
-	category?: string;
+	/** Tag name to filter (backend query param remains `category`). */
+	tag?: string;
 	emotion?: string;
 	dateRange?: string;
 	search?: string;
@@ -56,7 +58,7 @@ export const expensesService = {
 
 			// Create query parameters
 			const params = new URLSearchParams();
-			if (filters.category) params.append("category", filters.category);
+			if (filters.tag) params.append("category", filters.tag);
 			if (filters.emotion) params.append("emotion", filters.emotion);
 			if (filters.dateRange) params.append("date_range", filters.dateRange);
 			if (filters.search) params.append("search", filters.search);
@@ -111,7 +113,7 @@ export const expensesService = {
 	},
 
 	createExpense: async (
-		expense: Omit<components["schemas"]["Expense"], "id" | "userId">,
+		expense: Omit<components["schemas"]["Expense"], "id" | "user_id">,
 	) => {
 		try {
 			LogRocket.log(
@@ -127,7 +129,7 @@ export const expensesService = {
 			}
 			const expenseWithUserId = {
 				...expense,
-				userId: Number(userId),
+				user_id: Number(userId),
 			};
 			LogRocket.log(
 				"[expensesService.createExpense] Payload:",
@@ -144,7 +146,7 @@ export const expensesService = {
 
 	updateExpense: async (
 		id: string,
-		expense: Partial<components["schemas"]["Expense"]>,
+		expense: components["schemas"]["ExpensePatch"],
 	) => {
 		try {
 			LogRocket.log("[expensesService.updateExpense] Starting request:", {
@@ -158,6 +160,21 @@ export const expensesService = {
 			LogRocket.error("[expensesService.updateExpense] Failed:", error);
 			throw error;
 		}
+	},
+
+	listVendors: async (spaceId?: number) => {
+		const response = await apiService.vendors.list(
+			spaceId !== undefined ? { space_id: spaceId } : undefined,
+		);
+		return response.data as components["schemas"]["Vendor"][];
+	},
+
+	createVendor: async (name: string, spaceId?: number) => {
+		const response = await apiService.vendors.create({
+			name,
+			...(spaceId !== undefined ? { space_id: spaceId } : {}),
+		});
+		return response.data as components["schemas"]["Vendor"];
 	},
 
 	deleteExpense: async (id: string) => {
@@ -202,31 +219,35 @@ export const expensesService = {
 		return response.data;
 	},
 
-	getSummary: async (userId: number) => {
+	getSummary: async (_userId: number) => {
 		try {
-			LogRocket.log("[expensesService.getSummary] Starting request", {
-				userId,
-			});
-			const response = await apiService.analytics.summary("week");
+			LogRocket.log("[expensesService.getSummary] Starting request");
+			const response = await apiService.expenses.summary();
 			LogRocket.log("[expensesService.getSummary] Success:", response.data);
-			return response.data as components["schemas"]["ExpenseSummary"];
+			const p = pickExpenseSummaryNumbers(response.data);
+			return {
+				totalExpenses: p.totalExpenses,
+				byTag: p.byTag,
+				thisMonth: p.thisMonth,
+				lastMonth: p.lastMonth,
+			} satisfies components["schemas"]["ExpenseSummary"];
 		} catch (error) {
 			LogRocket.error("[expensesService.getSummary] Failed:", error);
 			throw error;
 		}
 	},
 
-	getMostUsedCategories: async () => {
+	getMostUsedTags: async () => {
 		try {
-			LogRocket.log("[expensesService.getMostUsedCategories] Starting request");
-			const response = await apiService.expenses.mostUsedCategories();
+			LogRocket.log("[expensesService.getMostUsedTags] Starting request");
+			const response = await apiService.expenses.mostUsedTags();
 			LogRocket.log(
-				"[expensesService.getMostUsedCategories] Success:",
+				"[expensesService.getMostUsedTags] Success:",
 				response.data,
 			);
-			return response.data as components["schemas"]["Category"][];
+			return response.data;
 		} catch (error) {
-			LogRocket.error("[expensesService.getMostUsedCategories] Failed:", error);
+			LogRocket.error("[expensesService.getMostUsedTags] Failed:", error);
 			throw error;
 		}
 	},
@@ -257,7 +278,7 @@ export const expensesService = {
 
 			// Create query parameters
 			const params = new URLSearchParams();
-			if (filters.category) params.append("category", filters.category);
+			if (filters.tag) params.append("category", filters.tag);
 			if (filters.emotion) params.append("emotion", filters.emotion);
 			if (filters.dateRange) params.append("date_range", filters.dateRange);
 			if (filters.search) params.append("search", filters.search);

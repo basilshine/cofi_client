@@ -2,7 +2,7 @@ import { apiService } from "@/services/api";
 import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
 import { Button } from "@components/ui/button";
-import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { Pause, PencilSimple, Play, Plus } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import LogRocket from "logrocket";
@@ -15,6 +15,13 @@ interface RecurringExpenseListProps {
 	user?: components["schemas"]["User"] | null;
 }
 
+const isSchedulePaused = (
+	expense: components["schemas"]["RecurringExpense"],
+): boolean => {
+	const raw = expense as { paused?: boolean };
+	return raw.paused === true;
+};
+
 export const RecurringExpenseList = ({
 	recurringExpenses,
 	isLoading,
@@ -23,33 +30,49 @@ export const RecurringExpenseList = ({
 	const queryClient = useQueryClient();
 	const { t } = useTranslation();
 
-	const deleteMutation = useMutation({
+	const pauseMutation = useMutation({
 		mutationFn: (id: string) => {
-			LogRocket.log("[RecurringExpenseList] deleteMutation.mutationFn", { id });
-			return apiService.recurring.delete(id).then((res) => {
-				LogRocket.log("[RecurringExpenseList] deleteMutation result", res);
-				return res;
-			});
+			LogRocket.log("[RecurringExpenseList] pauseMutation", { id });
+			return apiService.recurring.pause(id);
 		},
 		onSuccess: () => {
-			LogRocket.log("[RecurringExpenseList] deleteMutation success");
 			queryClient.invalidateQueries({ queryKey: ["recurring"] });
 		},
 		onError: (error) => {
-			LogRocket.error("[RecurringExpenseList] deleteMutation error", error);
-			console.error("Failed to delete recurring expense:", error);
+			LogRocket.error("[RecurringExpenseList] pauseMutation error", error);
+			console.error("Failed to pause recurring schedule:", error);
 		},
 	});
 
-	const handleDelete = (id: string, name: string) => {
+	const resumeMutation = useMutation({
+		mutationFn: (id: string) => {
+			LogRocket.log("[RecurringExpenseList] resumeMutation", { id });
+			return apiService.recurring.resume(id);
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["recurring"] });
+		},
+		onError: (error) => {
+			LogRocket.error("[RecurringExpenseList] resumeMutation error", error);
+			console.error("Failed to resume recurring schedule:", error);
+		},
+	});
+
+	const handlePause = (id: string, name: string) => {
 		if (
 			window.confirm(
-				`Are you sure you want to delete the schedule "${name}"? This will stop all future automatic expenses from this schedule.`,
+				`Pause "${name}"? Future automatic charges will stop until you resume.`,
 			)
 		) {
-			deleteMutation.mutate(id);
+			pauseMutation.mutate(id);
 		}
 	};
+
+	const handleResume = (id: string) => {
+		resumeMutation.mutate(id);
+	};
+
+	const pending = pauseMutation.isPending || resumeMutation.isPending;
 
 	if (isLoading) {
 		return (
@@ -82,6 +105,7 @@ export const RecurringExpenseList = ({
 					"#f15c80",
 				];
 				const borderColor = borderColors[index % borderColors.length];
+				const paused = isSchedulePaused(expense);
 
 				return (
 					<div
@@ -99,13 +123,18 @@ export const RecurringExpenseList = ({
 							{/* Expense Details */}
 							<div className="flex-grow">
 								<div className="flex justify-between items-center">
-									<div className="flex items-center gap-2">
+									<div className="flex items-center gap-2 flex-wrap">
 										<p className="text-[#333333] text-base font-bold leading-normal">
 											{expense.name || "Expense Schedule"}
 										</p>
 										<span className="bg-[#e0f2f7] text-[#69b4cd] text-xs px-2 py-1 rounded-full">
 											{expense.interval || "monthly"}
 										</span>
+										{paused ? (
+											<span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
+												{t("expenses.paused", "Paused")}
+											</span>
+										) : null}
 									</div>
 									<p className="text-[#333333] text-base font-bold leading-normal">
 										{currencyService.formatCurrency(expense.amount || 0, user)}
@@ -127,9 +156,12 @@ export const RecurringExpenseList = ({
 								</div>
 								{/* Debug info */}
 								<div className="text-xs text-gray-400 mt-1">
-									Category: {expense.category?.name || "No category"} | ID:{" "}
-									{expense.id} | Raw NextRun: {expense.nextRun} | Raw StartDate:{" "}
-									{expense.startDate}
+									Tag:{" "}
+									{(expense as { tag_label?: string }).tag_label ??
+										expense.tagLabel ??
+										"—"}{" "}
+									| ID: {expense.id} | Raw NextRun: {expense.nextRun} | Raw
+									StartDate: {expense.startDate}
 								</div>
 							</div>
 						</div>
@@ -146,20 +178,34 @@ export const RecurringExpenseList = ({
 									<PencilSimple className="h-6 w-6" />
 								</Link>
 							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() =>
-									handleDelete(
-										(expense.id ?? "").toString(),
-										expense.name || "schedule",
-									)
-								}
-								disabled={deleteMutation.isPending}
-								className="text-red-400 hover:text-red-600"
-							>
-								<Trash className="h-6 w-6" />
-							</Button>
+							{paused ? (
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => handleResume((expense.id ?? "").toString())}
+									disabled={pending}
+									className="text-[#69b4cd] hover:text-[#47a0c4]"
+									aria-label={t("expenses.resumeSchedule", "Resume schedule")}
+								>
+									<Play className="h-6 w-6" weight="bold" />
+								</Button>
+							) : (
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() =>
+										handlePause(
+											(expense.id ?? "").toString(),
+											expense.name || "schedule",
+										)
+									}
+									disabled={pending}
+									className="text-amber-600 hover:text-amber-800"
+									aria-label={t("expenses.pauseSchedule", "Pause schedule")}
+								>
+									<Pause className="h-6 w-6" weight="bold" />
+								</Button>
+							)}
 						</div>
 					</div>
 				);

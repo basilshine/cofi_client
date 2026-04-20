@@ -1,5 +1,6 @@
 import { type ExpenseFilters, expensesService } from "@/services/api/expenses";
 import type { components } from "@/types/api-types";
+import { expenseEditPath } from "@/utils/expenseRoutes";
 import { LoadingScreen } from "@components/LoadingScreen";
 import { ExpenseItemCard } from "@components/expenses/ExpenseItemCard";
 import { useAuth } from "@contexts/AuthContext";
@@ -11,9 +12,13 @@ import { useNavigate } from "react-router-dom";
 
 interface ExpenseItemsListProps {
 	filters?: ExpenseFilters;
+	spaceId?: number;
 }
 
-export const ExpenseItemsList = ({ filters = {} }: ExpenseItemsListProps) => {
+export const ExpenseItemsList = ({
+	filters = {},
+	spaceId,
+}: ExpenseItemsListProps) => {
 	const { t } = useTranslation();
 	const { isAuthenticated } = useAuth();
 	const navigate = useNavigate();
@@ -92,7 +97,11 @@ export const ExpenseItemsList = ({ filters = {} }: ExpenseItemsListProps) => {
 		// Navigate to expense edit page with item anchor and return URL
 		const currentPath = window.location.pathname + window.location.search;
 		navigate(
-			`/expenses/${expenseItem.expenseId}/edit?item=${expenseItem.id}&returnTo=${encodeURIComponent(currentPath)}`,
+			expenseEditPath(expenseItem.expense_id ?? "", {
+				spaceId,
+				item: expenseItem.id != null ? String(expenseItem.id) : undefined,
+				returnTo: currentPath,
+			}),
 		);
 	};
 
@@ -153,11 +162,11 @@ export const ExpenseItemsList = ({ filters = {} }: ExpenseItemsListProps) => {
 			{expenseItems.length === 0 && !isLoading ? (
 				<div className="text-center py-8">
 					<p className="text-[#666666] text-sm">
-						{filters?.search || filters?.category || filters?.emotion
+						{filters?.search || filters?.tag || filters?.emotion
 							? "No expense items match your filters"
 							: "No expense items found"}
 					</p>
-					{(filters?.search || filters?.category || filters?.emotion) && (
+					{(filters?.search || filters?.tag || filters?.emotion) && (
 						<p className="text-[#666666] text-xs mt-2">
 							Try adjusting your search or filters
 						</p>

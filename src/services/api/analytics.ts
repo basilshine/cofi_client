@@ -5,12 +5,12 @@ import { apiService } from "../api";
 export interface AnalyticsFilters {
 	period?: "week" | "month";
 	dateRange?: string;
-	category?: string;
+	tag?: string;
 }
 
-// Backend analytics response types based on Go structs
-export interface CategoryStats {
-	category: string;
+// Backend analytics response types (see cofi_server/internal/analytics/models.go)
+export interface TagStats {
+	tag: string;
 	total: number;
 	count: number;
 	percentage: number;
@@ -40,7 +40,7 @@ export interface StatsResponse {
 	max_daily_spent: number;
 	previous_total: number;
 	change_percent: number;
-	top_categories: CategoryStats[];
+	top_tags: TagStats[];
 	emotion_stats: EmotionStats[];
 	goal_progress: GoalProgress[];
 	regret_amount: number;
@@ -56,14 +56,23 @@ export interface EmotionStatsResponse {
 export const analyticsService = {
 	getStats: async (
 		period: "week" | "month" = "week",
+		userId?: number,
 	): Promise<StatsResponse> => {
 		try {
-			LogRocket.log("[analyticsService.getStats] Starting request", { period });
+			LogRocket.log("[analyticsService.getStats] Starting request", {
+				period,
+				userId,
+			});
+
+			const uid = userId != null ? String(userId) : undefined;
+			if (!uid) {
+				throw new Error("user_id is required for analytics stats");
+			}
 
 			const response =
 				period === "week"
-					? await apiService.analytics.week()
-					: await apiService.analytics.month();
+					? await apiService.analytics.week(uid)
+					: await apiService.analytics.month(uid);
 
 			LogRocket.log("[analyticsService.getStats] Success:", response.data);
 			return response.data as unknown as StatsResponse;
@@ -75,13 +84,16 @@ export const analyticsService = {
 
 	getSummary: async (
 		period: "week" | "month" = "week",
+		userId?: number,
 	): Promise<StatsResponse> => {
 		try {
 			LogRocket.log("[analyticsService.getSummary] Starting request", {
 				period,
+				userId,
 			});
 
-			const response = await apiService.analytics.summary(period);
+			const uid = userId != null ? String(userId) : undefined;
+			const response = await apiService.analytics.summary(period, "json", uid);
 			LogRocket.log("[analyticsService.getSummary] Success:", response.data);
 			return response.data as unknown as StatsResponse;
 		} catch (error) {
@@ -92,13 +104,20 @@ export const analyticsService = {
 
 	getEmotionStats: async (
 		period: "week" | "month" = "week",
+		userId?: number,
 	): Promise<EmotionStatsResponse> => {
 		try {
 			LogRocket.log("[analyticsService.getEmotionStats] Starting request", {
 				period,
+				userId,
 			});
 
-			const response = await apiService.analytics.emotions(period);
+			const uid = userId != null ? String(userId) : undefined;
+			if (!uid) {
+				throw new Error("user_id is required for emotion stats");
+			}
+
+			const response = await apiService.analytics.emotions(uid, period);
 			LogRocket.log(
 				"[analyticsService.getEmotionStats] Success:",
 				response.data,
@@ -117,8 +136,8 @@ export const analyticsService = {
 		return "stable";
 	},
 
-	getTopCategory: (categories: CategoryStats[]): CategoryStats | null => {
-		return categories.length > 0 ? categories[0] : null;
+	getTopTag: (tags: TagStats[]): TagStats | null => {
+		return tags.length > 0 ? tags[0] : null;
 	},
 
 	getMoodAnalysis: (
@@ -185,10 +204,10 @@ export const analyticsService = {
 			);
 		}
 
-		const topCategory = stats.top_categories[0];
-		if (topCategory && topCategory.percentage > 50) {
+		const topTag = stats.top_tags?.[0];
+		if (topTag && topTag.percentage > 50) {
 			insights.push(
-				`${topCategory.category} dominates your spending at ${topCategory.percentage.toFixed(1)}%`,
+				`${topTag.tag} dominates your spending at ${topTag.percentage.toFixed(1)}%`,
 			);
 		}
 

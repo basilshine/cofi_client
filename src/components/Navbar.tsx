@@ -55,6 +55,16 @@ export const Navbar = () => {
 		setIsMobileMenuOpen(false);
 	};
 
+	const pathIsActive = (path: string) => {
+		if (path === "/expenses") {
+			return (
+				location.pathname === "/expenses" ||
+				/^\/spaces\/[^/]+\/expenses/.test(location.pathname)
+			);
+		}
+		return location.pathname === path;
+	};
+
 	return (
 		<nav className="border-b bg-card">
 			<div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -67,7 +77,7 @@ export const Navbar = () => {
 				<div className="hidden md:flex items-center space-x-2">
 					{navItems.map((item) => {
 						const Icon = item.icon;
-						const isActive = location.pathname === item.path;
+						const isActive = pathIsActive(item.path);
 						return (
 							<Button
 								key={item.path}
@@ -206,7 +216,7 @@ export const Navbar = () => {
 							<div className="mt-6 space-y-2">
 								{navItems.map((item) => {
 									const Icon = item.icon;
-									const isActive = location.pathname === item.path;
+									const isActive = pathIsActive(item.path);
 									return (
 										<Button
 											key={item.path}

@@ -1,5 +1,5 @@
-import { useState } from "react";
 import type { Space } from "@cofi/api";
+import { useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
 
 export const SpacesPage = () => {
@@ -11,11 +11,13 @@ export const SpacesPage = () => {
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
-			const data = await apiClient.spaces.list();
+			const data = await apiClient.spaces.list({ tenantId: null });
 			setSpaces(data);
 		} catch (err) {
 			setSpaces(null);
-			setErrorMessage(err instanceof Error ? err.message : "Failed to load spaces");
+			setErrorMessage(
+				err instanceof Error ? err.message : "Failed to load spaces",
+			);
 		} finally {
 			setIsLoading(false);
 		}
@@ -53,4 +55,3 @@ export const SpacesPage = () => {
 		</section>
 	);
 };
-

@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
 		base: process.env.NODE_ENV === "production" ? "/" : "/",
 		server: {
 			host: "127.0.0.1",
+			port: 5174,
 			proxy,
 		},
 	};

@@ -27,15 +27,15 @@ const ENDPOINTS = {
 	expensesText: "/api/v1/finances/expenses/text" as const,
 	expensesVoice: "/api/v1/finances/expenses/voice" as const,
 	expensesTags: "/api/v1/finances/expenses/tags" as const,
-	expensesMostUsedCategories:
-		"/api/v1/finances/expenses/most-used-categories" as const,
 	expensesMostUsedTags: "/api/v1/finances/expenses/most-used-tags" as const,
-	categories: "/api/v1/finances/categories" as const,
-	categoryById: (id: number | string) =>
-		`/api/v1/finances/categories/${id}` as const,
-	recurring: "/api/v1/finances/recurring/crud" as const,
+	vendors: "/api/v1/finances/vendors" as const,
+	recurring: "/api/v1/finances/recurring" as const,
 	recurringById: (id: number | string) =>
-		`/api/v1/finances/recurring/crud/${id}` as const,
+		`/api/v1/finances/recurring/${id}` as const,
+	recurringPause: (id: number | string) =>
+		`/api/v1/finances/recurring/${id}/pause` as const,
+	recurringResume: (id: number | string) =>
+		`/api/v1/finances/recurring/${id}/resume` as const,
 	analyticsSummary: "/api/v1/analytics/stats/summary" as const,
 	analyticsWeek: "/api/v1/analytics/stats/week" as const,
 	analyticsMonth: "/api/v1/analytics/stats/month" as const,
@@ -279,7 +279,7 @@ export const apiService = {
 			api.get<components["schemas"]["Expense"]>(ENDPOINTS.expenseById(id)),
 		update: (
 			id: number | string,
-			data: Partial<components["schemas"]["Expense"]>,
+			data: components["schemas"]["ExpensePatch"],
 		) =>
 			api.put<components["schemas"]["Expense"]>(
 				ENDPOINTS.expenseById(id),
@@ -308,38 +308,30 @@ export const apiService = {
 			api.get<components["schemas"]["Tag"][]>(ENDPOINTS.expensesTags, {
 				params,
 			}),
-		mostUsedCategories: () =>
-			api.get<components["schemas"]["Category"][]>(
-				ENDPOINTS.expensesMostUsedCategories,
-			),
 		mostUsedTags: () =>
 			api.get<components["schemas"]["Tag"][]>(ENDPOINTS.expensesMostUsedTags),
 	},
-	categories: {
-		list: () =>
-			api.get<components["schemas"]["Category"][]>(ENDPOINTS.categories),
-		create: (data: components["schemas"]["Category"]) =>
-			api.post<components["schemas"]["Category"]>(ENDPOINTS.categories, data),
-		getById: (id: number | string) =>
-			api.get<components["schemas"]["Category"]>(ENDPOINTS.categoryById(id)),
-		update: (
-			id: number | string,
-			data: Partial<components["schemas"]["Category"]>,
-		) =>
-			api.put<components["schemas"]["Category"]>(
-				ENDPOINTS.categoryById(id),
-				data,
-			),
-		delete: (id: number | string) => api.delete(ENDPOINTS.categoryById(id)),
+	vendors: {
+		list: (params?: { space_id?: number }) =>
+			api.get<components["schemas"]["Vendor"][]>(ENDPOINTS.vendors, {
+				params,
+			}),
+		create: (data: { name: string; space_id?: number }) =>
+			api.post<components["schemas"]["Vendor"]>(ENDPOINTS.vendors, data),
 	},
 	recurring: {
 		list: () =>
 			api.get<components["schemas"]["RecurringExpense"][]>(ENDPOINTS.recurring),
-		create: (data: components["schemas"]["RecurringExpense"]) =>
-			api.post<components["schemas"]["RecurringExpense"]>(
+		create: (data: components["schemas"]["RecurringExpense"]) => {
+			const { tagLabel, ...rest } = data;
+			return api.post<components["schemas"]["RecurringExpense"]>(
 				ENDPOINTS.recurring,
-				data,
-			),
+				{
+					...rest,
+					tag_label: tagLabel ?? "recurring",
+				},
+			);
+		},
 		getById: (id: number | string) =>
 			api.get<components["schemas"]["RecurringExpense"]>(
 				ENDPOINTS.recurringById(id),
@@ -347,32 +339,51 @@ export const apiService = {
 		update: (
 			id: number | string,
 			data: Partial<components["schemas"]["RecurringExpense"]>,
-		) =>
-			api.put<components["schemas"]["RecurringExpense"]>(
+		) => {
+			const { tagLabel, ...rest } = data;
+			const body: Record<string, unknown> = { ...rest };
+			if (tagLabel !== undefined) {
+				body.tag_label = tagLabel;
+			}
+			return api.put<components["schemas"]["RecurringExpense"]>(
 				ENDPOINTS.recurringById(id),
-				data,
+				body,
+			);
+		},
+		pause: (id: number | string) =>
+			api.post<components["schemas"]["RecurringExpense"]>(
+				ENDPOINTS.recurringPause(id),
 			),
-		delete: (id: number | string) => api.delete(ENDPOINTS.recurringById(id)),
+		resume: (id: number | string) =>
+			api.post<components["schemas"]["RecurringExpense"]>(
+				ENDPOINTS.recurringResume(id),
+			),
 	},
 	analytics: {
-		summary: (period?: string, format?: string) =>
+		summary: (period?: string, format?: string, userId?: string) =>
 			api.get<Record<string, unknown>>(ENDPOINTS.analyticsSummary, {
-				params: { period: period || "week", format: format || "json" },
+				params: {
+					period: period || "week",
+					format: format || "json",
+					...(userId ? { user_id: userId } : {}),
+				},
 			}),
-		week: (format?: string) =>
+		week: (userId: string, format?: string) =>
 			api.get<Record<string, unknown>>(ENDPOINTS.analyticsWeek, {
-				params: { format: format || "json" },
+				params: { user_id: userId, format: format || "json" },
 			}),
-		month: (format?: string) =>
+		month: (userId: string, format?: string) =>
 			api.get<Record<string, unknown>>(ENDPOINTS.analyticsMonth, {
-				params: { format: format || "json" },
+				params: { user_id: userId, format: format || "json" },
 			}),
-		emotions: (period?: string) =>
+		emotions: (userId: string, period?: string) =>
 			api.get<{
 				emotions?: Record<string, unknown>;
 				most_common?: string;
 				regret_amount?: number;
-			}>(ENDPOINTS.analyticsEmotions, { params: { period: period || "week" } }),
+			}>(ENDPOINTS.analyticsEmotions, {
+				params: { user_id: userId, period: period || "week" },
+			}),
 		reports: () =>
 			api.get<components["schemas"]["ReportSchedule"][]>(
 				ENDPOINTS.analyticsReports,

@@ -1,14 +1,14 @@
 export interface MonthlySummary {
 	month: string;
 	total: number;
-	categories: {
+	tags: {
 		[key: string]: number;
 	};
 }
 
 export interface AnalyticsData {
 	monthly: MonthlySummary[];
-	categories: {
+	tags: {
 		name: string;
 		total: number;
 		percentage: number;

@@ -1,4 +1,4 @@
-# Cofilance Frontend (`cofi_client`)
+# Ceits Frontend (`cofi_client`)
 
 Frontend monorepo with two separate products:
 

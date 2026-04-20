@@ -31,7 +31,7 @@ export const LoadingScreen = () => {
 
 				{/* Loading Text */}
 				<div className="mb-6">
-					<h2 className="text-xl font-bold text-[#1e3a8a] mb-2">Cofilance</h2>
+					<h2 className="text-xl font-bold text-[#1e3a8a] mb-2">Ceits</h2>
 					<p className="text-[#64748b]">Loading your financial dashboard...</p>
 				</div>
 

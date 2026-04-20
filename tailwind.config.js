@@ -21,6 +21,16 @@ module.exports = {
 				heading: ["Outfit", "system-ui", "-apple-system", "sans-serif"],
 			},
 			colors: {
+				ceits: {
+					bg: "hsl(var(--bg))",
+					surface: "hsl(var(--surface))",
+					"surface-muted": "hsl(var(--surface-muted))",
+					"text-primary": "hsl(var(--text-primary))",
+					"text-secondary": "hsl(var(--text-secondary))",
+					accent: "hsl(var(--accent))",
+					"accent-contrast": "hsl(var(--accent-contrast))",
+					"border-subtle": "hsl(var(--border-subtle))",
+				},
 				border: "hsl(var(--border))",
 				input: "hsl(var(--input))",
 				ring: "hsl(var(--ring))",

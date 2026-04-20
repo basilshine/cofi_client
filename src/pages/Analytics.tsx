@@ -47,7 +47,7 @@ export const Analytics = () => {
 		refetch: refetchStats,
 	} = useQuery<StatsResponse>({
 		queryKey: ["analytics", "stats", selectedPeriod],
-		queryFn: () => analyticsService.getStats(selectedPeriod),
+		queryFn: () => analyticsService.getStats(selectedPeriod, Number(user?.id)),
 		enabled: isAuthenticated && !!user?.id,
 		retry: 2,
 	});
@@ -270,21 +270,21 @@ export const Analytics = () => {
 						</Card>
 					</div>
 
-					{/* Top Categories */}
+					{/* Top tags */}
 					<div className="mx-4">
 						<Card>
 							<CardHeader>
 								<CardTitle className="text-lg font-semibold text-[#1e3a8a] flex items-center gap-2">
 									<ChartPie className="h-5 w-5" />
-									{t("analytics.topCategories")}
+									{t("analytics.topTags")}
 								</CardTitle>
 							</CardHeader>
 							<CardContent>
-								{stats.top_categories && stats.top_categories.length > 0 ? (
+								{stats.top_tags && stats.top_tags.length > 0 ? (
 									<div className="space-y-4">
-										{stats.top_categories.slice(0, 5).map((category, index) => (
+										{stats.top_tags.slice(0, 5).map((row, index) => (
 											<div
-												key={category.category}
+												key={row.tag}
 												className="flex justify-between items-center"
 											>
 												<div className="flex items-center gap-3">
@@ -301,18 +301,15 @@ export const Analytics = () => {
 														}}
 													/>
 													<span className="text-sm font-medium text-[#1e3a8a]">
-														{category.category}
+														{row.tag}
 													</span>
 												</div>
 												<div className="text-right">
 													<div className="text-sm font-semibold text-[#1e3a8a]">
-														{currencyService.formatCurrency(
-															category.total,
-															user,
-														)}
+														{currencyService.formatCurrency(row.total, user)}
 													</div>
 													<div className="text-xs text-[#64748b]">
-														{category.percentage.toFixed(1)}% ({category.count}{" "}
+														{row.percentage.toFixed(1)}% ({row.count}{" "}
 														{t("analytics.items")})
 													</div>
 												</div>
@@ -321,7 +318,7 @@ export const Analytics = () => {
 									</div>
 								) : (
 									<p className="text-sm text-[#64748b] text-center py-4">
-										{t("analytics.noCategories")}
+										{t("analytics.noTags")}
 									</p>
 								)}
 							</CardContent>
@@ -434,7 +431,7 @@ export const Analytics = () => {
 								</Link>
 							</Button>
 							<Button asChild variant="outline" className="h-12">
-								<Link to="/expenses/new">
+								<Link to="/expenses/add">
 									<Calendar className="h-4 w-4 mr-2" />
 									{t("analytics.addExpense")}
 								</Link>

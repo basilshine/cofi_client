@@ -1,55 +1,43 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
-
-const navItems = [
-	{ to: "/console", label: "Overview" },
-	{ to: "/console/auth", label: "Auth" },
-	{ to: "/console/spaces", label: "Spaces" },
-	{ to: "/console/drafts", label: "Drafts" },
-	{ to: "/console/transactions", label: "Transactions" },
-	{ to: "/console/chat", label: "ChatLog" },
-	{ to: "/console/quota", label: "Quota" },
-] as const;
+import { Link, Outlet } from "react-router-dom";
+import { DashboardWorkspaceSwitcher } from "../../features/dashboard/components/DashboardWorkspaceSwitcher";
+import { ChatBreadcrumbProvider } from "./ChatBreadcrumbContext";
+import { ConsoleBreadcrumbs } from "./ConsoleBreadcrumbs";
+import { ConsoleUserMenu } from "./ConsoleUserMenu";
+import { ConsoleWorkspaceTheme } from "./ConsoleWorkspaceTheme";
 
 export const AppShell = () => {
-	const location = useLocation();
-
 	return (
 		<div className="min-h-screen bg-background text-foreground">
+			<ConsoleWorkspaceTheme />
 			<header className="border-b border-border">
-				<div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-6 py-4">
-					<div className="flex items-center gap-3">
-						<Link className="text-sm font-semibold tracking-tight" to="/console">
-							Cofilance Dev Console
+				<div className="mx-auto flex w-full max-w-6xl flex-nowrap items-center justify-between gap-3 overflow-x-auto px-6 py-4">
+					<div className="flex min-w-0 shrink-0 items-center gap-3">
+						<Link className="text-sm font-semibold tracking-tight" to="/">
+							Ceits
 						</Link>
-						<span className="text-xs text-muted-foreground">MVP harness</span>
+						<span className="hidden text-xs text-muted-foreground sm:inline">
+							Web MVP
+						</span>
 					</div>
 
-					<nav className="hidden flex-wrap items-center gap-2 md:flex">
-						{navItems.map((item) => {
-							const isActive = location.pathname === item.to;
-							return (
-								<Link
-									key={item.to}
-									className={[
-										"rounded-md px-3 py-1.5 text-xs font-medium",
-										isActive
-											? "bg-primary text-primary-foreground"
-											: "text-muted-foreground hover:bg-accent hover:text-foreground",
-									].join(" ")}
-									to={item.to}
-								>
-									{item.label}
-								</Link>
-							);
-						})}
+					<nav
+						aria-label="Console"
+						className="flex min-w-0 flex-nowrap items-center justify-end gap-2 sm:gap-3"
+					>
+						<div className="flex shrink-0 flex-nowrap items-center gap-2">
+							<DashboardWorkspaceSwitcher />
+						</div>
+						<ConsoleUserMenu />
 					</nav>
 				</div>
 			</header>
 
-			<main className="mx-auto w-full max-w-6xl px-6 py-8">
-				<Outlet />
+			<main className="mx-auto w-full max-w-6xl overflow-x-clip px-6 py-8">
+				<ChatBreadcrumbProvider>
+					<ConsoleBreadcrumbs />
+					<Outlet />
+				</ChatBreadcrumbProvider>
 			</main>
 		</div>
 	);
 };
-

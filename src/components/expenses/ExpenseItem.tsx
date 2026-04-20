@@ -1,6 +1,9 @@
 import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
+import { expenseEditPath } from "@/utils/expenseRoutes";
+import { formatItemTagLabel } from "@/utils/expenseTags";
 import { getEmotionEmoji } from "@/utils/helper";
+import { ExpenseMetaSummary } from "@components/expenses/ExpenseMetaSummary";
 import { Button } from "@components/ui/button";
 import { useAuth } from "@contexts/AuthContext";
 import { PencilSimple, Trash } from "@phosphor-icons/react";
@@ -13,6 +16,7 @@ interface ExpenseItemProps {
 	index: number;
 	onDelete: (id: string, description: string) => void;
 	isDeleting: boolean;
+	spaceId?: number;
 }
 
 export const ExpenseItem = ({
@@ -20,6 +24,7 @@ export const ExpenseItem = ({
 	index,
 	onDelete,
 	isDeleting,
+	spaceId,
 }: ExpenseItemProps) => {
 	const { t } = useTranslation();
 	const { user } = useAuth();
@@ -59,14 +64,15 @@ export const ExpenseItem = ({
 					</div>
 					<div className="flex justify-between items-center">
 						<p className="text-[#666666] text-sm font-normal leading-normal">
-							{mainItem?.category?.name || "Uncategorized"}
+							{mainItem ? formatItemTagLabel(mainItem) : "—"}
 						</p>
 						<p className="text-[#666666] text-sm font-normal leading-normal">
-							{expense.createdAt
-								? format(new Date(expense.createdAt), "MMM dd")
+							{expense.created_at
+								? format(new Date(expense.created_at), "MMM dd")
 								: "Today"}
 						</p>
 					</div>
+					<ExpenseMetaSummary expense={expense} />
 					{/* Additional items preview */}
 					{itemsCount > 1 && (
 						<div className="text-xs text-[#666666] mt-1">
@@ -94,7 +100,7 @@ export const ExpenseItem = ({
 					asChild
 					className="text-[#666666] hover:text-[#69b4cd]"
 				>
-					<Link to={`/expenses/${expense.id ?? "unknown"}/edit`}>
+					<Link to={expenseEditPath(expense.id ?? "unknown", { spaceId })}>
 						<PencilSimple className="h-6 w-6" />
 					</Link>
 				</Button>

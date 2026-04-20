@@ -1,5 +1,6 @@
 import { currencyService } from "@/services/currency";
 import type { components } from "@/types/api-types";
+import { formatItemTagLabel } from "@/utils/expenseTags";
 import { getEmotionEmoji } from "@/utils/helper";
 import { Button } from "@components/ui/button";
 import { useAuth } from "@contexts/AuthContext";
@@ -52,34 +53,16 @@ export const ExpenseItemCard = ({
 					</div>
 					<div className="flex justify-between items-center">
 						<p className="text-[#666666] text-sm font-normal leading-normal">
-							{expenseItem.category?.name || "Uncategorized"}
+							{formatItemTagLabel(expenseItem)}
 						</p>
 						<p className="text-[#666666] text-sm font-normal leading-normal">
-							{expenseItem.expenseDate
-								? format(new Date(expenseItem.expenseDate), "MMM dd")
-								: expenseItem.createdAt
-									? format(new Date(expenseItem.createdAt), "MMM dd")
+							{expenseItem.expense_date
+								? format(new Date(expenseItem.expense_date), "MMM dd")
+								: expenseItem.created_at
+									? format(new Date(expenseItem.created_at), "MMM dd")
 									: "Today"}
 						</p>
 					</div>
-					{/* Tags */}
-					{expenseItem.tags && expenseItem.tags.length > 0 && (
-						<div className="flex flex-wrap gap-1 mt-2">
-							{expenseItem.tags.slice(0, 3).map((tag) => (
-								<span
-									key={tag.id}
-									className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-								>
-									{tag.name}
-								</span>
-							))}
-							{expenseItem.tags.length > 3 && (
-								<span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-									+{expenseItem.tags.length - 3} more
-								</span>
-							)}
-						</div>
-					)}
 				</div>
 			</div>
 

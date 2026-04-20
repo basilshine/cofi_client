@@ -18,7 +18,8 @@ type RpcResolver = {
 };
 
 const makeId = () => {
-	if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+	if (typeof crypto !== "undefined" && "randomUUID" in crypto)
+		return crypto.randomUUID();
 	return `rpc_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 };
 
@@ -72,7 +73,11 @@ export const createWsClient = (config: WsClientConfig) => {
 	};
 
 	const connect = async () => {
-		if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+		if (
+			socket &&
+			(socket.readyState === WebSocket.OPEN ||
+				socket.readyState === WebSocket.CONNECTING)
+		) {
 			return;
 		}
 
@@ -144,7 +149,11 @@ export const createWsClient = (config: WsClientConfig) => {
 		socket.send(JSON.stringify(env));
 	};
 
-	const rpc = async <T = unknown>(op: string, data: Record<string, unknown>, opts?: { topic?: string }) => {
+	const rpc = async <T = unknown>(
+		op: string,
+		data: Record<string, unknown>,
+		opts?: { topic?: string },
+	) => {
 		await connect();
 		const id = makeId();
 		const promise = new Promise<T>((resolve, reject) => {
@@ -159,7 +168,10 @@ export const createWsClient = (config: WsClientConfig) => {
 		return await promise;
 	};
 
-	const subscribe = async (topic: string, handler: (env: WsEnvelope) => void) => {
+	const subscribe = async (
+		topic: string,
+		handler: (env: WsEnvelope) => void,
+	) => {
 		const set = topicHandlers.get(topic) ?? new Set();
 		set.add(handler);
 		topicHandlers.set(topic, set);
@@ -180,4 +192,3 @@ export const createWsClient = (config: WsClientConfig) => {
 
 	return { connect, close, rpc, subscribe, onEvent };
 };
-
