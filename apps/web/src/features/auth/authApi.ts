@@ -23,6 +23,11 @@ export type RegisterRequest = {
 	language: string;
 };
 
+export type VerifyEmailCodeRequest = {
+	email: string;
+	code: string;
+};
+
 export const authApi = {
 	login: async (payload: LoginRequest) => {
 		const res = await httpClient.post<AuthResponse>(
@@ -43,14 +48,13 @@ export const authApi = {
 			"/api/v1/auth/register",
 			payload,
 		);
-		tokenStorage.upsertProfile({
-			label: res.data.user.email ?? payload.email,
-			email: res.data.user.email ?? payload.email,
-			userId: res.data.user.id,
-			accessToken: res.data.token,
-			refreshToken: res.data.refreshToken ?? res.data.refresh_token ?? null,
-		});
 		return res.data;
+	},
+	requestEmailCode: async (email: string) => {
+		await httpClient.post("/api/v1/auth/email/code/request", { email });
+	},
+	confirmEmailCode: async (payload: VerifyEmailCodeRequest) => {
+		await httpClient.post("/api/v1/auth/email/code/confirm", payload);
 	},
 	me: async () => {
 		const res = await httpClient.get<AuthUser>("/api/v1/auth/me");

@@ -5,7 +5,14 @@ import { marketingUrl } from "../../shared/lib/ceitsMarketingUrl";
 import { persistOnboardingIntentFromSearch } from "../../shared/lib/onboardingIntent";
 
 export const RegisterPage = () => {
-	const { register, isAuthenticated, isLoading: authLoading } = useAuth();
+	const {
+		register,
+		login,
+		requestEmailCode,
+		confirmEmailCode,
+		isAuthenticated,
+		isLoading: authLoading,
+	} = useAuth();
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
 
@@ -16,6 +23,11 @@ export const RegisterPage = () => {
 	const [language, setLanguage] = useState("en");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [verificationCode, setVerificationCode] = useState("");
+	const [verificationSent, setVerificationSent] = useState(false);
+	const [isResendingCode, setIsResendingCode] = useState(false);
+	const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+	const [verificationInfo, setVerificationInfo] = useState<string | null>(null);
 
 	const returnTo = searchParams.get("returnTo");
 	const inviteOnly = searchParams.get("invite")?.trim();
@@ -49,12 +61,49 @@ export const RegisterPage = () => {
 		setErrorMessage(null);
 		try {
 			await register({ email, password, name, country, language });
+			setVerificationSent(true);
+			setVerificationInfo(
+				"We sent a 6-digit verification code to your email. Enter it below to continue.",
+			);
 		} catch (err) {
 			setErrorMessage(
 				err instanceof Error ? err.message : "Registration failed",
 			);
 		} finally {
 			setIsSubmitting(false);
+		}
+	};
+
+	const handleResendCode = async () => {
+		setIsResendingCode(true);
+		setErrorMessage(null);
+		try {
+			await requestEmailCode(email);
+			setVerificationInfo("Verification code resent.");
+		} catch (err) {
+			setErrorMessage(
+				err instanceof Error
+					? err.message
+					: "Could not resend verification code",
+			);
+		} finally {
+			setIsResendingCode(false);
+		}
+	};
+
+	const handleVerifyCode = async (e: React.FormEvent) => {
+		e.preventDefault();
+		setIsVerifyingCode(true);
+		setErrorMessage(null);
+		try {
+			await confirmEmailCode({ email, code: verificationCode.trim() });
+			await login({ email, password });
+		} catch (err) {
+			setErrorMessage(
+				err instanceof Error ? err.message : "Verification failed",
+			);
+		} finally {
+			setIsVerifyingCode(false);
 		}
 	};
 
@@ -83,13 +132,17 @@ export const RegisterPage = () => {
 					</p>
 				</div>
 
-				<form className="space-y-4" onSubmit={handleSubmit}>
+				<form
+					className="space-y-4"
+					onSubmit={verificationSent ? handleVerifyCode : handleSubmit}
+				>
 					<label className="grid gap-1">
 						<span className="text-xs font-medium text-muted-foreground">
 							Name
 						</span>
 						<input
 							className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+							disabled={verificationSent}
 							onChange={(e) => setName(e.target.value)}
 							required
 							type="text"
@@ -103,6 +156,7 @@ export const RegisterPage = () => {
 						<input
 							autoComplete="email"
 							className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+							disabled={verificationSent}
 							onChange={(e) => setEmail(e.target.value)}
 							required
 							type="email"
@@ -116,6 +170,7 @@ export const RegisterPage = () => {
 						<input
 							autoComplete="new-password"
 							className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+							disabled={verificationSent}
 							minLength={6}
 							onChange={(e) => setPassword(e.target.value)}
 							required
@@ -130,6 +185,7 @@ export const RegisterPage = () => {
 							</span>
 							<input
 								className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+								disabled={verificationSent}
 								onChange={(e) => setCountry(e.target.value)}
 								required
 								type="text"
@@ -142,6 +198,7 @@ export const RegisterPage = () => {
 							</span>
 							<input
 								className="h-11 rounded-md border border-border bg-background px-3 text-sm"
+								disabled={verificationSent}
 								onChange={(e) => setLanguage(e.target.value)}
 								required
 								type="text"
@@ -149,6 +206,32 @@ export const RegisterPage = () => {
 							/>
 						</label>
 					</div>
+
+					{verificationSent ? (
+						<label className="grid gap-1">
+							<span className="text-xs font-medium text-muted-foreground">
+								Verification code
+							</span>
+							<input
+								className="h-11 rounded-md border border-border bg-background px-3 text-sm tracking-[0.2em]"
+								inputMode="numeric"
+								maxLength={6}
+								onChange={(e) =>
+									setVerificationCode(e.target.value.replace(/\D/g, ""))
+								}
+								placeholder="123456"
+								required
+								type="text"
+								value={verificationCode}
+							/>
+						</label>
+					) : null}
+
+					{verificationInfo ? (
+						<div className="rounded-md border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
+							{verificationInfo}
+						</div>
+					) : null}
 
 					{errorMessage ? (
 						<div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -158,11 +241,31 @@ export const RegisterPage = () => {
 
 					<button
 						className="flex h-11 w-full items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground disabled:opacity-50"
-						disabled={isSubmitting}
+						disabled={
+							verificationSent
+								? isVerifyingCode || verificationCode.trim().length !== 6
+								: isSubmitting
+						}
 						type="submit"
 					>
-						{isSubmitting ? "Creating…" : "Create account"}
+						{verificationSent
+							? isVerifyingCode
+								? "Verifying…"
+								: "Verify email and continue"
+							: isSubmitting
+								? "Creating…"
+								: "Create account"}
 					</button>
+					{verificationSent ? (
+						<button
+							className="flex h-11 w-full items-center justify-center rounded-md border border-border text-sm font-medium text-foreground disabled:opacity-50"
+							disabled={isResendingCode}
+							onClick={handleResendCode}
+							type="button"
+						>
+							{isResendingCode ? "Resending…" : "Resend code"}
+						</button>
+					) : null}
 				</form>
 
 				<p className="text-center text-sm text-muted-foreground">

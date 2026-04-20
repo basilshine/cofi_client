@@ -21,7 +21,9 @@ type AuthContextValue = {
 		name: string;
 		country: string;
 		language: string;
-	}) => Promise<void>;
+	}) => Promise<AuthUser>;
+	requestEmailCode: (email: string) => Promise<void>;
+	confirmEmailCode: (payload: { email: string; code: string }) => Promise<void>;
 	logout: () => void;
 	refreshUser: () => Promise<void>;
 };
@@ -70,10 +72,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			country: string;
 			language: string;
 		}) => {
-			await authApi.register(payload);
-			await refreshUser();
+			const res = await authApi.register(payload);
+			return res.user;
 		},
-		[refreshUser],
+		[],
+	);
+
+	const requestEmailCode = useCallback(async (email: string) => {
+		await authApi.requestEmailCode(email);
+	}, []);
+
+	const confirmEmailCode = useCallback(
+		async (payload: { email: string; code: string }) => {
+			await authApi.confirmEmailCode(payload);
+		},
+		[],
 	);
 
 	const logout = useCallback(() => {
@@ -88,10 +101,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 			isAuthenticated: !!user,
 			login,
 			register,
+			requestEmailCode,
+			confirmEmailCode,
 			logout,
 			refreshUser,
 		}),
-		[user, isLoading, login, register, logout, refreshUser],
+		[
+			user,
+			isLoading,
+			login,
+			register,
+			requestEmailCode,
+			confirmEmailCode,
+			logout,
+			refreshUser,
+		],
 	);
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
