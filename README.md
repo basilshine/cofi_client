@@ -1,71 +1,44 @@
-# Cofilance - Financial Management Application
+# Cofilance Frontend (`cofi_client`)
 
-A modern financial management application built with React, TypeScript, and Vite. The application works both as a Telegram Web App and a standalone website.
+Frontend monorepo with two separate products:
 
-## Features
+- `apps/telegram-webapp`: Telegram-embedded product
+- `apps/web`: public browser product
 
-- Authentication (Telegram Web App & Regular)
-- Expense Management
-  - Add new expenses
-  - View recent expenses
-  - Category statistics
-  - Monthly summaries
-  - Recurring expenses setup
-- Analytics
-  - Expense trends
-  - Category breakdown
-  - Monthly comparisons
+Shared cross-product modules:
 
-## Tech Stack
+- `packages/ui`
+- `packages/api`
+- `packages/domain`
 
-- React 18
-- TypeScript
-- Vite
-- Mantine UI
-- Zustand (State Management)
-- React Router
-- Telegram Web App SDK
-- Biome (Linting & Formatting)
+## Install
 
-## Getting Started
-
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-4. Build for production:
-   ```bash
-   npm run build
-   ```
-
-## Project Structure
-
-```
-src/
-├── components/     # Reusable UI components
-├── features/       # Feature-specific components and logic
-├── hooks/          # Custom React hooks
-├── layouts/        # Layout components
-├── pages/          # Page components
-├── services/       # API services
-├── store/          # State management
-├── types/          # TypeScript type definitions
-└── utils/          # Utility functions
+```bash
+npm install
 ```
 
-## Development
+## Run
 
-- Run the development server: `npm run dev`
-- Lint code: `npm run lint`
-- Format code: `npm run format`
-- Build for production: `npm run build`
-- Preview production build: `npm run preview`
+```bash
+npm run dev:telegram
+npm run dev:web
+```
 
-## License
+## Build
 
-ISC
+```bash
+npm run build:telegram
+npm run build:web
+npm run build:all
+```
+
+## Lint and Format
+
+```bash
+npm run lint
+npm run format
+```
+
+## Boundaries
+
+See `docs/frontend-boundaries.md` for strict app/shared layer rules.
