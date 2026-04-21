@@ -182,8 +182,9 @@ export const ExpenseMessageCard = ({
 							</table>
 							{compactMoreCount > 0 ? (
 								<div className="border-t border-border/50 bg-muted/40 px-2.5 py-1.5 text-[10px] text-muted-foreground">
-									+{compactMoreCount} more line{compactMoreCount === 1 ? "" : "s"} —
-									open thread for full detail
+									+{compactMoreCount} more line
+									{compactMoreCount === 1 ? "" : "s"} — open thread for full
+									detail
 								</div>
 							) : null}
 						</div>

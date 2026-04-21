@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import {
 	LANDING_PAGES,
-	MARKETING_BASE_URL,
 	type LandingPageConfig,
+	MARKETING_BASE_URL,
 } from "./landingPages";
 
 type SeoMeta = {
@@ -31,14 +31,21 @@ const seoFor = (page: LandingPageConfig): SeoMeta => ({
 });
 
 const pageLinks = (slug: string) =>
-	LANDING_PAGES[slug]?.related.map((item) => `${MARKETING_BASE_URL}${item}`) ?? [];
+	LANDING_PAGES[slug]?.related.map((item) => `${MARKETING_BASE_URL}${item}`) ??
+	[];
 
 const jsonLdFor = (page: LandingPageConfig) => {
 	const breadcrumbItems = [
 		{ name: "Home", item: MARKETING_BASE_URL, position: 1 },
 		...(page.slug === "/"
 			? []
-			: [{ name: page.h1, item: `${MARKETING_BASE_URL}${page.slug}`, position: 2 }]),
+			: [
+					{
+						name: page.h1,
+						item: `${MARKETING_BASE_URL}${page.slug}`,
+						position: 2,
+					},
+				]),
 	];
 
 	return {
@@ -102,11 +109,14 @@ export const useSeoHead = (page: LandingPageConfig) => {
 		}) as HTMLMetaElement;
 		ogTitleTag.content = seo.title;
 
-		const ogDescriptionTag = ensureMetaTag('meta[property="og:description"]', () => {
-			const meta = document.createElement("meta");
-			meta.setAttribute("property", "og:description");
-			return meta;
-		}) as HTMLMetaElement;
+		const ogDescriptionTag = ensureMetaTag(
+			'meta[property="og:description"]',
+			() => {
+				const meta = document.createElement("meta");
+				meta.setAttribute("property", "og:description");
+				return meta;
+			},
+		) as HTMLMetaElement;
 		ogDescriptionTag.content = seo.description;
 
 		const ogTypeTag = ensureMetaTag('meta[property="og:type"]', () => {
@@ -137,11 +147,14 @@ export const useSeoHead = (page: LandingPageConfig) => {
 		}) as HTMLMetaElement;
 		twitterTitleTag.content = seo.title;
 
-		const twitterDescriptionTag = ensureMetaTag('meta[name="twitter:description"]', () => {
-			const meta = document.createElement("meta");
-			meta.setAttribute("name", "twitter:description");
-			return meta;
-		}) as HTMLMetaElement;
+		const twitterDescriptionTag = ensureMetaTag(
+			'meta[name="twitter:description"]',
+			() => {
+				const meta = document.createElement("meta");
+				meta.setAttribute("name", "twitter:description");
+				return meta;
+			},
+		) as HTMLMetaElement;
 		twitterDescriptionTag.content = seo.description;
 
 		const jsonLd = jsonLdFor(page);

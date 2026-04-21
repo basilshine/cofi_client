@@ -192,10 +192,7 @@ export const ConsoleBreadcrumbs = ({
 	const isInline = variant === "inline";
 
 	return (
-		<nav
-			aria-label="Breadcrumb"
-			className={isInline ? "" : "mb-6"}
-		>
+		<nav aria-label="Breadcrumb" className={isInline ? "" : "mb-6"}>
 			<ol
 				className={[
 					"flex min-w-0 flex-wrap items-center gap-1.5 font-medium tracking-wide",

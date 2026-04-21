@@ -15,9 +15,7 @@ export const TransactionsPage = () => {
 	return (
 		<Navigate
 			replace
-			state={
-				selectSpaceId != null ? { selectSpaceId } : undefined
-			}
+			state={selectSpaceId != null ? { selectSpaceId } : undefined}
 			to="/console/chat/expenses"
 		/>
 	);

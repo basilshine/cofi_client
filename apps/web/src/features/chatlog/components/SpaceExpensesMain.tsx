@@ -37,7 +37,12 @@ type StatusFilter = "all" | "draft" | "approved" | "cancelled" | "other";
 type TypeFilter = "all" | "expense" | "income";
 type OwnerFilter = "all" | "mine" | "others";
 type DatePreset = "all" | "7d" | "30d" | "90d";
-type SortKey = "date_desc" | "date_asc" | "amount_desc" | "amount_asc" | "created_desc";
+type SortKey =
+	| "date_desc"
+	| "date_asc"
+	| "amount_desc"
+	| "amount_asc"
+	| "created_desc";
 
 const statusBucket = (raw: string | undefined): StatusFilter => {
 	const s = (raw ?? "").toLowerCase();
@@ -133,9 +138,7 @@ export const SpaceExpensesMain = ({
 				}
 			}
 			if (tagFilter !== "all") {
-				const tags = new Set(
-					collectItemTags(tx).map((t) => normalize(t)),
-				);
+				const tags = new Set(collectItemTags(tx).map((t) => normalize(t)));
 				if (!tags.has(normalize(tagFilter))) return false;
 			}
 			if (cutoffMs != null) {
@@ -176,7 +179,6 @@ export const SpaceExpensesMain = ({
 					const db = parseTxnDate(b) ?? 0;
 					return db - da;
 				}
-				case "created_desc":
 				default: {
 					const ca = a.created_at ? Date.parse(a.created_at) : 0;
 					const cb = b.created_at ? Date.parse(b.created_at) : 0;
@@ -237,9 +239,7 @@ export const SpaceExpensesMain = ({
 						<select
 							aria-label="Filter by status"
 							className="h-9 min-w-[7.5rem] rounded-md border border-border bg-background px-2 text-sm"
-							onChange={(e) =>
-								setStatusFilter(e.target.value as StatusFilter)
-							}
+							onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
 							value={statusFilter}
 						>
 							<option value="all">All</option>
@@ -271,15 +271,11 @@ export const SpaceExpensesMain = ({
 						<select
 							aria-label="Filter by owner"
 							className="h-9 min-w-[7.5rem] rounded-md border border-border bg-background px-2 text-sm"
-							onChange={(e) =>
-								setOwnerFilter(e.target.value as OwnerFilter)
-							}
+							onChange={(e) => setOwnerFilter(e.target.value as OwnerFilter)}
 							value={ownerFilter}
 							disabled={currentUserId == null}
 							title={
-								currentUserId == null
-									? "Sign in to filter by owner"
-									: undefined
+								currentUserId == null ? "Sign in to filter by owner" : undefined
 							}
 						>
 							<option value="all">All</option>
@@ -294,9 +290,7 @@ export const SpaceExpensesMain = ({
 						<select
 							aria-label="Filter by expense date"
 							className="h-9 min-w-[7rem] rounded-md border border-border bg-background px-2 text-sm"
-							onChange={(e) =>
-								setDatePreset(e.target.value as DatePreset)
-							}
+							onChange={(e) => setDatePreset(e.target.value as DatePreset)}
 							value={datePreset}
 						>
 							<option value="all">Any</option>

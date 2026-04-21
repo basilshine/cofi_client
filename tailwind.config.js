@@ -19,12 +19,7 @@ module.exports = {
 			fontFamily: {
 				sans: ["DM Sans", "system-ui", "-apple-system", "sans-serif"],
 				heading: ["Outfit", "system-ui", "-apple-system", "sans-serif"],
-				display: [
-					"Cormorant Garamond",
-					"Georgia",
-					"Times New Roman",
-					"serif",
-				],
+				display: ["Cormorant Garamond", "Georgia", "Times New Roman", "serif"],
 			},
 			colors: {
 				ceits: {

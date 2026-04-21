@@ -54,8 +54,10 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 			"Trip spending space that keeps everyone aligned while traveling.",
 		],
 		comparison: {
-			plain: "Plain trackers list transactions but often lose the story behind each expense.",
-			ceits: "Ceits keeps the story and the numbers together so shared decisions are easier and faster.",
+			plain:
+				"Plain trackers list transactions but often lose the story behind each expense.",
+			ceits:
+				"Ceits keeps the story and the numbers together so shared decisions are easier and faster.",
 		},
 		faq: [
 			{
@@ -98,8 +100,10 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 			"Prepare for travel or events with a dedicated shared spending space.",
 		],
 		comparison: {
-			plain: "Basic apps split a bill but rarely help with the ongoing shared picture.",
-			ceits: "Ceits handles splitting plus recurring history and context for better week-to-week alignment.",
+			plain:
+				"Basic apps split a bill but rarely help with the ongoing shared picture.",
+			ceits:
+				"Ceits handles splitting plus recurring history and context for better week-to-week alignment.",
 		},
 		faq: [
 			{
@@ -138,7 +142,8 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 		],
 		comparison: {
 			plain: "Generic trackers can show totals but often miss family context.",
-			ceits: "Ceits keeps each expense attached to where and why it happened, not just an amount.",
+			ceits:
+				"Ceits keeps each expense attached to where and why it happened, not just an amount.",
 		},
 		faq: [
 			{
@@ -177,7 +182,8 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 		],
 		comparison: {
 			plain: "Most tools stop at logging and splitting.",
-			ceits: "Ceits helps you understand shared spending patterns and make decisions with less friction.",
+			ceits:
+				"Ceits helps you understand shared spending patterns and make decisions with less friction.",
 		},
 		faq: [],
 		related: ["/for-couples", "/for-families", "/split-bills-with-partner"],
@@ -210,7 +216,8 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 		],
 		comparison: {
 			plain: "Traditional budget apps are often solo-first.",
-			ceits: "Ceits is shared-first, so both partners can participate with less friction.",
+			ceits:
+				"Ceits is shared-first, so both partners can participate with less friction.",
 		},
 		faq: [],
 		related: ["/for-couples", "/split-bills-with-partner", "/"],
@@ -243,7 +250,8 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 		],
 		comparison: {
 			plain: "Simple budget apps can hide the why behind each cost.",
-			ceits: "Ceits keeps household context attached to each expense so planning is clearer.",
+			ceits:
+				"Ceits keeps household context attached to each expense so planning is clearer.",
 		},
 		faq: [],
 		related: ["/for-families", "/shared-expense-tracker", "/"],
@@ -276,7 +284,8 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 		],
 		comparison: {
 			plain: "Split tools are good at math, weak at ongoing coordination.",
-			ceits: "Ceits keeps math plus memory, so the relationship side of money gets easier too.",
+			ceits:
+				"Ceits keeps math plus memory, so the relationship side of money gets easier too.",
 		},
 		faq: [],
 		related: ["/for-couples", "/couples-budget-app", "/shared-expense-tracker"],

@@ -1,7 +1,10 @@
 import { Outlet } from "react-router-dom";
 import { ChatSpacesSidebar } from "../../../features/chatlog/components/ChatSpacesSidebar";
 import { WorkspaceSpaceListNav } from "./WorkspaceSpaceListNav";
-import { WorkspaceSpacesProvider, useWorkspaceSpaces } from "./WorkspaceSpacesContext";
+import {
+	WorkspaceSpacesProvider,
+	useWorkspaceSpaces,
+} from "./WorkspaceSpacesContext";
 
 const WorkspaceSidebar = () => {
 	const { chatSidebarProps, sidebarExpanded } = useWorkspaceSpaces();
@@ -17,11 +20,7 @@ const WorkspaceSidebar = () => {
 		>
 			<WorkspaceSpaceListNav soloNav={chatSidebarProps == null} />
 			{chatSidebarProps ? (
-				<ChatSpacesSidebar
-					{...chatSidebarProps}
-					embedded
-					hideSpaceList
-				/>
+				<ChatSpacesSidebar {...chatSidebarProps} embedded hideSpaceList />
 			) : null}
 		</aside>
 	);

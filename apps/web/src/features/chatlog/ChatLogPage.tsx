@@ -270,10 +270,9 @@ export const ChatLogPage = () => {
 		setSpaceTransactionsLoading(true);
 		setSpaceTransactionsError(null);
 		try {
-			const data = await apiClient.spaces.listTransactions(
-				selectedSpaceId,
-				{ limit: 200 },
-			);
+			const data = await apiClient.spaces.listTransactions(selectedSpaceId, {
+				limit: 200,
+			});
 			setSpaceTransactions(data ?? []);
 		} catch (e) {
 			setSpaceTransactions(null);
@@ -1667,33 +1666,33 @@ export const ChatLogPage = () => {
 											/>
 										</div>
 									) : (
-									<div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t border-border/60 bg-card">
-										<div className="relative flex min-h-0 flex-1 flex-col bg-background/30">
-											{hasMore ? (
-												<button
-													aria-label="Load older messages"
-													className={`absolute left-3 top-3 z-20 max-w-[42%] sm:max-w-none ${navPillBase} ${navPillInactive} disabled:opacity-50`}
-													disabled={
-														isLoading || !selectedSpaceId || !oldestMessageId
-													}
-													onClick={() => void handleLoadOlder()}
-													type="button"
-												>
-													Older
-												</button>
-											) : null}
-											<div className="relative min-h-0 flex-1">
-												<div
-													className="scrollbar-chat absolute inset-0 space-y-2 overflow-y-auto px-3 pb-3 pt-12 sm:px-4 sm:pt-14"
-													onScroll={handleMessagesScroll}
-													ref={messagesScrollRef}
-												>
-													{messages?.length ? (
-														messages.map((m) => {
-															const isUser = m.sender_type === "user";
-															const accent = isUser
-																? userMessageAccent(m.user_id)
-																: null;
+										<div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t border-border/60 bg-card">
+											<div className="relative flex min-h-0 flex-1 flex-col bg-background/30">
+												{hasMore ? (
+													<button
+														aria-label="Load older messages"
+														className={`absolute left-3 top-3 z-20 max-w-[42%] sm:max-w-none ${navPillBase} ${navPillInactive} disabled:opacity-50`}
+														disabled={
+															isLoading || !selectedSpaceId || !oldestMessageId
+														}
+														onClick={() => void handleLoadOlder()}
+														type="button"
+													>
+														Older
+													</button>
+												) : null}
+												<div className="relative min-h-0 flex-1">
+													<div
+														className="scrollbar-chat absolute inset-0 space-y-2 overflow-y-auto px-3 pb-3 pt-12 sm:px-4 sm:pt-14"
+														onScroll={handleMessagesScroll}
+														ref={messagesScrollRef}
+													>
+														{messages?.length ? (
+															messages.map((m) => {
+																const isUser = m.sender_type === "user";
+																const accent = isUser
+																	? userMessageAccent(m.user_id)
+																	: null;
 																const showCaptionAboveExpense =
 																	Boolean(
 																		m.related_transaction_id ||
@@ -1718,291 +1717,295 @@ export const ChatLogPage = () => {
 																		<div
 																			className={[
 																				"group relative max-w-[min(640px,92%)] space-y-2 rounded-lg border px-3 py-2 shadow-sm",
-																			isUser
-																				? "border-border"
-																				: "border-primary/30 bg-primary/10",
-																		].join(" ")}
-																		style={
-																			isUser && accent
-																				? {
-																						borderLeftWidth: 4,
-																						borderLeftStyle: "solid",
-																						borderLeftColor:
-																							accent.borderLeftColor,
-																						backgroundColor: accent.surface,
-																					}
-																				: undefined
-																		}
-																	>
-																		<div className="flex items-center justify-between gap-2">
-																			<div className="min-w-0 text-[10px] font-semibold text-foreground">
-																				{getMessageSenderLabel(m)}
-																			</div>
-																			<div className="flex shrink-0 items-center gap-2">
-																				{canEditMessage(m) ? (
-																					<button
-																						aria-label="Edit message"
-																						className="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary opacity-0 transition-opacity hover:bg-primary/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-																						onClick={() => {
-																							setEditingMessageId(m.id);
-																							setEditingMessageText(
-																								m.text ?? "",
-																							);
-																						}}
-																						title="Edit message"
-																						type="button"
-																					>
-																						Edit
-																					</button>
-																				) : null}
-																				{canDeleteMessage(m) ? (
-																					<button
-																						aria-label="Delete message"
-																						className="rounded px-1.5 py-0.5 text-[10px] font-medium text-destructive opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-																						onClick={() =>
-																							void handleDeleteOneMessage(m)
+																				isUser
+																					? "border-border"
+																					: "border-primary/30 bg-primary/10",
+																			].join(" ")}
+																			style={
+																				isUser && accent
+																					? {
+																							borderLeftWidth: 4,
+																							borderLeftStyle: "solid",
+																							borderLeftColor:
+																								accent.borderLeftColor,
+																							backgroundColor: accent.surface,
 																						}
-																						title="Delete message"
-																						type="button"
-																					>
-																						Delete
-																					</button>
-																				) : null}
-																				<div className="text-[10px] text-muted-foreground">
-																					{m.created_at
-																						? formatDateTime(m.created_at)
-																						: ""}
+																					: undefined
+																			}
+																		>
+																			<div className="flex items-center justify-between gap-2">
+																				<div className="min-w-0 text-[10px] font-semibold text-foreground">
+																					{getMessageSenderLabel(m)}
+																				</div>
+																				<div className="flex shrink-0 items-center gap-2">
+																					{canEditMessage(m) ? (
+																						<button
+																							aria-label="Edit message"
+																							className="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary opacity-0 transition-opacity hover:bg-primary/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+																							onClick={() => {
+																								setEditingMessageId(m.id);
+																								setEditingMessageText(
+																									m.text ?? "",
+																								);
+																							}}
+																							title="Edit message"
+																							type="button"
+																						>
+																							Edit
+																						</button>
+																					) : null}
+																					{canDeleteMessage(m) ? (
+																						<button
+																							aria-label="Delete message"
+																							className="rounded px-1.5 py-0.5 text-[10px] font-medium text-destructive opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+																							onClick={() =>
+																								void handleDeleteOneMessage(m)
+																							}
+																							title="Delete message"
+																							type="button"
+																						>
+																							Delete
+																						</button>
+																					) : null}
+																					<div className="text-[10px] text-muted-foreground">
+																						{m.created_at
+																							? formatDateTime(m.created_at)
+																							: ""}
+																					</div>
 																				</div>
 																			</div>
-																		</div>
 
-																		{showCaptionAboveExpense ? (
-																			<div className="whitespace-pre-wrap text-sm text-foreground">
-																				{m.text}
-																			</div>
-																		) : null}
-
-																		{m.related_transaction_id ? (
-																			<ExpenseMessageCard
-																				chatWorkspace={workspaceScope}
-																				compact
-																				onOpenExpenseThread={
-																					openExpenseInSidebar
-																				}
-																				onTransactionOrphaned={() =>
-																					handleRelatedResourceGone(m.id)
-																				}
-																				spaceId={selectedSpaceId ?? undefined}
-																				transactionId={m.related_transaction_id}
-																			/>
-																		) : null}
-
-																		{m.related_expense_id ? (
-																			<DraftExpenseCard
-																				chatWorkspace={workspaceScope}
-																				compact
-																				expenseId={m.related_expense_id}
-																				onExpenseOrphaned={() =>
-																					handleRelatedResourceGone(m.id)
-																				}
-																				onOpenExpenseThread={
-																					openExpenseInSidebar
-																				}
-																				originMessageId={m.id}
-																				relatedExpenseStatusHint={
-																					m.related_expense_status
-																				}
-																				spaceId={selectedSpaceId ?? undefined}
-																			/>
-																		) : null}
-
-																		{canEditMessage(m) &&
-																		editingMessageId != null &&
-																		String(editingMessageId) ===
-																			String(m.id) ? (
-																			<div className="mt-2 space-y-2">
-																				<label className="grid gap-1">
-																					<span className="sr-only">
-																						Edit message
-																					</span>
-																					<textarea
-																						className="min-h-[5rem] w-full resize-y rounded-md border border-border bg-background p-2 text-sm text-foreground"
-																						onChange={(e) =>
-																							setEditingMessageText(
-																								e.target.value,
-																							)
-																						}
-																						rows={5}
-																						value={editingMessageText}
-																					/>
-																				</label>
-																				<div className="flex flex-wrap gap-2">
-																					<button
-																						className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-																						onClick={() =>
-																							void handleSaveEditMessage()
-																						}
-																						type="button"
-																					>
-																						Save
-																					</button>
-																					<button
-																						className="rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent"
-																						onClick={handleCancelEditMessage}
-																						type="button"
-																					>
-																						Cancel
-																					</button>
-																				</div>
-																			</div>
-																		) : isRecurringExpenseChatMessage(m) ? (
-																			<div className="space-y-1">
-																				<p className="text-[11px] font-semibold uppercase tracking-wide text-primary/90">
-																					Recurring schedule
-																				</p>
+																			{showCaptionAboveExpense ? (
 																				<div className="whitespace-pre-wrap text-sm text-foreground">
 																					{m.text}
 																				</div>
-																			</div>
-																		) : isDraftExpenseSystemMessage(
-																				m,
-																			) ? null : showCaptionAboveExpense ? null : (
-																			<div className="whitespace-pre-wrap text-sm text-foreground">
-																				{m.text}
-																			</div>
-																		)}
+																			) : null}
+
+																			{m.related_transaction_id ? (
+																				<ExpenseMessageCard
+																					chatWorkspace={workspaceScope}
+																					compact
+																					onOpenExpenseThread={
+																						openExpenseInSidebar
+																					}
+																					onTransactionOrphaned={() =>
+																						handleRelatedResourceGone(m.id)
+																					}
+																					spaceId={selectedSpaceId ?? undefined}
+																					transactionId={
+																						m.related_transaction_id
+																					}
+																				/>
+																			) : null}
+
+																			{m.related_expense_id ? (
+																				<DraftExpenseCard
+																					chatWorkspace={workspaceScope}
+																					compact
+																					expenseId={m.related_expense_id}
+																					onExpenseOrphaned={() =>
+																						handleRelatedResourceGone(m.id)
+																					}
+																					onOpenExpenseThread={
+																						openExpenseInSidebar
+																					}
+																					originMessageId={m.id}
+																					relatedExpenseStatusHint={
+																						m.related_expense_status
+																					}
+																					spaceId={selectedSpaceId ?? undefined}
+																				/>
+																			) : null}
+
+																			{canEditMessage(m) &&
+																			editingMessageId != null &&
+																			String(editingMessageId) ===
+																				String(m.id) ? (
+																				<div className="mt-2 space-y-2">
+																					<label className="grid gap-1">
+																						<span className="sr-only">
+																							Edit message
+																						</span>
+																						<textarea
+																							className="min-h-[5rem] w-full resize-y rounded-md border border-border bg-background p-2 text-sm text-foreground"
+																							onChange={(e) =>
+																								setEditingMessageText(
+																									e.target.value,
+																								)
+																							}
+																							rows={5}
+																							value={editingMessageText}
+																						/>
+																					</label>
+																					<div className="flex flex-wrap gap-2">
+																						<button
+																							className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+																							onClick={() =>
+																								void handleSaveEditMessage()
+																							}
+																							type="button"
+																						>
+																							Save
+																						</button>
+																						<button
+																							className="rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent"
+																							onClick={handleCancelEditMessage}
+																							type="button"
+																						>
+																							Cancel
+																						</button>
+																					</div>
+																				</div>
+																			) : isRecurringExpenseChatMessage(m) ? (
+																				<div className="space-y-1">
+																					<p className="text-[11px] font-semibold uppercase tracking-wide text-primary/90">
+																						Recurring schedule
+																					</p>
+																					<div className="whitespace-pre-wrap text-sm text-foreground">
+																						{m.text}
+																					</div>
+																				</div>
+																			) : isDraftExpenseSystemMessage(
+																					m,
+																				) ? null : showCaptionAboveExpense ? null : (
+																				<div className="whitespace-pre-wrap text-sm text-foreground">
+																					{m.text}
+																				</div>
+																			)}
+																		</div>
 																	</div>
-																</div>
-															);
-														})
-													) : (
-														<div className="text-sm text-muted-foreground">
-															No messages yet.
-														</div>
-													)}
-													<div
-														aria-hidden
-														className="h-px w-full shrink-0"
-														ref={messagesEndRef}
-													/>
-												</div>
-												{showJumpToLatest ? (
-													<button
-														aria-label="Jump to latest messages"
-														className="pointer-events-auto absolute bottom-3 right-3 z-30 inline-flex h-10 items-center gap-1.5 rounded-full border border-primary/25 bg-primary px-3 text-primary-foreground shadow-lg ring-2 ring-background transition hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-11 sm:px-4"
-														onClick={handleJumpToLatest}
-														type="button"
-													>
-														<span
-															aria-hidden
-															className="text-base leading-none sm:text-lg"
-														>
-															↓
-														</span>
-														<span className="max-w-[5.5rem] truncate text-xs font-semibold sm:max-w-none">
-															Latest
-														</span>
-													</button>
-												) : null}
-											</div>
-											<div className="shrink-0 border-t border-border/60 bg-card/95 p-3 backdrop-blur-sm dark:bg-background/90">
-												{selectedSpaceId ? (
-													<div className="space-y-2">
-														{multiUserSpace ? (
-															<div className="flex flex-wrap items-center justify-end gap-2">
-																<button
-																	aria-label={
-																		composerMode === "message"
-																			? "Switch composer to capture (parse text, photo, or voice)"
-																			: "Switch composer to chat message"
-																	}
-																	aria-pressed={composerMode === "capture"}
-																	className="inline-flex h-9 items-center rounded-full border border-border bg-background px-4 text-xs font-medium shadow-sm transition-colors hover:bg-accent disabled:opacity-50"
-																	disabled={isLoading || !selectedSpaceId}
-																	onClick={() =>
-																		setComposerMode((m) =>
-																			m === "message" ? "capture" : "message",
-																		)
-																	}
-																	type="button"
-																>
-																	{composerMode === "message"
-																		? "Capture"
-																		: "Chat"}
-																</button>
-															</div>
-														) : null}
-														{!multiUserSpace || composerMode === "capture" ? (
-															<>
-																<p className="text-xs text-muted-foreground">
-																	Parse text, photo, or voice — drafts appear in
-																	this thread.
-																</p>
-																<ParseExpenseComposer
-																	disabled={isLoading || !selectedSpaceId}
-																	isRecording={isRecording}
-																	onParseInputChange={setParseInput}
-																	onParseKeyDown={handleParseKeyDown}
-																	onParseSubmit={() =>
-																		void handleParseTextSubmit()
-																	}
-																	onPhotoFile={(f) =>
-																		void handleParsePhotoFile(f)
-																	}
-																	onToggleRecording={() =>
-																		void handleToggleRecording()
-																	}
-																	parseInput={parseInput}
-																	photoFileInputRef={quickCapturePhotoInputRef}
-																	parseTextareaRef={parseTextareaRef}
-																	testSnippets={PARSE_DUMMY_TEST_SNIPPETS}
-																/>
-															</>
+																);
+															})
 														) : (
-															<>
-																<p className="mb-2 text-xs text-muted-foreground">
-																	Messages stay in sync with the space. Switch
-																	to Capture to parse text, photo, or voice.
-																</p>
-																<div className="flex items-end gap-2">
-																	<label className="grid min-w-0 flex-1 gap-1">
-																		<span className="text-xs font-medium text-muted-foreground">
-																			Message (Ctrl/⌘ + Enter to send)
-																		</span>
-																		<textarea
-																			aria-label="Chat message"
-																			className="h-24 w-full min-w-0 resize-none overflow-y-auto rounded-md border border-border bg-background p-3 text-sm"
-																			onChange={(e) =>
-																				setChatInput(e.target.value)
-																			}
-																			onKeyDown={handleChatKeyDown}
-																			placeholder="Write a message…"
-																			ref={chatMessageTextareaRef}
-																			rows={4}
-																			value={chatInput}
-																		/>
-																	</label>
+															<div className="text-sm text-muted-foreground">
+																No messages yet.
+															</div>
+														)}
+														<div
+															aria-hidden
+															className="h-px w-full shrink-0"
+															ref={messagesEndRef}
+														/>
+													</div>
+													{showJumpToLatest ? (
+														<button
+															aria-label="Jump to latest messages"
+															className="pointer-events-auto absolute bottom-3 right-3 z-30 inline-flex h-10 items-center gap-1.5 rounded-full border border-primary/25 bg-primary px-3 text-primary-foreground shadow-lg ring-2 ring-background transition hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-11 sm:px-4"
+															onClick={handleJumpToLatest}
+															type="button"
+														>
+															<span
+																aria-hidden
+																className="text-base leading-none sm:text-lg"
+															>
+																↓
+															</span>
+															<span className="max-w-[5.5rem] truncate text-xs font-semibold sm:max-w-none">
+																Latest
+															</span>
+														</button>
+													) : null}
+												</div>
+												<div className="shrink-0 border-t border-border/60 bg-card/95 p-3 backdrop-blur-sm dark:bg-background/90">
+													{selectedSpaceId ? (
+														<div className="space-y-2">
+															{multiUserSpace ? (
+																<div className="flex flex-wrap items-center justify-end gap-2">
 																	<button
-																		aria-label="Send message"
-																		className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-primary bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
-																		disabled={
-																			isLoading ||
-																			!selectedSpaceId ||
-																			!chatInput.trim()
+																		aria-label={
+																			composerMode === "message"
+																				? "Switch composer to capture (parse text, photo, or voice)"
+																				: "Switch composer to chat message"
 																		}
-																		onClick={() => void handleSendChat()}
+																		aria-pressed={composerMode === "capture"}
+																		className="inline-flex h-9 items-center rounded-full border border-border bg-background px-4 text-xs font-medium shadow-sm transition-colors hover:bg-accent disabled:opacity-50"
+																		disabled={isLoading || !selectedSpaceId}
+																		onClick={() =>
+																			setComposerMode((m) =>
+																				m === "message" ? "capture" : "message",
+																			)
+																		}
 																		type="button"
 																	>
-																		<SendMessageIcon />
+																		{composerMode === "message"
+																			? "Capture"
+																			: "Chat"}
 																	</button>
 																</div>
-															</>
-														)}
-													</div>
-												) : null}
+															) : null}
+															{!multiUserSpace || composerMode === "capture" ? (
+																<>
+																	<p className="text-xs text-muted-foreground">
+																		Parse text, photo, or voice — drafts appear
+																		in this thread.
+																	</p>
+																	<ParseExpenseComposer
+																		disabled={isLoading || !selectedSpaceId}
+																		isRecording={isRecording}
+																		onParseInputChange={setParseInput}
+																		onParseKeyDown={handleParseKeyDown}
+																		onParseSubmit={() =>
+																			void handleParseTextSubmit()
+																		}
+																		onPhotoFile={(f) =>
+																			void handleParsePhotoFile(f)
+																		}
+																		onToggleRecording={() =>
+																			void handleToggleRecording()
+																		}
+																		parseInput={parseInput}
+																		photoFileInputRef={
+																			quickCapturePhotoInputRef
+																		}
+																		parseTextareaRef={parseTextareaRef}
+																		testSnippets={PARSE_DUMMY_TEST_SNIPPETS}
+																	/>
+																</>
+															) : (
+																<>
+																	<p className="mb-2 text-xs text-muted-foreground">
+																		Messages stay in sync with the space. Switch
+																		to Capture to parse text, photo, or voice.
+																	</p>
+																	<div className="flex items-end gap-2">
+																		<label className="grid min-w-0 flex-1 gap-1">
+																			<span className="text-xs font-medium text-muted-foreground">
+																				Message (Ctrl/⌘ + Enter to send)
+																			</span>
+																			<textarea
+																				aria-label="Chat message"
+																				className="h-24 w-full min-w-0 resize-none overflow-y-auto rounded-md border border-border bg-background p-3 text-sm"
+																				onChange={(e) =>
+																					setChatInput(e.target.value)
+																				}
+																				onKeyDown={handleChatKeyDown}
+																				placeholder="Write a message…"
+																				ref={chatMessageTextareaRef}
+																				rows={4}
+																				value={chatInput}
+																			/>
+																		</label>
+																		<button
+																			aria-label="Send message"
+																			className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-primary bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
+																			disabled={
+																				isLoading ||
+																				!selectedSpaceId ||
+																				!chatInput.trim()
+																			}
+																			onClick={() => void handleSendChat()}
+																			type="button"
+																		>
+																			<SendMessageIcon />
+																		</button>
+																	</div>
+																</>
+															)}
+														</div>
+													) : null}
+												</div>
 											</div>
 										</div>
-									</div>
 									)}
 								</>
 							) : (

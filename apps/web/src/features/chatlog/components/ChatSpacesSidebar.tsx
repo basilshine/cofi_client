@@ -437,7 +437,9 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 															) : ownerId != null ? (
 																<span>Shared · owner user #{ownerId}</span>
 															) : (
-																<span className="font-mono">id {String(s.id)}</span>
+																<span className="font-mono">
+																	id {String(s.id)}
+																</span>
 															)}
 														</div>
 													</div>

@@ -7,8 +7,7 @@ import { ConsoleWorkspaceTheme } from "./ConsoleWorkspaceTheme";
 export const AppShell = () => {
 	const { pathname } = useLocation();
 	const fullBleedWorkspace =
-		pathname.startsWith("/console") &&
-		!pathname.startsWith("/console/account");
+		pathname.startsWith("/console") && !pathname.startsWith("/console/account");
 
 	return (
 		<div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">

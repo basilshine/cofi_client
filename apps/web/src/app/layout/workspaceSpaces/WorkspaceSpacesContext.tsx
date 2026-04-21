@@ -8,14 +8,14 @@ import {
 	useMemo,
 	useState,
 } from "react";
+import type { ChatSpacesSidebarProps } from "../../../features/chatlog/components/ChatSpacesSidebar";
 import { apiClient } from "../../../shared/lib/apiClient";
 import {
 	type ChatWorkspaceScope,
 	writeChatWorkspaceScope,
 } from "../../../shared/lib/chatWorkspaceScope";
-import { wsClient } from "../../../shared/lib/wsClient";
 import { notifyWorkspaceNavUpdated } from "../../../shared/lib/workspaceNavEvents";
-import type { ChatSpacesSidebarProps } from "../../../features/chatlog/components/ChatSpacesSidebar";
+import { wsClient } from "../../../shared/lib/wsClient";
 const STORAGE_EXPANDED = "ceits.workspace.sidebarExpanded";
 const STORAGE_RIGHT_EXPANDED = "ceits.workspace.rightSidebarExpanded";
 
@@ -45,14 +45,14 @@ type WorkspaceSpacesContextValue = {
 	isCreatingSpace: boolean;
 };
 
-const WorkspaceSpacesContext = createContext<WorkspaceSpacesContextValue | null>(
-	null,
-);
+const WorkspaceSpacesContext =
+	createContext<WorkspaceSpacesContextValue | null>(null);
 
-export const WorkspaceSpacesProvider = ({ children }: { children: ReactNode }) => {
-	const [workspaceScope, setWorkspaceScope] = useState<ChatWorkspaceScope | null>(
-		null,
-	);
+export const WorkspaceSpacesProvider = ({
+	children,
+}: { children: ReactNode }) => {
+	const [workspaceScope, setWorkspaceScope] =
+		useState<ChatWorkspaceScope | null>(null);
 	const [spaces, setSpaces] = useState<Space[] | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -289,7 +289,9 @@ export const WorkspaceSpacesProvider = ({ children }: { children: ReactNode }) =
 export const useWorkspaceSpaces = (): WorkspaceSpacesContextValue => {
 	const ctx = useContext(WorkspaceSpacesContext);
 	if (!ctx) {
-		throw new Error("useWorkspaceSpaces must be used within WorkspaceSpacesProvider");
+		throw new Error(
+			"useWorkspaceSpaces must be used within WorkspaceSpacesProvider",
+		);
 	}
 	return ctx;
 };

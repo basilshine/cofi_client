@@ -1034,8 +1034,7 @@ const DashboardBody = ({
 		return accessibleSpaces.filter((s) => Number(s.tenant_id) === pt);
 	}, [accessibleSpaces, dashboardData?.context?.tenant_id]);
 
-	const spendScopeHint =
-		"Personal workspace — all spaces for this account.";
+	const spendScopeHint = "Personal workspace — all spaces for this account.";
 
 	const handleSpendPeriodKind = useCallback((k: SpendPeriodKindUI) => {
 		setSpendPeriodKind(k);
@@ -1332,37 +1331,37 @@ const DashboardBody = ({
 			</header>
 
 			<div className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
-			{intentBanner ? (
-				<output
-					aria-live="polite"
-					className="mx-4 mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-muted))] p-4 text-sm lg:mx-8"
-				>
-					<p className="min-w-0 flex-1 text-[hsl(var(--text-secondary))]">
-						{intentBanner}
-					</p>
-					<button
-						className="shrink-0 rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] px-3 py-1 text-xs font-medium text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-						onClick={onDismissIntent}
-						type="button"
+				{intentBanner ? (
+					<output
+						aria-live="polite"
+						className="mx-4 mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-muted))] p-4 text-sm lg:mx-8"
 					>
-						Dismiss
-					</button>
-				</output>
-			) : null}
+						<p className="min-w-0 flex-1 text-[hsl(var(--text-secondary))]">
+							{intentBanner}
+						</p>
+						<button
+							className="shrink-0 rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] px-3 py-1 text-xs font-medium text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+							onClick={onDismissIntent}
+							type="button"
+						>
+							Dismiss
+						</button>
+					</output>
+				) : null}
 
-			<div className="px-4 pt-4 lg:px-8">
-				<DashboardOverviewMetricsRow
-					currency={currency}
-					formatCurrencyAmount={formatCurrencyAmount}
-					monthly={monthly}
-					pageLoading={pageLoading}
-					pendingDrafts={pendingDrafts}
-					recurring={recurring}
-					reviewQ={reviewQ}
-				/>
-			</div>
+				<div className="px-4 pt-4 lg:px-8">
+					<DashboardOverviewMetricsRow
+						currency={currency}
+						formatCurrencyAmount={formatCurrencyAmount}
+						monthly={monthly}
+						pageLoading={pageLoading}
+						pendingDrafts={pendingDrafts}
+						recurring={recurring}
+						reviewQ={reviewQ}
+					/>
+				</div>
 
-			<div className={sectionRhythm}>
+				<div className={sectionRhythm}>
 					<div className={dashboardCaptureHeroBandClass}>
 						<div className={dashboardCaptureHeroInnerClass}>
 							<div className="lg:col-span-12 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl ring-1 ring-black/40">

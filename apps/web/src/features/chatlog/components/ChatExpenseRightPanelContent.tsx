@@ -68,8 +68,8 @@ export const ChatExpenseRightPanelContent = ({
 		<div className="space-y-3 px-3 py-3 sm:px-4">
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<p className="text-[11px] leading-snug text-muted-foreground">
-					Approved expenses linked to this space (from your Ceits history).
-					Open one to use the full thread — review, splits, and discussion.
+					Approved expenses linked to this space (from your Ceits history). Open
+					one to use the full thread — review, splits, and discussion.
 				</p>
 				<button
 					aria-label="Reload expense list"
@@ -114,7 +114,9 @@ export const ChatExpenseRightPanelContent = ({
 										<div className="truncate text-xs font-semibold text-muted-foreground">
 											#{String(tx.id)}
 											{tx.currency ? (
-												<span className="ml-1.5 font-normal">· {tx.currency}</span>
+												<span className="ml-1.5 font-normal">
+													· {tx.currency}
+												</span>
 											) : null}
 										</div>
 										<div className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-foreground">

@@ -352,11 +352,15 @@ export const DraftExpenseCard = ({
 
 		return (
 			<div className="w-full min-w-0 max-w-full space-y-2">
-				<div className={`${cardClassName} space-y-2.5 shadow-sm ring-1 ring-border/10`}>
+				<div
+					className={`${cardClassName} space-y-2.5 shadow-sm ring-1 ring-border/10`}
+				>
 					<div className="flex flex-wrap items-start justify-between gap-2">
 						<div className="min-w-0">
 							<div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-								{isDraft ? "Draft expense" : `Expense · ${expense.status ?? "posted"}`}
+								{isDraft
+									? "Draft expense"
+									: `Expense · ${expense.status ?? "posted"}`}
 							</div>
 							<div className="mt-0.5 text-sm font-semibold leading-snug text-foreground">
 								{expense.description?.trim() || "Draft transaction"}
@@ -424,8 +428,8 @@ export const DraftExpenseCard = ({
 							</table>
 							{moreCount > 0 ? (
 								<div className="border-t border-border/50 bg-muted/40 px-2.5 py-1.5 text-[10px] text-muted-foreground">
-									+{moreCount} more line{moreCount === 1 ? "" : "s"} — use Review
-									for full detail
+									+{moreCount} more line{moreCount === 1 ? "" : "s"} — use
+									Review for full detail
 								</div>
 							) : null}
 						</div>
