@@ -656,7 +656,7 @@ export const AccountPage = () => {
 	};
 
 	return (
-		<section className="space-y-6">
+		<section className="mx-auto w-full max-w-3xl space-y-6">
 			<div className="space-y-2">
 				<h1 className="text-xl font-semibold">Account</h1>
 				<p className="text-sm text-muted-foreground">

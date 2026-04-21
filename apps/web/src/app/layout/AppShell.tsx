@@ -1,22 +1,29 @@
-import { Link, Outlet } from "react-router-dom";
-import { DashboardWorkspaceSwitcher } from "../../features/dashboard/components/DashboardWorkspaceSwitcher";
+import { Link, Outlet, useLocation } from "react-router-dom";
 import { ChatBreadcrumbProvider } from "./ChatBreadcrumbContext";
 import { ConsoleBreadcrumbs } from "./ConsoleBreadcrumbs";
 import { ConsoleUserMenu } from "./ConsoleUserMenu";
 import { ConsoleWorkspaceTheme } from "./ConsoleWorkspaceTheme";
 
 export const AppShell = () => {
+	const { pathname } = useLocation();
+	const fullBleedWorkspace =
+		pathname.startsWith("/console") &&
+		!pathname.startsWith("/console/account");
+
 	return (
-		<div className="min-h-screen bg-background text-foreground">
+		<div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
 			<ConsoleWorkspaceTheme />
-			<header className="border-b border-border">
-				<div className="mx-auto flex w-full max-w-6xl flex-nowrap items-center justify-between gap-3 overflow-x-auto px-6 py-4">
+			<header className="shrink-0 border-b border-border/80">
+				<div className="flex w-full flex-nowrap items-center justify-between gap-3 overflow-x-auto px-6 py-4 lg:px-10">
 					<div className="flex min-w-0 shrink-0 items-center gap-3">
-						<Link className="text-sm font-semibold tracking-tight" to="/">
+						<Link
+							className="font-display text-lg font-normal tracking-tight text-foreground"
+							to="/console/dashboard"
+						>
 							Ceits
 						</Link>
 						<span className="hidden text-xs text-muted-foreground sm:inline">
-							Web MVP
+							Console
 						</span>
 					</div>
 
@@ -24,18 +31,27 @@ export const AppShell = () => {
 						aria-label="Console"
 						className="flex min-w-0 flex-nowrap items-center justify-end gap-2 sm:gap-3"
 					>
-						<div className="flex shrink-0 flex-nowrap items-center gap-2">
-							<DashboardWorkspaceSwitcher />
-						</div>
 						<ConsoleUserMenu />
 					</nav>
 				</div>
 			</header>
 
-			<main className="mx-auto w-full max-w-6xl overflow-x-clip px-6 py-8">
+			<main className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				<ChatBreadcrumbProvider>
-					<ConsoleBreadcrumbs />
-					<Outlet />
+					{fullBleedWorkspace ? null : (
+						<div className="shrink-0 px-6 pt-6 lg:px-10">
+							<ConsoleBreadcrumbs />
+						</div>
+					)}
+					<div
+						className={
+							fullBleedWorkspace
+								? "flex min-h-0 flex-1 flex-col overflow-hidden"
+								: "flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-6 lg:px-10"
+						}
+					>
+						<Outlet />
+					</div>
 				</ChatBreadcrumbProvider>
 			</main>
 		</div>

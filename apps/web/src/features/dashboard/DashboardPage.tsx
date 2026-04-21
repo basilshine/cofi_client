@@ -1,5 +1,4 @@
-import type { DashboardResponse, Space, Tenant } from "@cofi/api";
-import { isDashboardVariant } from "@cofi/api";
+import type { DashboardResponse, Space } from "@cofi/api";
 import {
 	type ReactNode,
 	useCallback,
@@ -7,13 +6,11 @@ import {
 	useMemo,
 	useState,
 } from "react";
-import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import { ConsoleBreadcrumbs } from "../../app/layout/ConsoleBreadcrumbs";
+import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
-import {
-	apiClient,
-	readActiveOrgTenantId,
-	writeActiveOrgTenantId,
-} from "../../shared/lib/apiClient";
+import { apiClient } from "../../shared/lib/apiClient";
 import { ceitsSpaceExpenseEditUrl } from "../../shared/lib/ceitsAppUrls";
 import {
 	type ChatWorkspaceScope,
@@ -28,19 +25,12 @@ import {
 	orderSpacesByRecent,
 	sortSpacesByLastActivity,
 } from "../../shared/lib/recentSpaceIds";
-import { isNonPersonalTenantType } from "../../shared/lib/tenantTypes";
-import { WORKSPACE_NAV_UPDATED_EVENT } from "../../shared/lib/workspaceNavEvents";
+import { notifyWorkspaceNavUpdated } from "../../shared/lib/workspaceNavEvents";
 import {
 	DashboardVariantProvider,
 	useDashboardVariant,
 } from "./DashboardVariantContext";
-import {
-	OrgSnapshotPanel,
-	RecentActivityPanel,
-	ReviewQueuePanel,
-	SpendByTagPanel,
-	normalizeActivityItems,
-} from "./components/BusinessDashboardPanels";
+import { ReviewQueuePanel } from "./components/BusinessDashboardPanels";
 import { ContinueDashboardPanel } from "./components/ContinueDashboardPanel";
 import {
 	DashboardWidget,
@@ -58,16 +48,7 @@ const dashboardCaptureHeroBandClass =
 	"relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen max-w-[100vw] border-b border-[hsl(var(--border-subtle))]/50 bg-gradient-to-b from-[hsl(var(--surface-muted))]/35 to-transparent py-6";
 
 const dashboardCaptureHeroInnerClass =
-	"mx-auto grid max-w-6xl grid-cols-1 gap-5 px-6 lg:grid-cols-12 lg:items-stretch";
-
-const uniqueTenantIds = (spaces: Space[]): number[] => {
-	const seen = new Set<number>();
-	for (const s of spaces) {
-		const tid = Number(s.tenant_id);
-		if (Number.isFinite(tid)) seen.add(tid);
-	}
-	return [...seen].sort((a, b) => a - b);
-};
+	"mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-5 px-6 lg:grid-cols-12 lg:items-stretch";
 
 const formatCurrencyAmount = (amount: number, currency: string): string => {
 	const code = (currency || "USD").trim().toUpperCase() || "USD";
@@ -90,6 +71,74 @@ const formatDateLabel = (iso: string): string => {
 	} catch {
 		return iso;
 	}
+};
+
+const DashboardOverviewMetricsRow = ({
+	monthly,
+	pendingDrafts,
+	recurring,
+	reviewQ,
+	currency,
+	formatCurrencyAmount,
+	pageLoading,
+}: {
+	monthly: DashboardResponse["monthly_snapshot"];
+	pendingDrafts: DashboardResponse["pending_drafts"];
+	recurring: DashboardResponse["recurring_upcoming"];
+	reviewQ: DashboardResponse["review_queue"];
+	currency: string;
+	formatCurrencyAmount: (amount: number, currency: string) => string;
+	pageLoading: boolean;
+}): ReactNode => {
+	const total =
+		monthly != null
+			? typeof monthly.total_my_share === "number" &&
+				!Number.isNaN(monthly.total_my_share)
+				? monthly.total_my_share
+				: monthly.total_spent
+			: null;
+	const pendingCount = pendingDrafts?.length ?? 0;
+	const reviewCount = reviewQ?.total_count ?? 0;
+	const upcomingCount = recurring?.length ?? 0;
+
+	const Metric = ({ label, value }: { label: string; value: string }) => (
+		<div className="rounded-xl border border-black/5 bg-[hsl(var(--surface))]/80 px-4 py-3 shadow-sm">
+			<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--text-secondary))]">
+				{label}
+			</p>
+			<p className="mt-1 font-display text-2xl font-normal tabular-nums text-[hsl(var(--text-primary))]">
+				{value}
+			</p>
+		</div>
+	);
+
+	if (pageLoading) {
+		return (
+			<div
+				aria-busy="true"
+				className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4"
+			>
+				{[0, 1, 2, 3].map((i) => (
+					<div
+						className="h-[5.25rem] animate-pulse rounded-xl border border-black/5 bg-[hsl(var(--surface-muted))]/60"
+						key={i}
+					/>
+				))}
+			</div>
+		);
+	}
+
+	return (
+		<div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+			<Metric
+				label="Total spend (period)"
+				value={total != null ? formatCurrencyAmount(total, currency) : "—"}
+			/>
+			<Metric label="Pending drafts" value={String(pendingCount)} />
+			<Metric label="Awaiting review" value={String(reviewCount)} />
+			<Metric label="Upcoming recurring" value={String(upcomingCount)} />
+		</div>
+	);
 };
 
 type SpendPeriodKindUI = "day" | "month" | "year";
@@ -604,24 +653,6 @@ const HeroSpaceContextBar = ({
 	);
 };
 
-const nonPersonalTenantIdsSorted = (
-	sortedIds: number[],
-	meta: Record<number, Tenant | null>,
-): number[] =>
-	sortedIds.filter((id) => {
-		const t = meta[id];
-		return t != null && isNonPersonalTenantType(t.type);
-	});
-
-const tenantLabel = (
-	id: number,
-	meta: Record<number, Tenant | null>,
-): string => {
-	const t = meta[id];
-	if (t?.name?.trim()) return t.name.trim();
-	return `Tenant ${id}`;
-};
-
 const deriveWidgetState = (
 	pageLoading: boolean,
 	pageError: string | null,
@@ -746,30 +777,14 @@ const WidgetShell = ({
 }) => {
 	const { variant: dashboardVariant } = useDashboardVariant();
 	const base =
-		dashboardVariant === "business" && widgetKey === "spaces"
+		dashboardVariant === "personal" && widgetKey === "tenant_people"
 			? {
-					...dashboardWidgetCopy.spaces,
-					title: "Active spaces",
+					...dashboardWidgetCopy.tenant_people,
+					title: "People in your workspace",
 					description:
-						"All spaces you can access in this account — including shared org spaces. Tags show workspace and owner.",
-					emptyCopy:
-						"No spaces to show yet. Create or join from Chat or Organization.",
+						"You and anyone sharing this personal tenant (for example family you invited).",
 				}
-			: dashboardVariant === "business" && widgetKey === "tenant_people"
-				? {
-						...dashboardWidgetCopy.tenant_people,
-						title: "Organization directory",
-						description:
-							"Members of this organization — roles and whether their email identity is verified.",
-					}
-				: dashboardVariant === "personal" && widgetKey === "tenant_people"
-					? {
-							...dashboardWidgetCopy.tenant_people,
-							title: "People in your workspace",
-							description:
-								"You and anyone sharing this personal tenant (for example family you invited).",
-						}
-					: dashboardWidgetCopy[widgetKey];
+			: dashboardWidgetCopy[widgetKey];
 	const title = titleOverride ?? base.title;
 	const description = descriptionOverride ?? base.description;
 	const emptyCopy = emptyCopyOverride ?? base.emptyCopy;
@@ -902,21 +917,16 @@ const DashboardBody = ({
 	intentBanner: string | null;
 	onDismissIntent: () => void;
 }) => {
-	const { variant } = useDashboardVariant();
 	const { user } = useAuth();
+	const [searchParams, setSearchParams] = useSearchParams();
+	const {
+		spaces: workspaceSpaces,
+		setSelectedSpaceId,
+		loadError: workspaceLoadError,
+	} = useWorkspaceSpaces();
 
-	/** All spaces the user can access (any tenant); same source as Chat scope list. */
-	const [accessibleSpaces, setAccessibleSpaces] = useState<Space[] | null>(
-		null,
-	);
-	const [spacesListError, setSpacesListError] = useState<string | null>(null);
-	const [tenantMetaById, setTenantMetaById] = useState<
-		Record<number, Tenant | null>
-	>({});
-	const [selectedBusinessTenantId, setSelectedBusinessTenantId] = useState<
-		number | null
-	>(null);
-	const [workspaceNavRev, setWorkspaceNavRev] = useState(0);
+	/** Personal-tenant spaces only (aligned with Chat) — shared with workspace sidebar. */
+	const accessibleSpaces = workspaceSpaces;
 
 	const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(
 		null,
@@ -949,252 +959,37 @@ const DashboardBody = ({
 		null,
 	);
 
-	const businessSortedTenantIds = useMemo(
-		() => (accessibleSpaces ? uniqueTenantIds(accessibleSpaces) : []),
-		[accessibleSpaces],
-	);
-
-	/** Load every space the user belongs to (cross-tenant) for pickers, grids, and org resolution. */
+	/** Keep Chat scope aligned with personal dashboard context. */
 	useEffect(() => {
-		let cancelled = false;
-		setSpacesListError(null);
-		void (async () => {
-			try {
-				const list = await apiClient.spaces.list({ tenantId: null });
-				if (!cancelled) setAccessibleSpaces(list ?? []);
-			} catch (e) {
-				if (!cancelled) {
-					setAccessibleSpaces([]);
-					setSpacesListError(
-						e instanceof Error ? e.message : "Failed to load spaces",
-					);
-				}
-			}
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, []);
-
-	const selectableNonPersonalTenants = useMemo(
-		() => nonPersonalTenantIdsSorted(businessSortedTenantIds, tenantMetaById),
-		[businessSortedTenantIds, tenantMetaById],
-	);
-
-	useEffect(() => {
-		if (variant === "business") return;
-		setTenantMetaById({});
-		setSelectedBusinessTenantId(null);
-	}, [variant]);
-
-	useEffect(() => {
-		const bump = () => setWorkspaceNavRev((n) => n + 1);
-		window.addEventListener(WORKSPACE_NAV_UPDATED_EVENT, bump);
-		return () => {
-			window.removeEventListener(WORKSPACE_NAV_UPDATED_EVENT, bump);
-		};
-	}, []);
-
-	/** Business: fetch tenant metadata (type/name) for selector + default tenant */
-	useEffect(() => {
-		if (variant !== "business" || accessibleSpaces === null) return;
-		const ids = uniqueTenantIds(accessibleSpaces);
-		if (ids.length === 0) {
-			setTenantMetaById({});
-			setSelectedBusinessTenantId(null);
-			return;
-		}
-		let cancelled = false;
-		void (async () => {
-			const pairs = await Promise.all(
-				ids.map(async (id) => {
-					try {
-						const t = await apiClient.tenants.get(id, {
-							tenantIdHeader: id,
-						});
-						return [id, t] as const;
-					} catch {
-						return [id, null] as const;
-					}
-				}),
-			);
-			if (cancelled) return;
-			const nextMeta: Record<number, Tenant | null> = {};
-			for (const [id, t] of pairs) nextMeta[id] = t;
-			setTenantMetaById(nextMeta);
-
-			const orgIds = nonPersonalTenantIdsSorted(ids, nextMeta);
-			setSelectedBusinessTenantId((prev) => {
-				if (orgIds.length === 0) return null;
-				const stored = readActiveOrgTenantId();
-				if (stored != null && orgIds.includes(stored)) return stored;
-				if (prev != null && orgIds.includes(prev)) return prev;
-				return orgIds[0];
-			});
-		})();
-		return () => {
-			cancelled = true;
-		};
-	}, [variant, accessibleSpaces]);
-
-	/** Optional `X-Tenant-Id` default for API client helpers (cleared on personal dashboard). */
-	useEffect(() => {
-		if (variant === "business" && selectedBusinessTenantId != null) {
-			writeActiveOrgTenantId(selectedBusinessTenantId);
-		} else {
-			writeActiveOrgTenantId(null);
-		}
-	}, [variant, selectedBusinessTenantId]);
-
-	/** When org is switched from the shell dialog, align dashboard tenant selection. */
-	useEffect(() => {
-		if (variant !== "business") return;
-		if (selectableNonPersonalTenants.length === 0) return;
-		const stored = readActiveOrgTenantId();
-		if (stored == null || !selectableNonPersonalTenants.includes(stored)) {
-			return;
-		}
-		setSelectedBusinessTenantId((prev) => (prev === stored ? prev : stored));
-	}, [variant, selectableNonPersonalTenants, workspaceNavRev]);
-
-	/** Keep Chat / shell workspace scope aligned with this dashboard (API + sessionStorage). */
-	useEffect(() => {
-		if (variant === "personal") {
-			if (dashboardData?.context?.variant !== "personal") return;
-			const tid = dashboardData.context.tenant_id;
-			if (tid == null || !Number.isFinite(Number(tid))) return;
-			writeChatWorkspaceScope({
-				kind: "personal",
-				tenantId: Number(tid),
-				label: "Personal",
-			});
-			return;
-		}
-		if (selectedBusinessTenantId == null) return;
-		if (!selectableNonPersonalTenants.includes(selectedBusinessTenantId))
-			return;
-		const label = tenantLabel(selectedBusinessTenantId, tenantMetaById);
+		if (dashboardData?.context?.variant !== "personal") return;
+		const tid = dashboardData.context.tenant_id;
+		if (tid == null || !Number.isFinite(Number(tid))) return;
 		writeChatWorkspaceScope({
-			kind: "organization",
-			tenantId: selectedBusinessTenantId,
-			label,
+			kind: "personal",
+			tenantId: Number(tid),
+			label: "Personal",
 		});
-	}, [
-		variant,
-		dashboardData?.context?.variant,
-		dashboardData?.context?.tenant_id,
-		selectedBusinessTenantId,
-		selectableNonPersonalTenants,
-		tenantMetaById,
-	]);
-
-	const businessTenantMetaReady = useMemo(() => {
-		if (variant !== "business") return true;
-		if (accessibleSpaces === null) return false;
-		const ids = uniqueTenantIds(accessibleSpaces);
-		if (ids.length === 0) return true;
-		return ids.every((id) =>
-			Object.prototype.hasOwnProperty.call(tenantMetaById, id),
-		);
-	}, [variant, accessibleSpaces, tenantMetaById]);
-
-	const noBusinessContext =
-		variant === "business" &&
-		accessibleSpaces !== null &&
-		businessSortedTenantIds.length === 0;
-
-	const noOrgTenantForBusiness =
-		variant === "business" &&
-		accessibleSpaces !== null &&
-		businessTenantMetaReady &&
-		selectableNonPersonalTenants.length === 0 &&
-		businessSortedTenantIds.length > 0;
+		notifyWorkspaceNavUpdated();
+	}, [dashboardData?.context?.variant, dashboardData?.context?.tenant_id]);
 
 	const pageLoading =
 		dashboardLoading ||
-		(variant === "business" && accessibleSpaces === null) ||
-		(variant === "business" &&
-			accessibleSpaces !== null &&
-			uniqueTenantIds(accessibleSpaces).length > 0 &&
-			!businessTenantMetaReady) ||
-		(variant === "business" &&
-			selectableNonPersonalTenants.length > 0 &&
-			selectedBusinessTenantId === null);
+		(Boolean(dashboardData?.context?.tenant_id) &&
+			accessibleSpaces === null &&
+			!workspaceLoadError);
 
-	const pageError = spacesListError ?? dashboardError ?? null;
+	const pageError = workspaceLoadError ?? dashboardError ?? null;
 
-	const businessContextNotice = noBusinessContext
-		? "No spaces yet — open Organization to create an organization, or join one via an invite."
-		: noOrgTenantForBusiness
-			? "Business dashboard shows only organization workspaces — create one under Organization, or join via an invite. Your personal spaces stay on the Personal tab."
-			: null;
-
-	const currency = dashboardData?.context.currency ?? "USD";
+	const currency = dashboardData?.context?.currency ?? "USD";
 
 	useEffect(() => {
-		if (variant === "personal") {
-			let cancelled = false;
-			setDashboardLoading(true);
-			setDashboardError(null);
-			void (async () => {
-				try {
-					const res = await apiClient.dashboard.get({
-						variant: "personal",
-						period: spendPeriodKind,
-						on: spendAnchor,
-						...(heroSelectedSpaceId != null
-							? { space_id: heroSelectedSpaceId }
-							: {}),
-					});
-					if (!cancelled) {
-						setDashboardData(res);
-						setDashboardError(null);
-					}
-				} catch (e) {
-					if (!cancelled) {
-						setDashboardData(null);
-						setDashboardError(
-							e instanceof Error ? e.message : "Failed to load dashboard",
-						);
-					}
-				} finally {
-					if (!cancelled) setDashboardLoading(false);
-				}
-			})();
-			return () => {
-				cancelled = true;
-			};
-		}
-	}, [variant, spendPeriodKind, spendAnchor, heroSelectedSpaceId]);
-
-	useEffect(() => {
-		if (variant !== "business") return;
-		if (accessibleSpaces === null) return;
-		if (businessSortedTenantIds.length === 0) {
-			setDashboardData(null);
-			setDashboardLoading(false);
-			setDashboardError(null);
-			return;
-		}
-		if (selectableNonPersonalTenants.length === 0) {
-			setDashboardData(null);
-			setDashboardLoading(false);
-			setDashboardError(null);
-			return;
-		}
-		if (selectedBusinessTenantId === null) return;
-		if (!selectableNonPersonalTenants.includes(selectedBusinessTenantId)) {
-			return;
-		}
-
 		let cancelled = false;
 		setDashboardLoading(true);
 		setDashboardError(null);
 		void (async () => {
 			try {
 				const res = await apiClient.dashboard.get({
-					variant: "business",
-					tenant_id: selectedBusinessTenantId,
+					variant: "personal",
 					period: spendPeriodKind,
 					on: spendAnchor,
 					...(heroSelectedSpaceId != null
@@ -1219,16 +1014,7 @@ const DashboardBody = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [
-		variant,
-		accessibleSpaces,
-		businessSortedTenantIds.length,
-		selectableNonPersonalTenants,
-		selectedBusinessTenantId,
-		spendPeriodKind,
-		spendAnchor,
-		heroSelectedSpaceId,
-	]);
+	}, [spendPeriodKind, spendAnchor, heroSelectedSpaceId]);
 
 	const qc = dashboardData?.quick_capture;
 	const cont = dashboardData?.continue;
@@ -1237,37 +1023,19 @@ const DashboardBody = ({
 	const recurring = dashboardData?.recurring_upcoming ?? null;
 	const pendingDrafts = dashboardData?.pending_drafts ?? null;
 	const recentTx = dashboardData?.recent_transactions ?? null;
-	const orgSnap = dashboardData?.org_snapshot ?? null;
 	const reviewQ = dashboardData?.review_queue ?? null;
-	const spend = dashboardData?.spend_overview ?? null;
-	const recentAct = dashboardData?.recent_activity ?? null;
 
-	/** Spaces in the current dashboard scope only (personal tenant vs selected org) — never mix both. */
+	/** Spaces in the personal tenant only. */
 	const dashboardScopedSpaces = useMemo((): Space[] | null => {
 		if (accessibleSpaces === null) return null;
-		if (variant === "personal") {
-			const tid = dashboardData?.context?.tenant_id;
-			if (tid == null || !Number.isFinite(Number(tid))) return null;
-			const pt = Number(tid);
-			return accessibleSpaces.filter((s) => Number(s.tenant_id) === pt);
-		}
-		if (variant === "business") {
-			if (selectedBusinessTenantId == null) return null;
-			const bt = Number(selectedBusinessTenantId);
-			return accessibleSpaces.filter((s) => Number(s.tenant_id) === bt);
-		}
-		return accessibleSpaces;
-	}, [
-		accessibleSpaces,
-		variant,
-		dashboardData?.context?.tenant_id,
-		selectedBusinessTenantId,
-	]);
+		const tid = dashboardData?.context?.tenant_id;
+		if (tid == null || !Number.isFinite(Number(tid))) return null;
+		const pt = Number(tid);
+		return accessibleSpaces.filter((s) => Number(s.tenant_id) === pt);
+	}, [accessibleSpaces, dashboardData?.context?.tenant_id]);
 
 	const spendScopeHint =
-		variant === "personal"
-			? "Personal workspace — all spaces for this account."
-			: "This organization — all spaces in this workspace.";
+		"Personal workspace — all spaces for this account.";
 
 	const handleSpendPeriodKind = useCallback((k: SpendPeriodKindUI) => {
 		setSpendPeriodKind(k);
@@ -1285,59 +1053,25 @@ const DashboardBody = ({
 		setSpendAnchor(utcTodayIso());
 	}, [utcTodayIso]);
 
-	const businessActivityItems = useMemo(
-		() => normalizeActivityItems(recentAct?.items),
-		[recentAct?.items],
-	);
-
 	const chatWorkspaceForNav = useMemo((): ChatWorkspaceScope | null => {
 		if (!dashboardData?.context) return null;
-		if (variant === "personal") {
+		return {
+			kind: "personal",
+			tenantId: dashboardData.context.tenant_id,
+			label: "Personal",
+		};
+	}, [dashboardData?.context]);
+
+	const chatWorkspaceForSpace = useCallback(
+		(_spaceTenantId: number, _spaceTenantName?: string): ChatWorkspaceScope => {
+			const personalTid = dashboardData?.context?.tenant_id;
 			return {
 				kind: "personal",
-				tenantId: dashboardData.context.tenant_id,
+				tenantId: Number(personalTid ?? 0),
 				label: "Personal",
 			};
-		}
-		if (selectedBusinessTenantId == null) return null;
-		return {
-			kind: "organization",
-			tenantId: selectedBusinessTenantId,
-			label: tenantLabel(selectedBusinessTenantId, tenantMetaById),
-		};
-	}, [
-		dashboardData?.context,
-		variant,
-		selectedBusinessTenantId,
-		tenantMetaById,
-	]);
-
-	/** Chat navigation for a specific space (correct org vs personal tenant). */
-	const chatWorkspaceForSpace = useCallback(
-		(spaceTenantId: number, spaceTenantName?: string): ChatWorkspaceScope => {
-			const tid = Number(spaceTenantId);
-			const personalTid = dashboardData?.context?.tenant_id;
-			if (
-				personalTid != null &&
-				Number.isFinite(Number(personalTid)) &&
-				tid === Number(personalTid)
-			) {
-				return {
-					kind: "personal",
-					tenantId: Number(personalTid),
-					label: "Personal",
-				};
-			}
-			const meta = tenantMetaById[tid];
-			const label =
-				meta?.name?.trim() || spaceTenantName?.trim() || `Workspace ${tid}`;
-			return {
-				kind: "organization",
-				tenantId: tid,
-				label,
-			};
 		},
-		[dashboardData?.context?.tenant_id, tenantMetaById],
+		[dashboardData?.context?.tenant_id],
 	);
 
 	const continueNavigableSpaces = useMemo((): {
@@ -1446,12 +1180,35 @@ const DashboardBody = ({
 			setHeroSelectedSpaceId(null);
 			return;
 		}
+		const raw = searchParams.get("spaceId");
+		if (raw) {
+			const n = Number(raw);
+			if (
+				Number.isFinite(n) &&
+				heroContextSpaces.some((s) => Number(s.id) === n)
+			) {
+				setHeroSelectedSpaceId(n);
+				setSelectedSpaceId(n);
+				return;
+			}
+		}
 		setHeroSelectedSpaceId((prev) => {
 			if (prev != null && heroContextSpaces.some((s) => s.id === prev))
 				return prev;
 			return heroContextSpaces[0].id;
 		});
-	}, [heroContextSpaces]);
+	}, [heroContextSpaces, searchParams, setSelectedSpaceId]);
+
+	const handleHeroSelectSpaceId = useCallback(
+		(spaceId: number) => {
+			setHeroSelectedSpaceId(spaceId);
+			setSelectedSpaceId(spaceId);
+			const next = new URLSearchParams(searchParams);
+			next.set("spaceId", String(spaceId));
+			setSearchParams(next, { replace: true });
+		},
+		[searchParams, setSearchParams, setSelectedSpaceId],
+	);
 
 	const heroSpaceTitle = useMemo(() => {
 		if (heroSelectedSpaceId == null) return null;
@@ -1489,14 +1246,11 @@ const DashboardBody = ({
 
 	const resolvePendingDraftChatWorkspace = useCallback(
 		(d: { tenant_id: number }): ChatWorkspaceScope => ({
-			kind: variant === "personal" ? "personal" : "organization",
+			kind: "personal",
 			tenantId: d.tenant_id,
-			label:
-				variant === "personal"
-					? "Personal"
-					: tenantLabel(d.tenant_id, tenantMetaById),
+			label: "Personal",
 		}),
-		[variant, tenantMetaById],
+		[],
 	);
 
 	const chatNavState = useCallback(
@@ -1551,11 +1305,12 @@ const DashboardBody = ({
 	};
 
 	return (
-		<>
-			<div className="space-y-4">
-				<div className="min-w-0 space-y-1">
-					<h1 className="text-2xl font-semibold tracking-tight text-[hsl(var(--text-primary))]">
-						Dashboard
+		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-4 lg:px-8">
+				<ConsoleBreadcrumbs variant="inline" />
+				<div className="mt-4 min-w-0 space-y-1">
+					<h1 className="font-display text-3xl font-normal tracking-tight text-[hsl(var(--text-primary))] md:text-4xl">
+						Overview
 						{heroSpaceTitle ? (
 							<span className="font-normal text-[hsl(var(--text-secondary))]">
 								{" "}
@@ -1564,37 +1319,23 @@ const DashboardBody = ({
 						) : null}
 					</h1>
 					<p className="text-sm text-[hsl(var(--text-secondary))]">
-						{variant === "business" ? (
-							<>
-								Organization dashboard — scoped to one workspace at a time.{" "}
-								<Link
-									className="font-medium text-[hsl(var(--accent))] underline underline-offset-2"
-									to="/console/account"
-								>
-									Account
-								</Link>
-								.
-							</>
-						) : (
-							<>
-								Personal Ceits workspace.{" "}
-								<Link
-									className="font-medium text-[hsl(var(--accent))] underline underline-offset-2"
-									to="/console/account"
-								>
-									Account
-								</Link>
-								.
-							</>
-						)}
+						Personal Ceits workspace.{" "}
+						<Link
+							className="font-medium text-[hsl(var(--accent))] underline underline-offset-2"
+							to="/console/account"
+						>
+							Account
+						</Link>
+						.
 					</p>
 				</div>
-			</div>
+			</header>
 
+			<div className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
 			{intentBanner ? (
 				<output
 					aria-live="polite"
-					className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-muted))] p-4 text-sm"
+					className="mx-4 mt-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-muted))] p-4 text-sm lg:mx-8"
 				>
 					<p className="min-w-0 flex-1 text-[hsl(var(--text-secondary))]">
 						{intentBanner}
@@ -1609,17 +1350,19 @@ const DashboardBody = ({
 				</output>
 			) : null}
 
-			{businessContextNotice ? (
-				<div
-					className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-muted))] px-4 py-3 text-sm text-[hsl(var(--text-secondary))]"
-					role="status"
-				>
-					{businessContextNotice}
-				</div>
-			) : null}
+			<div className="px-4 pt-4 lg:px-8">
+				<DashboardOverviewMetricsRow
+					currency={currency}
+					formatCurrencyAmount={formatCurrencyAmount}
+					monthly={monthly}
+					pageLoading={pageLoading}
+					pendingDrafts={pendingDrafts}
+					recurring={recurring}
+					reviewQ={reviewQ}
+				/>
+			</div>
 
-			{variant === "personal" ? (
-				<div className={sectionRhythm}>
+			<div className={sectionRhythm}>
 					<div className={dashboardCaptureHeroBandClass}>
 						<div className={dashboardCaptureHeroInnerClass}>
 							<div className="lg:col-span-12 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl ring-1 ring-black/40">
@@ -1637,7 +1380,7 @@ const DashboardBody = ({
 								) : null}
 								<HeroSpaceContextBar
 									currentUserId={user?.id}
-									onSelectSpaceId={setHeroSelectedSpaceId}
+									onSelectSpaceId={handleHeroSelectSpaceId}
 									selectedSpaceId={heroSelectedSpaceId}
 									spaces={heroContextSpaces}
 								/>
@@ -1689,7 +1432,7 @@ const DashboardBody = ({
 						</div>
 					</div>
 
-					<div className="mt-2 grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-stretch">
+					<div className="mt-2 grid grid-cols-1 gap-5 px-4 lg:grid-cols-12 lg:items-stretch lg:px-8">
 						<WidgetShell
 							className="lg:col-span-6 h-full min-h-0"
 							errorCopy={sharedErrorCopy}
@@ -1895,353 +1638,18 @@ const DashboardBody = ({
 							</ul>
 						</WidgetShell>
 					</div>
-					<div className="mt-10 grid grid-cols-1 gap-6">
+					<div className="mt-10 grid grid-cols-1 gap-6 px-4 lg:px-8">
 						<WidgetShell state="empty" widgetKey="ai_teaser" />
 					</div>
 				</div>
-			) : (
-				<div className={sectionRhythm}>
-					<div className={dashboardCaptureHeroBandClass}>
-						<div className={dashboardCaptureHeroInnerClass}>
-							<div className="lg:col-span-12 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl ring-1 ring-black/40">
-								{monthly ? (
-									<SpendCoverBand
-										currency={currency}
-										monthly={monthly}
-										onNav={handleSpendNav}
-										onPeriodKind={handleSpendPeriodKind}
-										onToday={handleSpendToday}
-										scopeHint={spendScopeHint}
-										spendAnchor={spendAnchor}
-										spendPeriodKind={spendPeriodKind}
-									/>
-								) : null}
-								<HeroSpaceContextBar
-									currentUserId={user?.id}
-									onSelectSpaceId={setHeroSelectedSpaceId}
-									selectedSpaceId={heroSelectedSpaceId}
-									spaces={heroContextSpaces}
-								/>
-								<div className="grid grid-cols-1 gap-0 lg:grid-cols-12 lg:divide-x lg:divide-white/10">
-									<div className="min-h-0 p-4 sm:p-5 lg:col-span-8">
-										<DashboardMergedCaptureBlock
-											chatNavState={chatNavState}
-											chatWorkspace={chatWorkspaceForNav}
-											className="h-full min-h-0"
-											cont={cont}
-											errorCopy={sharedErrorCopy}
-											navigableSpaces={continueNavigableSpaces}
-											pageError={pageError}
-											pageLoading={pageLoading}
-											qc={heroQuickCapture ?? qc}
-											selectedSpaceId={heroSelectedSpaceId}
-										/>
-									</div>
-									<div className="min-h-0 border-t border-white/10 bg-zinc-900/30 p-4 sm:p-5 lg:col-span-4 lg:border-t-0">
-										<WidgetShell
-											className="!rounded-none !border-0 !bg-transparent !p-0 !shadow-none"
-											contentClassName="min-h-0"
-											descriptionOverride={draftsHeroDescription}
-											emptyCopyOverride={draftsHeroEmptyCopy}
-											errorCopy={sharedErrorCopy}
-											state={deriveWidgetState(
-												pageLoading,
-												pageError,
-												pendingDraftsForHeroSpace.length > 0,
-											)}
-											titleOverride="Drafts awaiting review"
-											shellVariant="darkMuted"
-											widgetKey="pending_drafts"
-										>
-											{pendingDraftsForHeroSpace.length > 0 ? (
-												<PendingDraftsList
-													currency={currency}
-													items={pendingDraftsForHeroSpace}
-													resolveChatWorkspace={
-														resolvePendingDraftChatWorkspace
-													}
-													tone="onDark"
-												/>
-											) : null}
-										</WidgetShell>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					<div className="mt-2 grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-stretch">
-						<WidgetShell
-							className="lg:col-span-4 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								Boolean(orgSnap?.name?.trim()),
-							)}
-							widgetKey="org_snapshot"
-						>
-							{orgSnap?.name ? <OrgSnapshotPanel org={orgSnap} /> : null}
-						</WidgetShell>
-
-						<WidgetShell
-							className="lg:col-span-4 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								Boolean(
-									monthly &&
-										((typeof monthly.total_my_share === "number" &&
-											monthly.total_my_share > 0) ||
-											monthly.total_spent > 0 ||
-											(monthly.top_spaces && monthly.top_spaces.length > 0)),
-								),
-							)}
-							widgetKey="monthly_snapshot"
-						>
-							{monthly ? (
-								<MonthlySnapshotChart
-									currency={currency}
-									monthly={monthly}
-									pendingDrafts={pendingDrafts}
-								/>
-							) : null}
-						</WidgetShell>
-
-						<WidgetShell
-							className="lg:col-span-4 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								Boolean(
-									reviewQ &&
-										(reviewQ.items.length > 0 || reviewQ.total_count > 0),
-								),
-							)}
-							widgetKey="review_queue"
-						>
-							{reviewQ ? (
-								<ReviewQueuePanel
-									chatNavState={chatNavState}
-									currency={currency}
-									formatCurrencyAmount={formatCurrencyAmount}
-									formatDateLabel={formatDateLabel}
-									queue={reviewQ}
-								/>
-							) : null}
-						</WidgetShell>
-
-						<WidgetShell
-							className="lg:col-span-12 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								selectedBusinessTenantId != null,
-							)}
-							widgetKey="tenant_people"
-						>
-							<TenantPeoplePanel
-								currentUserId={user?.id}
-								tenantId={selectedBusinessTenantId}
-							/>
-						</WidgetShell>
-
-						<WidgetShell
-							className="lg:col-span-8 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								spacesForGrid.length > 0,
-							)}
-							widgetKey="spaces"
-						>
-							<ul className="grid gap-2 sm:grid-cols-2">
-								{spacesForGrid.map((s) => (
-									<li key={s.id}>
-										<Link
-											className="flex h-full min-h-[5rem] flex-col rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-muted))]/60 p-3 text-left transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-											state={{
-												chatWorkspace: chatWorkspaceForSpace(
-													s.tenant_id,
-													s.tenant_name,
-												),
-												selectSpaceId: s.id,
-											}}
-											to="/console/chat"
-										>
-											<span className="font-medium">{s.name}</span>
-											<div className="mt-1.5 flex flex-wrap gap-1">
-												{s.tenant_name?.trim() ? (
-													<span className="inline-flex max-w-full truncate rounded-md bg-[hsl(var(--surface))]/80 px-1.5 py-0.5 text-[10px] font-medium text-[hsl(var(--text-secondary))]">
-														{s.tenant_name.trim()}
-													</span>
-												) : null}
-												<span className="inline-flex rounded-md border border-[hsl(var(--border-subtle))] px-1.5 py-0.5 text-[10px] font-medium text-[hsl(var(--text-secondary))]">
-													{spaceGridOwnershipLine(s, user?.id)}
-												</span>
-											</div>
-											{s.last_activity_at ? (
-												<span className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
-													Activity {formatDateLabel(s.last_activity_at)}
-												</span>
-											) : null}
-											{s.member_count != null ? (
-												<span className="text-xs text-[hsl(var(--text-secondary))]">
-													{s.member_count} members
-												</span>
-											) : null}
-											{(s.period_spent_preview ?? 0) > 0.005 ||
-											(s.draft_my_share_preview ?? 0) > 0.005 ? (
-												<span className="mt-1 flex flex-col gap-0.5 text-xs text-[hsl(var(--text-secondary))]">
-													{(s.period_spent_preview ?? 0) > 0.005 ? (
-														<span>
-															{formatCurrencyAmount(
-																s.period_spent_preview ?? 0,
-																currency,
-															)}{" "}
-															confirmed (your share, this month)
-														</span>
-													) : null}
-													{(s.draft_my_share_preview ?? 0) > 0.005 ? (
-														<span>
-															{formatCurrencyAmount(
-																s.draft_my_share_preview ?? 0,
-																currency,
-															)}{" "}
-															in drafts (your share)
-														</span>
-													) : null}
-												</span>
-											) : null}
-										</Link>
-									</li>
-								))}
-							</ul>
-						</WidgetShell>
-
-						<WidgetShell
-							className="lg:col-span-4 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								Boolean(spend != null && Array.isArray(spend.by_tag)),
-							)}
-							widgetKey="spend_overview"
-						>
-							{spend != null && Array.isArray(spend.by_tag) ? (
-								<SpendByTagPanel
-									currency={currency}
-									formatCurrencyAmount={formatCurrencyAmount}
-									formatDateLabel={formatDateLabel}
-									spend={spend}
-								/>
-							) : null}
-						</WidgetShell>
-
-						<WidgetShell
-							className="lg:col-span-6 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								Boolean(recentTx && recentTx.length > 0),
-							)}
-							widgetKey="recent_transactions"
-						>
-							<ul className="space-y-2">
-								{recentTx?.map((t) => (
-									<li className="text-xs" key={t.id}>
-										<Link
-											className="flex flex-col rounded-md border border-[hsl(var(--border-subtle))] px-3 py-2 transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-											state={
-												chatWorkspaceForNav
-													? { chatWorkspace: chatWorkspaceForNav }
-													: undefined
-											}
-											to={`/console/chat/thread?spaceId=${encodeURIComponent(String(t.space_id))}&expenseId=${encodeURIComponent(String(t.id))}`}
-										>
-											<span className="font-medium text-[hsl(var(--text-primary))]">
-												{t.label} ·{" "}
-												{formatCurrencyAmount(t.amount, t.currency || currency)}
-											</span>
-											<span className="text-[hsl(var(--text-secondary))]">
-												{t.space_name} · {formatDateLabel(t.occurred_at)} ·{" "}
-												{t.status}
-											</span>
-										</Link>
-									</li>
-								))}
-							</ul>
-						</WidgetShell>
-
-						<WidgetShell
-							className="lg:col-span-6 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								Boolean(recurring && recurring.length > 0),
-							)}
-							widgetKey="recurring_upcoming"
-						>
-							<ul className="space-y-2">
-								{recurring?.map((r) => (
-									<li
-										className="flex flex-col gap-0.5 rounded-md border border-[hsl(var(--border-subtle))] px-3 py-2 text-xs"
-										key={r.id}
-									>
-										<span className="font-medium">{r.name}</span>
-										<span className="text-[hsl(var(--text-secondary))]">
-											{formatCurrencyAmount(r.amount, currency)} · due{" "}
-											{formatDateLabel(r.next_due)} · {r.space_name}
-										</span>
-									</li>
-								))}
-							</ul>
-						</WidgetShell>
-
-						<WidgetShell
-							className="lg:col-span-12 h-full min-h-0"
-							errorCopy={sharedErrorCopy}
-							state={deriveWidgetState(
-								pageLoading,
-								pageError,
-								businessActivityItems.length > 0,
-							)}
-							widgetKey="recent_activity"
-						>
-							{businessActivityItems.length > 0 ? (
-								<RecentActivityPanel
-									chatNavState={chatNavState}
-									items={businessActivityItems}
-								/>
-							) : null}
-						</WidgetShell>
-					</div>
-					<div className="mt-10 grid grid-cols-1 gap-5">
-						<WidgetShell state="empty" widgetKey="ai_teaser" />
-					</div>
-				</div>
-			)}
-		</>
+			</div>
+		</div>
 	);
 };
 
 export const DashboardPage = () => {
-	const { variant: variantParam } = useParams();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [intentBanner, setIntentBanner] = useState<string | null>(null);
-
-	if (variantParam !== undefined && !isDashboardVariant(variantParam)) {
-		return <Navigate replace to="/console/dashboard/personal" />;
-	}
-
-	const variant = variantParam ?? "personal";
 
 	useEffect(() => {
 		const welcome = searchParams.get("welcome");
@@ -2256,7 +1664,7 @@ export const DashboardPage = () => {
 
 		setIntentBanner(
 			intent === "business"
-				? "You started from the business and teams path — explore Organization and Quota when you are ready."
+				? "You started from the business and teams path — Quota and Spaces are available from this overview when you are ready."
 				: "You started from the personal and family path — shared spaces and splits work great from Spaces and Chat.",
 		);
 	}, [searchParams, setSearchParams]);
@@ -2272,15 +1680,17 @@ export const DashboardPage = () => {
 	})();
 
 	return (
-		<DashboardVariantProvider variant={variant}>
-			<div className="space-y-8">
-				<DashboardBody
-					intentBanner={intentBanner}
-					onDismissIntent={handleDismissIntent}
-				/>
+		<DashboardVariantProvider variant="personal">
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+				<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+					<DashboardBody
+						intentBanner={intentBanner}
+						onDismissIntent={handleDismissIntent}
+					/>
+				</div>
 				<section
 					aria-label="Quick navigation"
-					className="border-t border-[hsl(var(--border-subtle))] pt-8"
+					className="shrink-0 border-t border-[hsl(var(--border-subtle))] px-4 py-6 lg:px-8"
 				>
 					<p className="mb-3 text-xs font-medium uppercase tracking-wide text-[hsl(var(--text-secondary))]">
 						All console areas
@@ -2340,17 +1750,6 @@ export const DashboardPage = () => {
 							</div>
 							<div className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
 								Schedules and pauses.
-							</div>
-						</Link>
-						<Link
-							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-4 text-sm transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-							to="/console/organization"
-						>
-							<div className="font-medium text-[hsl(var(--text-primary))]">
-								Organization
-							</div>
-							<div className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
-								Tenant directory and name.
 							</div>
 						</Link>
 						<Link

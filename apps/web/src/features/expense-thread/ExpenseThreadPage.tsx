@@ -6,8 +6,8 @@ import {
 } from "../../shared/lib/chatWorkspaceScope";
 
 /**
- * Legacy URL `/console/chat/thread?spaceId=&expenseId=` redirects into ChatLogPage
- * inline expense thread (same card + shared composer).
+ * Legacy URL `/console/chat/thread?spaceId=&expenseId=` redirects into Chat with the
+ * expense thread opened in the workspace Expenses panel (right rail).
  */
 export const ExpenseThreadPage = () => {
 	const navigate = useNavigate();

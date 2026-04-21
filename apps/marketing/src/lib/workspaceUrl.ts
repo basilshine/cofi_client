@@ -12,3 +12,13 @@ export const getWorkspaceSiteBase = (): string =>
 /** Absolute URL on the workspace host (`use.ceits.app` in production). */
 export const workspaceUrl = (path: string): string =>
 	ceitsSiteUrl(getWorkspaceSiteBase(), path);
+
+const APP_DEV_FALLBACK = WORKSPACE_DEV_FALLBACK;
+
+export const getAppSiteBase = (): string =>
+	normalizeCeitsSiteBase(import.meta.env.VITE_APP_URL, APP_DEV_FALLBACK).replace(
+		/use\.ceits\.app$/i,
+		"app.ceits.com",
+	);
+
+export const appUrl = (path: string): string => ceitsSiteUrl(getAppSiteBase(), path);

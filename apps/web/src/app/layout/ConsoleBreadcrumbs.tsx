@@ -1,5 +1,4 @@
 import { Link, useLocation } from "react-router-dom";
-import { useWorkspaceNavSnapshot } from "../../shared/hooks/useWorkspaceNavSnapshot";
 import {
 	type ChatBreadcrumbPayload,
 	useChatBreadcrumbValue,
@@ -30,20 +29,16 @@ type Crumb = {
 
 const buildCrumbs = (
 	pathname: string,
-	tab: "personal" | "business",
 	chat: ChatBreadcrumbPayload | null,
 ): Crumb[] => {
-	const dashboardHref =
-		tab === "business"
-			? "/console/dashboard/business"
-			: "/console/dashboard/personal";
+	const dashboardHref = "/console/dashboard";
 
 	const workspace: Crumb = {
-		label: tab === "business" ? "Business" : "Personal",
+		label: "Overview",
 		to: dashboardHref,
 	};
 
-	if (pathname.startsWith("/console/dashboard/")) {
+	if (pathname.startsWith("/console/dashboard")) {
 		return [
 			{ label: "Console", to: "/console" },
 			workspace,
@@ -77,9 +72,18 @@ const buildCrumbs = (
 		if (space) {
 			if (!hasThread) {
 				base.push({ label: space });
+				if (pathname.startsWith("/console/chat/expenses")) {
+					base.push({ label: "Expenses" });
+				}
 				return base;
 			}
 			base.push({ label: space });
+			if (pathname.startsWith("/console/chat/expenses")) {
+				base.push({
+					label: "Expenses",
+					to: "/console/chat/expenses",
+				});
+			}
 			base.push({
 				label: chat?.thread?.label ?? "Expense thread",
 				detail: chat?.thread?.detail ?? null,
@@ -106,7 +110,6 @@ const buildCrumbs = (
 		transactions: "Transactions",
 		recurring: "Recurring",
 		quota: "Quota",
-		organization: "Organization",
 	};
 
 	const pageLabel = sectionLabel[section] ?? "Console";
@@ -177,19 +180,31 @@ const CrumbLabel = ({
 	);
 };
 
-export const ConsoleBreadcrumbs = () => {
+export const ConsoleBreadcrumbs = ({
+	variant = "default",
+}: {
+	variant?: "default" | "inline";
+}) => {
 	const { pathname } = useLocation();
-	const { tab } = useWorkspaceNavSnapshot();
 	const chatBreadcrumb = useChatBreadcrumbValue();
-	const crumbs = buildCrumbs(pathname, tab, chatBreadcrumb);
+	const crumbs = buildCrumbs(pathname, chatBreadcrumb);
+
+	const isInline = variant === "inline";
 
 	return (
-		<nav aria-label="Breadcrumb" className="mb-6">
-			<ol className="flex min-w-0 flex-wrap items-center gap-1.5 text-[11px] font-medium tracking-wide sm:text-xs">
+		<nav
+			aria-label="Breadcrumb"
+			className={isInline ? "" : "mb-6"}
+		>
+			<ol
+				className={[
+					"flex min-w-0 flex-wrap items-center gap-1.5 font-medium tracking-wide",
+					isInline ? "text-[10px] sm:text-[11px]" : "text-[11px] sm:text-xs",
+				].join(" ")}
+			>
 				{crumbs.map((crumb, i) => {
 					const isLast = i === crumbs.length - 1;
-					const isWorkspace =
-						crumb.label === "Personal" || crumb.label === "Business";
+					const isWorkspace = crumb.label === "Overview";
 
 					return (
 						<li
@@ -208,10 +223,12 @@ export const ConsoleBreadcrumbs = () => {
 					);
 				})}
 			</ol>
-			<div
-				aria-hidden
-				className="pointer-events-none mt-3 h-px w-full max-w-md bg-gradient-to-r from-transparent via-border to-transparent opacity-80"
-			/>
+			{isInline ? null : (
+				<div
+					aria-hidden
+					className="pointer-events-none mt-3 h-px w-full max-w-md bg-gradient-to-r from-transparent via-border to-transparent opacity-80"
+				/>
+			)}
 		</nav>
 	);
 };

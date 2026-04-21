@@ -45,6 +45,7 @@ export const DraftExpenseCard = ({
 	onExpenseOrphaned,
 	onOpenExpenseThread,
 	relatedExpenseStatusHint,
+	compact = false,
 }: {
 	expenseId: string | number;
 	/** Required to attach web Chat context when saving a recurring schedule. */
@@ -59,6 +60,8 @@ export const DraftExpenseCard = ({
 	onOpenExpenseThread?: (expenseId: string | number) => void;
 	/** From chat list: `gone` / `inaccessible` skips GET (deleted or not yours). */
 	relatedExpenseStatusHint?: string;
+	/** Narrow summary; tap opens the workspace expense thread panel. */
+	compact?: boolean;
 }) => {
 	const navigate = useNavigate();
 	const { user } = useAuth();
@@ -333,6 +336,199 @@ export const DraftExpenseCard = ({
 						Show details
 					</button>
 				</div>
+			</div>
+		);
+	}
+
+	if (compact && expense && onOpenExpenseThread && spaceId != null) {
+		const handleOpenPanel = () => {
+			onOpenExpenseThread(expense.id);
+		};
+		const previewRows = items.slice(0, 10);
+		const moreCount = items.length - previewRows.length;
+
+		const chatToolbarBtn =
+			"inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 sm:h-9";
+
+		return (
+			<div className="w-full min-w-0 max-w-full space-y-2">
+				<div className={`${cardClassName} space-y-2.5 shadow-sm ring-1 ring-border/10`}>
+					<div className="flex flex-wrap items-start justify-between gap-2">
+						<div className="min-w-0">
+							<div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+								{isDraft ? "Draft expense" : `Expense · ${expense.status ?? "posted"}`}
+							</div>
+							<div className="mt-0.5 text-sm font-semibold leading-snug text-foreground">
+								{expense.description?.trim() || "Draft transaction"}
+							</div>
+							<div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+								<span>
+									Total{" "}
+									<span className="font-semibold tabular-nums text-foreground">
+										{formatMoney(total)}
+									</span>
+								</span>
+								{isDraft &&
+								yourShareAmount != null &&
+								!Number.isNaN(yourShareAmount) ? (
+									<span>
+										Your share{" "}
+										<span className="font-semibold tabular-nums text-foreground">
+											{formatMoney(yourShareAmount)}
+										</span>
+									</span>
+								) : null}
+								{creatorLabel ? (
+									<span className="text-[10px]">
+										{creatorLabel === "You" ? "You" : `By ${creatorLabel}`}
+									</span>
+								) : null}
+							</div>
+						</div>
+					</div>
+
+					{previewRows.length > 0 ? (
+						<div className="overflow-hidden rounded-lg border border-border/70 bg-muted/25">
+							<table className="w-full min-w-0 border-collapse text-left text-[11px]">
+								<thead>
+									<tr className="border-b border-border/60 bg-muted/60">
+										<th
+											className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+											scope="col"
+										>
+											Line
+										</th>
+										<th
+											className="px-2.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+											scope="col"
+										>
+											Amount
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									{previewRows.map((it) => (
+										<tr
+											className="border-b border-border/40 last:border-b-0"
+											key={it.id}
+										>
+											<td className="max-w-[14rem] px-2.5 py-1.5 font-medium text-foreground">
+												<span className="line-clamp-2">{it.name}</span>
+											</td>
+											<td className="whitespace-nowrap px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">
+												{formatMoney(it.amount)}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+							{moreCount > 0 ? (
+								<div className="border-t border-border/50 bg-muted/40 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+									+{moreCount} more line{moreCount === 1 ? "" : "s"} — use Review
+									for full detail
+								</div>
+							) : null}
+						</div>
+					) : (
+						<p className="rounded-md border border-dashed border-border/80 bg-muted/20 px-2.5 py-2 text-[11px] text-muted-foreground">
+							No line items on this expense yet.
+						</p>
+					)}
+				</div>
+
+				<div className="space-y-2 border-t border-border/40 pt-2">
+					<div
+						aria-label="Expense actions"
+						className="flex flex-wrap items-center gap-2"
+						role="group"
+					>
+						<button
+							className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
+							onClick={handleOpenPanel}
+							type="button"
+						>
+							{isDraft ? "Review & edit" : "Open"}
+						</button>
+						{isDraft ? (
+							<>
+								<button
+									aria-label="Split expense between space members"
+									className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
+									disabled={isActing}
+									onClick={() => setSplitDialogOpen(true)}
+									type="button"
+								>
+									Split
+								</button>
+								<button
+									aria-label="Confirm draft expense"
+									className={`${chatToolbarBtn} border-primary bg-primary text-primary-foreground hover:bg-primary/90`}
+									disabled={isActing}
+									onClick={() => void handleConfirm()}
+									type="button"
+								>
+									{isActing ? "…" : "Confirm"}
+								</button>
+								<button
+									aria-label="Cancel draft expense"
+									className={`${chatToolbarBtn} border-destructive/35 bg-background text-destructive hover:bg-destructive/10`}
+									disabled={isActing}
+									onClick={() => void handleCancel()}
+									type="button"
+								>
+									{isActing ? "…" : "Cancel"}
+								</button>
+							</>
+						) : null}
+					</div>
+					{!isDraft && !isCancelled ? (
+						<div className="rounded-lg border border-border/60 bg-muted/20 p-2">
+							<div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+								Posting actions
+							</div>
+							<TransactionInlineActions
+								className="!space-y-1.5"
+								expenseId={expense.id}
+								onAfterChange={() => void handleLoad()}
+								onResourceGone={onExpenseOrphaned}
+								recurringId={
+									expense.recurring_id != null &&
+									Number(expense.recurring_id) > 0
+										? Number(expense.recurring_id)
+										: undefined
+								}
+								recurringPaused={expense.recurring_paused}
+							/>
+						</div>
+					) : null}
+				</div>
+
+				{successMessage ? (
+					<output
+						aria-live="polite"
+						className="block rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-900 dark:text-emerald-100"
+					>
+						{successMessage}
+					</output>
+				) : null}
+
+				{error ? (
+					<div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+						{error}
+					</div>
+				) : null}
+
+				<ExpenseSplitDialog
+					currentUserId={user?.id ?? null}
+					expenseId={expense.id}
+					expenseOwnerUserId={Number(expense.user_id ?? user?.id ?? 0)}
+					expenseTotal={total}
+					formatMoney={formatMoney}
+					onOpenChange={setSplitDialogOpen}
+					onSaved={() => void handleLoad()}
+					open={splitDialogOpen}
+					spaceId={spaceId}
+				/>
 			</div>
 		);
 	}

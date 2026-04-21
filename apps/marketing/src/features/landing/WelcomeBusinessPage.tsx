@@ -1,9 +1,21 @@
+import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import {
+	fadeUpVariants,
+	staggerContainer,
+	staggerItem,
+} from "../../lib/marketingMotion";
 import { workspaceUrl } from "../../lib/workspaceUrl";
 
 const authQuery = `intent=business&returnTo=${encodeURIComponent("/console?welcome=1")}`;
 const authRegisterHref = workspaceUrl(`/register?${authQuery}`);
 const authLoginHref = workspaceUrl(`/login?${authQuery}`);
+
+const scrollReveal = {
+	once: true,
+	amount: 0.18,
+	margin: "0px 0px -40px 0px",
+} as const;
 
 export const WelcomeBusinessPage = () => {
 	return (
@@ -31,7 +43,13 @@ export const WelcomeBusinessPage = () => {
 			</header>
 
 			<main className="mx-auto w-full max-w-6xl space-y-12 px-6 py-12 lg:px-8 lg:py-16">
-				<div className="space-y-5">
+				<motion.div
+					className="space-y-5"
+					initial="hidden"
+					variants={fadeUpVariants}
+					whileInView="visible"
+					viewport={scrollReveal}
+				>
 					<p className="text-sm font-medium uppercase tracking-[0.16em] text-[hsl(var(--text-secondary))]">
 						For teams and companies
 					</p>
@@ -43,40 +61,68 @@ export const WelcomeBusinessPage = () => {
 						without splitting your books across disconnected tools. Align
 						finance workflows with how your business actually runs.
 					</p>
-				</div>
+				</motion.div>
 
-				<ul className="grid gap-4 md:grid-cols-2">
-					<li className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6">
+				<motion.ul
+					className="grid gap-4 md:grid-cols-2"
+					initial="hidden"
+					variants={staggerContainer}
+					whileInView="visible"
+					viewport={scrollReveal}
+				>
+					<motion.li
+						className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6"
+						variants={staggerItem}
+						whileHover={{ y: -2, transition: { duration: 0.2 } }}
+					>
 						<h2 className="text-sm font-semibold">Roles and governance</h2>
 						<p className="mt-2 text-sm leading-6 text-[hsl(var(--text-secondary))]">
 							Tenant admins invite members, manage the directory, and keep
 							sensitive exports and audit surfaces under control (per plan).
 						</p>
-					</li>
-					<li className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6">
+					</motion.li>
+					<motion.li
+						className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6"
+						variants={staggerItem}
+						whileHover={{ y: -2, transition: { duration: 0.2 } }}
+					>
 						<h2 className="text-sm font-semibold">Shared spaces</h2>
 						<p className="mt-2 text-sm leading-6 text-[hsl(var(--text-secondary))]">
 							Projects and departments get their own spaces while billing and
 							limits stay attached to the organization.
 						</p>
-					</li>
-					<li className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6">
+					</motion.li>
+					<motion.li
+						className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6"
+						variants={staggerItem}
+						whileHover={{ y: -2, transition: { duration: 0.2 } }}
+					>
 						<h2 className="text-sm font-semibold">Quota and entitlements</h2>
 						<p className="mt-2 text-sm leading-6 text-[hsl(var(--text-secondary))]">
 							AI parse allowances and member caps follow the tenant — ready for
 							team growth without surprise overages.
 						</p>
-					</li>
-					<li className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6">
+					</motion.li>
+					<motion.li
+						className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6"
+						variants={staggerItem}
+						whileHover={{ y: -2, transition: { duration: 0.2 } }}
+					>
 						<h2 className="text-sm font-semibold">Roadmap-friendly</h2>
 						<p className="mt-2 text-sm leading-6 text-[hsl(var(--text-secondary))]">
 							SSO, verified domains, and deeper policy live on the same tenant
 							foundation — no parallel &quot;org&quot; table required.
 						</p>
-					</li>
-				</ul>
+					</motion.li>
+				</motion.ul>
 
-				<div className="flex flex-col gap-3 border-t border-[hsl(var(--border-subtle))] pt-8 sm:flex-row">
+				<motion.div
+					className="flex flex-col gap-3 border-t border-[hsl(var(--border-subtle))] pt-8 sm:flex-row"
+					initial="hidden"
+					variants={fadeUpVariants}
+					whileInView="visible"
+					viewport={scrollReveal}
+				>
 					<a
 						className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 						href={authRegisterHref}
@@ -89,7 +135,7 @@ export const WelcomeBusinessPage = () => {
 					>
 						Compare personal and family path
 					</Link>
-				</div>
+				</motion.div>
 			</main>
 		</div>
 	);

@@ -1,5 +1,19 @@
+import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import {
+	fadeUpVariants,
+	staggerContainer,
+	staggerItem,
+} from "../../lib/marketingMotion";
 import { workspaceUrl } from "../../lib/workspaceUrl";
+
+const MotionLink = motion(Link);
+
+const scrollReveal = {
+	once: true,
+	amount: 0.15,
+	margin: "0px 0px -48px 0px",
+} as const;
 
 export const LandingPage = () => {
 	return (
@@ -26,18 +40,36 @@ export const LandingPage = () => {
 
 			<main className="mx-auto w-full max-w-6xl px-6 py-12 lg:px-8 lg:py-20">
 				<section className="grid gap-10 lg:grid-cols-12 lg:items-center">
-					<div className="space-y-6 lg:col-span-7">
-						<p className="text-sm font-medium uppercase tracking-[0.16em] text-[hsl(var(--text-secondary))]">
+					<motion.div
+						className="space-y-6 lg:col-span-7"
+						initial="hidden"
+						variants={staggerContainer}
+						whileInView="visible"
+						viewport={{ once: true, amount: 0.25 }}
+					>
+						<motion.p
+							className="text-sm font-medium uppercase tracking-[0.16em] text-[hsl(var(--text-secondary))]"
+							variants={staggerItem}
+						>
 							Shared finance, made calm
-						</p>
-						<h1 className="max-w-2xl font-serif text-4xl tracking-tight text-[hsl(var(--text-primary))] md:text-5xl">
+						</motion.p>
+						<motion.h1
+							className="max-w-2xl font-serif text-4xl tracking-tight text-[hsl(var(--text-primary))] md:text-5xl"
+							variants={staggerItem}
+						>
 							Clarity for shared money, without the noise.
-						</h1>
-						<p className="max-w-2xl text-base leading-7 text-[hsl(var(--text-secondary))]">
+						</motion.h1>
+						<motion.p
+							className="max-w-2xl text-base leading-7 text-[hsl(var(--text-secondary))]"
+							variants={staggerItem}
+						>
 							Ceits turns scattered receipts, notes, and decisions into one
 							editorial workspace for households and teams.
-						</p>
-						<div className="flex flex-col gap-3 sm:flex-row">
+						</motion.p>
+						<motion.div
+							className="flex flex-col gap-3 sm:flex-row"
+							variants={staggerItem}
+						>
 							<a
 								className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								href={workspaceUrl("/register")}
@@ -50,12 +82,21 @@ export const LandingPage = () => {
 							>
 								Explore how it works
 							</a>
-						</div>
-						<div className="grid gap-3 pt-2 sm:grid-cols-2">
-							<Link
+						</motion.div>
+						<motion.div
+							className="grid gap-3 pt-2 sm:grid-cols-2"
+							initial="hidden"
+							variants={staggerContainer}
+							whileInView="visible"
+							viewport={{ once: true, amount: 0.2 }}
+						>
+							<MotionLink
 								aria-label="Continue with personal and household path"
-								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition-colors hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								to="/welcome/personal"
+								variants={staggerItem}
+								whileHover={{ y: -3, transition: { duration: 0.2 } }}
+								whileTap={{ scale: 0.99 }}
 							>
 								<p className="text-sm font-medium text-[hsl(var(--text-primary))]">
 									For me and my household
@@ -64,11 +105,14 @@ export const LandingPage = () => {
 									Trips, family budgets, and shared costs with practical
 									visibility.
 								</p>
-							</Link>
-							<Link
+							</MotionLink>
+							<MotionLink
 								aria-label="Continue with team and business path"
-								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition-colors hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								to="/welcome/business"
+								variants={staggerItem}
+								whileHover={{ y: -3, transition: { duration: 0.2 } }}
+								whileTap={{ scale: 0.99 }}
 							>
 								<p className="text-sm font-medium text-[hsl(var(--text-primary))]">
 									For my team or business
@@ -77,10 +121,16 @@ export const LandingPage = () => {
 									Roles, shared spaces, and operational confidence for every
 									finance workflow.
 								</p>
-							</Link>
-						</div>
-					</div>
-					<div className="space-y-4 lg:col-span-5">
+							</MotionLink>
+						</motion.div>
+					</motion.div>
+					<motion.div
+						className="space-y-4 lg:col-span-5"
+						initial="hidden"
+						variants={fadeUpVariants}
+						whileInView="visible"
+						viewport={scrollReveal}
+					>
 						<div className="rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 shadow-sm">
 							<p className="text-xs font-medium uppercase tracking-[0.14em] text-[hsl(var(--text-secondary))]">
 								Narrative preview
@@ -111,16 +161,22 @@ export const LandingPage = () => {
 								organizational use inside the same trusted product experience.
 							</p>
 						</div>
-					</div>
+					</motion.div>
 				</section>
 
-				<section className="mt-14 rounded-xl bg-[hsl(var(--surface))] px-6 py-5 lg:mt-16">
+				<motion.section
+					className="mt-14 rounded-xl bg-[hsl(var(--surface))] px-6 py-5 lg:mt-16"
+					initial="hidden"
+					variants={fadeUpVariants}
+					whileInView="visible"
+					viewport={scrollReveal}
+				>
 					<div className="grid gap-3 text-sm text-[hsl(var(--text-secondary))] md:grid-cols-3">
 						<p>Trusted workflows for shared money decisions</p>
 						<p>Accessible controls and readable finance context</p>
 						<p>Built to move from household to organization readiness</p>
 					</div>
-				</section>
+				</motion.section>
 
 				<section className="py-14 lg:py-20" id="how-it-works">
 					<div className="mb-8 space-y-3">
@@ -135,8 +191,18 @@ export const LandingPage = () => {
 							matters, then act with confidence.
 						</p>
 					</div>
-					<div className="grid gap-4 md:grid-cols-3">
-						<article className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 transition-colors hover:bg-[hsl(var(--surface-muted))]">
+					<motion.div
+						className="grid gap-4 md:grid-cols-3"
+						initial="hidden"
+						variants={staggerContainer}
+						whileInView="visible"
+						viewport={scrollReveal}
+					>
+						<motion.article
+							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 transition-colors hover:bg-[hsl(var(--surface-muted))]"
+							variants={staggerItem}
+							whileHover={{ y: -2, transition: { duration: 0.2 } }}
+						>
 							<p className="text-xs font-medium uppercase tracking-[0.14em] text-[hsl(var(--text-secondary))]">
 								Step 1
 							</p>
@@ -145,8 +211,12 @@ export const LandingPage = () => {
 								Bring receipts, chat notes, and reminders together before
 								details get lost.
 							</p>
-						</article>
-						<article className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 transition-colors hover:bg-[hsl(var(--surface-muted))]">
+						</motion.article>
+						<motion.article
+							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 transition-colors hover:bg-[hsl(var(--surface-muted))]"
+							variants={staggerItem}
+							whileHover={{ y: -2, transition: { duration: 0.2 } }}
+						>
 							<p className="text-xs font-medium uppercase tracking-[0.14em] text-[hsl(var(--text-secondary))]">
 								Step 2
 							</p>
@@ -155,8 +225,12 @@ export const LandingPage = () => {
 								Convert inputs into clean records with clear participants,
 								statuses, and values.
 							</p>
-						</article>
-						<article className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 transition-colors hover:bg-[hsl(var(--surface-muted))]">
+						</motion.article>
+						<motion.article
+							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 transition-colors hover:bg-[hsl(var(--surface-muted))]"
+							variants={staggerItem}
+							whileHover={{ y: -2, transition: { duration: 0.2 } }}
+						>
 							<p className="text-xs font-medium uppercase tracking-[0.14em] text-[hsl(var(--text-secondary))]">
 								Step 3
 							</p>
@@ -165,8 +239,8 @@ export const LandingPage = () => {
 								Confirm, share, and move forward with confidence across personal
 								or organizational spaces.
 							</p>
-						</article>
-					</div>
+						</motion.article>
+					</motion.div>
 				</section>
 
 				<section className="space-y-10 py-14 lg:py-20">

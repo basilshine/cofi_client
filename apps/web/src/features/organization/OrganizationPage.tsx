@@ -242,7 +242,7 @@ export const OrganizationPage = () => {
 				<p className="text-sm">
 					<Link
 						className="font-medium text-primary underline underline-offset-2"
-						to="/console/dashboard/business"
+						to="/console/dashboard"
 					>
 						Back to business dashboard
 					</Link>

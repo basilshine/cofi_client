@@ -1,25 +1,22 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { readChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
 import { WORKSPACE_NAV_UPDATED_EVENT } from "../../shared/lib/workspaceNavEvents";
 
 export const CONSOLE_WORKSPACE_ATTR = "data-console-workspace" as const;
 
-const resolveConsoleWorkspace = (pathname: string): "personal" | "business" => {
-	if (pathname.includes("/console/dashboard/business")) return "business";
-	if (pathname.includes("/console/dashboard/personal")) return "personal";
-	const cw = readChatWorkspaceScope();
-	if (cw?.kind === "organization") return "business";
-	return "personal";
-};
-
 const applyConsoleWorkspace = (pathname: string) => {
-	const workspace = resolveConsoleWorkspace(pathname);
-	document.documentElement.setAttribute(CONSOLE_WORKSPACE_ATTR, workspace);
+	// Personal-only console: warm accent tint always.
+	document.documentElement.setAttribute(CONSOLE_WORKSPACE_ATTR, "personal");
+
+	if (pathname.startsWith("/console")) {
+		document.documentElement.setAttribute("data-theme", "ceits-editorial");
+	} else {
+		document.documentElement.removeAttribute("data-theme");
+	}
 };
 
 /**
- * Tints the whole console (via :root) so Personal reads warm and Organization reads rich green.
+ * Sets console chrome tokens (personal workspace + editorial palette) for `/console/*`.
  */
 export const ConsoleWorkspaceTheme = () => {
 	const { pathname } = useLocation();

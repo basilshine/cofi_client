@@ -360,6 +360,22 @@ export const createApiClient = (config: ApiClientConfig) => {
 						headers: authHeaders(),
 					},
 				),
+			/**
+			 * Expenses linked to this space (chat + threads), including drafts.
+			 * Use this for space views — `transactions.list` does not populate `space_id`.
+			 */
+			listTransactions: (
+				spaceId: string | number,
+				params?: { limit?: number },
+			) => {
+				const qs = params?.limit
+					? `?limit=${encodeURIComponent(String(params.limit))}`
+					: "";
+				return fetchJson<Transaction[]>(
+					withBase(`/api/v1/spaces/${spaceId}/transactions${qs}`),
+					{ method: "GET", headers: authHeaders() },
+				);
+			},
 		},
 
 		drafts: {

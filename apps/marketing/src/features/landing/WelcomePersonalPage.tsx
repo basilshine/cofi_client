@@ -1,9 +1,21 @@
+import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import {
+	fadeUpVariants,
+	staggerContainer,
+	staggerItem,
+} from "../../lib/marketingMotion";
 import { workspaceUrl } from "../../lib/workspaceUrl";
 
 const authQuery = `intent=personal&returnTo=${encodeURIComponent("/console?welcome=1")}`;
 const authRegisterHref = workspaceUrl(`/register?${authQuery}`);
 const authLoginHref = workspaceUrl(`/login?${authQuery}`);
+
+const scrollReveal = {
+	once: true,
+	amount: 0.18,
+	margin: "0px 0px -40px 0px",
+} as const;
 
 export const WelcomePersonalPage = () => {
 	return (
@@ -31,7 +43,13 @@ export const WelcomePersonalPage = () => {
 			</header>
 
 			<main className="mx-auto w-full max-w-6xl space-y-12 px-6 py-12 lg:px-8 lg:py-16">
-				<div className="space-y-5">
+				<motion.div
+					className="space-y-5"
+					initial="hidden"
+					variants={fadeUpVariants}
+					whileInView="visible"
+					viewport={scrollReveal}
+				>
 					<p className="text-sm font-medium uppercase tracking-[0.16em] text-[hsl(var(--text-secondary))]">
 						For households and side projects
 					</p>
@@ -43,10 +61,20 @@ export const WelcomePersonalPage = () => {
 						splitting bills, planning trips, tracking a renovation, or staying
 						aligned with family on recurring costs.
 					</p>
-				</div>
+				</motion.div>
 
-				<ul className="grid gap-4 md:grid-cols-2">
-					<li className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6">
+				<motion.ul
+					className="grid gap-4 md:grid-cols-2"
+					initial="hidden"
+					variants={staggerContainer}
+					whileInView="visible"
+					viewport={scrollReveal}
+				>
+					<motion.li
+						className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6"
+						variants={staggerItem}
+						whileHover={{ y: -2, transition: { duration: 0.2 } }}
+					>
 						<h2 className="text-sm font-semibold">
 							Splitting and shared costs
 						</h2>
@@ -54,15 +82,23 @@ export const WelcomePersonalPage = () => {
 							Capture who owes what across roommates, partners, or trips — fewer
 							arguments, clearer totals.
 						</p>
-					</li>
-					<li className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6">
+					</motion.li>
+					<motion.li
+						className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6"
+						variants={staggerItem}
+						whileHover={{ y: -2, transition: { duration: 0.2 } }}
+					>
 						<h2 className="text-sm font-semibold">Travel and events</h2>
 						<p className="mt-2 text-sm leading-6 text-[hsl(var(--text-secondary))]">
 							One space per trip or event keeps receipts and decisions in
 							context while you stay on budget.
 						</p>
-					</li>
-					<li className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6">
+					</motion.li>
+					<motion.li
+						className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6"
+						variants={staggerItem}
+						whileHover={{ y: -2, transition: { duration: 0.2 } }}
+					>
 						<h2 className="text-sm font-semibold">
 							Construction and big projects
 						</h2>
@@ -70,17 +106,27 @@ export const WelcomePersonalPage = () => {
 							Track deposits, milestones, and vendor lines alongside chat so
 							nothing gets lost in messages.
 						</p>
-					</li>
-					<li className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6">
+					</motion.li>
+					<motion.li
+						className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6"
+						variants={staggerItem}
+						whileHover={{ y: -2, transition: { duration: 0.2 } }}
+					>
 						<h2 className="text-sm font-semibold">Family-first defaults</h2>
 						<p className="mt-2 text-sm leading-6 text-[hsl(var(--text-secondary))]">
 							A personal tenant stays simple for solo use; invite others when
 							you are ready without changing products.
 						</p>
-					</li>
-				</ul>
+					</motion.li>
+				</motion.ul>
 
-				<div className="flex flex-col gap-3 border-t border-[hsl(var(--border-subtle))] pt-8 sm:flex-row">
+				<motion.div
+					className="flex flex-col gap-3 border-t border-[hsl(var(--border-subtle))] pt-8 sm:flex-row"
+					initial="hidden"
+					variants={fadeUpVariants}
+					whileInView="visible"
+					viewport={scrollReveal}
+				>
 					<a
 						className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 						href={authRegisterHref}
@@ -93,7 +139,7 @@ export const WelcomePersonalPage = () => {
 					>
 						Compare team and business path
 					</Link>
-				</div>
+				</motion.div>
 			</main>
 		</div>
 	);

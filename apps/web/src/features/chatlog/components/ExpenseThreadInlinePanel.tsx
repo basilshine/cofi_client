@@ -259,6 +259,8 @@ type Props = {
 	/** One-shot scroll to a manual draft line after navigation (e.g. `?line=` deep link). */
 	draftLineScrollRequest?: number | null;
 	onDraftLineScrollConsumed?: () => void;
+	/** Primary back control (default: back to main chat). */
+	closeLabel?: string;
 };
 
 export const ExpenseThreadInlinePanel = ({
@@ -271,6 +273,7 @@ export const ExpenseThreadInlinePanel = ({
 	parseTestSnippets,
 	draftLineScrollRequest,
 	onDraftLineScrollConsumed,
+	closeLabel = "← Back to space chat",
 }: Props) => {
 	const finalizeTitleId = useId();
 	const finalizeDialogRef = useRef<HTMLDialogElement>(null);
@@ -661,7 +664,7 @@ export const ExpenseThreadInlinePanel = ({
 					onClick={onClose}
 					type="button"
 				>
-					Back to space chat
+					{closeLabel}
 				</button>
 			</div>
 		);
@@ -678,7 +681,7 @@ export const ExpenseThreadInlinePanel = ({
 							onClick={onClose}
 							type="button"
 						>
-							← Back to space chat
+							{closeLabel}
 						</button>
 					</div>
 					<div className="min-w-0">

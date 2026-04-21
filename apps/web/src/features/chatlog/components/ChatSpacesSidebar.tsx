@@ -144,6 +144,10 @@ export type ChatSpacesSidebarProps = {
 	incomingInvitesRefreshKey: number;
 	/** Accept an invite by token (same as paste flow); used for “Your invites” actions. */
 	onAcceptInviteToken: (token: string) => Promise<void>;
+	/** Hide space list / create (shown in workspace nav). */
+	hideSpaceList?: boolean;
+	/** Render as panel inside a parent sidebar (no outer aside chrome). */
+	embedded?: boolean;
 };
 
 const spaceInitial = (name: string) => {
@@ -200,6 +204,8 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 		inviteSuggestionsNonce,
 		incomingInvitesRefreshKey,
 		onAcceptInviteToken,
+		hideSpaceList = false,
+		embedded = false,
 	} = props;
 
 	const [memberDetails, setMemberDetails] = useState<SpaceMember | null>(null);
@@ -308,146 +314,160 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 
 	const fullBody = (
 		<div className="flex min-h-0 flex-1 flex-col gap-0">
-			<div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 pb-3">
-				<div className="text-sm font-semibold tracking-tight">Spaces</div>
-				<div className="flex items-center gap-1">
-					<button
-						aria-expanded={expanded}
-						aria-label="Collapse sidebar"
-						className="hidden lg:inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						onClick={() => onExpandedChange(false)}
-						type="button"
-					>
-						<IconPanelClose className="h-4 w-4" />
-					</button>
-					<button
-						className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
-						disabled={isLoading}
-						onClick={() => onRefreshSpaces()}
-						type="button"
-					>
-						Refresh
-					</button>
-				</div>
-			</div>
-
-			<div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-0.5">
-				<div
-					id="chat-sidebar-create"
-					className="scroll-mt-4 rounded-lg border border-dashed border-border/80 bg-muted/20 p-3"
-				>
-					{workspaceScope.kind === "organization" ? (
-						<p className="text-xs leading-relaxed text-muted-foreground">
-							New organization spaces are created from{" "}
-							<Link
-								className="font-medium text-foreground underline underline-offset-2"
-								to="/console/spaces"
-							>
-								Spaces
-							</Link>
-							.
-						</p>
-					) : (
-						<div className="grid gap-2">
-							<label className="grid gap-1">
-								<span className="text-xs font-medium text-muted-foreground">
-									New space name
-								</span>
-								<input
-									aria-label="New space name"
-									className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-									onChange={(e) => onNewSpaceNameChange(e.target.value)}
-									placeholder="Team budget"
-									type="text"
-									value={newSpaceName}
-								/>
-							</label>
-							<button
-								className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-95 disabled:opacity-50"
-								disabled={isLoading || !newSpaceName.trim()}
-								onClick={() => onCreateSpace()}
-								type="button"
-							>
-								Create space
-							</button>
-						</div>
-					)}
-				</div>
-
-				<div className="grid gap-2">
-					<div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-						Spaces · {workspaceScope.label}
+			{hideSpaceList ? null : (
+				<div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 pb-3">
+					<div className="text-sm font-semibold tracking-tight">Spaces</div>
+					<div className="flex items-center gap-1">
+						<button
+							aria-expanded={expanded}
+							aria-label="Collapse sidebar"
+							className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:inline-flex"
+							onClick={() => onExpandedChange(false)}
+							type="button"
+						>
+							<IconPanelClose className="h-4 w-4" />
+						</button>
+						<button
+							className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
+							disabled={isLoading}
+							onClick={() => onRefreshSpaces()}
+							type="button"
+						>
+							Refresh
+						</button>
 					</div>
-					<p className="text-[10px] leading-snug text-muted-foreground">
-						{workspaceScope.kind === "organization"
-							? "Organization workspace — spaces may be yours or someone else’s."
-							: "Personal workspace — spaces you created show as yours; shared spaces show another owner."}
-					</p>
-					{spaces?.length ? (
-						<ul className="space-y-1">
-							{spaces.map((s) => {
-								const isActive =
-									selectedSpaceId !== null &&
-									String(s.id) === String(selectedSpaceId);
-								const unread = spaceHasUnread(s.id);
-								const ownerId =
-									s.owner_user_id != null ? Number(s.owner_user_id) : null;
-								const isYours =
-									currentUserId != null &&
-									ownerId != null &&
-									ownerId === currentUserId;
-								return (
-									<li key={String(s.id)}>
-										<button
-											aria-label={`Select space ${s.name}${unread ? ", unread messages" : ""}`}
-											className={[
-												"flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
-												isActive
-													? "bg-primary/10 font-medium text-foreground ring-1 ring-primary/25"
-													: "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-											].join(" ")}
-											onClick={() => {
-												onClearThread();
-												onSelectSpace(s.id);
-											}}
-											type="button"
-										>
-											<div className="min-w-0 flex-1">
-												<div className="truncate">{s.name}</div>
-												<div className="mt-0.5 text-[10px] leading-tight text-muted-foreground/95">
-													{isYours ? (
-														<span className="font-medium text-emerald-700 dark:text-emerald-400">
-															Your space
-														</span>
-													) : ownerId != null ? (
-														<span>Shared · owner user #{ownerId}</span>
-													) : (
-														<span className="font-mono">id {String(s.id)}</span>
-													)}
-												</div>
-											</div>
-											{unread ? (
-												<span
-													aria-hidden
-													className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary shadow-sm shadow-primary/40"
-													title="Unread messages"
-												/>
-											) : null}
-										</button>
-									</li>
-								);
-							})}
-						</ul>
-					) : (
-						<div className="rounded-lg border border-border bg-background p-3 text-sm text-muted-foreground">
-							No spaces found.
-						</div>
-					)}
 				</div>
+			)}
+
+			<div
+				className={[
+					"min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-0.5",
+					hideSpaceList ? "mt-0" : "mt-3",
+				].join(" ")}
+			>
+				{hideSpaceList ? null : (
+					<>
+						<div
+							id="chat-sidebar-create"
+							className="scroll-mt-4 rounded-lg border border-dashed border-border/80 bg-muted/20 p-3"
+						>
+							{workspaceScope.kind === "organization" ? (
+								<p className="text-xs leading-relaxed text-muted-foreground">
+									New organization spaces are created from{" "}
+									<Link
+										className="font-medium text-foreground underline underline-offset-2"
+										to="/console/spaces"
+									>
+										Spaces
+									</Link>
+									.
+								</p>
+							) : (
+								<div className="grid gap-2">
+									<label className="grid gap-1">
+										<span className="text-xs font-medium text-muted-foreground">
+											New space name
+										</span>
+										<input
+											aria-label="New space name"
+											className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+											onChange={(e) => onNewSpaceNameChange(e.target.value)}
+											placeholder="Team budget"
+											type="text"
+											value={newSpaceName}
+										/>
+									</label>
+									<button
+										className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-95 disabled:opacity-50"
+										disabled={isLoading || !newSpaceName.trim()}
+										onClick={() => onCreateSpace()}
+										type="button"
+									>
+										Create space
+									</button>
+								</div>
+							)}
+						</div>
+
+						<div className="grid gap-2">
+							<div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+								Spaces · {workspaceScope.label}
+							</div>
+							<p className="text-[10px] leading-snug text-muted-foreground">
+								{workspaceScope.kind === "organization"
+									? "Organization workspace — spaces may be yours or someone else’s."
+									: "Personal workspace — spaces you created show as yours; shared spaces show another owner."}
+							</p>
+							{spaces?.length ? (
+								<ul className="space-y-1">
+									{spaces.map((s) => {
+										const isActive =
+											selectedSpaceId !== null &&
+											String(s.id) === String(selectedSpaceId);
+										const unread = spaceHasUnread(s.id);
+										const ownerId =
+											s.owner_user_id != null ? Number(s.owner_user_id) : null;
+										const isYours =
+											currentUserId != null &&
+											ownerId != null &&
+											ownerId === currentUserId;
+										return (
+											<li key={String(s.id)}>
+												<button
+													aria-label={`Select space ${s.name}${unread ? ", unread messages" : ""}`}
+													className={[
+														"flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+														isActive
+															? "bg-primary/10 font-medium text-foreground ring-1 ring-primary/25"
+															: "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+													].join(" ")}
+													onClick={() => {
+														onClearThread();
+														onSelectSpace(s.id);
+													}}
+													type="button"
+												>
+													<div className="min-w-0 flex-1">
+														<div className="truncate">{s.name}</div>
+														<div className="mt-0.5 text-[10px] leading-tight text-muted-foreground/95">
+															{isYours ? (
+																<span className="font-medium text-emerald-700 dark:text-emerald-400">
+																	Your space
+																</span>
+															) : ownerId != null ? (
+																<span>Shared · owner user #{ownerId}</span>
+															) : (
+																<span className="font-mono">id {String(s.id)}</span>
+															)}
+														</div>
+													</div>
+													{unread ? (
+														<span
+															aria-hidden
+															className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary shadow-sm shadow-primary/40"
+															title="Unread messages"
+														/>
+													) : null}
+												</button>
+											</li>
+										);
+									})}
+								</ul>
+							) : (
+								<div className="rounded-lg border border-border bg-background p-3 text-sm text-muted-foreground">
+									No spaces found.
+								</div>
+							)}
+						</div>
+					</>
+				)}
 
 				<div
 					id="chat-sidebar-members"
-					className="scroll-mt-4 space-y-3 border-t border-border/70 pt-4"
+					className={[
+						"scroll-mt-4 space-y-3",
+						hideSpaceList ? "pt-0" : "border-t border-border/70 pt-4",
+					].join(" ")}
 				>
 					<MyIncomingInvitesBlock
 						disabled={isLoading}
@@ -697,53 +717,64 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 
 	const collapsedRail = (
 		<div className="flex min-h-0 flex-1 flex-col items-center gap-3">
-			<button
-				aria-label="Expand sidebar"
-				className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/50 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				onClick={() => onExpandedChange(true)}
-				type="button"
+			{embedded ? null : (
+				<>
+					<button
+						aria-label="Expand sidebar"
+						className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/50 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onClick={() => onExpandedChange(true)}
+						type="button"
+					>
+						<IconPanelOpen className="h-4 w-4" />
+					</button>
+
+					<div className="h-px w-8 shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
+				</>
+			)}
+
+			{hideSpaceList ? null : (
+				<div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden py-1">
+					{spaces?.length
+						? spaces.map((s) => {
+								const isActive =
+									selectedSpaceId !== null &&
+									String(s.id) === String(selectedSpaceId);
+								const unread = spaceHasUnread(s.id);
+								return (
+									<button
+										aria-label={`${s.name}${unread ? ", unread" : ""}`}
+										aria-pressed={isActive}
+										className={[
+											"relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+											isActive
+												? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+												: "border border-border/70 bg-background text-muted-foreground hover:border-primary/40 hover:bg-muted/80 hover:text-foreground",
+										].join(" ")}
+										key={String(s.id)}
+										onClick={() => {
+											onClearThread();
+											onSelectSpace(s.id);
+										}}
+										title={s.name}
+										type="button"
+									>
+										{spaceInitial(s.name)}
+										{unread ? (
+											<span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-primary" />
+										) : null}
+									</button>
+								);
+							})
+						: null}
+				</div>
+			)}
+
+			<div
+				className={[
+					"flex w-full flex-col items-center gap-2 pt-3",
+					hideSpaceList ? "" : "border-t border-border/60",
+				].join(" ")}
 			>
-				<IconPanelOpen className="h-4 w-4" />
-			</button>
-
-			<div className="h-px w-8 shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
-
-			<div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden py-1">
-				{spaces?.length
-					? spaces.map((s) => {
-							const isActive =
-								selectedSpaceId !== null &&
-								String(s.id) === String(selectedSpaceId);
-							const unread = spaceHasUnread(s.id);
-							return (
-								<button
-									aria-label={`${s.name}${unread ? ", unread" : ""}`}
-									aria-pressed={isActive}
-									className={[
-										"relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-										isActive
-											? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
-											: "border border-border/70 bg-background text-muted-foreground hover:border-primary/40 hover:bg-muted/80 hover:text-foreground",
-									].join(" ")}
-									key={String(s.id)}
-									onClick={() => {
-										onClearThread();
-										onSelectSpace(s.id);
-									}}
-									title={s.name}
-									type="button"
-								>
-									{spaceInitial(s.name)}
-									{unread ? (
-										<span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-primary" />
-									) : null}
-								</button>
-							);
-						})
-					: null}
-			</div>
-
-			<div className="flex w-full flex-col items-center gap-2 border-t border-border/60 pt-3">
 				<div
 					className="flex flex-col items-center gap-1"
 					title={
@@ -780,31 +811,36 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 					<IconUserPlus className="h-4 w-4" />
 				</button>
 
-				<button
-					aria-label={
-						workspaceScope.kind === "organization"
-							? "Organization spaces — opens sidebar"
-							: "Create a space — opens sidebar"
-					}
-					className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					onClick={() => expandTo("chat-sidebar-create")}
-					type="button"
-				>
-					<IconPlusSquare className="h-4 w-4" />
-				</button>
+				{hideSpaceList ? null : (
+					<button
+						aria-label={
+							workspaceScope.kind === "organization"
+								? "Organization spaces — opens sidebar"
+								: "Create a space — opens sidebar"
+						}
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onClick={() => expandTo("chat-sidebar-create")}
+						type="button"
+					>
+						<IconPlusSquare className="h-4 w-4" />
+					</button>
+				)}
 			</div>
 		</div>
 	);
 
-	return (
-		<aside
-			className={[
-				"flex min-h-[min(640px,88vh)] flex-col rounded-xl border border-border/80 bg-card/95 shadow-sm backdrop-blur-sm transition-[width,max-width] duration-200 ease-out",
+	const Shell = embedded ? "div" : "aside";
+	const shellClassName = embedded
+		? "flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-muted/10"
+		: [
+				"flex h-full min-h-0 flex-col border-r border-border/80 bg-muted/15 transition-[width,max-width] duration-200 ease-out",
 				expanded
 					? "lg:max-w-[320px] lg:w-full"
 					: "lg:max-w-[4.5rem] lg:w-[4.5rem]",
-			].join(" ")}
-		>
+			].join(" ");
+
+	return (
+		<Shell className={shellClassName}>
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				<div
 					className={[
@@ -837,6 +873,6 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 				open={memberDetails != null}
 				removeMemberSaving={removeMemberSaving}
 			/>
-		</aside>
+		</Shell>
 	);
 };

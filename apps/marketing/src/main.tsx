@@ -1,3 +1,4 @@
+import { MotionConfig } from "framer-motion";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -9,11 +10,13 @@ if (!rootElement) throw new Error("Root element not found");
 
 ReactDOM.createRoot(rootElement).render(
 	<React.StrictMode>
-		<BrowserRouter
-			basename={import.meta.env.BASE_URL}
-			future={{ v7_relativeSplatPath: true }}
-		>
-			<MarketingApp />
-		</BrowserRouter>
+		<MotionConfig reducedMotion="user">
+			<BrowserRouter
+				basename={import.meta.env.BASE_URL}
+				future={{ v7_relativeSplatPath: true }}
+			>
+				<MarketingApp />
+			</BrowserRouter>
+		</MotionConfig>
 	</React.StrictMode>,
 );

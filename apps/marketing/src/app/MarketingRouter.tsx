@@ -1,15 +1,31 @@
-import { Navigate, Route, Routes } from "react-router-dom";
-import { LandingPage } from "../features/landing/LandingPage";
-import { WelcomeBusinessPage } from "../features/landing/WelcomeBusinessPage";
-import { WelcomePersonalPage } from "../features/landing/WelcomePersonalPage";
+import { AnimatePresence } from "framer-motion";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { SeoLandingPage } from "../features/seo/SeoLandingPage";
+import { LANDING_PAGES } from "../features/seo/landingPages";
 
 export const MarketingRouter = () => {
+	const location = useLocation();
+
 	return (
-		<Routes>
-			<Route element={<LandingPage />} path="/" />
-			<Route element={<WelcomePersonalPage />} path="/welcome/personal" />
-			<Route element={<WelcomeBusinessPage />} path="/welcome/business" />
-			<Route element={<Navigate replace to="/" />} path="*" />
-		</Routes>
+		<AnimatePresence mode="wait">
+			<Routes key={location.pathname} location={location}>
+				{Object.values(LANDING_PAGES).map((page) => (
+					<Route
+						element={<SeoLandingPage page={page} />}
+						key={page.slug}
+						path={page.slug}
+					/>
+				))}
+				<Route
+					element={<Navigate replace to="/for-couples" />}
+					path="/welcome/personal"
+				/>
+				<Route
+					element={<Navigate replace to="/for-families" />}
+					path="/welcome/business"
+				/>
+				<Route element={<Navigate replace to="/" />} path="*" />
+			</Routes>
+		</AnimatePresence>
 	);
 };
