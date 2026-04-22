@@ -6,6 +6,7 @@ import {
 } from "@cofi/api";
 import type { TenantInviteRow, TenantMember } from "@cofi/api";
 import axios from "axios";
+import { motion } from "framer-motion";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type {
@@ -14,6 +15,7 @@ import type {
 } from "../../../../../packages/api/src/types";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient, readActiveOrgTenantId } from "../../shared/lib/apiClient";
+import { authSurfaceVariants } from "../../shared/lib/appMotion";
 import { type AuthProfile, tokenStorage } from "../../shared/lib/tokenStorage";
 import {
 	type ThemeId,
@@ -656,7 +658,12 @@ export const AccountPage = () => {
 	};
 
 	return (
-		<section className="mx-auto w-full max-w-3xl space-y-6">
+		<motion.section
+			animate="visible"
+			className="mx-auto w-full max-w-3xl space-y-6"
+			initial="hidden"
+			variants={authSurfaceVariants}
+		>
 			<div className="space-y-2">
 				<h1 className="text-xl font-semibold">Account</h1>
 				<p className="text-sm text-muted-foreground">
@@ -1517,6 +1524,6 @@ export const AccountPage = () => {
 					</pre>
 				</div>
 			</div>
-		</section>
+		</motion.section>
 	);
 };

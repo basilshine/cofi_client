@@ -1,11 +1,13 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { ChatBreadcrumbProvider } from "./ChatBreadcrumbContext";
 import { ConsoleBreadcrumbs } from "./ConsoleBreadcrumbs";
+import { ConsoleHeaderCenterProvider, useConsoleHeaderCenter } from "./ConsoleHeaderCenterContext";
 import { ConsoleUserMenu } from "./ConsoleUserMenu";
 import { ConsoleWorkspaceTheme } from "./ConsoleWorkspaceTheme";
 
-export const AppShell = () => {
+const AppShellChrome = () => {
 	const { pathname } = useLocation();
+	const { center } = useConsoleHeaderCenter();
 	const fullBleedWorkspace =
 		pathname.startsWith("/console") && !pathname.startsWith("/console/account");
 
@@ -13,7 +15,7 @@ export const AppShell = () => {
 		<div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
 			<ConsoleWorkspaceTheme />
 			<header className="shrink-0 border-b border-border/80">
-				<div className="flex w-full flex-nowrap items-center justify-between gap-3 overflow-x-auto px-6 py-4 lg:px-10">
+				<div className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-6 py-3 lg:px-10">
 					<div className="flex min-w-0 shrink-0 items-center gap-3">
 						<Link
 							className="font-display text-lg font-normal tracking-tight text-foreground"
@@ -26,9 +28,13 @@ export const AppShell = () => {
 						</span>
 					</div>
 
+					<div className="flex min-w-0 justify-center justify-self-center px-2">
+						{fullBleedWorkspace ? center : null}
+					</div>
+
 					<nav
 						aria-label="Console"
-						className="flex min-w-0 flex-nowrap items-center justify-end gap-2 sm:gap-3"
+						className="flex min-w-0 flex-nowrap items-center justify-end gap-2 justify-self-end sm:gap-3"
 					>
 						<ConsoleUserMenu />
 					</nav>
@@ -54,5 +60,13 @@ export const AppShell = () => {
 				</ChatBreadcrumbProvider>
 			</main>
 		</div>
+	);
+};
+
+export const AppShell = () => {
+	return (
+		<ConsoleHeaderCenterProvider>
+			<AppShellChrome />
+		</ConsoleHeaderCenterProvider>
 	);
 };

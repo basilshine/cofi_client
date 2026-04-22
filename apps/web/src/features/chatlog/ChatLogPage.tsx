@@ -16,7 +16,8 @@ import {
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useSetChatBreadcrumb } from "../../app/layout/ChatBreadcrumbContext";
-import { ConsoleBreadcrumbs } from "../../app/layout/ConsoleBreadcrumbs";
+import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
+import { WorkspaceSpaceSubNav } from "../../app/layout/workspaceSpaces/WorkspaceSpaceSubNav";
 import { WorkspaceRightSidebar } from "../../app/layout/workspaceSpaces/WorkspaceRightSidebar";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
@@ -28,9 +29,14 @@ import {
 	touchRecentSpaceId,
 } from "../../shared/lib/recentSpaceIds";
 import { wsClient } from "../../shared/lib/wsClient";
+import {
+	ChatComposerDock,
+	type ChatComposerMode,
+} from "./components/ChatComposerDock";
+import { ComposerHorizontalBar } from "./components/ComposerHorizontalBar";
+import { ComposerVoiceRecording } from "./components/ComposerVoiceRecording";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
-import { SendMessageIcon } from "./components/ComposerIcons";
 import {
 	isDraftExpenseSystemMessage,
 	isRecurringExpenseChatMessage,
@@ -121,9 +127,6 @@ const userMessageAccent = (userId?: number) => {
 	};
 };
 
-/** Chat footer: plain messages vs parse / photo / voice (same thread). */
-type ComposerMode = "message" | "capture";
-
 type SelectSpaceOptions = {
 	openThreadExpenseId?: string | number;
 	/** Focus manual draft line N (1-based) after opening the expense thread in the right panel. */
@@ -200,7 +203,7 @@ export const ChatLogPage = () => {
 
 	const [chatInput, setChatInput] = useState("");
 	const [parseInput, setParseInput] = useState("");
-	const [composerMode, setComposerMode] = useState<ComposerMode>("message");
+	const [composerMode, setComposerMode] = useState<ChatComposerMode>("message");
 	const [isRecording, setIsRecording] = useState(false);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const mediaChunksRef = useRef<BlobPart[]>([]);
@@ -242,8 +245,12 @@ export const ChatLogPage = () => {
 	const [editingMessageText, setEditingMessageText] = useState("");
 	const currentUserIdRef = useRef(currentUserId);
 	const quickCapturePhotoInputRef = useRef<HTMLInputElement>(null);
+	const messagePhotoInputRef = useRef<HTMLInputElement>(null);
+	const messagePhotoCameraInputRef = useRef<HTMLInputElement>(null);
 	const quickCaptureIntentRef = useRef<"photo" | "voice" | null>(null);
 	const handleToggleRecordingRef = useRef<() => Promise<void>>(async () => {});
+	/** When true, stopping the recorder sends transcribed text as chat only (no expense). */
+	const recordingForMessageRef = useRef(false);
 	const parseTextareaRef = useRef<HTMLTextAreaElement>(null);
 	const chatMessageTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -387,6 +394,13 @@ export const ChatLogPage = () => {
 		if (!spaces || selectedSpaceId === null) return null;
 		return spaces.find((s) => String(s.id) === String(selectedSpaceId)) ?? null;
 	}, [selectedSpaceId, spaces]);
+
+	const chatHeaderPageLabel = location.pathname.startsWith(
+		"/console/chat/expenses",
+	)
+		? "Expenses"
+		: "Chat";
+	useConsoleHeaderTitle(chatHeaderPageLabel, selectedSpace?.name ?? null);
 
 	/** Newest real activity first (API); ties use local recent touches then name. */
 	const spacesSortedForSidebar = useMemo(
@@ -904,6 +918,37 @@ export const ChatLogPage = () => {
 		}
 	};
 
+	const handleMessagePhotoFile = async (file: File) => {
+		if (selectedSpaceId === null) return;
+		const text = `📷 ${file.name}`;
+		setIsLoading(true);
+		setErrorMessage(null);
+		try {
+			const created = await wsClient.rpc<ChatMessage>("chat.send", {
+				spaceId: selectedSpaceId,
+				text,
+			});
+			setStickToLatest(true);
+			setMessages((prev) => [...(prev ?? []), created]);
+			setOldestMessageId((prev) => prev ?? created.id);
+			const nowIso = new Date().toISOString();
+			patchSpaces((prev) => {
+				if (!prev) return prev;
+				return prev.map((s) =>
+					String(s.id) === String(selectedSpaceId)
+						? { ...s, last_activity_at: nowIso }
+						: s,
+				);
+			});
+		} catch (err) {
+			setErrorMessage(
+				err instanceof Error ? err.message : "Failed to send message",
+			);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
 	/** After parse (text/photo/voice), persist draft + chat message immediately so the user sees the draft card in the thread. */
 	const finalizeParsedDraft = useCallback(
 		async (description: string, builderItems: BuilderItem[]) => {
@@ -1112,14 +1157,71 @@ export const ChatLogPage = () => {
 		}
 	};
 
-	const handleToggleRecording = async () => {
-		if (composerMode !== "capture") return;
-		if (isRecording) {
-			setIsRecording(false);
-			await handleStopRecordingAndParse();
-			return;
-		}
+	const handleStopRecordingAsChatMessage = async () => {
+		const rec = mediaRecorderRef.current;
+		if (!rec) return;
+		if (rec.state !== "recording") return;
 
+		const stopPromise = new Promise<void>((resolve) => {
+			rec.addEventListener("stop", () => resolve(), { once: true });
+		});
+		rec.stop();
+		await stopPromise;
+
+		const blob = new Blob(mediaChunksRef.current, {
+			type: rec.mimeType || "audio/webm",
+		});
+		mediaChunksRef.current = [];
+
+		if (!selectedSpaceId) return;
+		setIsLoading(true);
+		setErrorMessage(null);
+		try {
+			const fd = new FormData();
+			fd.append(
+				"voice",
+				new File([blob], "voice.webm", { type: blob.type || "audio/webm" }),
+			);
+			const res = await httpClient.post<{ transcription?: string }>(
+				`/api/v1/spaces/${String(selectedSpaceId)}/transactions/parse/voice`,
+				fd,
+				{
+					headers: { "Content-Type": "multipart/form-data" },
+				},
+			);
+			const text = res.data?.transcription?.trim();
+			if (!text) {
+				setErrorMessage("Nothing transcribed — try again.");
+				return;
+			}
+			const created = await wsClient.rpc<ChatMessage>("chat.send", {
+				spaceId: selectedSpaceId,
+				text,
+			});
+			setStickToLatest(true);
+			setMessages((prev) => [...(prev ?? []), created]);
+			setOldestMessageId((prev) => prev ?? created.id);
+			const nowIso = new Date().toISOString();
+			patchSpaces((prev) => {
+				if (!prev) return prev;
+				return prev.map((s) =>
+					String(s.id) === String(selectedSpaceId)
+						? { ...s, last_activity_at: nowIso }
+						: s,
+				);
+			});
+		} catch (e) {
+			setErrorMessage(
+				e instanceof Error ? e.message : "Failed to send voice message",
+			);
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const beginRecording = async (forMessage: boolean) => {
+		if (isRecording) return;
+		recordingForMessageRef.current = forMessage;
 		setErrorMessage(null);
 		try {
 			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -1138,13 +1240,31 @@ export const ChatLogPage = () => {
 			setIsRecording(true);
 		} catch (e) {
 			setIsRecording(false);
+			recordingForMessageRef.current = false;
 			setErrorMessage(
 				e instanceof Error ? e.message : "Microphone permission denied",
 			);
 		}
 	};
 
-	handleToggleRecordingRef.current = handleToggleRecording;
+	const handleToggleRecording = async () => {
+		if (isRecording) {
+			setIsRecording(false);
+			const forMsg = recordingForMessageRef.current;
+			recordingForMessageRef.current = false;
+			if (forMsg) {
+				await handleStopRecordingAsChatMessage();
+			} else {
+				await handleStopRecordingAndParse();
+			}
+			return;
+		}
+		await beginRecording(composerMode === "message");
+	};
+
+	handleToggleRecordingRef.current = async () => {
+		await beginRecording(false);
+	};
 
 	useEffect(() => {
 		if (isLoading) return;
@@ -1615,7 +1735,7 @@ export const ChatLogPage = () => {
 		<div className="flex h-full min-h-0 w-full min-w-0 flex-1 overflow-hidden">
 			<section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 				<header className="shrink-0 border-b border-border/80 bg-background px-4 py-2.5 lg:px-6">
-					<ConsoleBreadcrumbs variant="inline" />
+					<WorkspaceSpaceSubNav />
 				</header>
 
 				{errorMessage ? (
@@ -1906,104 +2026,105 @@ export const ChatLogPage = () => {
 														</button>
 													) : null}
 												</div>
-												<div className="shrink-0 border-t border-border/60 bg-card/95 p-3 backdrop-blur-sm dark:bg-background/90">
-													{selectedSpaceId ? (
-														<div className="space-y-2">
-															{multiUserSpace ? (
-																<div className="flex flex-wrap items-center justify-end gap-2">
-																	<button
-																		aria-label={
-																			composerMode === "message"
-																				? "Switch composer to capture (parse text, photo, or voice)"
-																				: "Switch composer to chat message"
-																		}
-																		aria-pressed={composerMode === "capture"}
-																		className="inline-flex h-9 items-center rounded-full border border-border bg-background px-4 text-xs font-medium shadow-sm transition-colors hover:bg-accent disabled:opacity-50"
-																		disabled={isLoading || !selectedSpaceId}
-																		onClick={() =>
-																			setComposerMode((m) =>
-																				m === "message" ? "capture" : "message",
-																			)
-																		}
-																		type="button"
-																	>
-																		{composerMode === "message"
-																			? "Capture"
-																			: "Chat"}
-																	</button>
-																</div>
-															) : null}
-															{!multiUserSpace || composerMode === "capture" ? (
-																<>
-																	<p className="text-xs text-muted-foreground">
-																		Parse text, photo, or voice — drafts appear
-																		in this thread.
-																	</p>
-																	<ParseExpenseComposer
-																		disabled={isLoading || !selectedSpaceId}
-																		isRecording={isRecording}
-																		onParseInputChange={setParseInput}
-																		onParseKeyDown={handleParseKeyDown}
-																		onParseSubmit={() =>
-																			void handleParseTextSubmit()
-																		}
-																		onPhotoFile={(f) =>
-																			void handleParsePhotoFile(f)
-																		}
-																		onToggleRecording={() =>
-																			void handleToggleRecording()
-																		}
-																		parseInput={parseInput}
-																		photoFileInputRef={
-																			quickCapturePhotoInputRef
-																		}
-																		parseTextareaRef={parseTextareaRef}
-																		testSnippets={PARSE_DUMMY_TEST_SNIPPETS}
-																	/>
-																</>
+												{selectedSpaceId ? (
+													<ChatComposerDock
+														captureSlot={
+															<ParseExpenseComposer
+																disabled={isLoading || !selectedSpaceId}
+																isRecording={isRecording}
+																onParseInputChange={setParseInput}
+																onParseKeyDown={handleParseKeyDown}
+																onParseSubmit={() =>
+																	void handleParseTextSubmit()
+																}
+																onPhotoFile={(f) =>
+																	void handleParsePhotoFile(f)
+																}
+																onToggleRecording={() =>
+																	void handleToggleRecording()
+																}
+																parseInput={parseInput}
+																photoFileInputRef={
+																	quickCapturePhotoInputRef
+																}
+																parseTextareaRef={parseTextareaRef}
+																testSnippets={PARSE_DUMMY_TEST_SNIPPETS}
+															/>
+														}
+														composerMode={composerMode}
+														disabled={isLoading || !selectedSpaceId}
+														interactionLocked={isRecording}
+														messageSlot={
+															isRecording &&
+															composerMode === "message" ? (
+																<ComposerVoiceRecording
+																	disabled={
+																		isLoading || !selectedSpaceId
+																	}
+																	onStop={() =>
+																		void handleToggleRecording()
+																	}
+																/>
 															) : (
-																<>
-																	<p className="mb-2 text-xs text-muted-foreground">
-																		Messages stay in sync with the space. Switch
-																		to Capture to parse text, photo, or voice.
-																	</p>
-																	<div className="flex items-end gap-2">
-																		<label className="grid min-w-0 flex-1 gap-1">
-																			<span className="text-xs font-medium text-muted-foreground">
-																				Message (Ctrl/⌘ + Enter to send)
-																			</span>
-																			<textarea
-																				aria-label="Chat message"
-																				className="h-24 w-full min-w-0 resize-none overflow-y-auto rounded-md border border-border bg-background p-3 text-sm"
-																				onChange={(e) =>
-																					setChatInput(e.target.value)
-																				}
-																				onKeyDown={handleChatKeyDown}
-																				placeholder="Write a message…"
-																				ref={chatMessageTextareaRef}
-																				rows={4}
-																				value={chatInput}
-																			/>
-																		</label>
-																		<button
-																			aria-label="Send message"
-																			className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-primary bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
-																			disabled={
-																				isLoading ||
-																				!selectedSpaceId ||
-																				!chatInput.trim()
-																			}
-																			onClick={() => void handleSendChat()}
-																			type="button"
-																		>
-																			<SendMessageIcon />
-																		</button>
-																	</div>
-																</>
-															)}
-														</div>
-													) : null}
-												</div>
+																<div className="flex flex-col gap-2">
+																	<ComposerHorizontalBar
+																		ariaLabel="Chat message"
+																		disabled={isLoading || !selectedSpaceId}
+																		onChange={setChatInput}
+																		onKeyDown={handleChatKeyDown}
+																		onMoreTakePhoto={() =>
+																			messagePhotoCameraInputRef.current?.click()
+																		}
+																		onMoreUploadPhoto={() =>
+																			messagePhotoInputRef.current?.click()
+																		}
+																		onPlusFocusText={() =>
+																			chatMessageTextareaRef.current?.focus()
+																		}
+																		onPlusPhotoLibrary={() =>
+																			messagePhotoInputRef.current?.click()
+																		}
+																		onStartRecording={() =>
+																			void beginRecording(true)
+																		}
+																		onSubmit={() => void handleSendChat()}
+																		placeholder="Message the space…"
+																		textareaRef={chatMessageTextareaRef}
+																		value={chatInput}
+																		variant="message"
+																	/>
+																	<input
+																		accept="image/*"
+																		className="sr-only"
+																		onChange={(e) => {
+																			const f = e.target.files?.[0] ?? null;
+																			e.currentTarget.value = "";
+																			if (f) void handleMessagePhotoFile(f);
+																		}}
+																		ref={messagePhotoInputRef}
+																		tabIndex={-1}
+																		type="file"
+																	/>
+																	<input
+																		accept="image/*"
+																		capture="environment"
+																		className="sr-only"
+																		onChange={(e) => {
+																			const f = e.target.files?.[0] ?? null;
+																			e.currentTarget.value = "";
+																			if (f) void handleMessagePhotoFile(f);
+																		}}
+																		ref={messagePhotoCameraInputRef}
+																		tabIndex={-1}
+																		type="file"
+																	/>
+																</div>
+															)
+														}
+														onComposerModeChange={setComposerMode}
+														showModeToggle={multiUserSpace}
+													/>
+												) : null}
 											</div>
 										</div>
 									)}

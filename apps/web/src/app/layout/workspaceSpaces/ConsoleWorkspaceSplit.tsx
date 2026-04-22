@@ -1,5 +1,7 @@
-import { Outlet } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { useLocation, useOutlet } from "react-router-dom";
 import { ChatSpacesSidebar } from "../../../features/chatlog/components/ChatSpacesSidebar";
+import { workspacePageVariants } from "../../../shared/lib/appMotion";
 import { WorkspaceSpaceListNav } from "./WorkspaceSpaceListNav";
 import {
 	WorkspaceSpacesProvider,
@@ -27,11 +29,25 @@ const WorkspaceSidebar = () => {
 };
 
 const ConsoleWorkspaceSplitInner = () => {
+	const location = useLocation();
+	const outlet = useOutlet();
+
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
 			<WorkspaceSidebar />
 			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-				<Outlet />
+				<AnimatePresence mode="wait">
+					<motion.div
+						animate="animate"
+						className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+						exit="exit"
+						initial="initial"
+						key={location.pathname}
+						variants={workspacePageVariants}
+					>
+						{outlet}
+					</motion.div>
+				</AnimatePresence>
 			</div>
 		</div>
 	);

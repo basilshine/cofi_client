@@ -1,20 +1,29 @@
 import type { DashboardResponse, Space } from "@cofi/api";
+import { motion } from "framer-motion";
 import {
 	type ReactNode,
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { ConsoleBreadcrumbs } from "../../app/layout/ConsoleBreadcrumbs";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
+
+const MotionLink = motion(Link);
+import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
+import { WorkspaceSpaceSubNav } from "../../app/layout/workspaceSpaces/WorkspaceSpaceSubNav";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient } from "../../shared/lib/apiClient";
+import {
+	fadeUpVariants,
+	staggerContainer,
+	staggerItem,
+} from "../../shared/lib/appMotion";
 import { ceitsSpaceExpenseEditUrl } from "../../shared/lib/ceitsAppUrls";
 import {
 	type ChatWorkspaceScope,
-	readChatWorkspaceScope,
 	writeChatWorkspaceScope,
 } from "../../shared/lib/chatWorkspaceScope";
 import {
@@ -43,12 +52,8 @@ import type { DashboardWidgetId } from "./dashboardWidgetIds";
 
 const sectionRhythm = "py-10 md:py-12";
 
-/** Full-bleed band so quick capture + continue align to max width but sit off the default grid. */
-const dashboardCaptureHeroBandClass =
-	"relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen max-w-[100vw] border-b border-[hsl(var(--border-subtle))]/50 bg-gradient-to-b from-[hsl(var(--surface-muted))]/35 to-transparent py-6";
-
-const dashboardCaptureHeroInnerClass =
-	"mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-5 px-6 lg:grid-cols-12 lg:items-stretch";
+const dashboardHeroCardClass =
+	"overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-sm";
 
 const formatCurrencyAmount = (amount: number, currency: string): string => {
 	const code = (currency || "USD").trim().toUpperCase() || "USD";
@@ -207,6 +212,8 @@ const SpendCoverBand = ({
 	onPeriodKind,
 	onNav,
 	onToday,
+	tone = "dark",
+	standaloneCard = false,
 }: {
 	monthly: NonNullable<DashboardResponse["monthly_snapshot"]>;
 	currency: string;
@@ -216,7 +223,12 @@ const SpendCoverBand = ({
 	onPeriodKind: (k: SpendPeriodKindUI) => void;
 	onNav: (dir: -1 | 1) => void;
 	onToday: () => void;
+	/** `light` matches the main dashboard card surface; `dark` is the legacy zinc hero. */
+	tone?: "dark" | "light";
+	/** When true, omit bottom border (use inside its own rounded card). */
+	standaloneCard?: boolean;
 }): ReactNode => {
+	const light = tone === "light";
 	const share =
 		typeof monthly.total_my_share === "number" &&
 		!Number.isNaN(monthly.total_my_share)
@@ -228,18 +240,42 @@ const SpendCoverBand = ({
 			: 0;
 	const spaceTitle =
 		(monthly.selected_space_name ?? "").trim() || "Selected space";
+	const lightSurface = standaloneCard
+		? "relative overflow-hidden bg-muted/30 px-4 py-5 sm:px-5"
+		: "relative overflow-hidden border-b border-border bg-muted/30 px-4 py-5 sm:px-5";
+
 	return (
-		<div className="relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-amber-500/15 via-zinc-900/80 to-zinc-950 px-4 py-5 sm:px-5">
-			<div
-				aria-hidden
-				className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(251,191,36,0.12),_transparent_55%)]"
-			/>
+		<div
+			className={
+				light
+					? lightSurface
+					: "relative overflow-hidden border-b border-white/10 bg-gradient-to-b from-amber-500/15 via-zinc-900/80 to-zinc-950 px-4 py-5 sm:px-5"
+			}
+		>
+			{light ? null : (
+				<div
+					aria-hidden
+					className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(251,191,36,0.12),_transparent_55%)]"
+				/>
+			)}
 			<div className="relative space-y-4">
 				<div className="space-y-1">
-					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200/90">
+					<p
+						className={
+							light
+								? "text-[11px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--text-secondary))]"
+								: "text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-200/90"
+						}
+					>
 						Your expenses · your share
 					</p>
-					<p className="text-xs text-zinc-400">{scopeHint}</p>
+					<p
+						className={
+							light ? "text-xs text-muted-foreground" : "text-xs text-zinc-400"
+						}
+					>
+						{scopeHint}
+					</p>
 				</div>
 				<div
 					className="flex flex-wrap items-center gap-2"
@@ -256,10 +292,17 @@ const SpendCoverBand = ({
 						<button
 							aria-pressed={spendPeriodKind === k}
 							className={[
-								"rounded-lg px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50",
+								"rounded-lg px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2",
+								light
+									? "focus-visible:ring-[hsl(var(--focus-ring))]"
+									: "focus-visible:ring-amber-400/50",
 								spendPeriodKind === k
-									? "bg-white/15 text-zinc-50 shadow-sm"
-									: "bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200",
+									? light
+										? "bg-primary/15 text-foreground shadow-sm"
+										: "bg-white/15 text-zinc-50 shadow-sm"
+									: light
+										? "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+										: "bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200",
 							].join(" ")}
 							key={k}
 							onClick={() => onPeriodKind(k)}
@@ -273,7 +316,11 @@ const SpendCoverBand = ({
 					<div className="flex items-center gap-1">
 						<button
 							aria-label="Previous period"
-							className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+							className={
+								light
+									? "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+									: "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+							}
 							onClick={() => onNav(-1)}
 							type="button"
 						>
@@ -281,21 +328,35 @@ const SpendCoverBand = ({
 						</button>
 						<button
 							aria-label="Next period"
-							className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+							className={
+								light
+									? "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+									: "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+							}
 							onClick={() => onNav(1)}
 							type="button"
 						>
 							›
 						</button>
 						<button
-							className="ml-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-200/90 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+							className={
+								light
+									? "ml-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+									: "ml-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-200/90 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40"
+							}
 							onClick={onToday}
 							type="button"
 						>
 							Today
 						</button>
 					</div>
-					<p className="min-w-0 text-right text-sm font-medium text-zinc-300">
+					<p
+						className={
+							light
+								? "min-w-0 text-right text-sm font-medium text-foreground"
+								: "min-w-0 text-right text-sm font-medium text-zinc-300"
+						}
+					>
 						{formatSpendPeriodLabel(
 							(monthly.anchor_date ?? spendAnchor).trim() || spendAnchor,
 							spendPeriodKind,
@@ -303,8 +364,20 @@ const SpendCoverBand = ({
 					</p>
 				</div>
 				<div className="grid gap-4 sm:grid-cols-2">
-					<div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3">
-						<p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+					<div
+						className={
+							light
+								? "rounded-xl border border-border bg-card px-4 py-3"
+								: "rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+						}
+					>
+						<p
+							className={
+								light
+									? "text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+									: "text-[10px] font-medium uppercase tracking-wide text-zinc-500"
+							}
+						>
 							Total (
 							{spendPeriodKind === "day"
 								? "day"
@@ -313,23 +386,59 @@ const SpendCoverBand = ({
 									: "year"}
 							)
 						</p>
-						<p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-zinc-50">
+						<p
+							className={
+								light
+									? "mt-1 text-2xl font-semibold tabular-nums tracking-tight text-foreground"
+									: "mt-1 text-2xl font-semibold tabular-nums tracking-tight text-zinc-50"
+							}
+						>
 							{formatCurrencyAmount(share, currency)}
 						</p>
-						<p className="mt-1 text-[11px] text-zinc-500">
+						<p
+							className={
+								light
+									? "mt-1 text-[11px] text-muted-foreground"
+									: "mt-1 text-[11px] text-zinc-500"
+							}
+						>
 							{formatDateLabel(monthly.period.start)} –{" "}
 							{formatDateLabel(monthly.period.end)}
 						</p>
 					</div>
-					<div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3">
-						<p className="text-[10px] font-medium uppercase tracking-wide text-amber-200/80">
+					<div
+						className={
+							light
+								? "rounded-xl border border-primary/25 bg-primary/5 px-4 py-3"
+								: "rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-4 py-3"
+						}
+					>
+						<p
+							className={
+								light
+									? "text-[10px] font-medium uppercase tracking-wide text-primary"
+									: "text-[10px] font-medium uppercase tracking-wide text-amber-200/80"
+							}
+						>
 							In {spaceTitle}
 						</p>
-						<p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-zinc-50">
+						<p
+							className={
+								light
+									? "mt-1 text-2xl font-semibold tabular-nums tracking-tight text-foreground"
+									: "mt-1 text-2xl font-semibold tabular-nums tracking-tight text-zinc-50"
+							}
+						>
 							{formatCurrencyAmount(inSpace, currency)}
 						</p>
-						<p className="mt-1 text-[11px] text-zinc-500">
-							Same period · space below
+						<p
+							className={
+								light
+									? "mt-1 text-[11px] text-muted-foreground"
+									: "mt-1 text-[11px] text-zinc-500"
+							}
+						>
+							Same period · selected space
 						</p>
 					</div>
 				</div>
@@ -519,140 +628,6 @@ type SpaceGridItem = {
 	owner_display_name?: string;
 };
 
-const BURGUNDY_MUTED = "text-[#7c2d3a] dark:text-[#c97b88]";
-
-const spaceOwnershipLine = (
-	s: Pick<HeroContextSpace, "ownerUserId" | "ownerDisplayName">,
-	currentUserId: number | undefined,
-): string => {
-	if (currentUserId != null && s.ownerUserId === currentUserId) {
-		return "Yours";
-	}
-	if (s.ownerDisplayName?.trim()) {
-		return `Owner: ${s.ownerDisplayName.trim()}`;
-	}
-	return "Shared space";
-};
-
-const HeroSpaceContextBar = ({
-	spaces,
-	selectedSpaceId,
-	onSelectSpaceId,
-	currentUserId,
-}: {
-	spaces: HeroContextSpace[];
-	selectedSpaceId: number | null;
-	onSelectSpaceId: (spaceId: number) => void;
-	currentUserId: number | undefined;
-}): ReactNode => {
-	if (spaces.length === 0 || selectedSpaceId == null) return null;
-	const idx = Math.max(
-		0,
-		spaces.findIndex((s) => s.id === selectedSpaceId),
-	);
-	const canCycle = spaces.length > 1;
-	const prevIdx = (idx - 1 + spaces.length) % spaces.length;
-	const nextIdx = (idx + 1) % spaces.length;
-	const prevName = spaces[prevIdx]?.name ?? "";
-	const nextName = spaces[nextIdx]?.name ?? "";
-	const current = spaces[idx];
-	const desc = (current?.description ?? "").trim();
-
-	return (
-		<div className="relative z-[2] border-b border-white/10 px-4 py-4 sm:px-5 sm:py-5">
-			<div className="flex items-start gap-3 sm:gap-5">
-				<div className="flex shrink-0 flex-col items-center gap-1">
-					<span className="hidden text-[9px] font-medium uppercase tracking-wide text-zinc-500 sm:block">
-						Previous
-					</span>
-					<button
-						aria-label={`Previous space: ${prevName}`}
-						className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-lg text-zinc-100 shadow-sm transition hover:border-amber-400/30 hover:bg-white/10 disabled:opacity-35"
-						disabled={!canCycle}
-						onClick={() => {
-							if (!canCycle) return;
-							onSelectSpaceId(spaces[prevIdx].id);
-						}}
-						type="button"
-					>
-						←
-					</button>
-					<span
-						className="max-w-[4.5rem] truncate text-center text-[9px] leading-tight text-zinc-500"
-						title={prevName}
-					>
-						{prevName}
-					</span>
-				</div>
-
-				<div className="min-w-0 flex-1">
-					<p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
-						Space context
-					</p>
-					<h2
-						className="mt-1 truncate text-2xl font-semibold tracking-tight text-white sm:text-3xl"
-						title={current?.name}
-					>
-						{current?.name}
-					</h2>
-					{desc ? (
-						<p
-							className={`mt-2 line-clamp-2 text-sm leading-snug ${BURGUNDY_MUTED}`}
-						>
-							{desc}
-						</p>
-					) : (
-						<p className="mt-2 text-xs leading-relaxed text-zinc-500">
-							Add a short description in space settings so everyone remembers
-							why this space exists.
-						</p>
-					)}
-					<div className="mt-2 flex flex-wrap gap-1.5">
-						{current?.tenantName?.trim() ? (
-							<span className="inline-flex max-w-full truncate rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] font-medium text-zinc-300">
-								{current.tenantName.trim()}
-							</span>
-						) : null}
-						<span className="inline-flex rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-200/95">
-							{spaceOwnershipLine(
-								{
-									ownerUserId: current?.ownerUserId,
-									ownerDisplayName: current?.ownerDisplayName,
-								},
-								currentUserId,
-							)}
-						</span>
-					</div>
-				</div>
-
-				<div className="flex shrink-0 flex-col items-center gap-1">
-					<span className="hidden text-[9px] font-medium uppercase tracking-wide text-zinc-500 sm:block">
-						Next
-					</span>
-					<button
-						aria-label={`Next space: ${nextName}`}
-						className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-lg text-zinc-100 shadow-sm transition hover:border-amber-400/30 hover:bg-white/10 disabled:opacity-35"
-						disabled={!canCycle}
-						onClick={() => {
-							if (!canCycle) return;
-							onSelectSpaceId(spaces[nextIdx].id);
-						}}
-						type="button"
-					>
-						→
-					</button>
-					<span
-						className="max-w-[4.5rem] truncate text-center text-[9px] leading-tight text-zinc-500"
-						title={nextName}
-					>
-						{nextName}
-					</span>
-				</div>
-			</div>
-		</div>
-	);
-};
-
 const deriveWidgetState = (
 	pageLoading: boolean,
 	pageError: string | null,
@@ -819,97 +794,6 @@ const WidgetShell = ({
 	);
 };
 
-const DashboardMergedCaptureBlock = ({
-	className = "",
-	errorCopy,
-	pageLoading,
-	pageError,
-	qc,
-	cont,
-	selectedSpaceId,
-	navigableSpaces,
-	chatNavState,
-	chatWorkspace,
-}: {
-	className?: string;
-	errorCopy: string;
-	pageLoading: boolean;
-	pageError: string | null;
-	qc: DashboardResponse["quick_capture"];
-	cont: DashboardResponse["continue"];
-	selectedSpaceId: number | null;
-	navigableSpaces: { id: number; name: string }[];
-	chatNavState: (extra: Record<string, unknown>) => Record<string, unknown>;
-	chatWorkspace: ChatWorkspaceScope | null;
-}) => {
-	const mergedState = deriveWidgetState(
-		pageLoading,
-		pageError,
-		Boolean((qc && qc.spaces.length > 0) || cont),
-	);
-	const titleId = "dashboard-hero-pickup-title";
-	return (
-		<section
-			aria-labelledby={titleId}
-			className={["flex min-h-0 flex-col gap-4", className].join(" ")}
-		>
-			<header className="space-y-1">
-				<h2
-					className="text-lg font-semibold tracking-tight text-zinc-50"
-					id={titleId}
-				>
-					Pick up in chat
-				</h2>
-				<p className="text-xs text-zinc-400">
-					Capture first, then read the latest thread — all in this space.
-				</p>
-			</header>
-
-			<div className="min-h-[6rem] flex-1 text-sm">
-				{mergedState === "loading" ? (
-					<p aria-busy="true" className="text-zinc-400">
-						Loading…
-					</p>
-				) : null}
-				{mergedState === "empty" ? (
-					<p className="text-zinc-400">
-						No spaces yet. Create one from Chat when you are ready.
-					</p>
-				) : null}
-				{mergedState === "error" ? (
-					<p className="text-red-400">{errorCopy}</p>
-				) : null}
-				{mergedState === "ready" ? (
-					<div className="space-y-4 text-zinc-50">
-						{qc && qc.spaces.length > 0 ? (
-							<QuickCaptureWidget
-								chatWorkspace={chatWorkspace}
-								qc={qc}
-								selectedSpaceId={selectedSpaceId}
-								showSpacePicker={false}
-								visualVariant="heroDark"
-							/>
-						) : null}
-						{cont ? (
-							<ContinueDashboardPanel
-								chatNavState={chatNavState}
-								chatWorkspace={chatWorkspace}
-								cont={cont}
-								navigableSpaces={navigableSpaces}
-								selectedSpaceId={selectedSpaceId}
-								showDraftsButton={false}
-								showFooterActions={false}
-								showInlineSpaceNav={false}
-								visualVariant="heroLightChat"
-							/>
-						) : null}
-					</div>
-				) : null}
-			</div>
-		</section>
-	);
-};
-
 const DashboardBody = ({
 	intentBanner,
 	onDismissIntent,
@@ -918,12 +802,21 @@ const DashboardBody = ({
 	onDismissIntent: () => void;
 }) => {
 	const { user } = useAuth();
+	const location = useLocation();
 	const [searchParams, setSearchParams] = useSearchParams();
+	const dashboardSpaceUrlBootstrappedRef = useRef(false);
 	const {
 		spaces: workspaceSpaces,
+		selectedSpaceId: workspaceSelectedSpaceId,
 		setSelectedSpaceId,
 		loadError: workspaceLoadError,
 	} = useWorkspaceSpaces();
+
+	const workspaceSpaceIdNumeric = useMemo((): number | null => {
+		if (workspaceSelectedSpaceId == null) return null;
+		const n = Number(workspaceSelectedSpaceId);
+		return Number.isFinite(n) ? n : null;
+	}, [workspaceSelectedSpaceId]);
 
 	/** Personal-tenant spaces only (aligned with Chat) — shared with workspace sidebar. */
 	const accessibleSpaces = workspaceSpaces;
@@ -1033,8 +926,6 @@ const DashboardBody = ({
 		const pt = Number(tid);
 		return accessibleSpaces.filter((s) => Number(s.tenant_id) === pt);
 	}, [accessibleSpaces, dashboardData?.context?.tenant_id]);
-
-	const spendScopeHint = "Personal workspace — all spaces for this account.";
 
 	const handleSpendPeriodKind = useCallback((k: SpendPeriodKindUI) => {
 		setSpendPeriodKind(k);
@@ -1174,46 +1065,119 @@ const DashboardBody = ({
 		return sorted;
 	}, [dashboardScopedSpaces, continueNavigableSpaces, qc?.spaces, spacesRows]);
 
+	/** Reset deep-link bootstrap when leaving the dashboard route. */
+	useEffect(() => {
+		if (!location.pathname.startsWith("/console/dashboard")) {
+			dashboardSpaceUrlBootstrappedRef.current = false;
+		}
+	}, [location.pathname]);
+
 	useEffect(() => {
 		if (!heroContextSpaces.length) {
 			setHeroSelectedSpaceId(null);
 			return;
 		}
-		const raw = searchParams.get("spaceId");
-		if (raw) {
-			const n = Number(raw);
-			if (
-				Number.isFinite(n) &&
-				heroContextSpaces.some((s) => Number(s.id) === n)
-			) {
-				setHeroSelectedSpaceId(n);
-				setSelectedSpaceId(n);
-				return;
-			}
-		}
-		setHeroSelectedSpaceId((prev) => {
-			if (prev != null && heroContextSpaces.some((s) => s.id === prev))
-				return prev;
-			return heroContextSpaces[0].id;
-		});
-	}, [heroContextSpaces, searchParams, setSelectedSpaceId]);
 
-	const handleHeroSelectSpaceId = useCallback(
-		(spaceId: number) => {
-			setHeroSelectedSpaceId(spaceId);
-			setSelectedSpaceId(spaceId);
-			const next = new URLSearchParams(searchParams);
-			next.set("spaceId", String(spaceId));
-			setSearchParams(next, { replace: true });
-		},
-		[searchParams, setSearchParams, setSelectedSpaceId],
-	);
+		const inList = (id: number | null) =>
+			id != null && heroContextSpaces.some((s) => Number(s.id) === Number(id));
+
+		const raw = searchParams.get("spaceId");
+		const urlN = raw != null && raw !== "" ? Number(raw) : Number.NaN;
+		const urlValid = Number.isFinite(urlN) && inList(urlN);
+
+		const wsN =
+			workspaceSpaceIdNumeric != null &&
+			Number.isFinite(Number(workspaceSpaceIdNumeric))
+				? Number(workspaceSpaceIdNumeric)
+				: null;
+		const wsValid = wsN != null && inList(wsN);
+
+		/** Apply `?spaceId=` once per dashboard visit so deep links win before workspace defaults. */
+		if (urlValid && !dashboardSpaceUrlBootstrappedRef.current) {
+			dashboardSpaceUrlBootstrappedRef.current = true;
+			setHeroSelectedSpaceId(urlN);
+			if (wsN !== urlN) {
+				setSelectedSpaceId(urlN);
+			}
+			return;
+		}
+
+		/** Sidebar / workspace context is authoritative after bootstrap (avoids stale URL fighting clicks). */
+		if (wsValid) {
+			setHeroSelectedSpaceId(wsN);
+			return;
+		}
+
+		if (urlValid) {
+			setHeroSelectedSpaceId(urlN);
+			setSelectedSpaceId(urlN);
+			return;
+		}
+
+		setHeroSelectedSpaceId((prev) => {
+			const p = prev != null ? Number(prev) : null;
+			if (p != null && inList(p)) return p;
+			return Number(heroContextSpaces[0].id);
+		});
+	}, [
+		heroContextSpaces,
+		searchParams,
+		setSelectedSpaceId,
+		workspaceSpaceIdNumeric,
+	]);
+
+	/** Keep ?spaceId= aligned with the hero space (functional update avoids churn with `searchParams` identity). */
+	useEffect(() => {
+		if (heroSelectedSpaceId == null) return;
+		setSearchParams(
+			(prev) => {
+				const next = new URLSearchParams(prev);
+				if (next.get("spaceId") === String(heroSelectedSpaceId)) {
+					return prev;
+				}
+				next.set("spaceId", String(heroSelectedSpaceId));
+				return next;
+			},
+			{ replace: true },
+		);
+	}, [heroSelectedSpaceId, setSearchParams]);
 
 	const heroSpaceTitle = useMemo(() => {
 		if (heroSelectedSpaceId == null) return null;
 		const row = heroContextSpaces.find((s) => s.id === heroSelectedSpaceId);
 		return row?.name?.trim() ?? null;
 	}, [heroContextSpaces, heroSelectedSpaceId]);
+
+	useConsoleHeaderTitle("Overview", heroSpaceTitle);
+
+	const spendScopeHint = useMemo(() => {
+		if (heroSelectedSpaceId != null && heroSpaceTitle) {
+			return `Totals and capture follow “${heroSpaceTitle}”. Matches the space selected in the sidebar.`;
+		}
+		return "Choose a space to focus spend, recurring items, and capture — sidebar selection stays in sync.";
+	}, [heroSelectedSpaceId, heroSpaceTitle]);
+
+	const recurringForHero = useMemo(() => {
+		const list = recurring ?? [];
+		if (heroSelectedSpaceId == null) return list.slice(0, 5);
+		return list
+			.filter(
+				(r) =>
+					r.space_id == null ||
+					Number(r.space_id) === Number(heroSelectedSpaceId),
+			)
+			.slice(0, 5);
+	}, [recurring, heroSelectedSpaceId]);
+
+	const recurringFilteredForSpace = useMemo(() => {
+		const list = recurring ?? [];
+		if (heroSelectedSpaceId == null) return list;
+		return list.filter(
+			(r) =>
+				r.space_id == null ||
+				Number(r.space_id) === Number(heroSelectedSpaceId),
+		);
+	}, [recurring, heroSelectedSpaceId]);
 
 	/** Hero drafts column: only drafts for the shared space context. */
 	const pendingDraftsForHeroSpace = useMemo(() => {
@@ -1242,6 +1206,29 @@ const DashboardBody = ({
 		}
 		return "No drafts in this space. Capture from chat or switch space.";
 	}, [heroSelectedSpaceId]);
+
+	const reviewQForSpace = useMemo(() => {
+		if (!reviewQ) return null;
+		if (heroSelectedSpaceId == null) return reviewQ;
+		const items = reviewQ.items.filter((it) => {
+			if (it && typeof it === "object" && "space_id" in it) {
+				return (
+					Number((it as { space_id: number }).space_id) ===
+					Number(heroSelectedSpaceId)
+				);
+			}
+			return false;
+		});
+		return { ...reviewQ, items, total_count: items.length };
+	}, [reviewQ, heroSelectedSpaceId]);
+
+	const recentTxForSpace = useMemo(() => {
+		if (!recentTx?.length) return recentTx;
+		if (heroSelectedSpaceId == null) return recentTx;
+		return recentTx.filter(
+			(t) => Number(t.space_id) === Number(heroSelectedSpaceId),
+		);
+	}, [recentTx, heroSelectedSpaceId]);
 
 	const resolvePendingDraftChatWorkspace = useCallback(
 		(d: { tenant_id: number }): ChatWorkspaceScope => ({
@@ -1292,6 +1279,12 @@ const DashboardBody = ({
 		}));
 	}, [dashboardScopedSpaces, spacesRows]);
 
+	const spacesForGridScoped = useMemo(() => {
+		if (heroSelectedSpaceId == null) return spacesForGrid;
+		const match = spacesForGrid.filter((s) => s.id === heroSelectedSpaceId);
+		return match.length > 0 ? match : spacesForGrid;
+	}, [spacesForGrid, heroSelectedSpaceId]);
+
 	const spaceGridOwnershipLine = (
 		s: Pick<SpaceGridItem, "owner_user_id" | "owner_display_name">,
 		uid: number | undefined,
@@ -1305,29 +1298,18 @@ const DashboardBody = ({
 
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
-			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-4 lg:px-8">
-				<ConsoleBreadcrumbs variant="inline" />
-				<div className="mt-4 min-w-0 space-y-1">
-					<h1 className="font-display text-3xl font-normal tracking-tight text-[hsl(var(--text-primary))] md:text-4xl">
-						Overview
-						{heroSpaceTitle ? (
-							<span className="font-normal text-[hsl(var(--text-secondary))]">
-								{" "}
-								· {heroSpaceTitle}
-							</span>
-						) : null}
-					</h1>
-					<p className="text-sm text-[hsl(var(--text-secondary))]">
-						Personal Ceits workspace.{" "}
-						<Link
-							className="font-medium text-[hsl(var(--accent))] underline underline-offset-2"
-							to="/console/account"
-						>
-							Account
-						</Link>
-						.
-					</p>
-				</div>
+			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
+				<WorkspaceSpaceSubNav />
+				<p className="mt-3 text-sm text-[hsl(var(--text-secondary))]">
+					Personal Ceits workspace.{" "}
+					<Link
+						className="font-medium text-[hsl(var(--accent))] underline underline-offset-2"
+						to="/console/account"
+					>
+						Account
+					</Link>
+					.
+				</p>
 			</header>
 
 			<div className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
@@ -1355,73 +1337,229 @@ const DashboardBody = ({
 						formatCurrencyAmount={formatCurrencyAmount}
 						monthly={monthly}
 						pageLoading={pageLoading}
-						pendingDrafts={pendingDrafts}
-						recurring={recurring}
-						reviewQ={reviewQ}
+						pendingDrafts={
+							heroSelectedSpaceId != null
+								? pendingDraftsForHeroSpace
+								: (pendingDrafts ?? [])
+						}
+						recurring={
+							heroSelectedSpaceId != null
+								? recurringFilteredForSpace
+								: (recurring ?? [])
+						}
+						reviewQ={reviewQForSpace}
 					/>
 				</div>
 
 				<div className={sectionRhythm}>
-					<div className={dashboardCaptureHeroBandClass}>
-						<div className={dashboardCaptureHeroInnerClass}>
-							<div className="lg:col-span-12 overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl ring-1 ring-black/40">
-								{monthly ? (
-									<SpendCoverBand
-										currency={currency}
-										monthly={monthly}
-										onNav={handleSpendNav}
-										onPeriodKind={handleSpendPeriodKind}
-										onToday={handleSpendToday}
-										scopeHint={spendScopeHint}
-										spendAnchor={spendAnchor}
-										spendPeriodKind={spendPeriodKind}
-									/>
+					<motion.div
+						animate="visible"
+						className=""
+						initial="hidden"
+						variants={fadeUpVariants}
+					>
+						<div className="px-4 lg:px-8">
+							<div className="space-y-5">
+								<div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-stretch">
+									<div
+										className={`${dashboardHeroCardClass} min-h-0`}
+										id="dashboard-capture"
+									>
+										<div className="p-3 sm:p-4">
+											<WidgetShell
+												className="!rounded-none !border-0 !bg-transparent !p-0 !shadow-none [&_header]:mb-1.5"
+												contentClassName="min-h-0 flex-1 text-sm"
+												errorCopy={sharedErrorCopy}
+												state={deriveWidgetState(
+													pageLoading,
+													pageError,
+													Boolean(
+														heroQuickCapture &&
+															heroQuickCapture.spaces.length > 0,
+													),
+												)}
+												widgetKey="quick_capture"
+											>
+												{heroQuickCapture &&
+												heroQuickCapture.spaces.length > 0 ? (
+													<QuickCaptureWidget
+														chatWorkspace={chatWorkspaceForNav}
+														qc={heroQuickCapture}
+														selectedSpaceId={heroSelectedSpaceId}
+														showSpacePicker={false}
+														visualVariant="heroCard"
+													/>
+												) : null}
+											</WidgetShell>
+										</div>
+									</div>
+									<div
+										className={`${dashboardHeroCardClass} flex min-h-[12rem] flex-col lg:h-full lg:min-h-0 lg:max-h-[min(32rem,78vh)]`}
+									>
+										<div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
+											<WidgetShell
+												className="!rounded-none !border-0 !bg-transparent !p-0 !shadow-none"
+												contentClassName="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1"
+												descriptionOverride={draftsHeroDescription}
+												emptyCopyOverride={draftsHeroEmptyCopy}
+												errorCopy={sharedErrorCopy}
+												state={deriveWidgetState(
+													pageLoading,
+													pageError,
+													pendingDraftsForHeroSpace.length > 0,
+												)}
+												titleOverride="Drafts awaiting review"
+												shellVariant="default"
+												widgetKey="pending_drafts"
+											>
+												{pendingDraftsForHeroSpace.length > 0 ? (
+													<PendingDraftsList
+														currency={currency}
+														items={pendingDraftsForHeroSpace}
+														resolveChatWorkspace={
+															resolvePendingDraftChatWorkspace
+														}
+													/>
+												) : null}
+											</WidgetShell>
+										</div>
+									</div>
+								</div>
+
+								{heroSelectedSpaceId != null && chatWorkspaceForNav ? (
+									<div className={dashboardHeroCardClass}>
+										<motion.div
+											animate="visible"
+											className="flex flex-wrap gap-2 bg-muted/30 px-4 py-3 sm:px-5"
+											initial="hidden"
+											variants={staggerContainer}
+										>
+											<motion.div variants={staggerItem}>
+												<MotionLink
+													className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+													onClick={() =>
+														setSelectedSpaceId(heroSelectedSpaceId)
+													}
+													state={chatNavState({
+														selectSpaceId: heroSelectedSpaceId,
+													})}
+													to="/console/chat"
+												>
+													Open chat
+												</MotionLink>
+											</motion.div>
+											<motion.div variants={staggerItem}>
+												<a
+													className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+													href="#dashboard-capture"
+												>
+													Voice & photo
+												</a>
+											</motion.div>
+											<motion.div variants={staggerItem}>
+												<MotionLink
+													className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+													onClick={() =>
+														setSelectedSpaceId(heroSelectedSpaceId)
+													}
+													to="/console/drafts"
+												>
+													Drafts
+												</MotionLink>
+											</motion.div>
+											<motion.div variants={staggerItem}>
+												<MotionLink
+													className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+													onClick={() =>
+														setSelectedSpaceId(heroSelectedSpaceId)
+													}
+													to="/console/recurring"
+												>
+													Recurring
+												</MotionLink>
+											</motion.div>
+											<motion.div variants={staggerItem}>
+												<MotionLink
+													className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+													onClick={() =>
+														setSelectedSpaceId(heroSelectedSpaceId)
+													}
+													to="/console/transactions"
+												>
+													Transactions
+												</MotionLink>
+											</motion.div>
+										</motion.div>
+									</div>
 								) : null}
-								<HeroSpaceContextBar
-									currentUserId={user?.id}
-									onSelectSpaceId={handleHeroSelectSpaceId}
-									selectedSpaceId={heroSelectedSpaceId}
-									spaces={heroContextSpaces}
-								/>
-								<div className="grid grid-cols-1 gap-0 lg:grid-cols-12 lg:divide-x lg:divide-white/10">
-									<div className="min-h-0 p-4 sm:p-5 lg:col-span-8">
-										<DashboardMergedCaptureBlock
-											chatNavState={chatNavState}
-											chatWorkspace={chatWorkspaceForNav}
-											className="h-full min-h-0"
-											cont={cont}
-											errorCopy={sharedErrorCopy}
-											navigableSpaces={continueNavigableSpaces}
-											pageError={pageError}
-											pageLoading={pageLoading}
-											qc={heroQuickCapture ?? qc}
-											selectedSpaceId={heroSelectedSpaceId}
+								{monthly ? (
+									<div className={dashboardHeroCardClass}>
+										<SpendCoverBand
+											currency={currency}
+											monthly={monthly}
+											onNav={handleSpendNav}
+											onPeriodKind={handleSpendPeriodKind}
+											onToday={handleSpendToday}
+											scopeHint={spendScopeHint}
+											spendAnchor={spendAnchor}
+											spendPeriodKind={spendPeriodKind}
+											standaloneCard
+											tone="light"
 										/>
 									</div>
-									<div className="min-h-0 border-t border-white/10 bg-zinc-900/30 p-4 sm:p-5 lg:col-span-4 lg:border-t-0">
+								) : null}
+								{recurringForHero.length > 0 ? (
+									<div className={dashboardHeroCardClass}>
+										<div className="bg-muted/15 px-4 py-4 sm:px-5">
+											<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+												Upcoming recurring
+												{heroSpaceTitle ? ` · ${heroSpaceTitle}` : ""}
+											</p>
+											<ul className="mt-2 space-y-2">
+												{recurringForHero.map((r) => (
+													<li
+														className="flex flex-col gap-0.5 rounded-lg border border-border/80 bg-background/80 px-3 py-2 text-xs"
+														key={`${r.id}-${r.next_due}`}
+													>
+														<span className="font-medium text-foreground">
+															{r.name}
+														</span>
+														<span className="text-muted-foreground">
+															{formatCurrencyAmount(r.amount, currency)} · due{" "}
+															{formatDateLabel(r.next_due)}
+															{r.space_name ? ` · ${r.space_name}` : ""}
+														</span>
+													</li>
+												))}
+											</ul>
+										</div>
+									</div>
+								) : null}
+
+								<div className={dashboardHeroCardClass}>
+									<div className="p-4 sm:p-5">
 										<WidgetShell
 											className="!rounded-none !border-0 !bg-transparent !p-0 !shadow-none"
 											contentClassName="min-h-0"
-											descriptionOverride={draftsHeroDescription}
-											emptyCopyOverride={draftsHeroEmptyCopy}
 											errorCopy={sharedErrorCopy}
 											state={deriveWidgetState(
 												pageLoading,
 												pageError,
-												pendingDraftsForHeroSpace.length > 0,
+												Boolean(cont),
 											)}
-											titleOverride="Drafts awaiting review"
-											shellVariant="darkMuted"
-											widgetKey="pending_drafts"
+											widgetKey="continue"
 										>
-											{pendingDraftsForHeroSpace.length > 0 ? (
-												<PendingDraftsList
-													currency={currency}
-													items={pendingDraftsForHeroSpace}
-													resolveChatWorkspace={
-														resolvePendingDraftChatWorkspace
-													}
-													tone="onDark"
+											{cont ? (
+												<ContinueDashboardPanel
+													chatNavState={chatNavState}
+													chatWorkspace={chatWorkspaceForNav}
+													cont={cont}
+													navigableSpaces={continueNavigableSpaces}
+													selectedSpaceId={heroSelectedSpaceId}
+													showDraftsButton={false}
+													showFooterActions={false}
+													showInlineSpaceNav={false}
+													visualVariant="default"
 												/>
 											) : null}
 										</WidgetShell>
@@ -1429,7 +1567,7 @@ const DashboardBody = ({
 								</div>
 							</div>
 						</div>
-					</div>
+					</motion.div>
 
 					<div className="mt-2 grid grid-cols-1 gap-5 px-4 lg:grid-cols-12 lg:items-stretch lg:px-8">
 						<WidgetShell
@@ -1452,7 +1590,11 @@ const DashboardBody = ({
 								<MonthlySnapshotChart
 									currency={currency}
 									monthly={monthly}
-									pendingDrafts={pendingDrafts}
+									pendingDrafts={
+										heroSelectedSpaceId != null
+											? pendingDraftsForHeroSpace
+											: pendingDrafts
+									}
 								/>
 							) : null}
 						</WidgetShell>
@@ -1463,12 +1605,15 @@ const DashboardBody = ({
 							state={deriveWidgetState(
 								pageLoading,
 								pageError,
-								Boolean(recurring && recurring.length > 0),
+								Boolean(
+									recurringFilteredForSpace &&
+										recurringFilteredForSpace.length > 0,
+								),
 							)}
 							widgetKey="recurring_upcoming"
 						>
 							<ul className="space-y-2">
-								{recurring?.map((r) => (
+								{recurringFilteredForSpace?.map((r) => (
 									<li
 										className="flex flex-col gap-0.5 rounded-lg border border-[hsl(var(--border-subtle))]/90 bg-[hsl(var(--surface-muted))]/45 px-3 py-2.5 text-xs shadow-sm"
 										key={r.id}
@@ -1510,19 +1655,20 @@ const DashboardBody = ({
 								pageLoading,
 								pageError,
 								Boolean(
-									reviewQ &&
-										(reviewQ.items.length > 0 || reviewQ.total_count > 0),
+									reviewQForSpace &&
+										(reviewQForSpace.items.length > 0 ||
+											reviewQForSpace.total_count > 0),
 								),
 							)}
 							widgetKey="review_queue"
 						>
-							{reviewQ ? (
+							{reviewQForSpace ? (
 								<ReviewQueuePanel
 									chatNavState={chatNavState}
 									currency={currency}
 									formatCurrencyAmount={formatCurrencyAmount}
 									formatDateLabel={formatDateLabel}
-									queue={reviewQ}
+									queue={reviewQForSpace}
 								/>
 							) : null}
 						</WidgetShell>
@@ -1533,12 +1679,12 @@ const DashboardBody = ({
 							state={deriveWidgetState(
 								pageLoading,
 								pageError,
-								spacesForGrid.length > 0,
+								spacesForGridScoped.length > 0,
 							)}
 							widgetKey="spaces"
 						>
 							<ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-								{spacesForGrid.map((s) => (
+								{spacesForGridScoped.map((s) => (
 									<li key={s.id}>
 										<Link
 											className="flex h-full min-h-[5rem] flex-col rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-muted))]/60 p-3 text-left transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
@@ -1607,12 +1753,12 @@ const DashboardBody = ({
 							state={deriveWidgetState(
 								pageLoading,
 								pageError,
-								Boolean(recentTx && recentTx.length > 0),
+								Boolean(recentTxForSpace && recentTxForSpace.length > 0),
 							)}
 							widgetKey="recent_transactions"
 						>
 							<ul className="max-h-64 space-y-2 overflow-y-auto pr-1">
-								{recentTx?.map((t) => (
+								{recentTxForSpace?.map((t) => (
 									<li className="text-xs" key={t.id}>
 										<Link
 											className="flex flex-col rounded-lg border border-[hsl(var(--border-subtle))]/90 bg-[hsl(var(--surface-muted))]/35 px-3 py-2 transition hover:bg-[hsl(var(--surface-muted))]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
@@ -1637,9 +1783,9 @@ const DashboardBody = ({
 							</ul>
 						</WidgetShell>
 					</div>
-					<div className="mt-10 grid grid-cols-1 gap-6 px-4 lg:px-8">
-						<WidgetShell state="empty" widgetKey="ai_teaser" />
-					</div>
+				</div>
+				<div className="mt-10 grid grid-cols-1 gap-6 px-4 lg:px-8">
+					<WidgetShell state="empty" widgetKey="ai_teaser" />
 				</div>
 			</div>
 		</div>
@@ -1673,11 +1819,6 @@ export const DashboardPage = () => {
 		clearOnboardingIntent();
 	};
 
-	const footerChatLinkState = (() => {
-		const cw = readChatWorkspaceScope();
-		return cw ? { chatWorkspace: cw } : undefined;
-	})();
-
 	return (
 		<DashboardVariantProvider variant="personal">
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1687,83 +1828,6 @@ export const DashboardPage = () => {
 						onDismissIntent={handleDismissIntent}
 					/>
 				</div>
-				<section
-					aria-label="Quick navigation"
-					className="shrink-0 border-t border-[hsl(var(--border-subtle))] px-4 py-6 lg:px-8"
-				>
-					<p className="mb-3 text-xs font-medium uppercase tracking-wide text-[hsl(var(--text-secondary))]">
-						All console areas
-					</p>
-					<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-						<Link
-							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-4 text-sm transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-							to="/console/drafts"
-						>
-							<div className="font-medium text-[hsl(var(--text-primary))]">
-								Drafts
-							</div>
-							<div className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
-								Text, photo, or voice capture.
-							</div>
-						</Link>
-						<Link
-							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-4 text-sm transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-							to="/console/transactions"
-						>
-							<div className="font-medium text-[hsl(var(--text-primary))]">
-								History
-							</div>
-							<div className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
-								Confirmed transactions.
-							</div>
-						</Link>
-						<Link
-							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-4 text-sm transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-							state={footerChatLinkState}
-							to="/console/chat"
-						>
-							<div className="font-medium text-[hsl(var(--text-primary))]">
-								Chat
-							</div>
-							<div className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
-								Space-scoped discussion.
-							</div>
-						</Link>
-						<Link
-							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-4 text-sm transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-							to="/console/spaces"
-						>
-							<div className="font-medium text-[hsl(var(--text-primary))]">
-								Spaces
-							</div>
-							<div className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
-								Manage spaces and members.
-							</div>
-						</Link>
-						<Link
-							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-4 text-sm transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-							to="/console/recurring"
-						>
-							<div className="font-medium text-[hsl(var(--text-primary))]">
-								Recurring
-							</div>
-							<div className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
-								Schedules and pauses.
-							</div>
-						</Link>
-						<Link
-							className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-4 text-sm transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
-							to="/console/quota"
-						>
-							<div className="font-medium text-[hsl(var(--text-primary))]">
-								Quota
-							</div>
-							<div className="mt-1 text-xs text-[hsl(var(--text-secondary))]">
-								Parse limits and blocked state.
-							</div>
-						</Link>
-					</div>
-				</section>
 			</div>
 		</DashboardVariantProvider>
 	);

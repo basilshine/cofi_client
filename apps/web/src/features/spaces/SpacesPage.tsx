@@ -1,8 +1,10 @@
 import type { Space } from "@cofi/api";
 import { useState } from "react";
+import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { apiClient } from "../../shared/lib/apiClient";
 
 export const SpacesPage = () => {
+	useConsoleHeaderTitle("Spaces", null);
 	const [spaces, setSpaces] = useState<Space[] | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);

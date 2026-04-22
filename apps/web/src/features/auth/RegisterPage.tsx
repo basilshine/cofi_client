@@ -1,6 +1,8 @@
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { authSurfaceVariants } from "../../shared/lib/appMotion";
 import { marketingUrl } from "../../shared/lib/ceitsMarketingUrl";
 import { persistOnboardingIntentFromSearch } from "../../shared/lib/onboardingIntent";
 
@@ -117,7 +119,12 @@ export const RegisterPage = () => {
 
 	return (
 		<div className="min-h-screen bg-background px-4 py-12">
-			<div className="mx-auto w-full max-w-md space-y-8">
+			<motion.div
+				className="mx-auto w-full max-w-md space-y-8"
+				animate="visible"
+				initial="hidden"
+				variants={authSurfaceVariants}
+			>
 				<div className="text-center">
 					<a className="text-lg font-semibold" href={marketingUrl("/")}>
 						Ceits
@@ -277,7 +284,7 @@ export const RegisterPage = () => {
 						Sign in
 					</Link>
 				</p>
-			</div>
+			</motion.div>
 		</div>
 	);
 };

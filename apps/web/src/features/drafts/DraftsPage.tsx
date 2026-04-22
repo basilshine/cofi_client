@@ -1,5 +1,6 @@
 import type { Draft, DraftItem } from "@cofi/api";
 import { useEffect, useMemo, useState } from "react";
+import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { apiClient } from "../../shared/lib/apiClient";
 
 type ItemFormRow = {
@@ -60,6 +61,7 @@ const sumItems = (items: DraftItem[]): number =>
 	items.reduce((s, it) => s + (Number.isFinite(it.amount) ? it.amount : 0), 0);
 
 export const DraftsPage = () => {
+	useConsoleHeaderTitle("Drafts", null);
 	const [spaceId, setSpaceId] = useState<string>("1");
 	const [text, setText] = useState("");
 	const [draft, setDraft] = useState<Draft | null>(null);

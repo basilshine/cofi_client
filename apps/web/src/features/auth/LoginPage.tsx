@@ -1,6 +1,8 @@
+import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { staggerContainer, staggerItem } from "../../shared/lib/appMotion";
 import { marketingUrl } from "../../shared/lib/ceitsMarketingUrl";
 import { persistOnboardingIntentFromSearch } from "../../shared/lib/onboardingIntent";
 
@@ -63,8 +65,16 @@ export const LoginPage = () => {
 
 	return (
 		<div className="min-h-screen bg-[hsl(var(--bg))] px-4 py-10 md:py-16">
-			<div className="mx-auto grid w-full max-w-6xl gap-8 md:grid-cols-12 md:items-start">
-				<div className="space-y-5 md:col-span-5 md:pr-8">
+			<motion.div
+				className="mx-auto grid w-full max-w-6xl gap-8 md:grid-cols-12 md:items-start"
+				animate="visible"
+				initial="hidden"
+				variants={staggerContainer}
+			>
+				<motion.div
+					className="space-y-5 md:col-span-5 md:pr-8"
+					variants={staggerItem}
+				>
 					<a
 						className="inline-flex text-lg font-semibold tracking-tight"
 						href={marketingUrl("/")}
@@ -91,9 +101,9 @@ export const LoginPage = () => {
 							remains unchanged.
 						</p>
 					</div>
-				</div>
+				</motion.div>
 
-				<div className="md:col-span-7">
+				<motion.div className="md:col-span-7" variants={staggerItem}>
 					<div className="mx-auto w-full max-w-md rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 shadow-sm md:p-8">
 						<h2 className="text-2xl font-semibold tracking-tight">Sign in</h2>
 						<p className="mt-2 text-sm leading-6 text-[hsl(var(--text-secondary))]">
@@ -169,8 +179,8 @@ export const LoginPage = () => {
 							</div>
 						</form>
 					</div>
-				</div>
-			</div>
+				</motion.div>
+			</motion.div>
 		</div>
 	);
 };

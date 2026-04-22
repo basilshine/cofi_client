@@ -150,7 +150,7 @@ export const SpaceMemberDetailsDialog = ({
 		<dialog
 			aria-describedby={descId}
 			aria-labelledby={titleId}
-			className="z-[80] max-h-[min(90vh,520px)] w-[min(100%,420px)] rounded-xl border border-border bg-card p-0 text-foreground shadow-lg backdrop:bg-black/50"
+			className="z-[110] max-h-[min(90vh,520px)] w-[min(100%,420px)] rounded-xl border border-border bg-card p-0 text-foreground shadow-lg backdrop:bg-black/50"
 			onClick={handleBackdropClick}
 			onKeyDown={handleDialogKeyDown}
 			ref={dialogRef}

@@ -1,5 +1,6 @@
 import type { QuotaStatus, Space } from "@cofi/api";
 import { useEffect, useState } from "react";
+import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { apiClient } from "../../shared/lib/apiClient";
 
 const quotaFieldRows = (q: QuotaStatus) =>
@@ -17,6 +18,7 @@ const quotaFieldRows = (q: QuotaStatus) =>
 	] as const;
 
 export const QuotaPage = () => {
+	useConsoleHeaderTitle("Quota", null);
 	const [quota, setQuota] = useState<QuotaStatus | null>(null);
 	const [spaces, setSpaces] = useState<Space[] | null>(null);
 	const [quotaSpaceId, setQuotaSpaceId] = useState<string>("");

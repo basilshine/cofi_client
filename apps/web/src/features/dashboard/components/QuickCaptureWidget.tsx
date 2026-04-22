@@ -174,8 +174,8 @@ type Props = {
 	onSelectedSpaceChange?: (spaceId: number) => void;
 	/** Show internal space picker. Set false when parent provides shared picker. */
 	showSpacePicker?: boolean;
-	/** High-contrast tiles for the dark dashboard hero. */
-	visualVariant?: "default" | "heroDark";
+	/** `heroDark` = zinc hero; `heroCard` = same layout as hero, light surface (dashboard card). */
+	visualVariant?: "default" | "heroDark" | "heroCard";
 };
 
 export const QuickCaptureWidget = ({
@@ -433,14 +433,21 @@ export const QuickCaptureWidget = ({
 			: "border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))]/90 text-[hsl(var(--text-primary))] shadow-sm hover:border-[hsl(var(--accent))]/25 hover:bg-[hsl(var(--surface-muted))]";
 
 	const isHeroDark = visualVariant === "heroDark";
+	const isHeroCard = visualVariant === "heroCard";
+	const heroDenseLayout = isHeroDark || isHeroCard;
 
 	const iconClass = isHeroDark
-		? "pointer-events-none h-9 w-9 shrink-0 text-amber-300 sm:h-10 sm:w-10"
-		: "pointer-events-none h-10 w-10 shrink-0 text-[hsl(var(--accent))]";
+		? "pointer-events-none h-8 w-8 shrink-0 text-amber-300 sm:h-9 sm:w-9"
+		: isHeroCard
+			? "pointer-events-none h-8 w-8 shrink-0 text-[hsl(var(--accent))] sm:h-9 sm:w-9"
+			: "pointer-events-none h-10 w-10 shrink-0 text-[hsl(var(--accent))]";
 
 	const actionTile = isHeroDark
-		? "flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-2xl border border-white/15 bg-white/10 px-2 py-2.5 text-zinc-50 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.85)] backdrop-blur-sm transition hover:border-amber-400/35 hover:bg-white/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:pointer-events-none disabled:opacity-45 sm:min-h-[5rem]"
-		: "flex size-[4.75rem] sm:size-20 shrink-0 items-center justify-center rounded-2xl border border-[hsl(var(--border-subtle))] bg-gradient-to-b from-[hsl(var(--surface))] to-[hsl(var(--surface-muted))]/50 text-[hsl(var(--text-primary))] shadow-sm transition hover:border-[hsl(var(--accent))]/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))] disabled:pointer-events-none disabled:opacity-45";
+		? "flex min-h-[3.5rem] flex-col items-center justify-center gap-0.5 rounded-xl border border-white/15 bg-white/10 px-1.5 py-2 text-zinc-50 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.85)] backdrop-blur-sm transition hover:border-amber-400/35 hover:bg-white/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 disabled:pointer-events-none disabled:opacity-45 sm:min-h-[3.75rem]"
+		: isHeroCard
+			? "flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--card))] px-1.5 py-2 text-[hsl(var(--text-primary))] shadow-sm transition hover:border-[hsl(var(--accent))]/35 hover:bg-[hsl(var(--muted))]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))] disabled:pointer-events-none disabled:opacity-45 sm:min-h-[3.5rem]"
+			: "flex size-[4.75rem] sm:size-20 shrink-0 items-center justify-center rounded-2xl border border-[hsl(var(--border-subtle))] bg-gradient-to-b from-[hsl(var(--surface))] to-[hsl(var(--surface-muted))]/50 text-[hsl(var(--text-primary))] shadow-sm transition hover:border-[hsl(var(--accent))]/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))] disabled:pointer-events-none disabled:opacity-45";
+
 
 	const recordingTile = isHeroDark
 		? "border-red-400/50 bg-red-500/15 text-red-100 animate-pulse"
@@ -469,114 +476,185 @@ export const QuickCaptureWidget = ({
 				<div
 					aria-label={`Capture actions for ${activeSpaceName ?? "selected space"}`}
 					className={
-						isHeroDark
-							? "mx-auto grid w-full max-w-xl grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-3"
+						heroDenseLayout
+							? "mx-auto grid w-full grid-cols-2 gap-x-2 gap-y-3 sm:grid-cols-4 sm:gap-x-3"
 							: "mx-auto grid w-full max-w-md grid-cols-3 place-items-center gap-4 sm:max-w-lg sm:gap-5"
 					}
 					role="group"
 				>
-					<label
-						className={`${actionTile} ${actionsDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+					<div
+						className={
+							heroDenseLayout
+								? "flex min-w-0 flex-col gap-1.5"
+								: "contents"
+						}
 					>
-						<input
-							ref={photoInputRef}
-							accept="image/*"
-							aria-label="Add photo — choose file or camera"
-							className="sr-only"
-							disabled={actionsDisabled}
-							onChange={(e) => void handlePhotoChange(e)}
-							type="file"
-						/>
-						<IconCamera className={iconClass} />
-						{isHeroDark ? (
-							<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
-								Photo
-							</span>
-						) : null}
-					</label>
-
-					<button
-						aria-label={isRecording ? "Stop and send voice" : "Record voice"}
-						aria-pressed={isRecording}
-						className={`${actionTile} ${isRecording ? recordingTile : ""}`}
-						disabled={actionsDisabled}
-						onClick={() => void handleMicClick()}
-						type="button"
-					>
-						{isRecording ? (
-							<IconStop
-								className={
-									isHeroDark
-										? "pointer-events-none h-9 w-9 shrink-0 sm:h-10 sm:w-10"
-										: "pointer-events-none h-10 w-10 shrink-0"
-								}
+						<label
+							className={`${actionTile} ${actionsDisabled ? "cursor-not-allowed" : "cursor-pointer"} ${heroDenseLayout ? "w-full" : ""}`}
+						>
+							<input
+								ref={photoInputRef}
+								accept="image/*"
+								aria-label="Add photo — choose file or camera"
+								className="sr-only"
+								disabled={actionsDisabled}
+								onChange={(e) => void handlePhotoChange(e)}
+								type="file"
 							/>
-						) : (
-							<IconMic className={iconClass} />
-						)}
-						{isHeroDark ? (
-							<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
-								{isRecording ? "Stop" : "Voice"}
-							</span>
+							<IconCamera className={iconClass} />
+							{isHeroDark ? (
+								<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
+									Photo
+								</span>
+							) : null}
+							{isHeroCard ? (
+								<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+									Photo
+								</span>
+							) : null}
+						</label>
+						{heroDenseLayout ? (
+							<p className="text-center text-[10px] leading-snug text-muted-foreground">
+								Receipt or bill — we parse amounts from the image.
+							</p>
 						) : null}
-					</button>
+					</div>
 
-					{isHeroDark ? (
+					<div
+						className={
+							heroDenseLayout
+								? "flex min-w-0 flex-col gap-1.5"
+								: "contents"
+						}
+					>
+						<button
+							aria-label={isRecording ? "Stop and send voice" : "Record voice"}
+							aria-pressed={isRecording}
+							className={`${actionTile} ${isRecording ? recordingTile : ""} ${heroDenseLayout ? "w-full" : ""}`}
+							disabled={actionsDisabled}
+							onClick={() => void handleMicClick()}
+							type="button"
+						>
+							{isRecording ? (
+								<IconStop
+									className={
+										isHeroDark
+											? "pointer-events-none h-9 w-9 shrink-0 sm:h-10 sm:w-10"
+											: isHeroCard
+												? "pointer-events-none h-9 w-9 shrink-0 sm:h-10 sm:w-10"
+												: "pointer-events-none h-10 w-10 shrink-0"
+									}
+								/>
+							) : (
+								<IconMic className={iconClass} />
+							)}
+							{isHeroDark ? (
+								<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
+									{isRecording ? "Stop" : "Voice"}
+								</span>
+							) : null}
+							{isHeroCard ? (
+								<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+									{isRecording ? "Stop" : "Voice"}
+								</span>
+							) : null}
+						</button>
+						{heroDenseLayout ? (
+							<p className="text-center text-[10px] leading-snug text-muted-foreground">
+								{isRecording
+									? "Tap stop when you are done speaking."
+									: "Speak what you spent; we draft it for you."}
+							</p>
+						) : null}
+					</div>
+
+					{isHeroDark || isHeroCard ? (
+						<div className="flex min-w-0 flex-col gap-1.5">
+							<Link
+								aria-disabled={actionsDisabled || chatWorkspace == null}
+								aria-label="Write a message in chat"
+								className={`${actionTile} ${actionsDisabled || chatWorkspace == null ? "pointer-events-none opacity-45" : ""} w-full`}
+								onClick={(e) => {
+									if (actionsDisabled || chatWorkspace == null)
+										e.preventDefault();
+									else handleBeforeNavigate();
+								}}
+								state={
+									chatWorkspace
+										? {
+												chatWorkspace,
+												selectSpaceId: selectedId,
+												focusMessageComposer: true,
+											}
+										: undefined
+								}
+								to="/console/chat"
+							>
+								<IconCompose className={iconClass} />
+								<span
+									className={
+										isHeroCard
+											? "text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+											: "text-[10px] font-semibold uppercase tracking-wide text-zinc-300"
+									}
+								>
+									Write
+								</span>
+							</Link>
+							<p className="text-center text-[10px] leading-snug text-muted-foreground">
+								Jump to chat with the composer focused.
+							</p>
+						</div>
+					) : null}
+
+					<div
+						className={
+							heroDenseLayout
+								? "flex min-w-0 flex-col gap-1.5"
+								: "contents"
+						}
+					>
 						<Link
 							aria-disabled={actionsDisabled || chatWorkspace == null}
-							aria-label="Write a message in chat"
-							className={`${actionTile} ${actionsDisabled || chatWorkspace == null ? "pointer-events-none opacity-45" : ""}`}
+							aria-label="Open chat"
+							className={`${actionTile} ${actionsDisabled || chatWorkspace == null ? "pointer-events-none opacity-45" : ""} ${heroDenseLayout ? "w-full" : ""}`}
 							onClick={(e) => {
-								if (actionsDisabled || chatWorkspace == null)
-									e.preventDefault();
+								if (actionsDisabled || chatWorkspace == null) e.preventDefault();
 								else handleBeforeNavigate();
 							}}
 							state={
 								chatWorkspace
-									? {
-											chatWorkspace,
-											selectSpaceId: selectedId,
-											focusMessageComposer: true,
-										}
+									? { chatWorkspace, selectSpaceId: selectedId }
 									: undefined
 							}
 							to="/console/chat"
 						>
-							<IconCompose className={iconClass} />
-							<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
-								Write
-							</span>
+							<IconChat
+								className={
+									isHeroDark
+										? "pointer-events-none h-9 w-9 shrink-0 text-zinc-200 sm:h-10 sm:w-10"
+										: isHeroCard
+											? "pointer-events-none h-9 w-9 shrink-0 text-[hsl(var(--text-secondary))] sm:h-10 sm:w-10"
+											: "pointer-events-none h-10 w-10 shrink-0 text-[hsl(var(--text-secondary))]"
+								}
+							/>
+							{isHeroDark ? (
+								<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
+									Chat
+								</span>
+							) : null}
+							{isHeroCard ? (
+								<span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+									Chat
+								</span>
+							) : null}
 						</Link>
-					) : null}
-
-					<Link
-						aria-disabled={actionsDisabled || chatWorkspace == null}
-						aria-label="Open chat"
-						className={`${actionTile} ${actionsDisabled || chatWorkspace == null ? "pointer-events-none opacity-45" : ""}`}
-						onClick={(e) => {
-							if (actionsDisabled || chatWorkspace == null) e.preventDefault();
-							else handleBeforeNavigate();
-						}}
-						state={
-							chatWorkspace
-								? { chatWorkspace, selectSpaceId: selectedId }
-								: undefined
-						}
-						to="/console/chat"
-					>
-						<IconChat
-							className={
-								isHeroDark
-									? "pointer-events-none h-9 w-9 shrink-0 text-zinc-200 sm:h-10 sm:w-10"
-									: "pointer-events-none h-10 w-10 shrink-0 text-[hsl(var(--text-secondary))]"
-							}
-						/>
-						{isHeroDark ? (
-							<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
-								Chat
-							</span>
+						{heroDenseLayout ? (
+							<p className="text-center text-[10px] leading-snug text-muted-foreground">
+								Open the full thread for this space.
+							</p>
 						) : null}
-					</Link>
+					</div>
 				</div>
 
 				{showSpacePicker ? (

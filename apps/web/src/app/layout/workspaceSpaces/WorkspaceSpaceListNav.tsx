@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from "react";
-import { Link, useLocation, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
 import { sortSpacesByLastActivity } from "../../../shared/lib/recentSpaceIds";
+import { WorkspaceCreateSpaceDialog } from "./WorkspaceCreateSpaceDialog";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 
 const IconPanelOpen = ({ className }: { className?: string }) => (
@@ -67,13 +68,21 @@ const spaceInitial = (name: string) => {
 	return t.charAt(0).toUpperCase();
 };
 
-const subLinkClass = (isActive: boolean) =>
-	[
-		"rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors",
-		isActive
-			? "bg-primary/15 text-foreground ring-1 ring-primary/25"
-			: "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-	].join(" ");
+const IconPlusSmall = ({ className }: { className?: string }) => (
+	<svg
+		aria-hidden
+		className={className}
+		fill="none"
+		height="16"
+		stroke="currentColor"
+		strokeWidth="2"
+		viewBox="0 0 24 24"
+		width="16"
+	>
+		<title>Add</title>
+		<path d="M12 5v14M5 12h14" strokeLinecap="round" />
+	</svg>
+);
 
 export const WorkspaceSpaceListNav = ({
 	soloNav = false,
@@ -82,8 +91,6 @@ export const WorkspaceSpaceListNav = ({
 	soloNav?: boolean;
 }) => {
 	const { user } = useAuth();
-	const location = useLocation();
-	const [searchParams] = useSearchParams();
 	const {
 		workspaceScope,
 		spaces,
@@ -95,10 +102,7 @@ export const WorkspaceSpaceListNav = ({
 		selectedSpaceId,
 		setSelectedSpaceId,
 		spaceHasUnread,
-		newSpaceName,
-		setNewSpaceName,
-		createSpace,
-		isCreatingSpace,
+		setCreateSpaceDialogOpen,
 	} = useWorkspaceSpaces();
 
 	const spacesSorted = useMemo(
@@ -106,40 +110,11 @@ export const WorkspaceSpaceListNav = ({
 		[spaces],
 	);
 
-	const chatState = useMemo(() => {
-		if (workspaceScope == null) return {};
-		return { chatWorkspace: workspaceScope };
-	}, [workspaceScope]);
-
 	const handleSelectSpace = useCallback(
 		(id: string | number) => {
 			setSelectedSpaceId(id);
 		},
 		[setSelectedSpaceId],
-	);
-
-	const isOverviewActive = useCallback(
-		(spaceId: string | number) =>
-			location.pathname.startsWith("/console/dashboard") &&
-			searchParams.get("spaceId") === String(spaceId),
-		[location.pathname, searchParams],
-	);
-
-	const isChatActive = useCallback(
-		(spaceId: string | number) =>
-			(location.pathname === "/console/chat" ||
-				location.pathname === "/console/chat/") &&
-			selectedSpaceId != null &&
-			String(selectedSpaceId) === String(spaceId),
-		[location.pathname, selectedSpaceId],
-	);
-
-	const isExpensesActive = useCallback(
-		(spaceId: string | number) =>
-			location.pathname.startsWith("/console/chat/expenses") &&
-			selectedSpaceId != null &&
-			String(selectedSpaceId) === String(spaceId),
-		[location.pathname, selectedSpaceId],
 	);
 
 	if (!workspaceScope) {
@@ -196,14 +171,24 @@ export const WorkspaceSpaceListNav = ({
 			</div>
 
 			<div className="flex w-full flex-col items-center border-t border-border/60 pt-3">
-				<button
-					aria-label="Expand sidebar to create a space"
-					className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					onClick={() => setSidebarExpanded(true)}
-					type="button"
-				>
-					<IconPlusSquare className="h-4 w-4" />
-				</button>
+				{workspaceScope.kind === "organization" ? (
+					<Link
+						aria-label="Manage spaces"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						to="/console/spaces"
+					>
+						<IconPlusSquare className="h-4 w-4" />
+					</Link>
+				) : (
+					<button
+						aria-label="Add a new space"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onClick={() => setCreateSpaceDialogOpen(true)}
+						type="button"
+					>
+						<IconPlusSquare className="h-4 w-4" />
+					</button>
+				)}
 			</div>
 		</div>
 	);
@@ -238,57 +223,7 @@ export const WorkspaceSpaceListNav = ({
 			) : null}
 
 			<div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-0.5">
-				<div
-					className="scroll-mt-4 rounded-lg border border-dashed border-border/80 bg-muted/20 p-3"
-					id="workspace-sidebar-create"
-				>
-					{workspaceScope.kind === "organization" ? (
-						<p className="text-xs leading-relaxed text-muted-foreground">
-							New organization spaces are created from{" "}
-							<Link
-								className="font-medium text-foreground underline underline-offset-2"
-								to="/console/spaces"
-							>
-								Spaces
-							</Link>
-							.
-						</p>
-					) : (
-						<div className="grid gap-2">
-							<label className="grid gap-1">
-								<span className="text-xs font-medium text-muted-foreground">
-									New space name
-								</span>
-								<input
-									aria-label="New space name"
-									className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-									onChange={(e) => setNewSpaceName(e.target.value)}
-									placeholder="Team budget"
-									type="text"
-									value={newSpaceName}
-								/>
-							</label>
-							<button
-								className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-95 disabled:opacity-50"
-								disabled={isLoading || isCreatingSpace || !newSpaceName.trim()}
-								onClick={() => void createSpace()}
-								type="button"
-							>
-								{isCreatingSpace ? "Creating…" : "Create space"}
-							</button>
-						</div>
-					)}
-				</div>
-
 				<div className="grid gap-2">
-					<div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-						Your spaces · {workspaceScope.label}
-					</div>
-					<p className="text-[10px] leading-snug text-muted-foreground">
-						{workspaceScope.kind === "organization"
-							? "Organization workspace — spaces may be yours or someone else’s."
-							: "Personal workspace — open Overview, Chat, or Expenses per space."}
-					</p>
 					{spacesSorted?.length ? (
 						<ul className="space-y-2">
 							{spacesSorted.map((s) => {
@@ -343,41 +278,6 @@ export const WorkspaceSpaceListNav = ({
 													/>
 												) : null}
 											</button>
-											<div
-												aria-label={`Navigation for ${s.name}`}
-												className="mt-2 flex flex-wrap gap-1"
-												role="group"
-											>
-												<Link
-													className={subLinkClass(isOverviewActive(s.id))}
-													onClick={() => handleSelectSpace(s.id)}
-													to={`/console/dashboard?spaceId=${encodeURIComponent(sid)}`}
-												>
-													Overview
-												</Link>
-												<Link
-													className={subLinkClass(isChatActive(s.id))}
-													onClick={() => handleSelectSpace(s.id)}
-													state={{
-														...chatState,
-														selectSpaceId: s.id,
-													}}
-													to="/console/chat"
-												>
-													Chat
-												</Link>
-												<Link
-													className={subLinkClass(isExpensesActive(s.id))}
-													onClick={() => handleSelectSpace(s.id)}
-													state={{
-														...chatState,
-														selectSpaceId: s.id,
-													}}
-													to="/console/chat/expenses"
-												>
-													Expenses
-												</Link>
-											</div>
 										</div>
 									</li>
 								);
@@ -387,6 +287,29 @@ export const WorkspaceSpaceListNav = ({
 						<div className="rounded-lg border border-border bg-background p-3 text-sm text-muted-foreground">
 							No spaces found.
 						</div>
+					)}
+				</div>
+
+				<div className="shrink-0 pt-1" id="workspace-sidebar-create">
+					{workspaceScope.kind === "organization" ? (
+						<p className="text-xs leading-relaxed text-muted-foreground">
+							<Link
+								className="font-medium text-foreground underline underline-offset-2"
+								to="/console/spaces"
+							>
+								Spaces
+							</Link>{" "}
+							to add or manage organization spaces.
+						</p>
+					) : (
+						<button
+							className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border/80 bg-muted/15 px-3 py-2.5 text-xs font-medium text-muted-foreground transition hover:bg-muted/35 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onClick={() => setCreateSpaceDialogOpen(true)}
+							type="button"
+						>
+							<IconPlusSmall className="h-4 w-4 shrink-0" />
+							Add space
+						</button>
 					)}
 				</div>
 			</div>
@@ -422,6 +345,7 @@ export const WorkspaceSpaceListNav = ({
 			>
 				{collapsedRail}
 			</div>
+			<WorkspaceCreateSpaceDialog />
 		</div>
 	);
 };

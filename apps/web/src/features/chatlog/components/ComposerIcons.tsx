@@ -21,6 +21,26 @@ export const ParseSubmitIcon = ({ className = "h-5 w-5" }: IconProps) => (
 	</svg>
 );
 
+export const MicIcon = ({ className = "h-5 w-5" }: IconProps) => (
+	<svg
+		aria-hidden
+		className={className}
+		fill="none"
+		stroke="currentColor"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		strokeWidth={2}
+		viewBox="0 0 24 24"
+		xmlns="http://www.w3.org/2000/svg"
+	>
+		<title>Record voice</title>
+		<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+		<path d="M19 10v1a7 7 0 0 1-14 0v-1" />
+		<path d="M12 19v4" />
+		<path d="M8 23h8" />
+	</svg>
+);
+
 export const SendMessageIcon = ({ className = "h-5 w-5" }: IconProps) => (
 	<svg
 		aria-hidden

@@ -1,9 +1,11 @@
 import type { RecurringExpense } from "@cofi/api";
 import { useCallback, useEffect, useState } from "react";
+import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 
 export const RecurringSchedulesPage = () => {
+	useConsoleHeaderTitle("Recurring", null);
 	const { formatMoney, formatDateTime } = useUserFormat();
 	const [items, setItems] = useState<RecurringExpense[] | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);

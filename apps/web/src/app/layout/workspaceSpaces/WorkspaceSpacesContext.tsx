@@ -43,6 +43,8 @@ type WorkspaceSpacesContextValue = {
 	setNewSpaceName: (v: string) => void;
 	createSpace: () => Promise<void>;
 	isCreatingSpace: boolean;
+	createSpaceDialogOpen: boolean;
+	setCreateSpaceDialogOpen: (open: boolean) => void;
 };
 
 const WorkspaceSpacesContext =
@@ -80,6 +82,7 @@ export const WorkspaceSpacesProvider = ({
 	});
 	const [newSpaceName, setNewSpaceName] = useState("");
 	const [isCreatingSpace, setIsCreatingSpace] = useState(false);
+	const [createSpaceDialogOpen, setCreateSpaceDialogOpen] = useState(false);
 
 	useEffect(() => {
 		try {
@@ -175,6 +178,7 @@ export const WorkspaceSpacesProvider = ({
 					})) ?? [];
 				setSpaces(list);
 				setSelectedSpaceIdState(created.id);
+				setCreateSpaceDialogOpen(false);
 			}
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : "Failed to create space";
@@ -256,6 +260,8 @@ export const WorkspaceSpacesProvider = ({
 			setNewSpaceName,
 			createSpace,
 			isCreatingSpace,
+			createSpaceDialogOpen,
+			setCreateSpaceDialogOpen,
 		}),
 		[
 			workspaceScope,
@@ -276,6 +282,7 @@ export const WorkspaceSpacesProvider = ({
 			newSpaceName,
 			createSpace,
 			isCreatingSpace,
+			createSpaceDialogOpen,
 		],
 	);
 

@@ -78,10 +78,19 @@ export const ConsoleUserMenu = () => {
 						<Link to="/console/dashboard">Overview</Link>
 					</DropdownMenu.Item>
 
-					<DropdownMenu.Separator className="my-1 h-px bg-border" />
-
+					<div className="px-2 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+						Console areas
+					</div>
 					<DropdownMenu.Item asChild className={menuItemClass}>
-						<Link to="/console/account">Account</Link>
+						<Link to="/console/drafts">Drafts</Link>
+					</DropdownMenu.Item>
+					<DropdownMenu.Item asChild className={menuItemClass}>
+						<Link to="/console/transactions">Transactions</Link>
+					</DropdownMenu.Item>
+					<DropdownMenu.Item asChild className={menuItemClass}>
+						<Link state={chatLinkState} to="/console/chat">
+							Chat
+						</Link>
 					</DropdownMenu.Item>
 					<DropdownMenu.Item asChild className={menuItemClass}>
 						<Link state={chatLinkState} to="/console/spaces">
@@ -89,9 +98,16 @@ export const ConsoleUserMenu = () => {
 						</Link>
 					</DropdownMenu.Item>
 					<DropdownMenu.Item asChild className={menuItemClass}>
-						<Link state={chatLinkState} to="/console/chat">
-							Chat
-						</Link>
+						<Link to="/console/recurring">Recurring</Link>
+					</DropdownMenu.Item>
+					<DropdownMenu.Item asChild className={menuItemClass}>
+						<Link to="/console/quota">Quota</Link>
+					</DropdownMenu.Item>
+
+					<DropdownMenu.Separator className="my-1 h-px bg-border" />
+
+					<DropdownMenu.Item asChild className={menuItemClass}>
+						<Link to="/console/account">Account</Link>
 					</DropdownMenu.Item>
 
 					<DropdownMenu.Separator className="my-1 h-px bg-border" />
