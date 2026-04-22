@@ -24,8 +24,7 @@ export const WorkspaceSpaceSubNav = () => {
 		return { chatWorkspace: workspaceScope };
 	}, [workspaceScope]);
 
-	const sid =
-		selectedSpaceId != null ? String(selectedSpaceId) : null;
+	const sid = selectedSpaceId != null ? String(selectedSpaceId) : null;
 
 	const isOverviewActive =
 		sid != null &&

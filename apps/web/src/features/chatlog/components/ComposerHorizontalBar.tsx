@@ -1,6 +1,12 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Ref, RefObject } from "react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { MicIcon, ParseSubmitIcon, SendMessageIcon } from "./ComposerIcons";
 
 const LONG_PRESS_MS = 520;

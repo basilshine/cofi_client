@@ -448,7 +448,6 @@ export const QuickCaptureWidget = ({
 			? "flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--card))] px-1.5 py-2 text-[hsl(var(--text-primary))] shadow-sm transition hover:border-[hsl(var(--accent))]/35 hover:bg-[hsl(var(--muted))]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))] disabled:pointer-events-none disabled:opacity-45 sm:min-h-[3.5rem]"
 			: "flex size-[4.75rem] sm:size-20 shrink-0 items-center justify-center rounded-2xl border border-[hsl(var(--border-subtle))] bg-gradient-to-b from-[hsl(var(--surface))] to-[hsl(var(--surface-muted))]/50 text-[hsl(var(--text-primary))] shadow-sm transition hover:border-[hsl(var(--accent))]/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))] disabled:pointer-events-none disabled:opacity-45";
 
-
 	const recordingTile = isHeroDark
 		? "border-red-400/50 bg-red-500/15 text-red-100 animate-pulse"
 		: "border-red-500/60 bg-red-500/10 text-red-700 dark:text-red-300 animate-pulse";
@@ -484,9 +483,7 @@ export const QuickCaptureWidget = ({
 				>
 					<div
 						className={
-							heroDenseLayout
-								? "flex min-w-0 flex-col gap-1.5"
-								: "contents"
+							heroDenseLayout ? "flex min-w-0 flex-col gap-1.5" : "contents"
 						}
 					>
 						<label
@@ -522,9 +519,7 @@ export const QuickCaptureWidget = ({
 
 					<div
 						className={
-							heroDenseLayout
-								? "flex min-w-0 flex-col gap-1.5"
-								: "contents"
+							heroDenseLayout ? "flex min-w-0 flex-col gap-1.5" : "contents"
 						}
 					>
 						<button
@@ -609,9 +604,7 @@ export const QuickCaptureWidget = ({
 
 					<div
 						className={
-							heroDenseLayout
-								? "flex min-w-0 flex-col gap-1.5"
-								: "contents"
+							heroDenseLayout ? "flex min-w-0 flex-col gap-1.5" : "contents"
 						}
 					>
 						<Link
@@ -619,7 +612,8 @@ export const QuickCaptureWidget = ({
 							aria-label="Open chat"
 							className={`${actionTile} ${actionsDisabled || chatWorkspace == null ? "pointer-events-none opacity-45" : ""} ${heroDenseLayout ? "w-full" : ""}`}
 							onClick={(e) => {
-								if (actionsDisabled || chatWorkspace == null) e.preventDefault();
+								if (actionsDisabled || chatWorkspace == null)
+									e.preventDefault();
 								else handleBeforeNavigate();
 							}}
 							state={

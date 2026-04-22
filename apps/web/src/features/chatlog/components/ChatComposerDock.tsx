@@ -26,6 +26,7 @@ const IconThread = ({ className }: { className?: string }) => (
 		strokeWidth={1.75}
 		viewBox="0 0 24 24"
 	>
+		<title>Messages</title>
 		<path
 			d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-4 4v-4z"
 			strokeLinecap="round"
@@ -46,6 +47,7 @@ const IconCaptureSparkles = ({ className }: { className?: string }) => (
 		strokeWidth={2}
 		viewBox="0 0 24 24"
 	>
+		<title>Capture</title>
 		<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5a2 2 0 0 0 1.437 1.437l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
 		<path d="M20 3v4M19 5h4M5 19v2M4 20h2" />
 	</svg>

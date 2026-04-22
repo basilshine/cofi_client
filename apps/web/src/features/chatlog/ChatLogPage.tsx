@@ -17,8 +17,8 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useSetChatBreadcrumb } from "../../app/layout/ChatBreadcrumbContext";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
-import { WorkspaceSpaceSubNav } from "../../app/layout/workspaceSpaces/WorkspaceSpaceSubNav";
 import { WorkspaceRightSidebar } from "../../app/layout/workspaceSpaces/WorkspaceRightSidebar";
+import { WorkspaceSpaceSubNav } from "../../app/layout/workspaceSpaces/WorkspaceSpaceSubNav";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient, writeActiveOrgTenantId } from "../../shared/lib/apiClient";
@@ -33,10 +33,10 @@ import {
 	ChatComposerDock,
 	type ChatComposerMode,
 } from "./components/ChatComposerDock";
-import { ComposerHorizontalBar } from "./components/ComposerHorizontalBar";
-import { ComposerVoiceRecording } from "./components/ComposerVoiceRecording";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
+import { ComposerHorizontalBar } from "./components/ComposerHorizontalBar";
+import { ComposerVoiceRecording } from "./components/ComposerVoiceRecording";
 import {
 	isDraftExpenseSystemMessage,
 	isRecurringExpenseChatMessage,
@@ -2044,9 +2044,7 @@ export const ChatLogPage = () => {
 																	void handleToggleRecording()
 																}
 																parseInput={parseInput}
-																photoFileInputRef={
-																	quickCapturePhotoInputRef
-																}
+																photoFileInputRef={quickCapturePhotoInputRef}
 																parseTextareaRef={parseTextareaRef}
 																testSnippets={PARSE_DUMMY_TEST_SNIPPETS}
 															/>
@@ -2055,15 +2053,10 @@ export const ChatLogPage = () => {
 														disabled={isLoading || !selectedSpaceId}
 														interactionLocked={isRecording}
 														messageSlot={
-															isRecording &&
-															composerMode === "message" ? (
+															isRecording && composerMode === "message" ? (
 																<ComposerVoiceRecording
-																	disabled={
-																		isLoading || !selectedSpaceId
-																	}
-																	onStop={() =>
-																		void handleToggleRecording()
-																	}
+																	disabled={isLoading || !selectedSpaceId}
+																	onStop={() => void handleToggleRecording()}
 																/>
 															) : (
 																<div className="flex flex-col gap-2">

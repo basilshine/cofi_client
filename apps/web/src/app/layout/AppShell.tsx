@@ -1,7 +1,10 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { ChatBreadcrumbProvider } from "./ChatBreadcrumbContext";
 import { ConsoleBreadcrumbs } from "./ConsoleBreadcrumbs";
-import { ConsoleHeaderCenterProvider, useConsoleHeaderCenter } from "./ConsoleHeaderCenterContext";
+import {
+	ConsoleHeaderCenterProvider,
+	useConsoleHeaderCenter,
+} from "./ConsoleHeaderCenterContext";
 import { ConsoleUserMenu } from "./ConsoleUserMenu";
 import { ConsoleWorkspaceTheme } from "./ConsoleWorkspaceTheme";
 

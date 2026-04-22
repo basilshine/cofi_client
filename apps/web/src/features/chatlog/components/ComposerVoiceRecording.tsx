@@ -5,10 +5,7 @@ type Props = {
 	onStop: () => void;
 };
 
-export const ComposerVoiceRecording = ({
-	disabled = false,
-	onStop,
-}: Props) => {
+export const ComposerVoiceRecording = ({ disabled = false, onStop }: Props) => {
 	const reduceMotion = useReducedMotion();
 	const spring = reduceMotion
 		? { duration: 0.15 }
@@ -33,9 +30,7 @@ export const ComposerVoiceRecording = ({
 								key={i}
 								style={{ height: 32 }}
 								animate={
-									reduceMotion
-										? { scaleY: 0.6 }
-										: { scaleY: [0.35, 1, 0.35] }
+									reduceMotion ? { scaleY: 0.6 } : { scaleY: [0.35, 1, 0.35] }
 								}
 								transition={
 									reduceMotion
@@ -50,7 +45,9 @@ export const ComposerVoiceRecording = ({
 							/>
 						))}
 					</div>
-					<p className="text-xs text-muted-foreground">Tap stop when finished.</p>
+					<p className="text-xs text-muted-foreground">
+						Tap stop when finished.
+					</p>
 				</div>
 				<button
 					aria-label="Stop recording"
