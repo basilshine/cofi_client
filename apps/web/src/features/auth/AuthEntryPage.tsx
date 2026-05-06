@@ -88,6 +88,18 @@ export const AuthEntryPage = () => {
 	}, [searchParams]);
 
 	const returnTo = searchParams.get("returnTo");
+	const [entryNotice, setEntryNotice] = useState<string | null>(null);
+
+	const handleEntryProvider = useCallback((provider: AuthSocialProvider) => {
+		void provider;
+		if (isAuthSocialOAuthConfigured()) {
+			setEntryNotice(
+				"Social sign-in will continue from here once your workspace enables it.",
+			);
+			return;
+		}
+		setEntryNotice(authSocialPlaceholderMessage());
+	}, []);
 
 	useEffect(() => {
 		if (isLoading || !isAuthenticated) return;
@@ -121,19 +133,6 @@ export const AuthEntryPage = () => {
 	const inviteHint = searchParams.get("invite")?.trim();
 	const loginHref = buildAuthChildHref("/login", preserved);
 	const registerHref = buildAuthChildHref("/register", preserved);
-
-	const [entryNotice, setEntryNotice] = useState<string | null>(null);
-
-	const handleEntryProvider = useCallback((provider: AuthSocialProvider) => {
-		void provider;
-		if (isAuthSocialOAuthConfigured()) {
-			setEntryNotice(
-				"Social sign-in will continue from here once your workspace enables it.",
-			);
-			return;
-		}
-		setEntryNotice(authSocialPlaceholderMessage());
-	}, []);
 
 	return (
 		<div className="min-h-screen bg-[#F6F4EF] px-5 py-16 md:px-8 md:py-24">

@@ -10,7 +10,7 @@ import {
 } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
