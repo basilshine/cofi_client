@@ -15,9 +15,10 @@ if (target !== "marketing" && target !== "workspace") {
 }
 
 const script = target === "marketing" ? "build:marketing" : "build:web";
-const result = spawnSync("npm", ["run", script], {
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const result = spawnSync(npmCommand, ["run", script], {
 	stdio: "inherit",
-	shell: true,
+	shell: false,
 });
 
 process.exit(result.status ?? 1);

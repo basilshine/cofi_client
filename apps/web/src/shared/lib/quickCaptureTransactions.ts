@@ -55,6 +55,17 @@ export const parseVoiceInSpace = async (
 	};
 };
 
+export const parseTextInSpace = async (
+	spaceId: string | number,
+	text: string,
+): Promise<{ name: string; amount: number; tags?: string[] }[]> => {
+	const { data } = await httpClient.post<{ items?: ParsedApiItem[] }>(
+		`/api/v1/spaces/${String(spaceId)}/transactions/parse/text`,
+		{ text },
+	);
+	return mapParsedToManual(data?.items ?? []);
+};
+
 export const createManualDraftInSpace = async (
 	spaceId: string | number,
 	description: string,

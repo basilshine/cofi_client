@@ -1,0 +1,51 @@
+/** ISO 3166-1 alpha-2 codes (lowercase) for registration; aligned with profile expectations. */
+export const AUTH_COUNTRY_OPTIONS: readonly { code: string; label: string }[] =
+	[
+		{ code: "us", label: "United States" },
+		{ code: "gb", label: "United Kingdom" },
+		{ code: "ca", label: "Canada" },
+		{ code: "au", label: "Australia" },
+		{ code: "nz", label: "New Zealand" },
+		{ code: "ie", label: "Ireland" },
+		{ code: "de", label: "Germany" },
+		{ code: "fr", label: "France" },
+		{ code: "es", label: "Spain" },
+		{ code: "it", label: "Italy" },
+		{ code: "nl", label: "Netherlands" },
+		{ code: "be", label: "Belgium" },
+		{ code: "ch", label: "Switzerland" },
+		{ code: "at", label: "Austria" },
+		{ code: "se", label: "Sweden" },
+		{ code: "no", label: "Norway" },
+		{ code: "dk", label: "Denmark" },
+		{ code: "fi", label: "Finland" },
+		{ code: "pt", label: "Portugal" },
+		{ code: "pl", label: "Poland" },
+		{ code: "jp", label: "Japan" },
+		{ code: "kr", label: "South Korea" },
+		{ code: "in", label: "India" },
+		{ code: "sg", label: "Singapore" },
+		{ code: "ae", label: "United Arab Emirates" },
+		{ code: "br", label: "Brazil" },
+		{ code: "mx", label: "Mexico" },
+		{ code: "za", label: "South Africa" },
+	] as const;
+
+/** BCP 47 language tags commonly used in the product. */
+export const AUTH_LANGUAGE_OPTIONS: readonly { code: string; label: string }[] =
+	[
+		{ code: "en", label: "English" },
+		{ code: "es", label: "Spanish" },
+		{ code: "fr", label: "French" },
+		{ code: "de", label: "German" },
+		{ code: "it", label: "Italian" },
+		{ code: "pt", label: "Portuguese" },
+		{ code: "nl", label: "Dutch" },
+		{ code: "sv", label: "Swedish" },
+		{ code: "da", label: "Danish" },
+		{ code: "fi", label: "Finnish" },
+		{ code: "nb", label: "Norwegian" },
+		{ code: "ja", label: "Japanese" },
+		{ code: "ko", label: "Korean" },
+		{ code: "zh", label: "Chinese" },
+	] as const;

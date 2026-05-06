@@ -1,4 +1,5 @@
 import type { ExpenseSplitRow, StandardRecurringInterval } from "@cofi/api";
+import { ConfirmIcon, ReviewIcon, SplitExpenseIcon } from "@cofi/ceits-icons";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -7,7 +8,6 @@ import { apiClient } from "../../../shared/lib/apiClient";
 import { isNotFoundHttpError } from "../../../shared/lib/apiErrors";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
 import { httpClient } from "../../../shared/lib/httpClient";
-import { TransactionInlineActions } from "../../transactions/components/RecurringScheduleInlineActions";
 import { ExpenseItemRecurringControls } from "./ExpenseItemRecurringControls";
 import { ExpenseSplitDialog } from "./ExpenseSplitDialog";
 
@@ -46,6 +46,8 @@ export const DraftExpenseCard = ({
 	onOpenExpenseThread,
 	relatedExpenseStatusHint,
 	compact = false,
+	isSelected = false,
+	inspectorOpen = false,
 }: {
 	expenseId: string | number;
 	/** Required to attach web Chat context when saving a recurring schedule. */
@@ -62,10 +64,14 @@ export const DraftExpenseCard = ({
 	relatedExpenseStatusHint?: string;
 	/** Narrow summary; tap opens the workspace expense thread panel. */
 	compact?: boolean;
+	/** Chat-selected visual state when inspector is open for this expense. */
+	isSelected?: boolean;
+	/** Whether the shared inspector is currently open in chat. */
+	inspectorOpen?: boolean;
 }) => {
 	const navigate = useNavigate();
 	const { user } = useAuth();
-	const { formatMoney } = useUserFormat();
+	const { formatMoney, formatDateTime } = useUserFormat();
 	const [expense, setExpense] = useState<Expense | null>(null);
 	const [creatorLabel, setCreatorLabel] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -79,6 +85,8 @@ export const DraftExpenseCard = ({
 	>({});
 	const [splitDialogOpen, setSplitDialogOpen] = useState(false);
 	const [splitRows, setSplitRows] = useState<ExpenseSplitRow[] | null>(null);
+	const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+	const [showDangerActions, setShowDangerActions] = useState(false);
 
 	const total = useMemo(() => {
 		const items = expense?.items ?? [];
@@ -229,6 +237,7 @@ export const DraftExpenseCard = ({
 			setError(e instanceof Error ? e.message : "Failed to cancel draft");
 		} finally {
 			setIsActing(false);
+			setConfirmCancelOpen(false);
 		}
 	};
 
@@ -240,6 +249,7 @@ export const DraftExpenseCard = ({
 
 	useEffect(() => {
 		setIsCancelledExpanded(false);
+		setShowDangerActions(false);
 		if (
 			relatedExpenseStatusHint === "gone" ||
 			relatedExpenseStatusHint === "inaccessible"
@@ -304,6 +314,41 @@ export const DraftExpenseCard = ({
 				? "border-muted-foreground/30 bg-muted/50 opacity-90"
 				: "border-border bg-card",
 	].join(" ");
+	const cancelConfirmDialog = confirmCancelOpen ? (
+		<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4">
+			<div
+				aria-modal="true"
+				className="w-full max-w-md rounded-lg border border-border bg-card p-4 shadow-xl"
+				role="dialog"
+			>
+				<h3 className="text-sm font-semibold text-foreground">
+					Cancel draft expense?
+				</h3>
+				<p className="mt-2 text-sm text-muted-foreground">
+					This draft will be marked as cancelled and removed from active flows.
+					You can still view it in cancelled state.
+				</p>
+				<div className="mt-4 flex items-center justify-end gap-2">
+					<button
+						className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-accent disabled:opacity-50"
+						disabled={isActing}
+						onClick={() => setConfirmCancelOpen(false)}
+						type="button"
+					>
+						Keep draft
+					</button>
+					<button
+						className="inline-flex h-9 items-center rounded-md bg-destructive px-3 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+						disabled={isActing}
+						onClick={() => void handleCancel()}
+						type="button"
+					>
+						{isActing ? "Cancelling…" : "Cancel expense"}
+					</button>
+				</div>
+			</div>
+		</div>
+	) : null;
 
 	if (isCancelled && !isCancelledExpanded) {
 		return (
@@ -336,6 +381,7 @@ export const DraftExpenseCard = ({
 						Show details
 					</button>
 				</div>
+				{cancelConfirmDialog}
 			</div>
 		);
 	}
@@ -344,47 +390,76 @@ export const DraftExpenseCard = ({
 		const handleOpenPanel = () => {
 			onOpenExpenseThread(expense.id);
 		};
-		const previewRows = items.slice(0, 10);
+		const previewRows = items.slice(0, 3);
 		const moreCount = items.length - previewRows.length;
 
 		const chatToolbarBtn =
-			"inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 sm:h-9";
+			"inline-flex h-7 items-center justify-center rounded-md border px-2.5 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-50 sm:h-8";
+		const rawStatus = (expense.status ?? "").toLowerCase();
+		const isApproved = rawStatus === "approved";
+		const isNeedsReview = !isDraft && !isApproved;
+		const compactCardTone = isDraft
+			? "border-amber-300/40 bg-[linear-gradient(180deg,#fffaf1_0%,#fff6ea_100%)] ring-amber-300/30"
+			: isApproved
+				? "border-emerald-300/40 bg-[linear-gradient(180deg,#f5fbf6_0%,#eff8f1_100%)] ring-emerald-300/25"
+				: "border-amber-200/45 bg-[linear-gradient(180deg,#fff9ef_0%,#fdf3dd_100%)] ring-amber-200/30";
+		const statusLabel = isDraft
+			? "Draft"
+			: isApproved
+				? "Approved"
+				: "Needs review";
+		const sourceLabel = isDraft
+			? "Ceits parsed this"
+			: isNeedsReview
+				? "Needs agreement"
+				: "Ceits saved this";
+		const selectedInInspector = inspectorOpen && isSelected;
+		const canReviewFlow = isDraft || isNeedsReview;
+		const handleReview = () => {
+			if (canReviewFlow) {
+				window.location.assign(
+					`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`,
+				);
+				return;
+			}
+			handleOpenPanel();
+		};
 
 		return (
-			<div className="w-full min-w-0 max-w-full space-y-2">
+			<div className="w-full min-w-0 max-w-full">
 				<div
-					className={`${cardClassName} space-y-2.5 shadow-sm ring-1 ring-border/10`}
+					className={`space-y-1.5 rounded-xl border px-2.5 py-2 shadow-sm ${compactCardTone} ${
+						isSelected
+							? "border-[rgba(120,98,62,0.42)] bg-[linear-gradient(180deg,#fffbf3_0%,#f8efe2_100%)] shadow-[0_4px_12px_-10px_rgba(70,55,30,0.42)]"
+							: ""
+					}`}
 				>
-					<div className="flex flex-wrap items-start justify-between gap-2">
-						<div className="min-w-0">
-							<div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-								{isDraft
-									? "Draft expense"
-									: `Expense · ${expense.status ?? "posted"}`}
+					<div className="flex items-start justify-between gap-2">
+						<div className="min-w-0 flex-1">
+							<div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+								<span>{sourceLabel}</span>
+								<span>·</span>
+								<span>{statusLabel}</span>
 							</div>
-							<div className="mt-0.5 text-sm font-semibold leading-snug text-foreground">
-								{expense.description?.trim() || "Draft transaction"}
+							<div className="mt-1 flex items-start justify-between gap-3">
+								<div className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
+									{expense.description?.trim() || "Draft transaction"}
+								</div>
+								<div className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+									{formatMoney(total)}
+								</div>
 							</div>
-							<div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-								<span>
-									Total{" "}
-									<span className="font-semibold tabular-nums text-foreground">
-										{formatMoney(total)}
-									</span>
-								</span>
-								{isDraft &&
-								yourShareAmount != null &&
-								!Number.isNaN(yourShareAmount) ? (
-									<span>
-										Your share{" "}
-										<span className="font-semibold tabular-nums text-foreground">
-											{formatMoney(yourShareAmount)}
-										</span>
-									</span>
+							<div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+								<span>{itemCount} items</span>
+								{creatorLabel ? <span>· {creatorLabel}</span> : null}
+								<span>· {statusLabel}</span>
+								{!isDraft && isApproved ? (
+									<span>· Updated after confirmation</span>
 								) : null}
-								{creatorLabel ? (
-									<span className="text-[10px]">
-										{creatorLabel === "You" ? "You" : `By ${creatorLabel}`}
+								{expense.created_at ? (
+									<span>
+										· {isDraft ? "Parsed" : "Saved"}{" "}
+										{formatDateTime(expense.created_at)}
 									</span>
 								) : null}
 							</div>
@@ -392,119 +467,137 @@ export const DraftExpenseCard = ({
 					</div>
 
 					{previewRows.length > 0 ? (
-						<div className="overflow-hidden rounded-lg border border-border/70 bg-muted/25">
-							<table className="w-full min-w-0 border-collapse text-left text-[11px]">
-								<thead>
-									<tr className="border-b border-border/60 bg-muted/60">
-										<th
-											className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-											scope="col"
-										>
-											Line
-										</th>
-										<th
-											className="px-2.5 py-1.5 text-right text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-											scope="col"
-										>
-											Amount
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									{previewRows.map((it) => (
-										<tr
-											className="border-b border-border/40 last:border-b-0"
-											key={it.id}
-										>
-											<td className="max-w-[14rem] px-2.5 py-1.5 font-medium text-foreground">
-												<span className="line-clamp-2">{it.name}</span>
-											</td>
-											<td className="whitespace-nowrap px-2.5 py-1.5 text-right tabular-nums text-muted-foreground">
-												{formatMoney(it.amount)}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
+						<div className="space-y-0.5 rounded-lg bg-[rgba(255,255,255,0.34)] px-2 py-1.5">
+							<div className="space-y-0.5">
+								{previewRows.map((it) => (
+									<div
+										className="flex items-center justify-between gap-2 rounded-md px-1 py-0.5 text-[11px] text-foreground/90 transition-colors hover:bg-[rgba(120,100,80,0.06)]"
+										key={it.id}
+									>
+										<span className="line-clamp-1 min-w-0 flex-1">
+											{it.name}
+										</span>
+										<span className="shrink-0 tabular-nums text-muted-foreground">
+											{formatMoney(it.amount)}
+										</span>
+									</div>
+								))}
+							</div>
 							{moreCount > 0 ? (
-								<div className="border-t border-border/50 bg-muted/40 px-2.5 py-1.5 text-[10px] text-muted-foreground">
-									+{moreCount} more line{moreCount === 1 ? "" : "s"} — use
-									Review for full detail
+								<div className="px-1 pt-0.5 text-[10px] text-muted-foreground underline decoration-dotted underline-offset-2">
+									+{moreCount} more line{moreCount === 1 ? "" : "s"}
 								</div>
 							) : null}
 						</div>
 					) : (
-						<p className="rounded-md border border-dashed border-border/80 bg-muted/20 px-2.5 py-2 text-[11px] text-muted-foreground">
+						<p className="rounded-md border border-dashed border-[rgba(120,100,80,0.22)] bg-[rgba(255,255,255,0.48)] px-2.5 py-2 text-[11px] text-muted-foreground">
 							No line items on this expense yet.
 						</p>
 					)}
 				</div>
-
-				<div className="space-y-2 border-t border-border/40 pt-2">
-					<div
-						aria-label="Expense actions"
-						className="flex flex-wrap items-center gap-2"
-						role="group"
+				<div
+					aria-label="Expense actions"
+					className="mt-1 flex flex-wrap items-center gap-1.5"
+					role="group"
+				>
+					<button
+						aria-label={
+							canReviewFlow && !selectedInInspector
+								? "Open review flow for this expense"
+								: "Open expense inspector"
+						}
+						className={`${chatToolbarBtn} inline-flex items-center gap-1 border-border bg-background hover:bg-accent`}
+						onClick={selectedInInspector ? handleOpenPanel : handleReview}
+						type="button"
 					>
-						<button
-							className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-							onClick={handleOpenPanel}
-							type="button"
-						>
-							{isDraft ? "Review & edit" : "Open"}
-						</button>
-						{isDraft ? (
-							<>
-								<button
-									aria-label="Split expense between space members"
-									className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-									disabled={isActing}
-									onClick={() => setSplitDialogOpen(true)}
-									type="button"
-								>
-									Split
-								</button>
-								<button
-									aria-label="Confirm draft expense"
-									className={`${chatToolbarBtn} border-primary bg-primary text-primary-foreground hover:bg-primary/90`}
-									disabled={isActing}
-									onClick={() => void handleConfirm()}
-									type="button"
-								>
-									{isActing ? "…" : "Confirm"}
-								</button>
+						<ReviewIcon className="h-3.5 w-3.5 shrink-0 opacity-90" size={14} />
+						{canReviewFlow && !selectedInInspector ? "Review" : "View"}
+					</button>
+					{isDraft && !selectedInInspector ? (
+						<>
+							<button
+								aria-label="Split expense between space members"
+								className={`${chatToolbarBtn} inline-flex items-center gap-1 border-border bg-background hover:bg-accent`}
+								disabled={isActing}
+								onClick={() => setSplitDialogOpen(true)}
+								type="button"
+							>
+								<SplitExpenseIcon
+									className="h-3.5 w-3.5 shrink-0 opacity-90"
+									size={14}
+								/>
+								Split
+							</button>
+							<button
+								aria-label="Confirm draft expense"
+								className={`${chatToolbarBtn} inline-flex items-center gap-1 border-primary bg-primary text-primary-foreground hover:bg-primary/90`}
+								disabled={isActing}
+								onClick={() => void handleConfirm()}
+								type="button"
+							>
+								{isActing ? (
+									"…"
+								) : (
+									<>
+										<ConfirmIcon
+											className="h-3.5 w-3.5 shrink-0 text-primary-foreground"
+											positiveColor="hsl(var(--primary-foreground))"
+											size={14}
+										/>
+										Confirm
+									</>
+								)}
+							</button>
+							<button
+								aria-expanded={showDangerActions}
+								aria-label="Toggle more actions"
+								className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
+								onClick={() => setShowDangerActions((v) => !v)}
+								type="button"
+							>
+								More
+							</button>
+							{showDangerActions ? (
 								<button
 									aria-label="Cancel draft expense"
 									className={`${chatToolbarBtn} border-destructive/35 bg-background text-destructive hover:bg-destructive/10`}
 									disabled={isActing}
-									onClick={() => void handleCancel()}
+									onClick={() => setConfirmCancelOpen(true)}
 									type="button"
 								>
 									{isActing ? "…" : "Cancel"}
 								</button>
-							</>
-						) : null}
-					</div>
-					{!isDraft && !isCancelled ? (
-						<div className="rounded-lg border border-border/60 bg-muted/20 p-2">
-							<div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-								Posting actions
-							</div>
-							<TransactionInlineActions
-								className="!space-y-1.5"
-								expenseId={expense.id}
-								onAfterChange={() => void handleLoad()}
-								onResourceGone={onExpenseOrphaned}
-								recurringId={
-									expense.recurring_id != null &&
-									Number(expense.recurring_id) > 0
-										? Number(expense.recurring_id)
-										: undefined
-								}
-								recurringPaused={expense.recurring_paused}
-							/>
-						</div>
-					) : null}
+							) : null}
+						</>
+					) : !selectedInInspector ? (
+						<>
+							<button
+								aria-label="Review split details"
+								className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
+								onClick={handleOpenPanel}
+								type="button"
+							>
+								Split
+							</button>
+							<button
+								aria-label="Open more expense options"
+								className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
+								onClick={handleOpenPanel}
+								type="button"
+							>
+								More
+							</button>
+						</>
+					) : (
+						<button
+							aria-label="Open more expense options"
+							className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
+							onClick={handleOpenPanel}
+							type="button"
+						>
+							More
+						</button>
+					)}
 				</div>
 
 				{successMessage ? (
@@ -533,6 +626,7 @@ export const DraftExpenseCard = ({
 					open={splitDialogOpen}
 					spaceId={spaceId}
 				/>
+				{cancelConfirmDialog}
 			</div>
 		);
 	}
@@ -618,32 +712,58 @@ export const DraftExpenseCard = ({
 							{spaceId != null ? (
 								<button
 									aria-label="Split expense between space members"
-									className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-semibold hover:bg-accent disabled:opacity-50"
+									className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold hover:bg-accent disabled:opacity-50"
 									disabled={isActing}
 									onClick={() => setSplitDialogOpen(true)}
 									type="button"
 								>
+									<SplitExpenseIcon
+										className="h-3.5 w-3.5 shrink-0 opacity-90"
+										size={14}
+									/>
 									Split
 								</button>
 							) : null}
 							<button
 								aria-label="Confirm draft expense"
-								className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+								className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground disabled:opacity-50"
 								disabled={isActing}
 								onClick={() => void handleConfirm()}
 								type="button"
 							>
-								{isActing ? "…" : "Confirm"}
+								{isActing ? (
+									"…"
+								) : (
+									<>
+										<ConfirmIcon
+											className="h-3.5 w-3.5 shrink-0 text-primary-foreground"
+											positiveColor="hsl(var(--primary-foreground))"
+											size={14}
+										/>
+										Confirm
+									</>
+								)}
 							</button>
 							<button
-								aria-label="Cancel draft expense"
+								aria-expanded={showDangerActions}
+								aria-label="Toggle more actions"
 								className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-semibold hover:bg-accent disabled:opacity-50"
-								disabled={isActing}
-								onClick={() => void handleCancel()}
+								onClick={() => setShowDangerActions((v) => !v)}
 								type="button"
 							>
-								{isActing ? "…" : "Cancel"}
+								More
 							</button>
+							{showDangerActions ? (
+								<button
+									aria-label="Cancel draft expense"
+									className="inline-flex h-9 items-center rounded-md border border-destructive/35 px-3 text-xs font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50"
+									disabled={isActing}
+									onClick={() => setConfirmCancelOpen(true)}
+									type="button"
+								>
+									{isActing ? "…" : "Cancel"}
+								</button>
+							) : null}
 						</>
 					) : (
 						<>
@@ -657,21 +777,6 @@ export const DraftExpenseCard = ({
 								>
 									Hide details
 								</button>
-							) : null}
-							{expense && !isDraft && !isCancelled ? (
-								<TransactionInlineActions
-									className="max-w-[14rem]"
-									expenseId={expense.id}
-									onAfterChange={() => void handleLoad()}
-									onResourceGone={onExpenseOrphaned}
-									recurringId={
-										expense.recurring_id != null &&
-										Number(expense.recurring_id) > 0
-											? Number(expense.recurring_id)
-											: undefined
-									}
-									recurringPaused={expense.recurring_paused}
-								/>
 							) : null}
 						</>
 					)}
@@ -771,6 +876,7 @@ export const DraftExpenseCard = ({
 					spaceId={spaceId}
 				/>
 			) : null}
+			{cancelConfirmDialog}
 		</div>
 	);
 };

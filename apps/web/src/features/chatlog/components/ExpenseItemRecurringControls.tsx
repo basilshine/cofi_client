@@ -36,7 +36,6 @@ export const ExpenseItemRecurringControls = ({
 	idPrefix,
 	variant = "default",
 }: Props) => {
-	const cbId = `${idPrefix}-recurring-cb`;
 	const selId = `${idPrefix}-recurring-interval`;
 	const intervals = recurringIntervalChoices();
 	const testIntervalsVisible = showTestRecurringIntervals();
@@ -46,32 +45,34 @@ export const ExpenseItemRecurringControls = ({
 		<div
 			className={
 				isThread
-					? "mt-2 flex flex-col gap-2 border-t border-border/60 pt-2"
+					? "mt-2 rounded-lg border border-primary/20 bg-primary/[0.04] p-2.5"
 					: "mt-2 flex flex-col gap-2 border-t border-border/60 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
 			}
 		>
-			<div className="flex min-w-0 items-start gap-2">
-				<input
-					aria-describedby={`${cbId}-hint`}
-					checked={enabled}
-					className="mt-0.5 h-4 w-4 shrink-0 rounded border-border"
-					disabled={disabled}
-					id={cbId}
-					onChange={(e) => onEnabledChange(e.target.checked)}
-					type="checkbox"
-				/>
-				<label
+			<div className="flex min-w-0 items-center justify-between gap-2">
+				<div className="min-w-0">
+					<p className="text-[11px] font-semibold text-foreground">
+						Recurring for this line
+					</p>
+					<p className="text-[10px] text-muted-foreground">
+						Create schedule after draft confirmation.
+					</p>
+				</div>
+				<button
+					aria-pressed={enabled}
 					className={
-						isThread
-							? "min-w-0 flex-1 text-[11px] font-medium leading-snug text-foreground"
-							: "text-[11px] font-medium text-foreground"
+						enabled
+							? "inline-flex h-8 items-center rounded-md border border-primary/50 bg-primary/15 px-3 text-[11px] font-semibold text-primary transition hover:bg-primary/20 disabled:opacity-50"
+							: "inline-flex h-8 items-center rounded-md border border-border bg-background px-3 text-[11px] font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-50"
 					}
-					htmlFor={cbId}
+					disabled={disabled}
+					onClick={() => onEnabledChange(!enabled)}
+					type="button"
 				>
-					Recurring for this line
-				</label>
+					{enabled ? "Enabled" : "Enable"}
+				</button>
 			</div>
-			<p className="sr-only" id={`${cbId}-hint`}>
+			<p className="sr-only" id={`${idPrefix}-recurring-hint`}>
 				When checked, a repeating schedule is created for this line only after
 				you confirm the draft.
 			</p>
@@ -79,7 +80,7 @@ export const ExpenseItemRecurringControls = ({
 				<div
 					className={
 						isThread
-							? "flex min-w-0 flex-col gap-1.5"
+							? "mt-2 flex min-w-0 flex-col gap-1.5"
 							: "flex min-w-0 flex-col gap-1 sm:flex-1"
 					}
 				>
@@ -96,7 +97,7 @@ export const ExpenseItemRecurringControls = ({
 							aria-label="Recurring interval for this line"
 							className={
 								isThread
-									? "h-9 w-full min-w-0 rounded-md border border-border bg-background px-2 text-xs"
+									? "h-9 w-full min-w-0 rounded-md border border-border bg-background px-2 text-xs shadow-sm"
 									: "h-8 max-w-[14rem] rounded-md border border-border bg-background px-2 text-xs"
 							}
 							disabled={disabled}

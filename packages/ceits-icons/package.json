@@ -1,0 +1,23 @@
+{
+	"name": "@cofi/ceits-icons",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Ceits product iconography as React SVG components (shared across web, marketing, Telegram, etc.)",
+	"main": "src/index.ts",
+	"types": "src/index.ts",
+	"exports": {
+		".": {
+			"types": "./src/index.ts",
+			"default": "./src/index.ts"
+		}
+	},
+	"peerDependencies": {
+		"react": "^18.0.0"
+	},
+	"peerDependenciesMeta": {
+		"react": {
+			"optional": false
+		}
+	}
+}

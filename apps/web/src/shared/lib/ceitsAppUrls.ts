@@ -39,6 +39,13 @@ export const ceitsSpaceExpenseAddUrl = (
 	return `${base}/spaces/${encodeURIComponent(String(spaceId))}/expenses/add`;
 };
 
+/** Join landing page with a space/tenant invite token (share this from invite emails). */
+export const ceitsInviteJoinUrl = (token: string): string | null => {
+	const base = getCeitsAppBaseUrl();
+	if (!base) return null;
+	return `${base}/join?token=${encodeURIComponent(token)}`;
+};
+
 export const ceitsSpaceExpenseEditUrl = (
 	spaceId: string | number,
 	expenseId: string | number,

@@ -230,6 +230,12 @@ export const ReviewQueuePanel = ({
 	formatCurrencyAmount: (amount: number, cur: string) => string;
 	formatDateLabel: (iso: string) => string;
 }): ReactNode => {
+	const firstApproval = queue.items.find(isExpenseThreadApprovalItem);
+	const reviewFlowHref =
+		firstApproval != null
+			? `/console/review?spaceId=${encodeURIComponent(String(firstApproval.space_id))}`
+			: "/console/review";
+
 	if (queue.total_count > 0 && queue.items.length === 0) {
 		return (
 			<div className="space-y-2 text-sm text-[hsl(var(--text-secondary))]">
@@ -252,22 +258,30 @@ export const ReviewQueuePanel = ({
 	}
 
 	return (
-		<ul className="space-y-2">
-			{queue.items.map((item) => (
-				<li
-					className="rounded-md border border-[hsl(var(--border-subtle))] px-3 py-2"
-					key={reviewQueueItemKey(item)}
-				>
-					{reviewItemBody(
-						item,
-						chatNavState,
-						formatCurrencyAmount,
-						formatDateLabel,
-						currency,
-					)}
-				</li>
-			))}
-		</ul>
+		<div className="space-y-2.5">
+			<Link
+				className="inline-flex rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface-muted))]/55 px-2.5 py-1 text-xs font-medium text-[hsl(var(--text-primary))] transition hover:bg-[hsl(var(--surface-muted))]"
+				to={reviewFlowHref}
+			>
+				Open Ceits Review Flow
+			</Link>
+			<ul className="space-y-2">
+				{queue.items.map((item) => (
+					<li
+						className="rounded-md border border-[hsl(var(--border-subtle))] px-3 py-2"
+						key={reviewQueueItemKey(item)}
+					>
+						{reviewItemBody(
+							item,
+							chatNavState,
+							formatCurrencyAmount,
+							formatDateLabel,
+							currency,
+						)}
+					</li>
+				))}
+			</ul>
+		</div>
 	);
 };
 

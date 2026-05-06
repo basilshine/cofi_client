@@ -61,14 +61,18 @@ export const useConsoleHeaderTitle = (
 		const space = spaceName?.trim();
 		setCenter(
 			<div className="min-w-0 max-w-[min(100vw-10rem,36rem)] text-center">
-				<p className="truncate font-display text-base font-normal tracking-tight text-foreground md:text-lg">
-					{pageLabel}
+				<p className="truncate font-display text-base font-bold tracking-tight text-foreground md:text-lg">
 					{space ? (
-						<span className="font-normal text-muted-foreground">
-							{" "}
-							· {space}
-						</span>
-					) : null}
+						<>
+							<span className="text-foreground">{space}</span>
+							<span className="mx-1.5 text-muted-foreground/60">·</span>
+							<span className="font-normal text-muted-foreground">
+								{pageLabel}
+							</span>
+						</>
+					) : (
+						pageLabel
+					)}
 				</p>
 			</div>,
 		);

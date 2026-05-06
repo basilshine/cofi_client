@@ -3,10 +3,14 @@ import { tokenStorage } from "./tokenStorage";
 
 const toWsBaseUrl = (apiBaseUrl: string) => {
 	const trimmed = apiBaseUrl.trim().replace(/\/+$/, "");
-	if (trimmed.startsWith("https://"))
-		return trimmed.replace(/^https:\/\//, "wss://");
-	if (trimmed.startsWith("http://"))
-		return trimmed.replace(/^http:\/\//, "ws://");
+	try {
+		const url = new URL(trimmed);
+		if (url.protocol === "https:") url.protocol = "wss:";
+		else if (url.protocol === "http:") url.protocol = "ws:";
+		return url.toString().replace(/\/+$/, "");
+	} catch {
+		// If it's not a full URL, return as-is and let caller-provided WS URL handle local/dev.
+	}
 	return trimmed;
 };
 

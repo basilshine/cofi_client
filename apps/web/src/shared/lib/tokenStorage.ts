@@ -9,10 +9,13 @@ export type AuthProfile = {
 	label: string; // usually email, but can be any human label
 	email?: string;
 	userId?: number;
-	accessToken: string;
-	refreshToken?: string | null;
 	createdAt: number;
 	lastUsedAt: number;
+};
+
+type LegacyAuthProfile = AuthProfile & {
+	accessToken?: string;
+	refreshToken?: string | null;
 };
 
 const readJson = <T>(key: string): T | null => {
@@ -35,6 +38,17 @@ const makeProfileId = () => {
 	return `p_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 };
 
+const sanitizeProfiles = (profiles: LegacyAuthProfile[]): AuthProfile[] => {
+	return profiles.map((profile) => ({
+		id: profile.id,
+		label: profile.label,
+		email: profile.email,
+		userId: profile.userId,
+		createdAt: profile.createdAt,
+		lastUsedAt: profile.lastUsedAt,
+	}));
+};
+
 export const tokenStorage = {
 	getToken: () => localStorage.getItem(TOKEN_KEY),
 	setToken: (token: string | null) => {
@@ -53,7 +67,12 @@ export const tokenStorage = {
 		localStorage.setItem(REFRESH_TOKEN_KEY, token);
 	},
 	listProfiles: (): AuthProfile[] => {
-		return readJson<AuthProfile[]>(PROFILES_KEY) ?? [];
+		const raw = readJson<LegacyAuthProfile[]>(PROFILES_KEY) ?? [];
+		const sanitized = sanitizeProfiles(raw);
+		if (JSON.stringify(raw) !== JSON.stringify(sanitized)) {
+			writeJson(PROFILES_KEY, sanitized);
+		}
+		return sanitized;
 	},
 	getActiveProfileId: (): string | null =>
 		localStorage.getItem(ACTIVE_PROFILE_ID_KEY),
@@ -73,8 +92,6 @@ export const tokenStorage = {
 		label: string;
 		email?: string;
 		userId?: number;
-		accessToken: string;
-		refreshToken?: string | null;
 	}) => {
 		const now = Date.now();
 		const existing = tokenStorage
@@ -91,8 +108,6 @@ export const tokenStorage = {
 					label: input.label,
 					email: input.email ?? existing.email,
 					userId: input.userId ?? existing.userId,
-					accessToken: input.accessToken,
-					refreshToken: input.refreshToken ?? existing.refreshToken ?? null,
 					lastUsedAt: now,
 				}
 			: {
@@ -100,8 +115,6 @@ export const tokenStorage = {
 					label: input.label,
 					email: input.email,
 					userId: input.userId,
-					accessToken: input.accessToken,
-					refreshToken: input.refreshToken ?? null,
 					createdAt: now,
 					lastUsedAt: now,
 				};
@@ -114,8 +127,6 @@ export const tokenStorage = {
 
 		writeJson(PROFILES_KEY, profiles);
 		tokenStorage.setActiveProfileId(next.id);
-		tokenStorage.setToken(next.accessToken);
-		tokenStorage.setRefreshToken(next.refreshToken ?? null);
 		return next;
 	},
 	activateProfile: (profileId: string) => {
@@ -133,8 +144,6 @@ export const tokenStorage = {
 		);
 
 		tokenStorage.setActiveProfileId(profileId);
-		tokenStorage.setToken(updated.accessToken);
-		tokenStorage.setRefreshToken(updated.refreshToken ?? null);
 		return updated;
 	},
 	removeProfile: (profileId: string) => {
@@ -145,10 +154,7 @@ export const tokenStorage = {
 		const activeId = tokenStorage.getActiveProfileId();
 		if (activeId === profileId) {
 			tokenStorage.setActiveProfileId(nextProfiles[0]?.id ?? null);
-			if (nextProfiles[0]) {
-				tokenStorage.setToken(nextProfiles[0].accessToken);
-				tokenStorage.setRefreshToken(nextProfiles[0].refreshToken ?? null);
-			} else {
+			if (!nextProfiles[0]) {
 				tokenStorage.clear();
 			}
 		}

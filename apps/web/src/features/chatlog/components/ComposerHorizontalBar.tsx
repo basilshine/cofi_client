@@ -1,3 +1,4 @@
+import { ParseStructureIcon, VoiceCaptureIcon } from "@cofi/ceits-icons";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Ref, RefObject } from "react";
 import {
@@ -7,7 +8,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { MicIcon, ParseSubmitIcon, SendMessageIcon } from "./ComposerIcons";
+import { SendMessageIcon } from "./ComposerIcons";
 
 const LONG_PRESS_MS = 520;
 const TEXTAREA_MAX_PX = 96;
@@ -267,12 +268,12 @@ export const ComposerHorizontalBar = ({
 				>
 					{hasText ? (
 						variant === "parse" ? (
-							<ParseSubmitIcon className="h-4 w-4" />
+							<ParseStructureIcon className="h-4 w-4" size={16} />
 						) : (
 							<SendMessageIcon className="h-4 w-4" />
 						)
 					) : (
-						<MicIcon className="h-4 w-4" />
+						<VoiceCaptureIcon className="h-4 w-4" size={16} />
 					)}
 				</button>
 				<AnimatePresence>

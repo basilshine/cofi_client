@@ -12,11 +12,16 @@ export const TransactionsPage = () => {
 			? Number(spaceIdRaw)
 			: undefined;
 
+	const to =
+		selectSpaceId != null
+			? `/console/chat/expenses?spaceId=${encodeURIComponent(String(selectSpaceId))}`
+			: "/console/chat/expenses";
+
 	return (
 		<Navigate
 			replace
 			state={selectSpaceId != null ? { selectSpaceId } : undefined}
-			to="/console/chat/expenses"
+			to={to}
 		/>
 	);
 };

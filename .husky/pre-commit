@@ -1,3 +1,10 @@
 #!/bin/sh
 npx biome format . --write
 npx biome check .
+
+if ! command -v semgrep >/dev/null 2>&1; then
+	echo "Semgrep is required for pre-commit security checks. Install from https://semgrep.dev/docs/getting-started/"
+	exit 1
+fi
+
+npm run security:scan

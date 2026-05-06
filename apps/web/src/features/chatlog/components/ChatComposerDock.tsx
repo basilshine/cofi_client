@@ -1,3 +1,4 @@
+import { ParseStructureIcon, ThreadDiscussionIcon } from "@cofi/ceits-icons";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { ReactNode } from "react";
 
@@ -15,43 +16,7 @@ type ChatComposerDockProps = {
 };
 
 /** Always merged with color classes so flex tabs never stretch icons to 71px. */
-const iconTabBase = "size-3.5 shrink-0";
-
-const IconThread = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={`${iconTabBase} ${className ?? ""}`}
-		fill="none"
-		stroke="currentColor"
-		strokeWidth={1.75}
-		viewBox="0 0 24 24"
-	>
-		<title>Messages</title>
-		<path
-			d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-4 4v-4z"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-	</svg>
-);
-
-/** Sparkles — smart capture (expense lines, not a receipt glyph). */
-const IconCaptureSparkles = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={`${iconTabBase} ${className ?? ""}`}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth={2}
-		viewBox="0 0 24 24"
-	>
-		<title>Capture</title>
-		<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5a2 2 0 0 0 1.437 1.437l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-		<path d="M20 3v4M19 5h4M5 19v2M4 20h2" />
-	</svg>
-);
+const iconTabClass = "size-3.5 shrink-0";
 
 export const ChatComposerDock = ({
 	composerMode,
@@ -78,7 +43,7 @@ export const ChatComposerDock = ({
 
 	return (
 		<motion.div
-			className="relative shrink-0 overflow-hidden border-t border-border/50 bg-gradient-to-b from-card/98 via-card/95 to-background/90 shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.18)] backdrop-blur-md dark:from-background/95 dark:via-background/90 dark:to-background/85"
+			className="relative shrink-0 overflow-hidden border-t border-[rgba(120,100,80,0.2)] bg-gradient-to-b from-card/98 via-card/96 to-background/92 shadow-[0_-10px_26px_-18px_rgba(0,0,0,0.2)] backdrop-blur-md dark:from-background/95 dark:via-background/90 dark:to-background/85"
 			initial={reduceMotion ? false : { opacity: 0.92, y: 10 }}
 			animate={{ opacity: 1, y: 0 }}
 			transition={spring}
@@ -114,7 +79,7 @@ export const ChatComposerDock = ({
 					{showModeToggle ? (
 						<div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
 							<p className="text-xs text-muted-foreground">
-								Chat and expenses share one thread — switch mode here.
+								Messages or Capture
 							</p>
 
 							<div className="relative w-full sm:w-[min(100%,20rem)] sm:shrink-0">
@@ -141,12 +106,13 @@ export const ChatComposerDock = ({
 										role="tab"
 										type="button"
 									>
-										<IconThread
+										<ThreadDiscussionIcon
 											className={
 												composerMode === "message"
-													? "text-primary"
-													: "text-muted-foreground"
+													? `${iconTabClass} text-primary`
+													: `${iconTabClass} text-muted-foreground opacity-90`
 											}
+											size={14}
 										/>
 										<span
 											className={
@@ -166,12 +132,13 @@ export const ChatComposerDock = ({
 										role="tab"
 										type="button"
 									>
-										<IconCaptureSparkles
+										<ParseStructureIcon
 											className={
 												composerMode === "capture"
-													? "text-amber-600 dark:text-amber-400"
-													: "text-muted-foreground"
+													? `${iconTabClass} text-[hsl(var(--ceits-icon-primary))]`
+													: `${iconTabClass} text-muted-foreground opacity-85`
 											}
+											size={14}
 										/>
 										<span
 											className={

@@ -2,6 +2,11 @@ import type {
 	ProfileUpdateRequest,
 	User,
 } from "../../../../../packages/api/src/types";
+import {
+	authSessionStore,
+	isCookieRefreshEnabled,
+	warnLegacyTokenStorageIfNeeded,
+} from "../../shared/lib/authSessionStore";
 import { httpClient } from "../../shared/lib/httpClient";
 import { tokenStorage } from "../../shared/lib/tokenStorage";
 
@@ -38,9 +43,15 @@ export const authApi = {
 			label: res.data.user.email ?? payload.email,
 			email: res.data.user.email ?? payload.email,
 			userId: res.data.user.id,
-			accessToken: res.data.token,
-			refreshToken: res.data.refreshToken ?? res.data.refresh_token ?? null,
 		});
+		const nextRt = res.data.refreshToken ?? res.data.refresh_token ?? null;
+		if (isCookieRefreshEnabled) {
+			tokenStorage.setRefreshToken(null);
+		} else {
+			tokenStorage.setRefreshToken(nextRt);
+		}
+		authSessionStore.setAccessToken(res.data.token);
+		warnLegacyTokenStorageIfNeeded();
 		return res.data;
 	},
 	register: async (payload: RegisterRequest) => {
@@ -66,29 +77,40 @@ export const authApi = {
 	},
 	refresh: async () => {
 		const rt = tokenStorage.getRefreshToken();
-		if (!rt) {
+		if (!rt && !isCookieRefreshEnabled) {
 			throw new Error("No refresh token");
 		}
-		const res = await httpClient.post<AuthResponse>("/api/v1/auth/refresh", {
-			refresh_token: rt,
-		});
+		const res = await httpClient.post<AuthResponse>(
+			"/api/v1/auth/refresh",
+			isCookieRefreshEnabled ? {} : { refresh_token: rt },
+			isCookieRefreshEnabled ? { withCredentials: true } : undefined,
+		);
 		const access = res.data.token;
 		const nextRt = res.data.refreshToken ?? res.data.refresh_token ?? null;
+		authSessionStore.setAccessToken(access);
 		tokenStorage.setToken(access);
-		tokenStorage.setRefreshToken(nextRt);
+		if (isCookieRefreshEnabled) {
+			tokenStorage.setRefreshToken(null);
+		} else {
+			tokenStorage.setRefreshToken(nextRt);
+		}
 		const active = tokenStorage.getActiveProfile();
 		if (active) {
 			tokenStorage.upsertProfile({
 				label: active.label,
 				email: active.email,
 				userId: active.userId,
-				accessToken: access,
-				refreshToken: nextRt,
 			});
 		}
 		return res.data;
 	},
 	logout: () => {
+		void httpClient.post(
+			"/api/v1/auth/logout",
+			{},
+			isCookieRefreshEnabled ? { withCredentials: true } : undefined,
+		);
+		authSessionStore.clear();
 		tokenStorage.clear();
 	},
 };

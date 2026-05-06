@@ -130,7 +130,7 @@ export const SwitchOrganizationDialog = ({
 			label,
 		});
 		onOpenChange(false);
-		void navigate("/console/dashboard", { replace: true });
+		void navigate("/console/home", { replace: true });
 	};
 
 	return (

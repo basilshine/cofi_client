@@ -26,6 +26,12 @@ const parseThreadDeepLink = (
 	}
 };
 
+export type ThreadDeepLink = {
+	spaceId: string;
+	expenseId: string;
+	line: number | null;
+};
+
 const isSameThread = (
 	parsed: { spaceId: string; expenseId: string; line: number | null },
 	spaceId: string | number,
@@ -49,11 +55,13 @@ export const ThreadDiscussionRichText = ({
 	spaceId,
 	expenseId,
 	onJumpToLine,
+	onOpenThreadLink,
 }: {
 	body: string;
 	spaceId: string | number;
 	expenseId: string | number | null | undefined;
 	onJumpToLine: (lineOneBased: number) => void;
+	onOpenThreadLink?: (link: ThreadDeepLink) => void;
 }): ReactNode => {
 	const nodes: ReactNode[] = [];
 	let lastIndex = 0;
@@ -112,6 +120,17 @@ export const ThreadDiscussionRichText = ({
 								{label}
 							</button>,
 						);
+					} else if (parsed && onOpenThreadLink) {
+						nodes.push(
+							<button
+								className="inline font-medium text-primary underline decoration-primary/60 underline-offset-2 hover:decoration-primary"
+								key={`mdo-${key++}`}
+								onClick={() => onOpenThreadLink(parsed)}
+								type="button"
+							>
+								{label}
+							</button>,
+						);
 					} else {
 						nodes.push(
 							<Link
@@ -138,6 +157,17 @@ export const ThreadDiscussionRichText = ({
 						type="button"
 					>
 						Line {parsed.line}
+					</button>,
+				);
+			} else if (parsed && onOpenThreadLink) {
+				nodes.push(
+					<button
+						className="break-all font-medium text-primary underline decoration-primary/60 underline-offset-2 hover:decoration-primary"
+						key={`bro-${key++}`}
+						onClick={() => onOpenThreadLink(parsed)}
+						type="button"
+					>
+						Line {parsed.line ?? 1}
 					</button>,
 				);
 			} else if (isAllowedLocalAppPath(match)) {

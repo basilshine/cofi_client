@@ -29,10 +29,10 @@ export const MARKETING_BASE_URL = "https://ceits.com";
 export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 	"/": {
 		slug: "/",
-		title: "Ceits for Couples and Families | Shared Money, Calmly Managed",
+		title: "Ceits | Shared money, calmly managed",
 		description:
-			"Ceits helps couples and families capture expenses, manage recurring bills, and stay aligned with shared spaces, split logic, and context-first history.",
-		h1: "A calmer way for couples and families to manage shared spending",
+			"Capture shared expenses by text, voice, or receipt — keep everything in one shared place. Spaces, splits, and recurring bills without spreadsheet stress.",
+		h1: "Shared money, calmly managed",
 		eyebrow: "Shared money, without the noise",
 		intro:
 			"Ceits is a chat-first, space-first home for shared money context. Capture expenses naturally, keep recurring payments visible, and stay aligned without spreadsheet stress.",

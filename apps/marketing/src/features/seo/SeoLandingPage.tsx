@@ -7,6 +7,7 @@ import {
 	staggerItem,
 } from "../../lib/marketingMotion";
 import { appUrl } from "../../lib/workspaceUrl";
+import { SeoEditorialHome } from "./SeoEditorialHome";
 import {
 	type LandingPageConfig as Config,
 	LANDING_PAGES,
@@ -43,6 +44,10 @@ export const SeoLandingPage = ({ page }: { page: LandingPageConfig }) => {
 	const relatedPages = page.related
 		.map((slug) => LANDING_PAGES[slug])
 		.filter(Boolean);
+
+	if (page.slug === "/") {
+		return <SeoEditorialHome page={page} relatedPages={relatedPages} />;
+	}
 
 	return (
 		<motion.div

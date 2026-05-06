@@ -1,4 +1,5 @@
 import axios from "axios";
+import { authSessionStore, isCookieRefreshEnabled } from "./authSessionStore";
 import { tokenStorage } from "./tokenStorage";
 
 /** Backend origin only — request paths already include `/api/v1/...`. Do not append `/api` (would produce `/api/api/v1/...`). */
@@ -20,7 +21,10 @@ const refreshHttp = axios.create({
 });
 
 httpClient.interceptors.request.use((config) => {
-	const token = tokenStorage.getToken();
+	const token =
+		authSessionStore.getAccessToken() ??
+		authSessionStore.hydrateFromLegacyStorage() ??
+		tokenStorage.getToken();
 	if (token) config.headers.Authorization = `Bearer ${token}`;
 	return config;
 });
@@ -41,7 +45,7 @@ httpClient.interceptors.response.use(
 			return Promise.reject(error);
 		}
 		const rt = tokenStorage.getRefreshToken();
-		if (!rt) {
+		if (!rt && !isCookieRefreshEnabled) {
 			return Promise.reject(error);
 		}
 		cfg.__retry = true;
@@ -50,23 +54,31 @@ httpClient.interceptors.response.use(
 				token: string;
 				refreshToken?: string;
 				refresh_token?: string;
-			}>("/api/v1/auth/refresh", { refresh_token: rt });
+			}>(
+				"/api/v1/auth/refresh",
+				isCookieRefreshEnabled ? {} : { refresh_token: rt },
+				isCookieRefreshEnabled ? { withCredentials: true } : undefined,
+			);
+			authSessionStore.setAccessToken(data.token);
 			tokenStorage.setToken(data.token);
 			const nextRt = data.refreshToken ?? data.refresh_token ?? null;
-			tokenStorage.setRefreshToken(nextRt);
+			if (isCookieRefreshEnabled) {
+				tokenStorage.setRefreshToken(null);
+			} else {
+				tokenStorage.setRefreshToken(nextRt);
+			}
 			const active = tokenStorage.getActiveProfile();
 			if (active) {
 				tokenStorage.upsertProfile({
 					label: active.label,
 					email: active.email,
 					userId: active.userId,
-					accessToken: data.token,
-					refreshToken: nextRt,
 				});
 			}
 			cfg.headers.Authorization = `Bearer ${data.token}`;
 			return httpClient(cfg);
 		} catch {
+			authSessionStore.clear();
 			tokenStorage.clear();
 			return Promise.reject(error);
 		}

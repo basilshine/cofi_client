@@ -9,11 +9,14 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
+		"@cofi/ceits-brand": "file:../../packages/ceits-brand",
+		"@cofi/ceits-icons": "file:../../packages/ceits-icons",
 		"@cofi/ceits-urls": "file:../../packages/ceits-urls",
 		"@lexical/link": "^0.43.0",
 		"@lexical/react": "^0.43.0",
 		"@lexical/rich-text": "^0.43.0",
 		"@lexical/utils": "^0.43.0",
+		"@radix-ui/react-popover": "^1.1.15",
 		"framer-motion": "^11.18.2",
 		"lexical": "^0.43.0"
 	}

@@ -533,11 +533,6 @@ export const AccountPage = () => {
 	};
 
 	const handleSaveCurrentTokensAsProfile = async () => {
-		const accessToken = tokenStorage.getToken();
-		if (!accessToken) {
-			setErrorMessage("No token found. Sign in first.");
-			return;
-		}
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
@@ -546,8 +541,6 @@ export const AccountPage = () => {
 				label: me.email ?? `user_${me.id}`,
 				email: me.email,
 				userId: me.id,
-				accessToken,
-				refreshToken: tokenStorage.getRefreshToken(),
 			});
 			setProfilesVersion((v) => v + 1);
 			await refreshUser();

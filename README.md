@@ -41,4 +41,4 @@ npm run format
 
 ## Boundaries
 
-See `docs/frontend-boundaries.md` for strict app/shared layer rules.
+See `../cofi_brain/repository-docs/cofi_client/deployment-and-boundaries.md` for strict app/shared layer rules and deployment notes.

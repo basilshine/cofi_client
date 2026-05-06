@@ -242,9 +242,9 @@ export const OrganizationPage = () => {
 				<p className="text-sm">
 					<Link
 						className="font-medium text-primary underline underline-offset-2"
-						to="/console/dashboard"
+						to="/console/home"
 					>
-						Back to business dashboard
+						Back to home
 					</Link>
 				</p>
 			</div>

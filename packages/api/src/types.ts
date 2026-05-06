@@ -20,11 +20,26 @@ export type UserAppearancePreferences = {
 	theme?: "legacy-technical" | "ceits-editorial";
 };
 
+/** Ceits web onboarding + first-chat hints stored under `userPreferences.ceits`. */
+export type CeitsUserPreferences = {
+	start_context?: string;
+	space_purpose?: string;
+	preferred_capture_mode?: string;
+	preferred_tracking_priorities?: string[];
+	primary_space_id?: number;
+	first_chat?: {
+		space_id?: number;
+		welcome_text?: string;
+		quick_actions?: Array<{ id: string; label: string }>;
+	};
+};
+
 export type UserPreferencesPayload = {
 	version?: number;
 	financial?: UserFinancialPreferences;
 	tax?: UserTaxPreferences;
 	appearance?: UserAppearancePreferences;
+	ceits?: CeitsUserPreferences;
 };
 
 export type User = {
@@ -74,6 +89,40 @@ export type Space = {
 	created_at?: string;
 	/** Latest activity: main chat, expense-thread posts, or thread updates (ISO 8601). */
 	last_activity_at?: string;
+	/** Space-specific UI and behavior preferences. */
+	settings?: {
+		appearance?: {
+			theme?: "default" | "calm" | "contrast";
+			accent?: string;
+		};
+	};
+};
+
+/** Space-scoped activity log entry (audit-backed; not chat). */
+export type SpaceActivityReadState = "read" | "pending";
+
+export type SpaceActivityActor = {
+	id: number;
+	display_name: string;
+};
+
+export type SpaceActivityItem = {
+	id: number;
+	created_at: string;
+	action: string;
+	entity: string;
+	read_state: SpaceActivityReadState;
+	actor: SpaceActivityActor;
+	metadata: Record<string, unknown>;
+};
+
+export type SpaceActivityListResponse = {
+	items: SpaceActivityItem[];
+};
+
+export type SpaceActivitySummary = {
+	has_unread: boolean;
+	unread_count: number;
 };
 
 /** Space role from `space_members.role` (Ceits / ADR-0003). */

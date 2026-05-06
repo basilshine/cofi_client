@@ -19,6 +19,8 @@ import {
 	type QuotaStatus,
 	type RecurringExpense,
 	type Space,
+	type SpaceActivityListResponse,
+	type SpaceActivitySummary,
 	type SpaceInviteCreateResponse,
 	type SpaceInviteSuggestionsResponse,
 	type SpaceMember,
@@ -198,6 +200,32 @@ export const createApiClient = (config: ApiClientConfig) => {
 					headers: authHeaders(),
 					body: payload,
 				}),
+			patchSettings: (
+				spaceId: string | number,
+				payload: {
+					settings: {
+						appearance?: {
+							theme?: "default" | "calm" | "contrast";
+							accent?: string;
+						};
+					};
+				},
+			) =>
+				fetchJson<Space>(withBase(`/api/v1/spaces/${spaceId}/settings`), {
+					method: "PATCH",
+					headers: authHeaders(),
+					body: payload,
+				}),
+			clone: (spaceId: string | number) =>
+				fetchJson<Space>(withBase(`/api/v1/spaces/${spaceId}/clone`), {
+					method: "POST",
+					headers: authHeaders(),
+				}),
+			delete: (spaceId: string | number) =>
+				fetchJson<void>(withBase(`/api/v1/spaces/${spaceId}`), {
+					method: "DELETE",
+					headers: authHeaders(),
+				}),
 			listMembers: (spaceId: string | number) =>
 				fetchJson<SpaceMembersListResponse>(
 					withBase(`/api/v1/spaces/${spaceId}/members`),
@@ -286,6 +314,33 @@ export const createApiClient = (config: ApiClientConfig) => {
 						headers: quotaHeaders({ tenantId: opts?.tenantId }),
 					},
 				);
+			},
+			activity: {
+				list: (spaceId: string | number, opts?: { limit?: number }) => {
+					const qs = new URLSearchParams();
+					if (opts?.limit != null && opts.limit > 0) {
+						qs.set("limit", String(opts.limit));
+					}
+					const q = qs.size ? `?${qs.toString()}` : "";
+					return fetchJson<SpaceActivityListResponse>(
+						withBase(`/api/v1/spaces/${spaceId}/activity${q}`),
+						{ method: "GET", headers: authHeaders() },
+					);
+				},
+				summary: (spaceId: string | number) =>
+					fetchJson<SpaceActivitySummary>(
+						withBase(`/api/v1/spaces/${spaceId}/activity/summary`),
+						{ method: "GET", headers: authHeaders() },
+					),
+				markRead: (
+					spaceId: string | number,
+					payload: { up_to_audit_event_id: number },
+				) =>
+					fetchJson<void>(withBase(`/api/v1/spaces/${spaceId}/activity/read`), {
+						method: "PUT",
+						headers: authHeaders(),
+						body: payload,
+					}),
 			},
 			/** Incoming invites for your login email (e.g. org member invited to a space). */
 			listPendingInvitesForMe: () =>
@@ -848,6 +903,15 @@ export const createApiClient = (config: ApiClientConfig) => {
 						headers: authHeaders(),
 						body,
 					}),
+				update: (id: string | number, body: RecurringExpense) =>
+					fetchJson<RecurringExpense>(
+						withBase(`/api/v1/finances/recurring/${id}`),
+						{
+							method: "PUT",
+							headers: authHeaders(),
+							body,
+						},
+					),
 				pause: (id: string | number) =>
 					fetchJson<RecurringExpense>(
 						withBase(`/api/v1/finances/recurring/${id}/pause`),

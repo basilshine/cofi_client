@@ -8,10 +8,16 @@ import {
 	useState,
 } from "react";
 import { type AuthUser, authApi } from "../features/auth/authApi";
+import {
+	type OnboardingState,
+	onboardingApi,
+} from "../features/onboarding/onboardingApi";
+import { authSessionStore } from "../shared/lib/authSessionStore";
 import { tokenStorage } from "../shared/lib/tokenStorage";
 
 type AuthContextValue = {
 	user: AuthUser | null;
+	onboarding: OnboardingState | null;
 	isLoading: boolean;
 	isAuthenticated: boolean;
 	login: (payload: { email: string; password: string }) => Promise<void>;
@@ -32,19 +38,32 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const [user, setUser] = useState<AuthUser | null>(null);
+	const [onboarding, setOnboarding] = useState<OnboardingState | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 
 	const refreshUser = useCallback(async () => {
-		const token = tokenStorage.getToken();
+		const token =
+			authSessionStore.getAccessToken() ??
+			authSessionStore.hydrateFromLegacyStorage() ??
+			tokenStorage.getToken();
 		if (!token) {
 			setUser(null);
+			setOnboarding(null);
 			return;
 		}
 		try {
 			const me = await authApi.me();
 			setUser(me);
+			try {
+				const ob = await onboardingApi.getState();
+				setOnboarding(ob);
+			} catch {
+				setOnboarding(null);
+			}
 		} catch {
+			authSessionStore.clear();
 			setUser(null);
+			setOnboarding(null);
 		}
 	}, []);
 
@@ -92,11 +111,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const logout = useCallback(() => {
 		authApi.logout();
 		setUser(null);
+		setOnboarding(null);
 	}, []);
 
 	const value = useMemo(
 		(): AuthContextValue => ({
 			user,
+			onboarding,
 			isLoading,
 			isAuthenticated: !!user,
 			login,
@@ -108,6 +129,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		}),
 		[
 			user,
+			onboarding,
 			isLoading,
 			login,
 			register,

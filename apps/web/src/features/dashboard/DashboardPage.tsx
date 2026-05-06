@@ -12,7 +12,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 
 const MotionLink = motion(Link);
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
-import { WorkspaceSpaceSubNav } from "../../app/layout/workspaceSpaces/WorkspaceSpaceSubNav";
+import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient } from "../../shared/lib/apiClient";
@@ -1299,17 +1299,7 @@ const DashboardBody = ({
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
 			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
-				<WorkspaceSpaceSubNav />
-				<p className="mt-3 text-sm text-[hsl(var(--text-secondary))]">
-					Personal Ceits workspace.{" "}
-					<Link
-						className="font-medium text-[hsl(var(--accent))] underline underline-offset-2"
-						to="/console/account"
-					>
-						Account
-					</Link>
-					.
-				</p>
+				<SpaceTabs />
 			</header>
 
 			<div className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">

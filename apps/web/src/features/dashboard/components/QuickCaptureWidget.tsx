@@ -4,6 +4,11 @@ import type {
 	Space,
 } from "@cofi/api";
 import {
+	ReceiptPhotoIcon,
+	TextCaptureIcon,
+	VoiceCaptureIcon,
+} from "@cofi/ceits-icons";
+import {
 	type ChangeEvent,
 	type ReactNode,
 	useCallback,
@@ -65,52 +70,6 @@ const IconChevronLeft = ({ className = "h-5 w-5" }: { className?: string }) => (
 	</svg>
 );
 
-const IconCamera = ({ className = "h-10 w-10" }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeWidth={1.6}
-		viewBox="0 0 24 24"
-	>
-		<title>Camera</title>
-		<path
-			d="M4 7.5A2.5 2.5 0 016.5 5h2L10 3h4l1.5 2h2A2.5 2.5 0 0120 7.5v9a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 16.5v-9z"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-		<path
-			d="M12 16a4 4 0 100-8 4 4 0 000 8z"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-	</svg>
-);
-
-const IconMic = ({ className = "h-10 w-10" }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeWidth={1.6}
-		viewBox="0 0 24 24"
-	>
-		<title>Microphone</title>
-		<path
-			d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3z"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-		<path
-			d="M5 11a7 7 0 0014 0M12 18v3"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-	</svg>
-);
-
 const IconStop = ({ className = "h-10 w-10" }: { className?: string }) => (
 	<svg
 		aria-hidden
@@ -120,24 +79,6 @@ const IconStop = ({ className = "h-10 w-10" }: { className?: string }) => (
 	>
 		<title>Stop</title>
 		<rect height="14" rx="1.5" width="14" x="5" y="5" />
-	</svg>
-);
-
-const IconCompose = ({ className = "h-10 w-10" }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeWidth={1.6}
-		viewBox="0 0 24 24"
-	>
-		<title>Compose</title>
-		<path
-			d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
 	</svg>
 );
 
@@ -498,7 +439,7 @@ export const QuickCaptureWidget = ({
 								onChange={(e) => void handlePhotoChange(e)}
 								type="file"
 							/>
-							<IconCamera className={iconClass} />
+							<ReceiptPhotoIcon className={iconClass} size={40} />
 							{isHeroDark ? (
 								<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
 									Photo
@@ -541,7 +482,7 @@ export const QuickCaptureWidget = ({
 									}
 								/>
 							) : (
-								<IconMic className={iconClass} />
+								<VoiceCaptureIcon className={iconClass} size={40} />
 							)}
 							{isHeroDark ? (
 								<span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-300">
@@ -585,7 +526,7 @@ export const QuickCaptureWidget = ({
 								}
 								to="/console/chat"
 							>
-								<IconCompose className={iconClass} />
+								<TextCaptureIcon className={iconClass} size={40} />
 								<span
 									className={
 										isHeroCard

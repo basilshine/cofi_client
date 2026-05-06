@@ -9,6 +9,8 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
+		"@cofi/ceits-brand": "file:../../packages/ceits-brand",
+		"@cofi/ceits-icons": "file:../../packages/ceits-icons",
 		"@cofi/ceits-urls": "file:../../packages/ceits-urls",
 		"framer-motion": "^11.18.2",
 		"react": "^18.2.0",

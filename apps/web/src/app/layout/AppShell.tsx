@@ -1,49 +1,19 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { ChatBreadcrumbProvider } from "./ChatBreadcrumbContext";
 import { ConsoleBreadcrumbs } from "./ConsoleBreadcrumbs";
-import {
-	ConsoleHeaderCenterProvider,
-	useConsoleHeaderCenter,
-} from "./ConsoleHeaderCenterContext";
-import { ConsoleUserMenu } from "./ConsoleUserMenu";
+import { ConsoleHeaderCenterProvider } from "./ConsoleHeaderCenterContext";
 import { ConsoleWorkspaceTheme } from "./ConsoleWorkspaceTheme";
 
 const AppShellChrome = () => {
 	const { pathname } = useLocation();
-	const { center } = useConsoleHeaderCenter();
+	// Workspace-grade pages (chat, dashboard, space overview, etc.) own their
+	// own headers + tabs and don't want a wrapping breadcrumb / inset padding.
 	const fullBleedWorkspace =
 		pathname.startsWith("/console") && !pathname.startsWith("/console/account");
 
 	return (
-		<div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground">
+		<div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden bg-background text-foreground font-editorial">
 			<ConsoleWorkspaceTheme />
-			<header className="shrink-0 border-b border-border/80">
-				<div className="grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-6 py-3 lg:px-10">
-					<div className="flex min-w-0 shrink-0 items-center gap-3">
-						<Link
-							className="font-display text-lg font-normal tracking-tight text-foreground"
-							to="/console/dashboard"
-						>
-							Ceits
-						</Link>
-						<span className="hidden text-xs text-muted-foreground sm:inline">
-							Console
-						</span>
-					</div>
-
-					<div className="flex min-w-0 justify-center justify-self-center px-2">
-						{fullBleedWorkspace ? center : null}
-					</div>
-
-					<nav
-						aria-label="Console"
-						className="flex min-w-0 flex-nowrap items-center justify-end gap-2 justify-self-end sm:gap-3"
-					>
-						<ConsoleUserMenu />
-					</nav>
-				</div>
-			</header>
-
 			<main className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				<ChatBreadcrumbProvider>
 					{fullBleedWorkspace ? null : (
@@ -67,6 +37,9 @@ const AppShellChrome = () => {
 };
 
 export const AppShell = () => {
+	// `ConsoleHeaderCenterProvider` is kept so legacy `useConsoleHeaderTitle`
+	// calls remain valid; they simply no-op now that the global top header is
+	// gone (every page renders its own SpaceHeader / page title).
 	return (
 		<ConsoleHeaderCenterProvider>
 			<AppShellChrome />

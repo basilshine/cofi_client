@@ -1,3 +1,6 @@
+/** Server `ws.OpSpaceActivityUpdated` — space activity / audit feed may have changed. */
+export const WS_OP_SPACE_ACTIVITY_UPDATED = "space.activity.updated";
+
 export type WsEnvelope = {
 	id?: string;
 	type: "rpc" | "event" | "error";

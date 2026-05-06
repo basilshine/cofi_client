@@ -1,23 +1,9 @@
-import type {
-	Space,
-	SpaceInviteSuggestionsResponse,
-	SpaceMember,
-	SpaceRole,
-} from "@cofi/api";
-import * as Dialog from "@radix-ui/react-dialog";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Space, SpaceMember, SpaceRole } from "@cofi/api";
+import { InviteParticipantIcon } from "@cofi/ceits-icons";
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
-import { apiClient } from "../../../shared/lib/apiClient";
-import {
-	ceitsSpaceExpenseAddUrl,
-	ceitsSpaceExpensesListUrl,
-} from "../../../shared/lib/ceitsAppUrls";
+import { SpaceMembersInvitesPanel } from "../../../features/space-settings/SpaceMembersInvitesPanel";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
-import { InviteLinkSharePanel } from "./InviteLinkSharePanel";
-import { MyIncomingInvitesBlock } from "./MyIncomingInvitesBlock";
-import { SpaceInviteCombobox } from "./SpaceInviteCombobox";
-import { SpaceMemberDetailsDialog } from "./SpaceMemberDetailsDialog";
-import { SpacePendingInvitesBlock } from "./SpacePendingInvitesBlock";
 
 const IconPanelOpen = ({ className }: { className?: string }) => (
 	<svg
@@ -53,26 +39,6 @@ const IconPanelClose = ({ className }: { className?: string }) => (
 		<title>Collapse sidebar</title>
 		<path
 			d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M9 12h10M6 8l-4 4 4 4"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-	</svg>
-);
-
-const IconUserPlus = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="18"
-		stroke="currentColor"
-		strokeWidth="2"
-		viewBox="0 0 24 24"
-		width="18"
-	>
-		<title>Add member</title>
-		<path
-			d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M12 7a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM20 8v6M23 11h-6"
 			strokeLinecap="round"
 			strokeLinejoin="round"
 		/>
@@ -163,6 +129,11 @@ const memberInitial = (m: SpaceMember) => {
 	return String(m.user_id).slice(-1);
 };
 
+const spaceSettingsMembersHash = (spaceId: string | number | null) =>
+	spaceId == null
+		? "/console/home"
+		: `/console/spaces/${encodeURIComponent(String(spaceId))}/settings#space-settings-members`;
+
 export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 	const {
 		expanded,
@@ -200,91 +171,14 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 		acceptInviteToken,
 		onAcceptInviteTokenChange,
 		onAcceptInvite,
+		onAcceptInviteToken,
 		onHardPurgeAllMessages,
 		hardPurgeFeedback,
 		inviteSuggestionsNonce,
 		incomingInvitesRefreshKey,
-		onAcceptInviteToken,
 		hideSpaceList = false,
 		embedded = false,
 	} = props;
-
-	const [memberDetails, setMemberDetails] = useState<SpaceMember | null>(null);
-	const [inviteSuggestions, setInviteSuggestions] =
-		useState<SpaceInviteSuggestionsResponse | null>(null);
-	const [spaceManageDialogOpen, setSpaceManageDialogOpen] = useState(false);
-
-	const handleCloseMemberDetails = useCallback(() => {
-		setMemberDetails(null);
-		onClearMemberRoleError();
-	}, [onClearMemberRoleError]);
-
-	useEffect(() => {
-		if (!memberDetails || !members?.length) return;
-		const fresh = members.find(
-			(x) => Number(x.user_id) === Number(memberDetails.user_id),
-		);
-		if (fresh) setMemberDetails(fresh);
-	}, [members, memberDetails]);
-
-	useEffect(() => {
-		if (
-			!canManageMemberRoles ||
-			selectedSpaceId == null ||
-			selectedSpace == null
-		) {
-			setInviteSuggestions(null);
-			return;
-		}
-		let cancelled = false;
-		const tid = Number(selectedSpace.tenant_id);
-		const timer = window.setTimeout(() => {
-			void (async () => {
-				try {
-					const res = await apiClient.spaces.inviteSuggestions(
-						selectedSpaceId,
-						{
-							q: inviteEmail.trim() || undefined,
-							tenantId: tid,
-						},
-					);
-					if (!cancelled) setInviteSuggestions(res);
-				} catch {
-					if (!cancelled) setInviteSuggestions(null);
-				}
-			})();
-		}, 280);
-		return () => {
-			cancelled = true;
-			window.clearTimeout(timer);
-		};
-	}, [
-		canManageMemberRoles,
-		inviteEmail,
-		selectedSpace,
-		selectedSpaceId,
-		inviteSuggestionsNonce,
-	]);
-
-	const refetchInviteSuggestions = useCallback(async () => {
-		if (
-			!canManageMemberRoles ||
-			selectedSpaceId == null ||
-			selectedSpace == null
-		) {
-			setInviteSuggestions(null);
-			return;
-		}
-		try {
-			const res = await apiClient.spaces.inviteSuggestions(selectedSpaceId, {
-				q: inviteEmail.trim() || undefined,
-				tenantId: Number(selectedSpace.tenant_id),
-			});
-			setInviteSuggestions(res);
-		} catch {
-			setInviteSuggestions(null);
-		}
-	}, [canManageMemberRoles, inviteEmail, selectedSpace, selectedSpaceId]);
 
 	const expandTo = useCallback(
 		(anchorId: string) => {
@@ -301,256 +195,50 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 		[onExpandedChange],
 	);
 
-	const ceitsListUrl = useMemo(
-		() =>
-			selectedSpaceId != null
-				? ceitsSpaceExpensesListUrl(selectedSpaceId)
-				: null,
-		[selectedSpaceId],
-	);
-	const ceitsAddUrl = useMemo(
-		() =>
-			selectedSpaceId != null ? ceitsSpaceExpenseAddUrl(selectedSpaceId) : null,
-		[selectedSpaceId],
-	);
-
-	const membersInvitesPanelInner = (
-		<>
-			<MyIncomingInvitesBlock
-				disabled={isLoading}
-				onAcceptInviteToken={onAcceptInviteToken}
-				refreshKey={incomingInvitesRefreshKey}
-				selectedSpaceId={selectedSpaceId}
-			/>
-			<div className="text-sm font-semibold tracking-tight">Members</div>
-			{selectedSpace ? (
-				<div className="text-xs text-muted-foreground">
-					Space:{" "}
-					<span className="font-medium text-foreground">
-						{selectedSpace.name}
-					</span>
-				</div>
-			) : null}
-
-			{ceitsListUrl && ceitsAddUrl ? (
-				<div className="rounded-lg border border-border/80 bg-muted/25 p-3">
-					<div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-						Ceits app
-					</div>
-					<p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-						Full expense editor and space vendors (opens in a new tab).
-					</p>
-					<div className="mt-2 flex flex-col gap-1.5">
-						<a
-							className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-							href={ceitsListUrl}
-							rel="noopener noreferrer"
-							target="_blank"
-						>
-							All expenses in this space
-						</a>
-						<a
-							className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-							href={ceitsAddUrl}
-							rel="noopener noreferrer"
-							target="_blank"
-						>
-							Add expense
-						</a>
-					</div>
-				</div>
-			) : null}
-
-			{members?.length ? (
-				<ul className="space-y-1.5">
-					{members.map((m) => (
-						<li key={`${m.user_id}-${m.role}`}>
-							<button
-								className="group flex w-full items-center justify-between gap-2 rounded-lg border border-border/80 bg-background/80 px-3 py-2 text-left transition hover:border-border hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								onClick={() => {
-									onClearMemberRoleError();
-									setMemberDetails(m);
-								}}
-								type="button"
-							>
-								<div className="min-w-0">
-									<div className="truncate text-sm font-medium">
-										{m.name || m.email || `user_${m.user_id}`}
-									</div>
-									<div className="truncate text-xs text-muted-foreground">
-										id {m.user_id}
-										{m.email ? ` · ${m.email}` : ""}
-									</div>
-									<div className="mt-0.5 text-[10px] text-muted-foreground/90 opacity-0 transition-opacity group-hover:opacity-100">
-										View role & permissions
-									</div>
-								</div>
-								<span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
-									{m.role}
-								</span>
-							</button>
-						</li>
-					))}
-				</ul>
-			) : (
-				<div className="rounded-lg border border-border bg-background p-3 text-sm text-muted-foreground">
-					{selectedSpace ? "No members loaded." : "Select a space."}
-				</div>
-			)}
-
-			<SpacePendingInvitesBlock
-				canManage={canManageMemberRoles}
-				disabled={isLoading}
-				onListChanged={refetchInviteSuggestions}
-				pending={inviteSuggestions?.pending_invites_for_space ?? null}
-				spaceId={selectedSpaceId}
-				tenantId={
-					selectedSpace != null ? Number(selectedSpace.tenant_id) : null
-				}
-			/>
-
-			<div
-				id="chat-sidebar-invite-space"
-				className="scroll-mt-4 grid gap-2 pt-1"
-			>
-				{canManageMemberRoles ? (
-					<>
-						<div className="grid gap-1">
-							<span className="text-xs font-medium text-muted-foreground">
-								Invite by email (tenant admin + space owner)
-							</span>
-							<SpaceInviteCombobox
-								disabled={isLoading || selectedSpaceId == null}
-								onChange={onInviteEmailChange}
-								pendingInvites={
-									inviteSuggestions?.pending_invites_for_space ?? null
-								}
-								suggestions={inviteSuggestions?.suggestions ?? null}
-								value={inviteEmail}
-							/>
-						</div>
-						<button
-							className="inline-flex h-10 items-center justify-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-							disabled={isLoading || !selectedSpaceId || !inviteEmail.trim()}
-							onClick={() => onCreateInvite()}
-							type="button"
-						>
-							Create invite
-						</button>
-						{inviteToken ? <InviteLinkSharePanel token={inviteToken} /> : null}
-					</>
-				) : (
-					<p className="text-[11px] leading-relaxed text-muted-foreground">
-						Only a tenant admin who is also the space owner can create space
-						invites. You can still accept an invite below if you have a token.
-					</p>
-				)}
-			</div>
-
-			{isSpaceOwner && selectedSpace ? (
-				<div className="grid gap-2 border-t border-border pt-3">
-					<div className="text-xs font-medium text-muted-foreground">
-						Invite to organization (tenant)
-					</div>
-					<p className="text-[10px] leading-snug text-muted-foreground">
-						Targets tenant{" "}
-						<span className="font-mono">{selectedSpace.tenant_id}</span> from
-						this space — do not edit. Requires tenant admin; otherwise the
-						server returns 403.
-					</p>
-					<label className="grid gap-1">
-						<span className="text-xs font-medium text-muted-foreground">
-							Email (tenant-only invite)
-						</span>
-						<input
-							aria-label="Tenant invite email"
-							className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-							onChange={(e) => onTenantInviteEmailChange(e.target.value)}
-							placeholder="colleague@example.com"
-							type="email"
-							value={tenantInviteEmail}
-						/>
-					</label>
-					<button
-						className="inline-flex h-10 items-center justify-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-						disabled={
-							isLoading || !tenantInviteEmail.trim() || !selectedSpace.tenant_id
-						}
-						onClick={() => onCreateTenantInvite()}
-						type="button"
-					>
-						Create tenant invite
-					</button>
-					{tenantInviteToken ? (
-						<div className="rounded-lg border border-border bg-muted p-3 text-xs">
-							<div className="text-[10px] font-semibold text-muted-foreground">
-								Tenant invite token
-							</div>
-							<div className="mt-1 break-all font-mono">
-								{tenantInviteToken}
-							</div>
-						</div>
-					) : null}
-				</div>
-			) : null}
-
-			<div className="grid gap-2">
-				<label className="grid gap-1">
-					<span className="text-xs font-medium text-muted-foreground">
-						Accept invite (paste token)
-					</span>
-					<input
-						aria-label="Invite token"
-						className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-						onChange={(e) => onAcceptInviteTokenChange(e.target.value)}
-						placeholder="invite token…"
-						type="text"
-						value={acceptInviteToken}
-					/>
-				</label>
-				<button
-					className="inline-flex h-10 items-center justify-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-50"
-					disabled={isLoading || !acceptInviteToken.trim()}
-					onClick={() => onAcceptInvite()}
-					type="button"
-				>
-					Accept invite
-				</button>
-			</div>
-
-			{isSpaceOwner && selectedSpaceId ? (
-				<div className="mt-4 border-t border-border pt-4">
-					<div className="text-xs font-semibold text-destructive">
-						Danger zone
-					</div>
-					<p className="mt-2 text-xs text-muted-foreground">
-						Permanently remove every chat line in this space. Does not delete
-						expenses or transactions. Requires server permission (see{" "}
-						<code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
-							ALLOW_HARD_PURGE_ALL_MESSAGES
-						</code>{" "}
-						in production).
-					</p>
-					<button
-						aria-label="Clear all chat messages in this space"
-						className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-						disabled={isLoading}
-						onClick={() => onHardPurgeAllMessages()}
-						type="button"
-					>
-						Clear all chat messages
-					</button>
-					{hardPurgeFeedback ? (
-						<output
-							aria-live="polite"
-							className="mt-2 block text-xs font-medium text-emerald-700 dark:text-emerald-400"
-						>
-							{hardPurgeFeedback}
-						</output>
-					) : null}
-				</div>
-			) : null}
-		</>
+	const membersInvitesPanel = (
+		<SpaceMembersInvitesPanel
+			acceptInviteToken={acceptInviteToken}
+			canManageMemberRoles={canManageMemberRoles}
+			clearMemberRoleError={onClearMemberRoleError}
+			currentUserId={currentUserId}
+			hardPurgeFeedback={hardPurgeFeedback}
+			handleAcceptInvite={async (tokenOverride?: string) => {
+				if (tokenOverride != null) await onAcceptInviteToken(tokenOverride);
+				else onAcceptInvite();
+			}}
+			handleCreateInvite={async () => {
+				await Promise.resolve(onCreateInvite());
+			}}
+			handleCreateTenantInvite={async () => {
+				await Promise.resolve(onCreateTenantInvite());
+			}}
+			handleHardPurgeAllMessages={async () => {
+				await Promise.resolve(onHardPurgeAllMessages());
+			}}
+			handlePatchMemberRole={onPatchMemberRole}
+			handleRefreshSpaces={async () => {
+				await Promise.resolve(onRefreshSpaces());
+			}}
+			handleRemoveSpaceMember={onRemoveSpaceMember}
+			incomingInvitesRefreshKey={incomingInvitesRefreshKey}
+			inviteEmail={inviteEmail}
+			inviteSuggestionsNonce={inviteSuggestionsNonce}
+			inviteToken={inviteToken}
+			isLoading={isLoading}
+			isSpaceOwner={isSpaceOwner}
+			members={members}
+			memberRoleError={memberRoleError}
+			memberRoleSaving={memberRoleSaving}
+			onClearThread={onClearThread}
+			removeMemberSaving={removeMemberSaving}
+			selectedSpace={selectedSpace}
+			selectedSpaceId={selectedSpaceId}
+			setAcceptInviteToken={onAcceptInviteTokenChange}
+			setInviteEmail={onInviteEmailChange}
+			setTenantInviteEmail={onTenantInviteEmailChange}
+			tenantInviteEmail={tenantInviteEmail}
+			tenantInviteToken={tenantInviteToken}
+		/>
 	);
 
 	const fullBody = (
@@ -713,92 +401,12 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 					</>
 				)}
 
-				{hideSpaceList ? (
-					<>
-						<div
-							className="shrink-0 space-y-2 border-t border-border/70 pt-3"
-							id="chat-sidebar-members"
-						>
-							<div className="flex items-center gap-2 rounded-lg border border-border/70 bg-muted/20 px-2.5 py-2">
-								<div className="flex min-w-0 flex-1 items-center gap-2">
-									<div aria-hidden className="flex shrink-0 -space-x-1.5">
-										{(members ?? []).slice(0, 4).map((m) => (
-											<div
-												className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-card bg-gradient-to-br from-muted to-muted/60 text-[10px] font-semibold text-foreground"
-												key={m.user_id}
-												title={
-													m.name?.trim() ||
-													m.email?.trim() ||
-													`User ${m.user_id}`
-												}
-											>
-												{memberInitial(m)}
-											</div>
-										))}
-									</div>
-									<div className="min-w-0">
-										<p className="truncate text-xs font-medium text-foreground">
-											{selectedSpace?.name ?? "Space"}
-										</p>
-										<p className="text-[10px] text-muted-foreground">
-											{members == null
-												? "…"
-												: `${members.length} member${members.length === 1 ? "" : "s"}`}
-										</p>
-									</div>
-								</div>
-								<button
-									className="shrink-0 rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px] font-medium text-foreground hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-									disabled={!selectedSpace}
-									onClick={() => setSpaceManageDialogOpen(true)}
-									type="button"
-								>
-									Manage
-								</button>
-							</div>
-						</div>
-
-						<Dialog.Root
-							onOpenChange={setSpaceManageDialogOpen}
-							open={spaceManageDialogOpen}
-						>
-							<Dialog.Portal>
-								<Dialog.Overlay className="fixed inset-0 z-[100] bg-black/40" />
-								<Dialog.Content
-									className="fixed left-1/2 top-1/2 z-[101] flex max-h-[min(90vh,40rem)] w-[min(calc(100vw-1.5rem),28rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-xl border border-border bg-background p-0 shadow-lg outline-none"
-									onOpenAutoFocus={(e) => e.preventDefault()}
-								>
-									<div className="shrink-0 border-b border-border px-4 py-3">
-										<Dialog.Title className="text-base font-semibold leading-tight">
-											Space members & invites
-										</Dialog.Title>
-										<Dialog.Description className="mt-1 text-xs text-muted-foreground">
-											{selectedSpace ? (
-												<>
-													People, invite links, and tokens for{" "}
-													<span className="font-medium text-foreground">
-														{selectedSpace.name}
-													</span>
-													.
-												</>
-											) : (
-												"Select a space in the sidebar above."
-											)}
-										</Dialog.Description>
-									</div>
-									<div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-										<div className="space-y-3">{membersInvitesPanelInner}</div>
-									</div>
-								</Dialog.Content>
-							</Dialog.Portal>
-						</Dialog.Root>
-					</>
-				) : (
+				{hideSpaceList ? null : (
 					<div
 						className="scroll-mt-4 space-y-3 border-t border-border/70 pt-4"
 						id="chat-sidebar-members"
 					>
-						{membersInvitesPanelInner}
+						{membersInvitesPanel}
 					</div>
 				)}
 			</div>
@@ -892,25 +500,31 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 					)}
 				</div>
 
-				<button
-					aria-label={
-						hideSpaceList
-							? "Members and invites — open panel"
-							: "Invite someone — opens sidebar to invite"
-					}
-					className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					onClick={() => {
-						if (hideSpaceList) {
-							onExpandedChange(true);
-							setSpaceManageDialogOpen(true);
-							return;
-						}
-						expandTo("chat-sidebar-invite-space");
-					}}
-					type="button"
-				>
-					<IconUserPlus className="h-4 w-4" />
-				</button>
+				{hideSpaceList ? (
+					<Link
+						aria-label="Members and invites — open in space settings"
+						className={[
+							"inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+							selectedSpaceId == null ? "pointer-events-none opacity-50" : "",
+						].join(" ")}
+						onClick={(e) => {
+							if (selectedSpaceId == null) e.preventDefault();
+						}}
+						tabIndex={selectedSpaceId == null ? -1 : 0}
+						to={spaceSettingsMembersHash(selectedSpaceId)}
+					>
+						<InviteParticipantIcon className="h-4 w-4" size={16} />
+					</Link>
+				) : (
+					<button
+						aria-label="Invite someone — opens sidebar to invite"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onClick={() => expandTo("chat-sidebar-invite-space")}
+						type="button"
+					>
+						<InviteParticipantIcon className="h-4 w-4" size={16} />
+					</button>
+				)}
 
 				{hideSpaceList ? null : (
 					<button
@@ -968,18 +582,6 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 					{collapsedRail}
 				</div>
 			</div>
-			<SpaceMemberDetailsDialog
-				canManageMemberRoles={canManageMemberRoles}
-				currentUserId={currentUserId}
-				errorMessage={memberRoleError}
-				isSaving={memberRoleSaving}
-				member={memberDetails}
-				onClose={handleCloseMemberDetails}
-				onRemoveFromSpace={onRemoveSpaceMember}
-				onSaveRole={onPatchMemberRole}
-				open={memberDetails != null}
-				removeMemberSaving={removeMemberSaving}
-			/>
 		</Shell>
 	);
 };

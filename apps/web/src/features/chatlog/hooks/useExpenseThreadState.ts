@@ -42,6 +42,30 @@ export const expenseTotal = (exp: ExpenseDetail | null): number => {
 	return items.reduce((s, it) => s + (Number(it.amount) || 0), 0);
 };
 
+/**
+ * Prefer a human title. Generic server default "Expense" is replaced by description
+ * (first line) or first line item when those carry the parsed capture.
+ */
+const deriveDisplayTitleForExpense = (exp: ExpenseDetail): string => {
+	const title = (exp.title ?? "").trim();
+	const descFirst =
+		(exp.description ?? "")
+			.split(/\r?\n/)
+			.map((l) => l.trim())
+			.find((l) => l.length > 0) ?? "";
+	const firstItemName =
+		(exp.items ?? [])
+			.map((it) => (it.name ?? "").trim())
+			.find((n) => n.length > 0) ?? "";
+
+	if (title && title.toLowerCase() !== "expense") {
+		return title.slice(0, 200);
+	}
+	if (descFirst) return descFirst.slice(0, 200);
+	if (firstItemName) return firstItemName.slice(0, 200);
+	return title || "Expense";
+};
+
 const expenseItemsToBuilder = (exp: ExpenseDetail | null): BuilderItem[] => {
 	const items = exp?.items ?? [];
 	if (items.length === 0) return [newBuilderItem()];
@@ -137,7 +161,7 @@ export const useExpenseThreadState = (
 
 	const applyExpenseToDraftHeaders = useCallback((exp: ExpenseDetail) => {
 		setDraftDescription(exp.description?.trim() ?? "");
-		setDraftTitle(exp.title?.trim() || "Expense");
+		setDraftTitle(deriveDisplayTitleForExpense(exp));
 		setDraftPayeeText(exp.payee_text?.trim() ?? "");
 		setDraftCurrency((exp.currency || "USD").toUpperCase());
 		setDraftTxnDate(

@@ -31,18 +31,40 @@ const buildCrumbs = (
 	pathname: string,
 	chat: ChatBreadcrumbPayload | null,
 ): Crumb[] => {
-	const dashboardHref = "/console/dashboard";
+	const homeHref = "/console/home";
 
 	const workspace: Crumb = {
-		label: "Overview",
-		to: dashboardHref,
+		label: "Home",
+		to: homeHref,
 	};
+
+	if (pathname.startsWith("/console/home")) {
+		return [{ label: "Console", to: "/console" }, { label: "Home" }];
+	}
 
 	if (pathname.startsWith("/console/dashboard")) {
 		return [
 			{ label: "Console", to: "/console" },
 			workspace,
 			{ label: "Dashboard" },
+		];
+	}
+
+	const spaceMatch = pathname.match(
+		/^\/console\/spaces\/([^/]+)\/(overview|splits|recurring)\/?$/,
+	);
+	if (spaceMatch) {
+		const tail = spaceMatch[2];
+		const tailLabel: Record<string, string> = {
+			overview: "Overview",
+			splits: "Splits",
+			recurring: "Recurring",
+		};
+		return [
+			{ label: "Console", to: "/console" },
+			workspace,
+			{ label: chat?.spaceName?.trim() ?? "Space" },
+			{ label: tailLabel[tail] ?? "Space" },
 		];
 	}
 
@@ -201,7 +223,8 @@ export const ConsoleBreadcrumbs = ({
 			>
 				{crumbs.map((crumb, i) => {
 					const isLast = i === crumbs.length - 1;
-					const isWorkspace = crumb.label === "Overview";
+					const isWorkspace =
+						crumb.label === "Home" || crumb.label === "Overview";
 
 					return (
 						<li

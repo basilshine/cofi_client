@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Outfit:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Manrope:wght@300;400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -39,6 +39,23 @@
 		--input: var(--border-subtle);
 		--ring: var(--focus-ring);
 		--radius: 0.75rem;
+
+		/* Ceits brand logo (hex — SVG + wordmark; dark reference is primary mood) */
+		--ceits-brand-navy: #071126;
+		--ceits-brand-ivory: #f2efe6;
+		--ceits-brand-sage: #a7b79a;
+		--ceits-brand-gold: #c9a463;
+		--ceits-logo-primary: var(--ceits-brand-navy);
+		--ceits-logo-secondary: var(--ceits-brand-sage);
+		--ceits-logo-accent: var(--ceits-brand-gold);
+		--ceits-logo-surface: var(--ceits-brand-ivory);
+
+		/* Ceits iconography (light surfaces — deep navy strokes) */
+		--ceits-icon-primary: 222 42% 18%;
+		--ceits-icon-accent: 152 12% 42%;
+		--ceits-icon-positive: 40 38% 54%;
+		--ceits-icon-surface: 43 48% 96%;
+		--ceits-icon-muted: 40 12% 88%;
 	}
 
 	:root[data-theme="legacy-technical"] {
@@ -55,28 +72,89 @@
 		--secondary-foreground: 33 35% 85%;
 	}
 
+	/*
+	 * Editorial palette (applied on `/console/*` by ConsoleWorkspaceTheme).
+	 * Warm Material-3-inspired tokens: cream background, white card surfaces,
+	 * graphite primary, sand / parchment containers. Matches the household
+	 * overview design reference (cofi_brain/design/screens/dashboard).
+	 */
 	:root[data-theme="ceits-editorial"] {
-		--bg: 32 33% 96%;
-		--surface: 34 28% 92%;
-		--surface-muted: 34 18% 88%;
-		--text-primary: 28 38% 16%;
-		--text-secondary: 26 20% 34%;
-		--accent: 22 78% 44%;
-		--accent-contrast: 38 46% 96%;
-		--border-subtle: 28 18% 80%;
-		--focus-ring: 22 78% 44%;
-		--secondary: 31 30% 25%;
-		--secondary-foreground: 38 46% 96%;
+		--bg: 43 50% 97%;
+		--surface: 0 0% 100%;
+		--surface-muted: 53 23% 95%;
+		--text-primary: 73 8% 19%;
+		--text-secondary: 80 4% 36%;
+		--accent: 30 3% 37%;
+		--accent-contrast: 43 50% 97%;
+		--border-subtle: 67 14% 87%;
+		--focus-ring: 30 3% 37%;
+		--secondary: 36 14% 36%;
+		--secondary-foreground: 43 50% 97%;
+		--background: 43 50% 97%;
+		--foreground: 73 8% 19%;
+		--card: 0 0% 100%;
+		--card-foreground: 73 8% 19%;
+		--popover: 0 0% 100%;
+		--popover-foreground: 73 8% 19%;
+		--primary: 30 3% 37%;
+		--primary-foreground: 43 50% 97%;
+		--muted: 53 19% 92%;
+		--muted-foreground: 85 4% 47%;
+		--accent-foreground: 43 50% 97%;
+		--border: 67 14% 87%;
+		--input: 67 14% 87%;
+		--ring: 30 3% 37%;
+		/* Warm container accents from Material-3 reference. */
+		--ceits-sand: 34 56% 87%;
+		--ceits-parchment: 35 80% 95%;
+		--ceits-warm-gray: 30 11% 89%;
+		--ceits-terracotta: 13 57% 39%;
+		--destructive: 13 57% 39%;
+		--destructive-foreground: 43 50% 97%;
+
+		/* Ceits iconography — editorial console (same light-ink intent) */
+		--ceits-icon-primary: 220 38% 16%;
+		--ceits-icon-accent: 145 11% 44%;
+		--ceits-icon-positive: 38 42% 52%;
+		--ceits-icon-surface: 43 50% 97%;
+		--ceits-icon-muted: 67 14% 87%;
+	}
+
+	/* Ceits iconography — dark surfaces (warm ivory strokes on deep navy) */
+	.dark {
+		--ceits-logo-primary: var(--ceits-brand-ivory);
+		--ceits-logo-secondary: var(--ceits-brand-sage);
+		--ceits-logo-accent: var(--ceits-brand-gold);
+		--ceits-logo-surface: var(--ceits-brand-navy);
+
+		--ceits-icon-primary: 43 35% 94%;
+		--ceits-icon-accent: 145 14% 52%;
+		--ceits-icon-positive: 42 45% 58%;
+		--ceits-icon-surface: 222 38% 11%;
+		--ceits-icon-muted: 220 16% 24%;
+	}
+
+	/* Force logo palette on a subtree (e.g. app icon tile, marketing hero) */
+	.ceits-logo-variant-light {
+		--ceits-logo-primary: var(--ceits-brand-navy);
+		--ceits-logo-secondary: var(--ceits-brand-sage);
+		--ceits-logo-accent: var(--ceits-brand-gold);
+		--ceits-logo-surface: var(--ceits-brand-ivory);
+	}
+	.ceits-logo-variant-dark {
+		--ceits-logo-primary: var(--ceits-brand-ivory);
+		--ceits-logo-secondary: var(--ceits-brand-sage);
+		--ceits-logo-accent: var(--ceits-brand-gold);
+		--ceits-logo-surface: var(--ceits-brand-navy);
 	}
 
 	/*
 	 * Console workspace tint (set on html by ConsoleWorkspaceTheme).
-	 * Personal reinforces warm accents; Organization uses a rich emerald-tinted console.
+	 * Personal preserves the warm graphite editorial accent; Organization
+	 * uses a rich emerald-tinted console.
 	 */
 	:root[data-console-workspace="personal"] {
-		--accent: 28 92% 52%;
-		--accent-contrast: 40 40% 98%;
-		--focus-ring: 28 92% 52%;
+		/* Inherit the editorial graphite accent — no orange override. */
 	}
 
 	:root[data-console-workspace="business"] {
@@ -182,9 +260,47 @@
 		font-family: "Outfit", system-ui, -apple-system, sans-serif;
 		font-weight: 600;
 	}
+
+	/* In the console, body voice is Manrope. */
+	:root[data-theme="ceits-editorial"] body {
+		font-family: "Manrope", "DM Sans", system-ui, -apple-system, sans-serif;
+	}
 }
 
 @layer utilities {
+	/*
+	 * Editorial soft-shadow + inner-glow lift, ported from the household
+	 * overview design reference. Use on hero / summary / quick-capture cards.
+	 */
+	.soft-shadow {
+		box-shadow: 0 4px 20px -1px rgba(0, 0, 0, 0.04);
+	}
+	.inner-glow {
+		box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8);
+	}
+	.soft-shadow.inner-glow {
+		box-shadow: 0 4px 20px -1px rgba(0, 0, 0, 0.04), inset 0 1px 1px
+			rgba(255, 255, 255, 0.8);
+	}
+
+	/* Editorial body voice — defaults to Manrope when applied. */
+	.font-editorial {
+		font-family: "Manrope", "DM Sans", system-ui, -apple-system, sans-serif;
+	}
+	/* Editorial display voice — Noto Serif headlines. */
+	.font-editorial-serif {
+		font-family: "Noto Serif", "Cormorant Garamond", Georgia, serif;
+	}
+
+	/* Console eyebrow label — small, bold, all caps, generous tracking. */
+	.eyebrow {
+		font-size: 10px;
+		font-weight: 700;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: hsl(var(--muted-foreground));
+	}
+
 	/*
 	 * Chat / thread scrollbars — visible track + thumb so position is obvious.
 	 * Firefox: scrollbar-color thumb track. WebKit: styled track + pill thumb.
@@ -248,6 +364,52 @@
 	}
 	.scrollbar-chat-compact::-webkit-scrollbar-thumb:hover {
 		background: hsl(var(--primary) / 0.58);
+	}
+
+	/* Editorial page scrollbar: warm, subtle, and smooth on interaction. */
+	.scrollbar-editorial {
+		scrollbar-width: thin;
+		scrollbar-color: hsl(var(--primary) / 0.36) hsl(var(--muted) / 0.38);
+		overscroll-behavior-y: contain;
+	}
+	.scrollbar-editorial::-webkit-scrollbar {
+		width: 10px;
+	}
+	.scrollbar-editorial::-webkit-scrollbar-track {
+		margin: 6px 0;
+		border-radius: 9999px;
+		background: linear-gradient(
+			180deg,
+			hsl(var(--muted) / 0.28),
+			hsl(var(--muted) / 0.5)
+		);
+		border: 1px solid hsl(var(--border) / 0.42);
+	}
+	.scrollbar-editorial::-webkit-scrollbar-thumb {
+		border-radius: 9999px;
+		border: 2px solid hsl(var(--background));
+		background: linear-gradient(
+			180deg,
+			hsl(var(--primary) / 0.5),
+			hsl(var(--primary) / 0.3)
+		);
+		background-clip: padding-box;
+		box-shadow: 0 0 0 1px hsl(var(--primary) / 0.12), 0 4px 10px -6px
+			hsl(var(--primary) / 0.3);
+		transition: background 180ms ease, box-shadow 180ms ease, border-color 180ms
+			ease;
+	}
+	.scrollbar-editorial::-webkit-scrollbar-thumb:hover {
+		background: linear-gradient(
+			180deg,
+			hsl(var(--primary) / 0.68),
+			hsl(var(--primary) / 0.42)
+		);
+		box-shadow: 0 0 0 1px hsl(var(--primary) / 0.2), 0 8px 16px -10px
+			hsl(var(--primary) / 0.45);
+	}
+	.scrollbar-editorial::-webkit-scrollbar-thumb:active {
+		background: hsl(var(--primary) / 0.62);
 	}
 }
 
