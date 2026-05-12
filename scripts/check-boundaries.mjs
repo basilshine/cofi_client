@@ -29,7 +29,8 @@ const readDirRecursive = async (targetDir) => {
 
 const normalizePath = (filePath) => filePath.split(path.sep).join("/");
 
-const toRelative = (filePath) => normalizePath(path.relative(repoRoot, filePath));
+const toRelative = (filePath) =>
+	normalizePath(path.relative(repoRoot, filePath));
 
 const checkFileImports = (filePath, checker) =>
 	fs.readFile(filePath, "utf8").then((content) => {
@@ -57,16 +58,19 @@ const getFeatureName = (filePath) => {
 const listFeatureNames = async () => {
 	const featuresDir = path.join(webSrcRoot, "features");
 	const entries = await fs.readdir(featuresDir, { withFileTypes: true });
-	return new Set(entries.filter((entry) => entry.isDirectory()).map((x) => x.name));
+	return new Set(
+		entries.filter((entry) => entry.isDirectory()).map((x) => x.name),
+	);
 };
 
 const main = async () => {
-	const [webFiles, telegramFiles, marketingFiles, featureNames] = await Promise.all([
-		readDirRecursive(webSrcRoot),
-		readDirRecursive(telegramSrcRoot),
-		readDirRecursive(marketingSrcRoot),
-		listFeatureNames(),
-	]);
+	const [webFiles, telegramFiles, marketingFiles, featureNames] =
+		await Promise.all([
+			readDirRecursive(webSrcRoot),
+			readDirRecursive(telegramSrcRoot),
+			readDirRecursive(marketingSrcRoot),
+			listFeatureNames(),
+		]);
 
 	const allViolations = [];
 
@@ -108,7 +112,10 @@ const main = async () => {
 				if (specifier.includes("../../../src/")) {
 					return "Telegram app must not import runtime from legacy cofi_client/src.";
 				}
-				if (specifier.includes("../web/src/") || specifier.includes("../../web/src/")) {
+				if (
+					specifier.includes("../web/src/") ||
+					specifier.includes("../../web/src/")
+				) {
 					return "Telegram app must not deep-import web source via relative paths; use @web public alias.";
 				}
 				return null;

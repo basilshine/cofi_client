@@ -2,9 +2,18 @@
 npx biome format . --write
 npx biome check .
 
-if ! command -v semgrep >/dev/null 2>&1; then
+SEMGREP_BIN=""
+if command -v semgrep >/dev/null 2>&1; then
+	SEMGREP_BIN="semgrep"
+elif command -v semgrep.exe >/dev/null 2>&1; then
+	SEMGREP_BIN="semgrep.exe"
+elif [ -n "$USERPROFILE" ] && [ -f "$USERPROFILE/miniconda3/Scripts/semgrep.exe" ]; then
+	SEMGREP_BIN="$USERPROFILE/miniconda3/Scripts/semgrep.exe"
+fi
+
+if [ -z "$SEMGREP_BIN" ]; then
 	echo "Semgrep is required for pre-commit security checks. Install from https://semgrep.dev/docs/getting-started/"
 	exit 1
 fi
 
-npm run security:scan
+PYTHONUTF8=1 PYTHONIOENCODING=utf-8 "$SEMGREP_BIN" scan --config auto --error .

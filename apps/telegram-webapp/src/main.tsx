@@ -1,6 +1,6 @@
+import LogRocket from "logrocket";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import LogRocket from "logrocket";
 import { App } from "./App";
 import "./index.css";
 
