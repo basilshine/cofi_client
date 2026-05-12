@@ -2,7 +2,6 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AuthEntryPage } from "../../features/auth/AuthEntryPage";
 import { LoginPage } from "../../features/auth/LoginPage";
 import { RegisterPage } from "../../features/auth/RegisterPage";
-import { ChatLogPage } from "../../features/chatlog/ChatLogPage";
 import { DashboardPage } from "../../features/dashboard/DashboardPage";
 import { DraftsPage } from "../../features/drafts/DraftsPage";
 import { ExpenseThreadPage } from "../../features/expense-thread/ExpenseThreadPage";
@@ -22,6 +21,7 @@ import { SpaceSettingsPage } from "../../features/space-settings/SpaceSettingsPa
 import { SpaceSplitsWorkspacePage } from "../../features/space-splits/SpaceSplitsWorkspacePage";
 import { SpacesPage } from "../../features/spaces/SpacesPage";
 import { TransactionsPage } from "../../features/transactions/TransactionsPage";
+import { ChatPage } from "../../pages/chat/ChatPage";
 import { AppShell } from "../layout/AppShell";
 import { ConsoleWorkspaceSplit } from "../layout/workspaceSpaces/ConsoleWorkspaceSplit";
 import { ConsoleIndexRedirect } from "./ConsoleIndexRedirect";
@@ -82,8 +82,8 @@ export const AppRouter = () => {
 							<Route element={<TransactionsPage />} path="transactions" />
 							<Route element={<RecurringSchedulesPage />} path="recurring" />
 							<Route element={<ChatSectionLayout />} path="chat">
-								<Route element={<ChatLogPage />} index />
-								<Route element={<ChatLogPage />} path="expenses" />
+								<Route element={<ChatPage />} index />
+								<Route element={<ChatPage />} path="expenses" />
 								<Route element={<ExpenseThreadPage />} path="thread" />
 							</Route>
 							<Route element={<QuotaPage />} path="quota" />

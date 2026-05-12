@@ -2,7 +2,6 @@ import type { DashboardResponse, Space, SpaceMember } from "@cofi/api";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
-import { OverviewRightRail } from "../../app/layout/workspaceSpaces/OverviewRightRail";
 import { SpaceHeader } from "../../app/layout/workspaceSpaces/SpaceHeader";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
@@ -10,9 +9,10 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
-import { PARSE_DUMMY_TEST_SNIPPETS } from "../chatlog/parseDummySnippets";
-import { ActivityListCard } from "../home/components/ActivityListCard";
-import { QuickCaptureComposer } from "../home/components/QuickCaptureComposer";
+import { PARSE_DUMMY_TEST_SNIPPETS } from "../../shared/lib/parseDummySnippets";
+import { ActivityListCard } from "../../widgets/activity-list-card";
+import { OverviewRightRail } from "../../widgets/overview-right-rail";
+import { QuickCaptureComposer } from "../../widgets/quick-capture-composer";
 
 const sectionHeading =
 	"flex items-center justify-between gap-3 border-b border-[rgba(95,105,125,0.12)] px-6 py-4";

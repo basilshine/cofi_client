@@ -2,6 +2,8 @@ import {
 	NOTIFICATION_CHANNEL_KEYS,
 	type NotificationChannelKey,
 	type NotificationChannelsMap,
+	type ProfileUpdateRequest,
+	type UserPreferencesPayload,
 	notificationChannelsMapFromResponse,
 } from "@cofi/api";
 import type { TenantInviteRow, TenantMember } from "@cofi/api";
@@ -9,10 +11,6 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import type {
-	ProfileUpdateRequest,
-	UserPreferencesPayload,
-} from "../../../../../packages/api/src/types";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient, readActiveOrgTenantId } from "../../shared/lib/apiClient";
 import { authSurfaceVariants } from "../../shared/lib/appMotion";

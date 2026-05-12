@@ -5,7 +5,7 @@ import {
 } from "@cofi/ceits-icons";
 import type { ReactNode } from "react";
 
-type QuickCaptureComposerProps = {
+export type QuickCaptureComposerProps = {
 	title: string;
 	eyebrow?: string;
 	targetSpaceName?: string | null;

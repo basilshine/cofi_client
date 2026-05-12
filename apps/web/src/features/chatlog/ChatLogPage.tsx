@@ -31,14 +31,9 @@ import {
 	touchRecentSpaceId,
 } from "../../shared/lib/recentSpaceIds";
 import { wsClient } from "../../shared/lib/wsClient";
-import {
-	ChatComposerDock,
-	type ChatComposerMode,
-} from "./components/ChatComposerDock";
+import type { ChatComposerMode } from "./components/ChatComposerDock";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
-import { ComposerHorizontalBar } from "./components/ComposerHorizontalBar";
-import { ComposerVoiceRecording } from "./components/ComposerVoiceRecording";
 import {
 	isDraftExpenseSystemMessage,
 	isRecurringExpenseChatMessage,
@@ -46,7 +41,11 @@ import {
 import { DraftExpenseCard } from "./components/DraftExpenseCard";
 import { ExpenseMessageCard } from "./components/ExpenseMessageCard";
 import { FirstChatQuickActions } from "./components/FirstChatQuickActions";
-import { ParseExpenseComposer } from "./components/ParseExpenseComposer";
+import {
+	type ComposerPayload,
+	SmartTextareaComposer,
+	type SmartTextareaComposerHandle,
+} from "./components/SmartTextareaComposer";
 import { SpaceExpensesMain } from "./components/SpaceExpensesMain";
 import {
 	type ThreadDeepLink,
@@ -55,6 +54,19 @@ import {
 import type { BuilderItem } from "./components/transactionBuilderTypes";
 import { parseTags, toNumber } from "./components/transactionBuilderTypes";
 import { useExpenseThreadState } from "./hooks/useExpenseThreadState";
+import {
+	asChronological,
+	isMainChatUnread,
+	maxMessageIdInList,
+	messageIdCompare,
+	readLastReadMain,
+	writeLastReadMain,
+} from "./lib/mainChatRead";
+import { userMessageAccent } from "./lib/userMessageAccent";
+import type {
+	ChatLogLocationState,
+	SelectSpaceOptions,
+} from "./model/chatLogLocation";
 import { PARSE_DUMMY_TEST_SNIPPETS } from "./parseDummySnippets";
 
 const DEFAULT_LIMIT = 50;
@@ -65,97 +77,6 @@ const navPillBase =
 
 const navPillInactive =
 	"text-muted-foreground hover:bg-accent/70 hover:text-foreground";
-
-const asChronological = (descMessages: ChatMessage[]) =>
-	[...descMessages].reverse();
-
-/** Persisted last-seen main chat message id per space (client-only). */
-const LAST_READ_MAIN_PREFIX = "cofi.chat.lastReadMainMsgId.";
-
-const messageIdCompare = (a: string, b: string): number => {
-	const na = Number(a);
-	const nb = Number(b);
-	if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-	return String(a).localeCompare(String(b));
-};
-
-const maxMessageIdInList = (list: ChatMessage[]): string | null => {
-	if (!list.length) return null;
-	let best = String(list[0].id);
-	for (let i = 1; i < list.length; i++) {
-		const s = String(list[i].id);
-		if (messageIdCompare(best, s) < 0) best = s;
-	}
-	return best;
-};
-
-const readLastReadMain = (spaceId: string | number): string | null => {
-	try {
-		return localStorage.getItem(LAST_READ_MAIN_PREFIX + String(spaceId));
-	} catch {
-		return null;
-	}
-};
-
-const writeLastReadMain = (
-	spaceId: string | number,
-	messageId: string | number,
-) => {
-	try {
-		localStorage.setItem(
-			LAST_READ_MAIN_PREFIX + String(spaceId),
-			String(messageId),
-		);
-	} catch {
-		/* ignore */
-	}
-};
-
-const isMainChatUnread = (
-	lastRead: string | null,
-	latestId: string | undefined,
-): boolean => {
-	if (!latestId) return false;
-	if (!lastRead) return true;
-	return messageIdCompare(lastRead, latestId) < 0;
-};
-
-const userMessageAccent = (userId?: number) => {
-	if (userId == null) {
-		return {
-			borderLeftColor: "hsl(220 45% 52%)",
-			surface: "hsl(220 20% 96% / 0.5)",
-		};
-	}
-	const hue = (Number(userId) * 47) % 360;
-	return {
-		borderLeftColor: `hsl(${hue} 48% 45%)`,
-		surface: `hsl(${hue} 35% 96% / 0.65)`,
-	};
-};
-
-type SelectSpaceOptions = {
-	openThreadExpenseId?: string | number;
-	/** Focus manual draft line N (1-based) after opening the expense thread in the right panel. */
-	openThreadDraftLine?: number;
-	quickCapture?: "photo" | "voice";
-	focusCaptureComposer?: boolean;
-	focusMessageComposer?: boolean;
-	/** Open the workspace expenses panel (right rail). */
-	openExpensesPanel?: boolean;
-};
-
-type ChatLogLocationState = {
-	chatWorkspace?: ChatWorkspaceScope;
-	openThreadExpenseId?: string | number;
-	openThreadSpaceId?: string | number;
-	openThreadDraftLine?: number;
-	selectSpaceId?: string | number;
-	quickCapture?: "photo" | "voice";
-	focusCaptureComposer?: boolean;
-	focusMessageComposer?: boolean;
-	openExpensesPanel?: boolean;
-};
 
 export const ChatLogPage = () => {
 	const { formatMoney, formatDateTime } = useUserFormat();
@@ -224,8 +145,6 @@ export const ChatLogPage = () => {
 	);
 	const [acceptInviteToken, setAcceptInviteToken] = useState("");
 
-	const [chatInput, setChatInput] = useState("");
-	const [parseInput, setParseInput] = useState("");
 	const [composerMode, setComposerMode] = useState<ChatComposerMode>("message");
 	const [isRecording, setIsRecording] = useState(false);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -275,15 +194,11 @@ export const ChatLogPage = () => {
 		useState<ChatMessage | null>(null);
 	const [deleteMessageBusy, setDeleteMessageBusy] = useState(false);
 	const currentUserIdRef = useRef(currentUserId);
-	const quickCapturePhotoInputRef = useRef<HTMLInputElement>(null);
-	const messagePhotoInputRef = useRef<HTMLInputElement>(null);
-	const messagePhotoCameraInputRef = useRef<HTMLInputElement>(null);
+	const smartComposerRef = useRef<SmartTextareaComposerHandle>(null);
 	const quickCaptureIntentRef = useRef<"photo" | "voice" | null>(null);
 	const handleToggleRecordingRef = useRef<() => Promise<void>>(async () => {});
 	/** When true, stopping the recorder sends transcribed text as chat only (no expense). */
 	const recordingForMessageRef = useRef(false);
-	const parseTextareaRef = useRef<HTMLTextAreaElement>(null);
-	const chatMessageTextareaRef = useRef<HTMLTextAreaElement>(null);
 
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -610,8 +525,6 @@ export const ChatLogPage = () => {
 		setSelectedSpaceId(spaceId);
 		setInviteToken(null);
 		setTenantInviteToken(null);
-		setChatInput("");
-		setParseInput("");
 		setHardPurgeFeedback(null);
 		setMessages(null);
 		setMembers(null);
@@ -670,17 +583,14 @@ export const ChatLogPage = () => {
 			} else if (opts?.openExpensesPanel) {
 				setRightSidebarExpanded(true);
 			} else if (opts?.quickCapture != null) {
-				setComposerMode("capture");
 				quickCaptureIntentRef.current = opts.quickCapture;
 			} else if (opts?.focusCaptureComposer) {
-				setComposerMode("capture");
 				window.setTimeout(() => {
-					parseTextareaRef.current?.focus();
+					smartComposerRef.current?.navigateTo("expense_text");
 				}, 200);
 			} else if (opts?.focusMessageComposer) {
-				setComposerMode("message");
 				window.setTimeout(() => {
-					chatMessageTextareaRef.current?.focus();
+					smartComposerRef.current?.navigateTo("message_text");
 				}, 200);
 			}
 			const sidNum = Number(spaceId);
@@ -983,18 +893,18 @@ export const ChatLogPage = () => {
 		}
 	};
 
-	const handleSendChat = async () => {
+	/** Send arbitrary text as a chat message (used by SmartTextareaComposer message + ask flows). */
+	const handleSendChatText = async (text: string) => {
 		if (selectedSpaceId === null) return;
-		const text = chatInput.trim();
-		if (!text) return;
+		const t = text.trim();
+		if (!t) return;
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
 			const created = await wsClient.rpc<ChatMessage>("chat.send", {
 				spaceId: selectedSpaceId,
-				text,
+				text: t,
 			});
-			setChatInput("");
 			setStickToLatest(true);
 			setMessages((prev) => [...(prev ?? []), created]);
 			setOldestMessageId((prev) => prev ?? created.id);
@@ -1016,36 +926,16 @@ export const ChatLogPage = () => {
 		}
 	};
 
-	const handleMessagePhotoFile = async (file: File) => {
-		if (selectedSpaceId === null) return;
-		const text = `📷 ${file.name}`;
-		setIsLoading(true);
-		setErrorMessage(null);
-		try {
-			const created = await wsClient.rpc<ChatMessage>("chat.send", {
-				spaceId: selectedSpaceId,
-				text,
-			});
-			setStickToLatest(true);
-			setMessages((prev) => [...(prev ?? []), created]);
-			setOldestMessageId((prev) => prev ?? created.id);
-			const nowIso = new Date().toISOString();
-			patchSpaces((prev) => {
-				if (!prev) return prev;
-				return prev.map((s) =>
-					String(s.id) === String(selectedSpaceId)
-						? { ...s, last_activity_at: nowIso }
-						: s,
-				);
-			});
-		} catch (err) {
-			setErrorMessage(
-				err instanceof Error ? err.message : "Failed to send message",
-			);
-		} finally {
-			setIsLoading(false);
+	/** Drop an in-progress recording without processing it (e.g. Back/Cancel from voice state). */
+	const handleCancelRecording = useCallback(() => {
+		const rec = mediaRecorderRef.current;
+		if (rec && rec.state === "recording") {
+			rec.stop();
 		}
-	};
+		mediaChunksRef.current = [];
+		setIsRecording(false);
+		recordingForMessageRef.current = false;
+	}, []);
 
 	/** After parse (text/photo/voice), persist draft + chat message immediately so the user sees the draft card in the thread. */
 	const finalizeParsedDraft = useCallback(
@@ -1088,7 +978,6 @@ export const ChatLogPage = () => {
 				});
 			}
 
-			setParseInput("");
 			setComposerMode("message");
 			setStickToLatest(true);
 			const bumpIso = new Date().toISOString();
@@ -1105,46 +994,81 @@ export const ChatLogPage = () => {
 		[selectedSpaceId, loadSpaceTransactions],
 	);
 
-	const handleParseTextSubmit = async () => {
-		if (selectedSpaceId === null) return;
-		const text = parseInput.trim();
-		if (!text) return;
-		setIsLoading(true);
-		setErrorMessage(null);
-		try {
-			const res = await httpClient.post<{
-				items?: {
-					name: string;
-					amount: number;
-					tags?: string[];
-					notes?: string;
-				}[];
-			}>(`/api/v1/spaces/${String(selectedSpaceId)}/transactions/parse/text`, {
-				text,
-			});
-			const parsed = res.data?.items ?? [];
-			const builderItems = parsed
-				.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
-				.map((p) => ({
-					id: crypto.randomUUID(),
-					name: p.name.trim(),
-					amount: String(p.amount),
-					tags: (p.tags ?? []).join(", "),
-					notes: p.notes?.trim() ?? "",
-				}));
-			if (!builderItems.length) {
-				setErrorMessage("Nothing parsed — try clearer amounts and item names.");
-				return;
+	/** Unified payload handler for SmartTextareaComposer. Routes to existing logic. */
+	const handleComposerSubmit = useCallback(
+		async (payload: ComposerPayload) => {
+			if (selectedSpaceId === null) return;
+
+			if (payload.composer_mode === "expense") {
+				if (payload.expense_input_type === "text") {
+					const text = payload.content.trim();
+					if (!text) return;
+					setIsLoading(true);
+					setErrorMessage(null);
+					try {
+						const res = await httpClient.post<{
+							items?: {
+								name: string;
+								amount: number;
+								tags?: string[];
+								notes?: string;
+							}[];
+						}>(
+							`/api/v1/spaces/${String(selectedSpaceId)}/transactions/parse/text`,
+							{ text },
+						);
+						const parsed = res.data?.items ?? [];
+						const builderItems = parsed
+							.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
+							.map((p) => ({
+								id: crypto.randomUUID(),
+								name: p.name.trim(),
+								amount: String(p.amount),
+								tags: (p.tags ?? []).join(", "),
+								notes: p.notes?.trim() ?? "",
+							}));
+						if (!builderItems.length) {
+							setErrorMessage(
+								"Nothing parsed — try clearer amounts and item names.",
+							);
+							return;
+						}
+						await finalizeParsedDraft(text, builderItems);
+					} catch (err) {
+						setErrorMessage(
+							err instanceof Error ? err.message : "Failed to parse text",
+						);
+					} finally {
+						setIsLoading(false);
+					}
+				} else if (payload.expense_input_type === "photo") {
+					await handleParsePhotoFile(payload.file);
+				}
+				// voice: handled via onStartExpenseRecording / onStopRecording directly
+			} else if (payload.composer_mode === "ask") {
+				let text = "";
+				if (payload.ask_type === "period_expenses") {
+					text = payload.content
+						? `How much did I spend on ${payload.content} ${payload.period.toLowerCase()}?`
+						: `How much did I spend ${payload.period.toLowerCase()}?`;
+				} else if (payload.ask_type === "find_expense") {
+					text = `Find expense: ${payload.content}`;
+				} else if (payload.ask_type === "next_payment") {
+					text = `What's my next payment? (${payload.period})`;
+				} else if (payload.ask_type === "split_balance") {
+					text = payload.content
+						? `Who owes whom? ${payload.content}`
+						: "Who owes whom in this space?";
+				} else if (payload.ask_type === "custom") {
+					text = payload.content;
+				}
+				if (text.trim()) await handleSendChatText(text);
+			} else if (payload.composer_mode === "message") {
+				await handleSendChatText(payload.content);
 			}
-			await finalizeParsedDraft(text, builderItems);
-		} catch (err) {
-			setErrorMessage(
-				err instanceof Error ? err.message : "Failed to parse text",
-			);
-		} finally {
-			setIsLoading(false);
-		}
-	};
+		},
+		[selectedSpaceId, finalizeParsedDraft, handleSendChatText],
+	);
 
 	const handleParsePhotoFile = async (file: File) => {
 		if (!selectedSpaceId) return;
@@ -1372,7 +1296,11 @@ export const ChatLogPage = () => {
 			if (quickCaptureIntentRef.current !== intent) return;
 			quickCaptureIntentRef.current = null;
 			if (intent === "photo") {
-				quickCapturePhotoInputRef.current?.click();
+				smartComposerRef.current?.navigateTo("expense_photo");
+				window.setTimeout(
+					() => smartComposerRef.current?.triggerPhotoUpload(),
+					150,
+				);
 				return;
 			}
 			void handleToggleRecordingRef.current();
@@ -1383,7 +1311,6 @@ export const ChatLogPage = () => {
 	const handleFirstChatQuickAction = useCallback(
 		(id: string) => {
 			if (id === "upload_receipt") {
-				setComposerMode("capture");
 				quickCaptureIntentRef.current = "photo";
 				return;
 			}
@@ -1395,8 +1322,7 @@ export const ChatLogPage = () => {
 				return;
 			}
 			if (id === "invite_someone") {
-				setComposerMode("message");
-				window.setTimeout(() => chatMessageTextareaRef.current?.focus(), 0);
+				smartComposerRef.current?.navigateTo("message_text");
 				return;
 			}
 			if (id === "voice_note") {
@@ -1404,24 +1330,11 @@ export const ChatLogPage = () => {
 				return;
 			}
 			if (id === "quick_note") {
-				setComposerMode("message");
-				window.setTimeout(() => chatMessageTextareaRef.current?.focus(), 0);
+				smartComposerRef.current?.navigateTo("message_text");
 			}
 		},
 		[navigate, selectedSpaceId, beginRecording],
 	);
-
-	const handleChatKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-			void handleSendChat();
-		}
-	};
-
-	const handleParseKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-		if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-			void handleParseTextSubmit();
-		}
-	};
 
 	// Draft approve/decline happens on the inline chat draft card now.
 
@@ -1752,14 +1665,7 @@ export const ChatLogPage = () => {
 	);
 
 	const handleInsertLineLinkToMainChat = useCallback((markdown: string) => {
-		setComposerMode("message");
-		setChatInput((prev) => {
-			const sep = prev.length > 0 && !/\s$/.test(prev) ? " " : "";
-			return `${prev}${sep}${markdown}`;
-		});
-		requestAnimationFrame(() => {
-			chatMessageTextareaRef.current?.focus();
-		});
+		smartComposerRef.current?.insertMessage(markdown);
 	}, []);
 
 	const handleOpenThreadLinkFromMainChat = useCallback(
@@ -1844,6 +1750,49 @@ export const ChatLogPage = () => {
 		setChatBreadcrumb,
 	]);
 
+	const expenseRenderMeta = useMemo(() => {
+		const latestIndexByKey = new Map<string, number>();
+		const updatesByKey = new Map<
+			string,
+			Array<{
+				state: "draft" | "approved" | "needs_review";
+				timestamp?: string | null;
+				note?: string | null;
+			}>
+		>();
+		for (let i = 0; i < (messages ?? []).length; i += 1) {
+			const m = messages?.[i];
+			if (!m) continue;
+			const relatedId = m.related_expense_id ?? m.related_transaction_id;
+			if (relatedId == null) continue;
+			const key = String(relatedId);
+			latestIndexByKey.set(key, i);
+			const raw = (m.related_expense_status ?? "").toLowerCase();
+			const state: "draft" | "approved" | "needs_review" =
+				m.related_transaction_id != null || raw === "approved"
+					? "approved"
+					: raw === "draft"
+						? "draft"
+						: raw.includes("pending") || raw.includes("review")
+							? "needs_review"
+							: "draft";
+			const note =
+				state === "approved" && (updatesByKey.get(key)?.length ?? 0) > 0
+					? "Updated after confirmation"
+					: state === "needs_review"
+						? "Needs agreement"
+						: null;
+			const list = updatesByKey.get(key) ?? [];
+			list.push({
+				state,
+				timestamp: m.created_at ?? null,
+				note,
+			});
+			updatesByKey.set(key, list);
+		}
+		return { latestIndexByKey, updatesByKey };
+	}, [messages]);
+
 	if (workspaceContextLoading && !workspaceScope) {
 		return (
 			<section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -1903,49 +1852,6 @@ export const ChatLogPage = () => {
 				}
 			/>
 		);
-
-	const expenseRenderMeta = useMemo(() => {
-		const latestIndexByKey = new Map<string, number>();
-		const updatesByKey = new Map<
-			string,
-			Array<{
-				state: "draft" | "approved" | "needs_review";
-				timestamp?: string | null;
-				note?: string | null;
-			}>
-		>();
-		for (let i = 0; i < (messages ?? []).length; i += 1) {
-			const m = messages?.[i];
-			if (!m) continue;
-			const relatedId = m.related_expense_id ?? m.related_transaction_id;
-			if (relatedId == null) continue;
-			const key = String(relatedId);
-			latestIndexByKey.set(key, i);
-			const raw = (m.related_expense_status ?? "").toLowerCase();
-			const state: "draft" | "approved" | "needs_review" =
-				m.related_transaction_id != null || raw === "approved"
-					? "approved"
-					: raw === "draft"
-						? "draft"
-						: raw.includes("pending") || raw.includes("review")
-							? "needs_review"
-							: "draft";
-			const note =
-				state === "approved" && (updatesByKey.get(key)?.length ?? 0) > 0
-					? "Updated after confirmation"
-					: state === "needs_review"
-						? "Needs agreement"
-						: null;
-			const list = updatesByKey.get(key) ?? [];
-			list.push({
-				state,
-				timestamp: m.created_at ?? null,
-				note,
-			});
-			updatesByKey.set(key, list);
-		}
-		return { latestIndexByKey, updatesByKey };
-	}, [messages]);
 
 	return (
 		<div className="flex h-full min-h-0 w-full min-w-0 flex-1 overflow-hidden">
@@ -2400,95 +2306,19 @@ export const ChatLogPage = () => {
 													/>
 												) : null}
 												{selectedSpaceId ? (
-													<ChatComposerDock
-														captureSlot={
-															<ParseExpenseComposer
-																disabled={isLoading || !selectedSpaceId}
-																isRecording={isRecording}
-																onParseInputChange={setParseInput}
-																onParseKeyDown={handleParseKeyDown}
-																onParseSubmit={() =>
-																	void handleParseTextSubmit()
-																}
-																onPhotoFile={(f) =>
-																	void handleParsePhotoFile(f)
-																}
-																onToggleRecording={() =>
-																	void handleToggleRecording()
-																}
-																parseInput={parseInput}
-																photoFileInputRef={quickCapturePhotoInputRef}
-																parseTextareaRef={parseTextareaRef}
-																testSnippets={PARSE_DUMMY_TEST_SNIPPETS}
-															/>
-														}
-														composerMode={composerMode}
+													<SmartTextareaComposer
+														ref={smartComposerRef}
 														disabled={isLoading || !selectedSpaceId}
-														interactionLocked={isRecording}
-														messageSlot={
-															isRecording && composerMode === "message" ? (
-																<ComposerVoiceRecording
-																	disabled={isLoading || !selectedSpaceId}
-																	onStop={() => void handleToggleRecording()}
-																/>
-															) : (
-																<div className="flex flex-col gap-2">
-																	<ComposerHorizontalBar
-																		ariaLabel="Chat message"
-																		disabled={isLoading || !selectedSpaceId}
-																		onChange={setChatInput}
-																		onKeyDown={handleChatKeyDown}
-																		onMoreTakePhoto={() =>
-																			messagePhotoCameraInputRef.current?.click()
-																		}
-																		onMoreUploadPhoto={() =>
-																			messagePhotoInputRef.current?.click()
-																		}
-																		onPlusFocusText={() =>
-																			chatMessageTextareaRef.current?.focus()
-																		}
-																		onPlusPhotoLibrary={() =>
-																			messagePhotoInputRef.current?.click()
-																		}
-																		onStartRecording={() =>
-																			void beginRecording(true)
-																		}
-																		onSubmit={() => void handleSendChat()}
-																		placeholder="Tell Ceits what happened…"
-																		textareaRef={chatMessageTextareaRef}
-																		value={chatInput}
-																		variant="message"
-																	/>
-																	<input
-																		accept="image/*"
-																		className="sr-only"
-																		onChange={(e) => {
-																			const f = e.target.files?.[0] ?? null;
-																			e.currentTarget.value = "";
-																			if (f) void handleMessagePhotoFile(f);
-																		}}
-																		ref={messagePhotoInputRef}
-																		tabIndex={-1}
-																		type="file"
-																	/>
-																	<input
-																		accept="image/*"
-																		capture="environment"
-																		className="sr-only"
-																		onChange={(e) => {
-																			const f = e.target.files?.[0] ?? null;
-																			e.currentTarget.value = "";
-																			if (f) void handleMessagePhotoFile(f);
-																		}}
-																		ref={messagePhotoCameraInputRef}
-																		tabIndex={-1}
-																		type="file"
-																	/>
-																</div>
-															)
+														isRecording={isRecording}
+														onCancelRecording={handleCancelRecording}
+														onComposerSubmit={(p) =>
+															void handleComposerSubmit(p)
 														}
-														onComposerModeChange={setComposerMode}
-														showModeToggle={multiUserSpace}
+														onStartExpenseRecording={() =>
+															void beginRecording(false)
+														}
+														onStopRecording={() => void handleToggleRecording()}
+														spaceId={selectedSpaceId}
 													/>
 												) : null}
 											</div>

@@ -6,7 +6,10 @@ on:
     branches: [main, master]
     paths:
       - "apps/web/**"
+      - "apps/telegram-webapp/**"
+      - "apps/marketing/**"
       - "packages/api/**"
+      - "scripts/check-boundaries.mjs"
       - "package.json"
       - "package-lock.json"
       - "biome.json"
@@ -15,7 +18,10 @@ on:
     branches: [main, master]
     paths:
       - "apps/web/**"
+      - "apps/telegram-webapp/**"
+      - "apps/marketing/**"
       - "packages/api/**"
+      - "scripts/check-boundaries.mjs"
       - "package.json"
       - "package-lock.json"
       - "biome.json"
@@ -38,6 +44,9 @@ jobs:
 
       - name: Lint (web + packages/api)
         run: npm run lint:web
+
+      - name: Architecture boundaries (strict)
+        run: npm run lint:boundaries
 
       - name: Production build (tsc + vite)
         run: npm run build:web

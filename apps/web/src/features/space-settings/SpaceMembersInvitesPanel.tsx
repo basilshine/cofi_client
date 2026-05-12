@@ -10,11 +10,13 @@ import {
 	ceitsSpaceExpenseAddUrl,
 	ceitsSpaceExpensesListUrl,
 } from "../../shared/lib/ceitsAppUrls";
-import { InviteLinkSharePanel } from "../chatlog/components/InviteLinkSharePanel";
-import { MyIncomingInvitesBlock } from "../chatlog/components/MyIncomingInvitesBlock";
-import { SpaceInviteCombobox } from "../chatlog/components/SpaceInviteCombobox";
-import { SpaceMemberDetailsDialog } from "../chatlog/components/SpaceMemberDetailsDialog";
-import { SpacePendingInvitesBlock } from "../chatlog/components/SpacePendingInvitesBlock";
+import {
+	InviteLinkSharePanel,
+	MyIncomingInvitesBlock,
+	SpaceInviteCombobox,
+	SpaceMemberDetailsDialog,
+	SpacePendingInvitesBlock,
+} from "../../widgets/space-invite-management";
 import type { SpaceMembersInvitesModel } from "./useSpaceMembersInvites";
 
 export type SpaceMembersInvitesPanelProps = {

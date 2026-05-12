@@ -2,12 +2,12 @@ import type { DashboardResponse } from "@cofi/api";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
-import { OverviewRightRail } from "../../app/layout/workspaceSpaces/OverviewRightRail";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
+import { PARSE_DUMMY_TEST_SNIPPETS } from "../../shared/lib/parseDummySnippets";
 import {
 	createManualDraftInSpace,
 	parsePhotoInSpace,
@@ -15,7 +15,7 @@ import {
 	parseVoiceInSpace,
 } from "../../shared/lib/quickCaptureTransactions";
 import { sortSpacesByLastActivity } from "../../shared/lib/recentSpaceIds";
-import { PARSE_DUMMY_TEST_SNIPPETS } from "../chatlog/parseDummySnippets";
+import { OverviewRightRail } from "../../widgets/overview-right-rail";
 import { ActivityListCard } from "./components/ActivityListCard";
 import { InsightMetricCard } from "./components/InsightMetricCard";
 import { OverviewHeroCard } from "./components/OverviewHeroCard";

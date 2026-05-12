@@ -2,8 +2,8 @@ import type { Space, SpaceMember, SpaceRole } from "@cofi/api";
 import { InviteParticipantIcon } from "@cofi/ceits-icons";
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
-import { SpaceMembersInvitesPanel } from "../../../features/space-settings/SpaceMembersInvitesPanel";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
+import { SpaceMembersInvitesPanel } from "../../../widgets/member-invites-panel";
 
 const IconPanelOpen = ({ className }: { className?: string }) => (
 	<svg

@@ -2,7 +2,7 @@ import { MotionConfig } from "framer-motion";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import "../../../src/index.css";
+import "./index.css";
 import { WebApp } from "./WebApp";
 import { initTheme } from "./shared/theme/theme";
 

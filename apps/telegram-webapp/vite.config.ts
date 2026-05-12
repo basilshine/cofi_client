@@ -7,17 +7,8 @@ export default defineConfig({
 	base: process.env.NODE_ENV === "production" ? "/" : "/",
 	resolve: {
 		alias: {
-			"@": path.resolve(__dirname, "../../src"),
-			"@components": path.resolve(__dirname, "../../src/components"),
-			"@features": path.resolve(__dirname, "../../src/features"),
-			"@hooks": path.resolve(__dirname, "../../src/hooks"),
-			"@store": path.resolve(__dirname, "../../src/store"),
-			"@types": path.resolve(__dirname, "../../src/types"),
-			"@utils": path.resolve(__dirname, "../../src/utils"),
-			"@pages": path.resolve(__dirname, "../../src/pages"),
-			"@contexts": path.resolve(__dirname, "../../src/contexts"),
-			"@services": path.resolve(__dirname, "../../src/services"),
-			"@providers": path.resolve(__dirname, "../../src/providers"),
+			"@": path.resolve(__dirname, "./src"),
+			"@web": path.resolve(__dirname, "../web/src"),
 		},
 	},
 	server: {

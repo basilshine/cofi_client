@@ -17,18 +17,9 @@
 		"noFallthroughCasesInSwitch": true,
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["../../src/*"],
-			"@components/*": ["../../src/components/*"],
-			"@features/*": ["../../src/features/*"],
-			"@hooks/*": ["../../src/hooks/*"],
-			"@store/*": ["../../src/store/*"],
-			"@types/*": ["../../src/types/*"],
-			"@utils/*": ["../../src/utils/*"],
-			"@pages/*": ["../../src/pages/*"],
-			"@contexts/*": ["../../src/contexts/*"],
-			"@services/*": ["../../src/services/*"],
-			"@providers/*": ["../../src/providers/*"]
+			"@/*": ["src/*"],
+			"@web/*": ["../web/src/*"]
 		}
 	},
-	"include": ["src", "../../src"]
+	"include": ["src", "../web/src"]
 }

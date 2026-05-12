@@ -2,16 +2,15 @@ import {
 	NOTIFICATION_CHANNEL_KEYS,
 	type NotificationChannelKey,
 	type NotificationChannelsMap,
+	type ProfileUpdateRequest,
+	type UserPreferencesPayload,
 	notificationChannelsMapFromResponse,
 } from "@cofi/api";
 import axios from "axios";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import type {
-	ProfileUpdateRequest,
-	UserPreferencesPayload,
-} from "../../../../../packages/api/src/types";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient } from "../../shared/lib/apiClient";
+import { authApi } from "../../shared/lib/authApi";
 import { type AuthProfile, tokenStorage } from "../../shared/lib/tokenStorage";
 import {
 	type ThemeId,
@@ -19,7 +18,6 @@ import {
 	themeRegistry,
 	useTheme,
 } from "../../shared/theme/theme";
-import { authApi } from "../auth/authApi";
 
 const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannelKey, string> = {
 	in_app: "In-app",

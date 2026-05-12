@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
-import { RecurringSchedulesPage } from "../recurring/RecurringSchedulesPage";
+import { RecurringSchedulesPage } from "../../widgets/recurring-schedules-page";
 
 /**
  * Space-scoped wrapper around the global Recurring page so the in-space

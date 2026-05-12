@@ -12,7 +12,10 @@ import {
 	type OnboardingState,
 	onboardingApi,
 } from "../features/onboarding/onboardingApi";
-import { authSessionStore } from "../shared/lib/authSessionStore";
+import {
+	authSessionStore,
+	isCookieRefreshEnabled,
+} from "../shared/lib/authSessionStore";
 import { tokenStorage } from "../shared/lib/tokenStorage";
 
 type AuthContextValue = {
@@ -42,10 +45,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const [isLoading, setIsLoading] = useState(true);
 
 	const refreshUser = useCallback(async () => {
-		const token =
+		let token =
 			authSessionStore.getAccessToken() ??
 			authSessionStore.hydrateFromLegacyStorage() ??
 			tokenStorage.getToken();
+
+		const canSilentRefresh =
+			!!tokenStorage.getRefreshToken()?.trim() ||
+			(isCookieRefreshEnabled && !!tokenStorage.getActiveProfileId());
+
+		if (!token && canSilentRefresh) {
+			try {
+				await authApi.refresh();
+				token =
+					authSessionStore.getAccessToken() ??
+					authSessionStore.hydrateFromLegacyStorage() ??
+					tokenStorage.getToken();
+			} catch {
+				authSessionStore.clear();
+			}
+		}
+
 		if (!token) {
 			setUser(null);
 			setOnboarding(null);
