@@ -11,8 +11,6 @@ const ENDPOINTS = {
 	refresh: "/api/v1/auth/refresh" as const,
 	telegramLogin: "/api/v1/auth/telegram" as const,
 	telegramLoginWidget: "/api/v1/auth/telegram/login" as const,
-	telegramUpdate: "/api/v1/auth/telegram/update" as const,
-	sync: "/api/v1/auth/sync" as const,
 	passwordReset: "/api/v1/auth/password/reset" as const,
 	passwordResetConfirm: "/api/v1/auth/password/reset/confirm" as const,
 	expenses: "/api/v1/finances/expenses" as const,
@@ -210,14 +208,6 @@ export const apiService = {
 			api.post<
 				paths["/api/v1/auth/telegram/login"]["post"]["responses"]["200"]["content"]["application/json"]
 			>(ENDPOINTS.telegramLoginWidget, data),
-		telegramUpdate: (data: components["schemas"]["TelegramUpdateRequest"]) =>
-			api.post<
-				paths["/api/v1/auth/telegram/update"]["post"]["responses"]["200"]["content"]["application/json"]
-			>(ENDPOINTS.telegramUpdate, data),
-		sync: (data: components["schemas"]["SyncUserRequest"]) =>
-			api.post<
-				paths["/api/v1/auth/sync"]["post"]["responses"]["200"]["content"]["application/json"]
-			>(ENDPOINTS.sync, data),
 		passwordReset: (data: components["schemas"]["ResetPasswordRequest"]) =>
 			api.post<
 				paths["/api/v1/auth/password/reset"]["post"]["responses"]["200"]["content"]["application/json"]
