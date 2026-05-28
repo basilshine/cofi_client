@@ -15,8 +15,6 @@ const ENDPOINTS = {
 	sync: "/api/v1/auth/sync" as const,
 	passwordReset: "/api/v1/auth/password/reset" as const,
 	passwordResetConfirm: "/api/v1/auth/password/reset/confirm" as const,
-	parser: "/api/v1/parser" as const,
-	parserImage: "/api/v1/parser/image" as const,
 	expenses: "/api/v1/finances/expenses" as const,
 	expenseItems: "/api/v1/finances/expenses/items" as const,
 	expenseById: (id: number | string) =>
@@ -24,8 +22,6 @@ const ENDPOINTS = {
 	expensesSummary: "/api/v1/finances/expenses/summary" as const,
 	expensesApprove: "/api/v1/finances/expenses/approve" as const,
 	expensesCancel: "/api/v1/finances/expenses/cancel" as const,
-	expensesText: "/api/v1/finances/expenses/text" as const,
-	expensesVoice: "/api/v1/finances/expenses/voice" as const,
 	expensesTags: "/api/v1/finances/expenses/tags" as const,
 	expensesMostUsedTags: "/api/v1/finances/expenses/most-used-tags" as const,
 	vendors: "/api/v1/finances/vendors" as const,
@@ -233,18 +229,6 @@ export const apiService = {
 				paths["/api/v1/auth/password/reset/confirm"]["post"]["responses"]["200"]["content"]["application/json"]
 			>(ENDPOINTS.passwordResetConfirm, data),
 	},
-	parser: {
-		parseText: (data: components["schemas"]["ParseRequest"]) =>
-			api.post<
-				paths["/api/v1/parser"]["post"]["responses"]["200"]["content"]["application/json"]
-			>(ENDPOINTS.parser, data),
-		parseImage: (formData: FormData) =>
-			api.post<
-				paths["/api/v1/parser/image"]["post"]["responses"]["200"]["content"]["application/json"]
-			>(ENDPOINTS.parserImage, formData, {
-				headers: { "Content-Type": "multipart/form-data" },
-			}),
-	},
 	expenses: {
 		list: () => api.get<components["schemas"]["Expense"][]>(ENDPOINTS.expenses),
 		listWithFilters: (url: string) => api.get(url),
@@ -272,16 +256,6 @@ export const apiService = {
 			api.post<{ message?: string }>(ENDPOINTS.expensesApprove, data),
 		cancel: (data: components["schemas"]["CancelDraftExpensesRequest"]) =>
 			api.post<{ message?: string }>(ENDPOINTS.expensesCancel, data),
-		createFromText: (data: { text?: string }) =>
-			api.post<components["schemas"]["Expense"]>(ENDPOINTS.expensesText, data),
-		createFromVoice: (formData: FormData) =>
-			api.post<components["schemas"]["Expense"]>(
-				ENDPOINTS.expensesVoice,
-				formData,
-				{
-					headers: { "Content-Type": "multipart/form-data" },
-				},
-			),
 		tags: (params?: { language?: string }) =>
 			api.get<components["schemas"]["Tag"][]>(ENDPOINTS.expensesTags, {
 				params,
