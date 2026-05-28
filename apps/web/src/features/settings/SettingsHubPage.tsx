@@ -27,6 +27,62 @@ const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannelKey, string> = {
 };
 
 const DATE_FORMAT_OPTIONS = ["MM/DD/YYYY", "DD/MM/YYYY", "YYYY-MM-DD"] as const;
+const TIMEZONE_OPTIONS = [
+	"UTC",
+	"Europe/Paris",
+	"Europe/Berlin",
+	"Europe/London",
+	"Europe/Warsaw",
+	"Europe/Rome",
+	"Europe/Madrid",
+	"Europe/Kyiv",
+	"Europe/Moscow",
+	"Asia/Yerevan",
+	"Asia/Baku",
+	"Asia/Almaty",
+	"Asia/Tbilisi",
+	"America/New_York",
+	"America/Chicago",
+	"America/Los_Angeles",
+	"America/Denver",
+	"America/Toronto",
+	"America/Sao_Paulo",
+	"Asia/Dubai",
+	"Asia/Bangkok",
+	"Asia/Singapore",
+	"Asia/Tokyo",
+];
+const COUNTRY_OPTIONS = [
+	{ value: "RU", label: "Russia (RU)" },
+	{ value: "US", label: "United States (US)" },
+	{ value: "DE", label: "Germany (DE)" },
+	{ value: "FR", label: "France (FR)" },
+	{ value: "GB", label: "United Kingdom (GB)" },
+	{ value: "IT", label: "Italy (IT)" },
+	{ value: "ES", label: "Spain (ES)" },
+	{ value: "PL", label: "Poland (PL)" },
+	{ value: "TR", label: "Turkey (TR)" },
+	{ value: "AE", label: "United Arab Emirates (AE)" },
+	{ value: "TH", label: "Thailand (TH)" },
+	{ value: "JP", label: "Japan (JP)" },
+] as const;
+const LANGUAGE_OPTIONS = [
+	{ value: "ru", label: "Russian (ru)" },
+	{ value: "en", label: "English (en)" },
+	{ value: "de", label: "German (de)" },
+	{ value: "fr", label: "French (fr)" },
+	{ value: "es", label: "Spanish (es)" },
+	{ value: "it", label: "Italian (it)" },
+	{ value: "pl", label: "Polish (pl)" },
+	{ value: "tr", label: "Turkish (tr)" },
+	{ value: "th", label: "Thai (th)" },
+	{ value: "ja", label: "Japanese (ja)" },
+] as const;
+const CURRENCY_OPTIONS = [
+	{ value: "EUR", label: "Euro (EUR)" },
+	{ value: "USD", label: "US Dollar (USD)" },
+	{ value: "RUB", label: "Russian Ruble (RUB)" },
+] as const;
 
 const WEEK_START_OPTIONS: { value: number; label: string }[] = [
 	{ value: 0, label: "Sunday" },
@@ -139,10 +195,10 @@ export const SettingsHubPage = ({
 		if (!user) return;
 		setEmail(user.email ?? "");
 		setName(user.name ?? "");
-		setCountry(user.country ?? "");
-		setLanguage(user.language ?? "");
-		setTimezone(user.timezone ?? "");
-		setCurrency(user.currency ?? "");
+		setCountry(user.country?.trim().toUpperCase() || "RU");
+		setLanguage(user.language?.trim().toLowerCase() || "ru");
+		setTimezone(user.timezone?.trim() || "UTC");
+		setCurrency(user.currency?.trim().toUpperCase() || "EUR");
 		const df = user.dateFormat;
 		setDateFormat(
 			df === "MM/DD/YYYY" || df === "DD/MM/YYYY" || df === "YYYY-MM-DD"
@@ -327,11 +383,6 @@ export const SettingsHubPage = ({
 		touchSaved("Theme updated.");
 	};
 
-	const handleCurrencyBlur = () => {
-		const t = currency.trim().toUpperCase();
-		if (t.length === 3) setCurrency(t);
-	};
-
 	const handleTaxCountryBlur = () => {
 		const t = taxPrimaryCountry.trim().toUpperCase().slice(0, 2);
 		setTaxPrimaryCountry(t);
@@ -409,6 +460,61 @@ export const SettingsHubPage = ({
 
 	const activeSectionLabel =
 		settingsSections.find((s) => s.key === section)?.label ?? "Settings";
+	const timezoneOptionsForSelect = useMemo(() => {
+		const trimmedTimezone = timezone.trim();
+		if (!trimmedTimezone || TIMEZONE_OPTIONS.includes(trimmedTimezone)) {
+			return [...TIMEZONE_OPTIONS];
+		}
+		return [trimmedTimezone, ...TIMEZONE_OPTIONS];
+	}, [timezone]);
+	const currencyOptionsForSelect = useMemo(() => {
+		const normalizedCurrency = currency.trim().toUpperCase();
+		if (
+			!normalizedCurrency ||
+			CURRENCY_OPTIONS.some((option) => option.value === normalizedCurrency)
+		) {
+			return [...CURRENCY_OPTIONS];
+		}
+		return [
+			{
+				value: normalizedCurrency,
+				label: `${normalizedCurrency} (current)`,
+			},
+			...CURRENCY_OPTIONS,
+		];
+	}, [currency]);
+	const countryOptionsForSelect = useMemo(() => {
+		const normalizedCountry = country.trim().toUpperCase();
+		if (
+			!normalizedCountry ||
+			COUNTRY_OPTIONS.some((option) => option.value === normalizedCountry)
+		) {
+			return [...COUNTRY_OPTIONS];
+		}
+		return [
+			{
+				value: normalizedCountry,
+				label: `${normalizedCountry} (current)`,
+			},
+			...COUNTRY_OPTIONS,
+		];
+	}, [country]);
+	const languageOptionsForSelect = useMemo(() => {
+		const normalizedLanguage = language.trim().toLowerCase();
+		if (
+			!normalizedLanguage ||
+			LANGUAGE_OPTIONS.some((option) => option.value === normalizedLanguage)
+		) {
+			return [...LANGUAGE_OPTIONS];
+		}
+		return [
+			{
+				value: normalizedLanguage,
+				label: `${normalizedLanguage} (current)`,
+			},
+			...LANGUAGE_OPTIONS,
+		];
+	}, [language]);
 	const enabledNotificationLabels = useMemo(() => {
 		if (!notifChannels) return "Loading...";
 		const enabled = NOTIFICATION_CHANNEL_KEYS.filter(
@@ -488,49 +594,67 @@ export const SettingsHubPage = ({
 											</label>
 											<label className="space-y-1 text-sm">
 												<span className="text-muted-foreground">Country</span>
-												<input
+												<select
 													className={inputBase}
 													onChange={(e) => setCountry(e.target.value)}
 													required
-													type="text"
 													value={country}
-												/>
+												>
+													{countryOptionsForSelect.map((option) => (
+														<option key={option.value} value={option.value}>
+															{option.label}
+														</option>
+													))}
+												</select>
 											</label>
 											<label className="space-y-1 text-sm">
 												<span className="text-muted-foreground">Language</span>
-												<input
+												<select
 													className={inputBase}
 													onChange={(e) => setLanguage(e.target.value)}
 													required
-													type="text"
 													value={language}
-												/>
+												>
+													{languageOptionsForSelect.map((option) => (
+														<option key={option.value} value={option.value}>
+															{option.label}
+														</option>
+													))}
+												</select>
 											</label>
 											<label className="space-y-1 text-sm">
 												<span className="text-muted-foreground">
 													Timezone (IANA)
 												</span>
-												<input
+												<select
 													className={inputBase}
 													onChange={(e) => setTimezone(e.target.value)}
 													required
-													type="text"
 													value={timezone}
-												/>
+												>
+													{timezoneOptionsForSelect.map((tz) => (
+														<option key={tz} value={tz}>
+															{tz}
+														</option>
+													))}
+												</select>
 											</label>
 											<label className="space-y-1 text-sm">
 												<span className="text-muted-foreground">
 													Currency (ISO 4217)
 												</span>
-												<input
+												<select
 													className={`${inputBase} uppercase`}
-													maxLength={3}
-													onBlur={handleCurrencyBlur}
 													onChange={(e) => setCurrency(e.target.value)}
 													required
-													type="text"
 													value={currency}
-												/>
+												>
+													{currencyOptionsForSelect.map((option) => (
+														<option key={option.value} value={option.value}>
+															{option.label}
+														</option>
+													))}
+												</select>
 											</label>
 											<label className="space-y-1 text-sm md:col-span-2">
 												<span className="text-muted-foreground">
