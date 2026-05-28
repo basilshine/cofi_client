@@ -17,3 +17,5 @@ if [ -z "$SEMGREP_BIN" ]; then
 fi
 
 PYTHONUTF8=1 PYTHONIOENCODING=utf-8 "$SEMGREP_BIN" scan --config auto --error .
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/precommit-web.ps1
