@@ -28,7 +28,7 @@
 		"preview:telegram": "npm run preview --workspace apps/telegram-webapp",
 		"preview:web": "npm run preview --workspace apps/web",
 		"gen:types": "node ./scripts/gen-types.mjs",
-		"prepare": "husky install",
+		"prepare": "husky && node ./scripts/patch-husky-shims.mjs",
 		"deploy": "gh-pages -d apps/web/dist"
 	},
 	"keywords": [],
