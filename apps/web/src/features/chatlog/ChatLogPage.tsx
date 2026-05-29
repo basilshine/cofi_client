@@ -967,7 +967,9 @@ export const ChatLogPage = () => {
 			const res = await httpClient.post<{
 				expense?: { id: string | number };
 				message?: ChatMessage;
-			}>(`/api/v1/spaces/${String(selectedSpaceId)}/transactions/manual`, {
+			}>("/api/v1/capture", {
+				input_kind: "manual",
+				space_id: Number(selectedSpaceId),
 				description: description.trim(),
 				items: payloadItems,
 			});

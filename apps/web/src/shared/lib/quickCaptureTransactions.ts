@@ -121,7 +121,9 @@ export const createManualDraftInSpace = async (
 	description: string,
 	items: { name: string; amount: number; tags?: string[] }[],
 ) =>
-	httpClient.post(`/api/v1/spaces/${String(spaceId)}/transactions/manual`, {
+	httpClient.post("/api/v1/capture", {
+		input_kind: "manual",
+		space_id: Number(spaceId),
 		description: description.trim(),
 		items,
 	});
