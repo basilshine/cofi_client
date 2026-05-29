@@ -37,6 +37,20 @@ type Expense = {
 	recurring_paused?: boolean;
 };
 
+const splitRowBelongsToUser = (
+	row: ExpenseSplitRow,
+	userId: number | null | undefined,
+): boolean => {
+	if (userId == null) return false;
+	if (row.user_id != null && Number(row.user_id) === Number(userId))
+		return true;
+	const participant = row.participant;
+	if (participant == null) return false;
+	return (
+		Number(participant.user_id ?? participant.linked_user_id) === Number(userId)
+	);
+};
+
 export const DraftExpenseCard = ({
 	expenseId,
 	spaceId,
@@ -243,7 +257,7 @@ export const DraftExpenseCard = ({
 
 	const yourShareAmount = useMemo(() => {
 		if (user?.id == null || !splitRows?.length) return null;
-		const row = splitRows.find((s) => Number(s.user_id) === Number(user.id));
+		const row = splitRows.find((s) => splitRowBelongsToUser(s, user.id));
 		return row != null ? Number(row.amount) : null;
 	}, [splitRows, user?.id]);
 

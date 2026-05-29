@@ -153,7 +153,7 @@ export const splitRowsFromParticipants = (
 ): SplitPercentRow[] => {
 	if (participants.length === 0) return participantRowsFromMembers(members);
 	return participants.map((participant) => ({
-		user_id: participant.user_id ?? null,
+		user_id: participant.user_id ?? participant.linked_user_id ?? null,
 		space_participant_id: participant.id,
 		label: splitParticipantLabel(participant),
 		percent: "0",
