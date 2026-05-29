@@ -5,6 +5,7 @@ import type {
 	Space,
 	SpaceActivityItem,
 	SpaceMember,
+	SpaceParticipant,
 	Transaction,
 } from "@cofi/api";
 import { useEffect, useMemo, useState } from "react";
@@ -50,6 +51,7 @@ type SplitDecisionRecord = SplitDecisionRow & {
 		id: string;
 		name: string;
 		amountLabel: string;
+		isCurrentUser: boolean;
 	}>;
 };
 
@@ -155,6 +157,32 @@ const splitParticipantName = (
 		return `Participant ${row.space_participant_id}`;
 	}
 	return "Participant";
+};
+
+const participantBelongsToUser = (
+	participant:
+		| Pick<SpaceParticipant, "user_id" | "linked_user_id">
+		| null
+		| undefined,
+	userId: number | null | undefined,
+): boolean => {
+	if (userId == null || participant == null) return false;
+	return (
+		Number(participant.user_id ?? participant.linked_user_id) === Number(userId)
+	);
+};
+
+const splitRowBelongsToUser = (
+	row: ExpenseSplitRow,
+	userId: number | null | undefined,
+	participantIds: Set<number>,
+): boolean => {
+	if (userId == null) return false;
+	if (row.space_participant_id != null) {
+		if (participantIds.has(Number(row.space_participant_id))) return true;
+	}
+	if (participantBelongsToUser(row.participant, userId)) return true;
+	return row.user_id != null && Number(row.user_id) === Number(userId);
 };
 
 const buildSplitRowContextLine = (
@@ -281,6 +309,7 @@ export const SpaceSplitsWorkspacePage = () => {
 		null,
 	);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
+	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [spaceActivity, setSpaceActivity] = useState<SpaceActivityItem[]>([]);
 	const [expenseDetails, setExpenseDetails] = useState<
@@ -324,18 +353,20 @@ export const SpaceSplitsWorkspacePage = () => {
 		setLoadError(null);
 		void (async () => {
 			try {
-				const [dashRes, membersRes, txRes, activityRes] = await Promise.all([
-					apiClient.dashboard.get({
-						variant: "personal",
-						period: "month",
-						space_id: numericSpaceId,
-					}),
-					apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
-					apiClient.spaces.listTransactions(numericSpaceId, { limit: 60 }),
-					apiClient.spaces.activity
-						.list(numericSpaceId, { limit: 40 })
-						.catch(() => ({ items: [] })),
-				]);
+				const [dashRes, membersRes, participantsRes, txRes, activityRes] =
+					await Promise.all([
+						apiClient.dashboard.get({
+							variant: "personal",
+							period: "month",
+							space_id: numericSpaceId,
+						}),
+						apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
+						apiClient.spaces.listParticipants(numericSpaceId).catch(() => null),
+						apiClient.spaces.listTransactions(numericSpaceId, { limit: 60 }),
+						apiClient.spaces.activity
+							.list(numericSpaceId, { limit: 40 })
+							.catch(() => ({ items: [] })),
+					]);
 
 				const reviewExpenseIds = (dashRes.review_queue?.items ?? [])
 					.flatMap((item) => (isApprovalItem(item) ? [item] : []))
@@ -385,6 +416,7 @@ export const SpaceSplitsWorkspacePage = () => {
 				if (!cancelled) {
 					setDashboardData(dashRes);
 					setMembers(membersRes?.members ?? []);
+					setParticipants(participantsRes?.participants ?? []);
 					setTransactions(txRes);
 					setSpaceActivity(activityRes.items ?? []);
 					setSplitRows(splitMap);
@@ -437,6 +469,11 @@ export const SpaceSplitsWorkspacePage = () => {
 	const reviewByExpenseId = new Map<number, ApprovalReviewItem>(
 		reviewItems.map((item) => [Number(item.expense_id), item]),
 	);
+	const currentUserParticipantIds = new Set(
+		participants
+			.filter((participant) => participantBelongsToUser(participant, user?.id))
+			.map((participant) => Number(participant.id)),
+	);
 
 	const coverageIds = Array.from(
 		new Set([
@@ -465,13 +502,22 @@ export const SpaceSplitsWorkspacePage = () => {
 					id: splitParticipantId(row),
 					name: splitParticipantName(row, members),
 					amountLabel: formatMoney(row.amount),
+					isCurrentUser: splitRowBelongsToUser(
+						row,
+						user?.id,
+						currentUserParticipantIds,
+					),
 				};
 			});
 			const myShare =
-				rows.find((row) => Number(row.user_id) === Number(user?.id))?.amount ??
-				0;
+				rows.find((row) =>
+					splitRowBelongsToUser(row, user?.id, currentUserParticipantIds),
+				)?.amount ?? 0;
 			const othersShareAmount = rows
-				.filter((row) => Number(row.user_id) !== Number(user?.id))
+				.filter(
+					(row) =>
+						!splitRowBelongsToUser(row, user?.id, currentUserParticipantIds),
+				)
 				.reduce((sum, row) => sum + row.amount, 0);
 			const total = detail?.amount ?? transaction?.total ?? review?.total ?? 0;
 			const rawTitle =
@@ -577,7 +623,9 @@ export const SpaceSplitsWorkspacePage = () => {
 	const totalTrackedShare = formatMoney(
 		Object.values(splitRows)
 			.flat()
-			.filter((row) => Number(row.user_id) === Number(user?.id))
+			.filter((row) =>
+				splitRowBelongsToUser(row, user?.id, currentUserParticipantIds),
+			)
 			.reduce((sum, row) => sum + row.amount, 0),
 	);
 	const splitCoveragePercent =
@@ -607,9 +655,11 @@ export const SpaceSplitsWorkspacePage = () => {
 		);
 	const membersSummary: SplitMemberSummary[] = Object.entries(memberExposure)
 		.map(([id, exposure]) => {
-			const isCurrentUser =
-				exposure.row.user_id != null &&
-				Number(exposure.row.user_id) === Number(user?.id);
+			const isCurrentUser = splitRowBelongsToUser(
+				exposure.row,
+				user?.id,
+				currentUserParticipantIds,
+			);
 			return {
 				id,
 				name: splitParticipantName(exposure.row, members),

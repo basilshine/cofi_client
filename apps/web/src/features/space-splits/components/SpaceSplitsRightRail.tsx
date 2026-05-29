@@ -17,6 +17,7 @@ export type SplitDetailParticipant = {
 	id: string;
 	name: string;
 	amountLabel: string;
+	isCurrentUser?: boolean;
 };
 
 export type SelectedSplitDetail = {
@@ -214,9 +215,7 @@ export const SpaceSplitsRightRail = ({
 						) : selectedDetail.participants.length > 0 ? (
 							<ul className="mt-2 space-y-2.5">
 								{selectedDetail.participants.map((participant) => {
-									const isYou =
-										Number(participant.id) ===
-										Number(selectedDetail.currentUserId);
+									const isYou = participant.isCurrentUser === true;
 									return (
 										<li
 											className="text-[13px] leading-snug text-foreground/90"
