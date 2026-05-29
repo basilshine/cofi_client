@@ -431,7 +431,11 @@ export interface paths {
 		};
 		get?: never;
 		put?: never;
-		/** Sync Telegram user */
+		/**
+		 * Sync Telegram user (legacy JWT endpoint)
+		 * @deprecated
+		 * @description Legacy JWT-protected Telegram sync endpoint. Telegram bot service sync should use POST /api/v1/auth/telegram/bot-sync with X-Internal-Api-Key.
+		 */
 		post: {
 			parameters: {
 				query?: never;
