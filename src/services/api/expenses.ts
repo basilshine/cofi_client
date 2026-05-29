@@ -209,21 +209,6 @@ export const expensesService = {
 		}
 	},
 
-	getExpenseItems: async () => {
-		try {
-			LogRocket.log("[expensesService.getExpenseItems] Starting request");
-			const response = await apiService.expenses.listItems();
-			LogRocket.log("[expensesService.getExpenseItems] Success:", {
-				count: response.data?.length || 0,
-				data: response.data,
-			});
-			return response.data as components["schemas"]["ExpenseItem"][];
-		} catch (error) {
-			LogRocket.error("[expensesService.getExpenseItems] Failed:", error);
-			throw error;
-		}
-	},
-
 	getExpenseItemsWithFilters: async (
 		filters: ExpenseFilters,
 	): Promise<PaginatedExpenseItemsResponse> => {

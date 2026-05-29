@@ -3082,7 +3082,11 @@ export interface paths {
 			path?: never;
 			cookie?: never;
 		};
-		/** Get finances expenses items */
+		/**
+		 * Get finances expenses items
+		 * @deprecated
+		 * @description Legacy global item-centric expense history endpoint. Space views should use GET /api/v1/spaces/{spaceId}/transactions and transaction detail endpoints.
+		 */
 		get: {
 			parameters: {
 				query?: never;
