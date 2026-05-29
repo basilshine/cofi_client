@@ -485,11 +485,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 						headers: authHeaders(),
 					},
 				),
-			getById: (id: string | number) =>
-				fetchJson<Transaction>(withBase(`/api/v1/transactions/${id}`), {
-					method: "GET",
-					headers: authHeaders(),
-				}),
 		},
 
 		/** Expense discussion threads (`/threads/*` + space-scoped thread routes). */

@@ -52,14 +52,18 @@ export const ExpenseMessageCard = ({
 	useEffect(() => {
 		let isMounted = true;
 		const run = async () => {
+			if (spaceId == null) {
+				setTx(null);
+				setOrphanNotice(null);
+				setError("Missing space context for transaction lookup");
+				return;
+			}
+
 			try {
-				const data =
-					spaceId == null
-						? await apiClient.transactions.getById(transactionId)
-						: await apiClient.transactions.getBySpaceAndId(
-								spaceId,
-								transactionId,
-							);
+				const data = await apiClient.transactions.getBySpaceAndId(
+					spaceId,
+					transactionId,
+				);
 				if (!isMounted) return;
 				setTx(data);
 				setError(null);
