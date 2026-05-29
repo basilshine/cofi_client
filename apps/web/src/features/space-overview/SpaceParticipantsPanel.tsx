@@ -2,6 +2,7 @@ import type { SpaceParticipant } from "@cofi/api";
 import { Check, MailPlus, Pencil, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
+import { InviteLinkSharePanel } from "../../widgets/space-invite-management";
 
 type ParticipantDraft = {
 	displayName: string;
@@ -151,9 +152,11 @@ export const SpaceParticipantsPanel = ({
 				</div>
 			) : null}
 			{inviteToken ? (
-				<div className="mt-3 rounded-lg border border-[rgba(90,130,98,0.24)] bg-[rgba(120,154,124,0.12)] px-3 py-2 text-xs font-medium text-[#214027]">
-					Invite created. Token:{" "}
-					<span className="font-mono text-[11px]">{inviteToken}</span>
+				<div className="mt-3">
+					<div className="mb-2 rounded-lg border border-[rgba(90,130,98,0.24)] bg-[rgba(120,154,124,0.12)] px-3 py-2 text-xs font-medium text-[#214027]">
+						Invite created. Share this link with the participant.
+					</div>
+					<InviteLinkSharePanel token={inviteToken} />
 				</div>
 			) : null}
 

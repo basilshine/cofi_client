@@ -5,7 +5,7 @@ export const buildChatInviteUrl = (token: string): string => {
 		typeof window !== "undefined" && window.location?.origin
 			? window.location.origin
 			: "";
-	return `${origin}/console/chat?invite=${encodeURIComponent(token.trim())}`;
+	return `${origin}/join?token=${encodeURIComponent(token.trim())}`;
 };
 
 type InviteLinkSharePanelProps = {
