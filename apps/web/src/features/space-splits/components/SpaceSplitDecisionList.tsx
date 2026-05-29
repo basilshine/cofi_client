@@ -1,5 +1,5 @@
 type SplitParticipantPreview = {
-	id: number;
+	id: string;
 	name: string;
 };
 

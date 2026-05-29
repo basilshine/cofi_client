@@ -131,10 +131,10 @@ const humanizeSourceStatusLabel = (raw: string): string => {
 };
 
 const splitParticipantId = (row: ExpenseSplitRow): string =>
-	row.user_id != null
-		? `user:${row.user_id}`
-		: row.space_participant_id != null
-			? `participant:${row.space_participant_id}`
+	row.space_participant_id != null
+		? `participant:${row.space_participant_id}`
+		: row.user_id != null
+			? `user:${row.user_id}`
 			: "participant:unknown";
 
 const splitParticipantName = (
@@ -538,7 +538,7 @@ export const SpaceSplitsWorkspacePage = () => {
 					sourceStatusShort: humanizeSourceStatusLabel(sourceStatus),
 					spaceLabel: space?.name ?? "Space",
 					participantsPreview: participantsDetailed.map((participant) => ({
-						id: Number(participant.id),
+						id: participant.id,
 						name: participant.name,
 					})),
 					participantsCount: participantsDetailed.length,

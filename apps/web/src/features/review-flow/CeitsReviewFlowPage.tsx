@@ -5,6 +5,7 @@ import type {
 	ExpenseSplitRow,
 	Space,
 	SpaceMember,
+	SpaceParticipant,
 	Transaction,
 } from "@cofi/api";
 import { useEffect, useMemo, useState } from "react";
@@ -106,6 +107,7 @@ export const CeitsReviewFlowPage = () => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
+	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
 	const [queue, setQueue] = useState<ReviewItem[]>([]);
 	const [currentId, setCurrentId] = useState<string | null>(null);
 	const [filter, setFilter] = useState<ReviewFilter>("all");
@@ -137,7 +139,7 @@ export const CeitsReviewFlowPage = () => {
 		setError(null);
 		void (async () => {
 			try {
-				const [dash, tx, mem] = await Promise.all([
+				const [dash, tx, mem, participantRes] = await Promise.all([
 					apiClient.dashboard.get({
 						variant: "personal",
 						period: "month",
@@ -145,6 +147,7 @@ export const CeitsReviewFlowPage = () => {
 					}),
 					apiClient.spaces.listTransactions(spaceId, { limit: 120 }),
 					apiClient.spaces.listMembers(spaceId).catch(() => null),
+					apiClient.spaces.listParticipants(spaceId).catch(() => null),
 				]);
 
 				const txById = new Map<number, Transaction>(
@@ -323,6 +326,7 @@ export const CeitsReviewFlowPage = () => {
 
 				if (!cancelled) {
 					setMembers(mem?.members ?? []);
+					setParticipants(participantRes?.participants ?? []);
 					setQueue(built);
 					setCurrentId(built[0]?.id ?? null);
 				}
@@ -440,12 +444,18 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 	const handleSplitEqually = async () => {
-		if (!current || members.length === 0) return;
-		const each = current.amount / members.length;
-		const lines = members.map((m) => ({
-			user_id: Number(m.user_id),
-			amount: each,
-		}));
+		if (!current) return;
+		const lines =
+			participants.length > 0
+				? participants.map((participant) => ({
+						space_participant_id: Number(participant.id),
+						amount: current.amount / participants.length,
+					}))
+				: members.map((member) => ({
+						user_id: Number(member.user_id),
+						amount: current.amount / members.length,
+					}));
+		if (lines.length === 0) return;
 		setActing(true);
 		try {
 			await apiClient.finances.expenses.putSplits(current.expenseId, lines);
