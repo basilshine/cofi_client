@@ -308,7 +308,7 @@ export const GlobalComposerDock = ({
 	if (isChatRoute) return null;
 
 	return (
-		<div className="pointer-events-none fixed inset-x-0 bottom-2 z-50 flex justify-center px-3 sm:bottom-3">
+		<div className="pointer-events-none absolute inset-x-0 bottom-2 z-40 flex justify-center px-3 sm:bottom-3">
 			<div className="pointer-events-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border/70 bg-background/94 shadow-[0_18px_48px_-30px_rgba(44,32,18,0.58)] ring-1 ring-white/55 backdrop-blur-xl">
 				<div className="flex items-center justify-between gap-3 border-b border-border/40 px-3.5 py-1.5">
 					<p className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

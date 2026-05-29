@@ -68,7 +68,7 @@ const ConsoleWorkspaceSplitInner = () => {
 		<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
 			{isSpaceScopedRoute ? <SpaceScopedMembersSidebarBridge /> : null}
 			<WorkspaceSidebar />
-			<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+			<div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 				<AnimatePresence mode="wait">
 					<motion.div
 						animate="animate"
@@ -88,13 +88,13 @@ const ConsoleWorkspaceSplitInner = () => {
 						{outlet}
 					</motion.div>
 				</AnimatePresence>
+				{showGlobalComposer ? (
+					<GlobalComposerDock
+						isCollapsed={composerCollapsed}
+						onCollapsedChange={setComposerCollapsed}
+					/>
+				) : null}
 			</div>
-			{showGlobalComposer ? (
-				<GlobalComposerDock
-					isCollapsed={composerCollapsed}
-					onCollapsedChange={setComposerCollapsed}
-				/>
-			) : null}
 		</div>
 	);
 };
