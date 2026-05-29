@@ -2,7 +2,9 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
 	type ComposerPayload,
+	type ComposerState,
 	SmartTextareaComposer,
+	type SmartTextareaComposerHandle,
 } from "../../../features/chatlog/components/SmartTextareaComposer";
 import { apiClient } from "../../../shared/lib/apiClient";
 import {
@@ -61,9 +63,18 @@ const askPayloadToMessage = (
 	return payload.content;
 };
 
-export const GlobalComposerDock = () => {
+type GlobalComposerDockProps = {
+	isCollapsed: boolean;
+	onCollapsedChange: (isCollapsed: boolean) => void;
+};
+
+export const GlobalComposerDock = ({
+	isCollapsed,
+	onCollapsedChange,
+}: GlobalComposerDockProps) => {
 	const location = useLocation();
 	const { selectedSpaceId, spaces, isLoading } = useWorkspaceSpaces();
+	const composerRef = useRef<SmartTextareaComposerHandle | null>(null);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const mediaChunksRef = useRef<BlobPart[]>([]);
 
@@ -269,6 +280,25 @@ export const GlobalComposerDock = () => {
 		setIsRecording(false);
 	}, []);
 
+	const expandTo = useCallback(
+		(state?: ComposerState) => {
+			onCollapsedChange(false);
+			if (state) {
+				window.setTimeout(() => composerRef.current?.navigateTo(state), 0);
+			}
+		},
+		[onCollapsedChange],
+	);
+
+	const handleCollapseToggle = useCallback(() => {
+		if (isCollapsed) {
+			expandTo();
+			return;
+		}
+		handleCancelRecording();
+		onCollapsedChange(true);
+	}, [expandTo, handleCancelRecording, isCollapsed, onCollapsedChange]);
+
 	if (isChatRoute) return null;
 
 	return (
@@ -279,31 +309,70 @@ export const GlobalComposerDock = () => {
 						Context: {activeSpaceName}
 						{contextSource ? ` · ${contextSource}` : ""}
 					</p>
-					{hasSpaceContext ? (
-						<Link
-							className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
-							to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
+					<div className="flex shrink-0 items-center gap-3">
+						<button
+							className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onClick={handleCollapseToggle}
+							type="button"
 						>
-							Open chat
-						</Link>
-					) : (
-						<Link
-							className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
-							to="/console/spaces"
-						>
-							Choose space
-						</Link>
-					)}
+							{isCollapsed ? "Expand" : "Collapse"}
+						</button>
+						{hasSpaceContext ? (
+							<Link
+								className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+								to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
+							>
+								Open chat
+							</Link>
+						) : (
+							<Link
+								className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+								to="/console/spaces"
+							>
+								Choose space
+							</Link>
+						)}
+					</div>
 				</div>
-				<SmartTextareaComposer
-					disabled={disabled}
-					isRecording={isRecording}
-					onCancelRecording={handleCancelRecording}
-					onComposerSubmit={(payload) => void handleSubmit(payload)}
-					onStartExpenseRecording={() => void handleStartRecording()}
-					onStopRecording={() => void handleStopRecording()}
-					spaceId={activeSpaceId ?? "0"}
-				/>
+				{isCollapsed ? (
+					<div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+						<button
+							className="rounded-full border border-[rgba(120,100,80,0.28)] bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+							disabled={disabled}
+							onClick={() => expandTo("expense_method_select")}
+							type="button"
+						>
+							Add expense
+						</button>
+						<button
+							className="rounded-full border border-[rgba(120,100,80,0.28)] bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+							disabled={disabled}
+							onClick={() => expandTo("ask_topic_select")}
+							type="button"
+						>
+							Ask Ceits
+						</button>
+						<button
+							className="rounded-full border border-[rgba(120,100,80,0.28)] bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+							disabled={disabled}
+							onClick={() => expandTo("message_text")}
+							type="button"
+						>
+							Message
+						</button>
+					</div>
+				) : (
+					<SmartTextareaComposer
+						ref={composerRef}
+						disabled={disabled}
+						isRecording={isRecording}
+						onCancelRecording={handleCancelRecording}
+						onComposerSubmit={(payload) => void handleSubmit(payload)}
+						onStartExpenseRecording={() => void handleStartRecording()}
+						onStopRecording={() => void handleStopRecording()}
+						spaceId={activeSpaceId ?? "0"}
+					/>
+				)}
 				{composerNotice ? (
 					<div
 						aria-live="polite"

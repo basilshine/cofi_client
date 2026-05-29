@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 import { useLocation, useOutlet } from "react-router-dom";
 import { workspacePageVariants } from "../../../shared/lib/appMotion";
 import { GlobalComposerDock } from "./GlobalComposerDock";
@@ -29,6 +30,7 @@ const WorkspaceSidebar = () => {
 const ConsoleWorkspaceSplitInner = () => {
 	const location = useLocation();
 	const outlet = useOutlet();
+	const [composerCollapsed, setComposerCollapsed] = useState(false);
 	const isSpaceScopedRoute =
 		/^\/console\/spaces\/[^/]+(\/|$)/.test(location.pathname) ||
 		/^\/console\/dashboard(\/|$)/.test(location.pathname);
@@ -44,7 +46,11 @@ const ConsoleWorkspaceSplitInner = () => {
 						animate="animate"
 						className={[
 							"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-							showGlobalComposer ? "pb-[9.25rem] sm:pb-[8.75rem]" : "",
+							showGlobalComposer
+								? composerCollapsed
+									? "pb-[5.25rem] sm:pb-[4.75rem]"
+									: "pb-[9.25rem] sm:pb-[8.75rem]"
+								: "",
 						].join(" ")}
 						exit="exit"
 						initial="initial"
@@ -55,7 +61,12 @@ const ConsoleWorkspaceSplitInner = () => {
 					</motion.div>
 				</AnimatePresence>
 			</div>
-			{showGlobalComposer ? <GlobalComposerDock /> : null}
+			{showGlobalComposer ? (
+				<GlobalComposerDock
+					isCollapsed={composerCollapsed}
+					onCollapsedChange={setComposerCollapsed}
+				/>
+			) : null}
 		</div>
 	);
 };
