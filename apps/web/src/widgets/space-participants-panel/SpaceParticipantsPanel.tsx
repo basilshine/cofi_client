@@ -8,6 +8,9 @@ type ParticipantDraft = {
 	displayName: string;
 	email: string;
 	telegramUsername: string;
+	phone: string;
+	whatsapp: string;
+	notes: string;
 };
 
 type SpaceParticipantsPanelProps = {
@@ -32,14 +35,45 @@ const participantStatusLabel = (value: string): string => {
 	return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
+const contactString = (
+	contactData: Record<string, unknown> | undefined,
+	key: string,
+): string => {
+	const value = contactData?.[key];
+	return typeof value === "string" ? value : "";
+};
+
 const toDraft = (participant: SpaceParticipant): ParticipantDraft => ({
 	displayName: participant.display_name ?? "",
 	email: participant.email ?? "",
 	telegramUsername: participant.telegram_username ?? "",
+	phone: contactString(participant.contact_data, "phone"),
+	whatsapp: contactString(participant.contact_data, "whatsapp"),
+	notes: contactString(participant.contact_data, "notes"),
 });
 
 const cleanTelegram = (value: string): string =>
 	value.trim().replace(/^@+/, "");
+
+const compactContactData = (
+	draft: ParticipantDraft,
+	existing: Record<string, unknown> | undefined,
+): Record<string, unknown> => {
+	const next = { ...(existing ?? {}) };
+	const values = {
+		phone: draft.phone.trim(),
+		whatsapp: draft.whatsapp.trim(),
+		notes: draft.notes.trim(),
+	};
+	for (const [key, value] of Object.entries(values)) {
+		if (value) {
+			next[key] = value;
+		} else {
+			delete next[key];
+		}
+	}
+	return next;
+};
 
 export const SpaceParticipantsPanel = ({
 	spaceId,
@@ -97,6 +131,7 @@ export const SpaceParticipantsPanel = ({
 					display_name: displayName,
 					email: draft.email.trim(),
 					telegram_username: cleanTelegram(draft.telegramUsername),
+					contact_data: compactContactData(draft, participant.contact_data),
 				},
 			);
 			onParticipantSaved(updated);
@@ -209,11 +244,19 @@ export const SpaceParticipantsPanel = ({
 						participant.display_name?.trim() ||
 						participant.email?.trim() ||
 						`Participant ${participant.id}`;
+					const phone = contactString(participant.contact_data, "phone").trim();
+					const whatsapp = contactString(
+						participant.contact_data,
+						"whatsapp",
+					).trim();
+					const notes = contactString(participant.contact_data, "notes").trim();
 					const contactLine = [
 						participant.email?.trim(),
 						participant.telegram_username?.trim()
 							? `@${cleanTelegram(participant.telegram_username)}`
 							: "",
+						phone ? `phone ${phone}` : "",
+						whatsapp ? `WhatsApp ${whatsapp}` : "",
 					]
 						.filter(Boolean)
 						.join(" · ");
@@ -275,6 +318,52 @@ export const SpaceParticipantsPanel = ({
 											value={draft.telegramUsername}
 										/>
 									</label>
+									<div className="grid gap-2 sm:grid-cols-2">
+										<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
+											Phone
+											<input
+												className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+												onChange={(event) =>
+													setDraft((current) =>
+														current
+															? { ...current, phone: event.target.value }
+															: current,
+													)
+												}
+												type="tel"
+												value={draft.phone}
+											/>
+										</label>
+										<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
+											WhatsApp
+											<input
+												className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+												onChange={(event) =>
+													setDraft((current) =>
+														current
+															? { ...current, whatsapp: event.target.value }
+															: current,
+													)
+												}
+												type="tel"
+												value={draft.whatsapp}
+											/>
+										</label>
+									</div>
+									<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
+										Contact notes
+										<textarea
+											className="min-h-16 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+											onChange={(event) =>
+												setDraft((current) =>
+													current
+														? { ...current, notes: event.target.value }
+														: current,
+												)
+											}
+											value={draft.notes}
+										/>
+									</label>
 									<div className="flex items-center justify-end gap-2 pt-1">
 										<button
 											className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -328,6 +417,11 @@ export const SpaceParticipantsPanel = ({
 												No contact yet
 											</p>
 										)}
+										{notes ? (
+											<p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+												{notes}
+											</p>
+										) : null}
 									</div>
 									<button
 										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
