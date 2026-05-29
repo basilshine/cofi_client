@@ -20,6 +20,7 @@
 		"ci:web": "npm run lint:web && npm run build:web && npm run build:marketing",
 		"lint": "biome check .",
 		"security:scan": "semgrep scan --config auto --error .",
+		"browser:smoke": "playwright test",
 		"lint:fix": "biome check . --fix",
 		"lint:fix:all": "biome check . --fix --unsafe",
 		"format": "biome format . --write",
@@ -73,6 +74,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
+		"@playwright/test": "^1.60.0",
 		"@types/node": "^20.11.19",
 		"@types/react": "^18.2.55",
 		"@types/react-dom": "^18.2.19",
