@@ -53,7 +53,13 @@ export const ExpenseMessageCard = ({
 		let isMounted = true;
 		const run = async () => {
 			try {
-				const data = await apiClient.transactions.getById(transactionId);
+				const data =
+					spaceId == null
+						? await apiClient.transactions.getById(transactionId)
+						: await apiClient.transactions.getBySpaceAndId(
+								spaceId,
+								transactionId,
+							);
 				if (!isMounted) return;
 				setTx(data);
 				setError(null);
@@ -78,7 +84,7 @@ export const ExpenseMessageCard = ({
 		return () => {
 			isMounted = false;
 		};
-	}, [transactionId, reloadToken]);
+	}, [spaceId, transactionId, reloadToken]);
 
 	useEffect(() => {
 		if (!orphanNotice || !onTransactionOrphaned) return;

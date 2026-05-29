@@ -1159,6 +1159,64 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	"/api/v1/spaces/{spaceId}/transactions/{id}": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		/**
+		 * Get transaction in a shared space
+		 * @description Canonical space-scoped transaction detail for Chat and space views. The transaction must be linked to the requested space.
+		 */
+		get: {
+			parameters: {
+				query?: never;
+				header?: never;
+				path: {
+					/** @description Space ID */
+					spaceId: number;
+					/** @description Transaction ID */
+					id: number;
+				};
+				cookie?: never;
+			};
+			requestBody?: never;
+			responses: {
+				/** @description Space transaction detail */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Transaction"];
+					};
+				};
+				/** @description Forbidden */
+				403: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+				/** @description Transaction not found in this space */
+				404: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content?: never;
+				};
+			};
+		};
+		put?: never;
+		post?: never;
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	"/api/v1/spaces/{spaceId}/transaction-tags": {
 		parameters: {
 			query?: never;
@@ -4962,7 +5020,11 @@ export interface paths {
 			path?: never;
 			cookie?: never;
 		};
-		/** Get transactions */
+		/**
+		 * Get transactions
+		 * @deprecated
+		 * @description Legacy global transaction detail. Space views should use GET /api/v1/spaces/{spaceId}/transactions/{id}.
+		 */
 		get: {
 			parameters: {
 				query?: never;

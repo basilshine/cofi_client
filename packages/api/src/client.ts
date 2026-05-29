@@ -477,6 +477,14 @@ export const createApiClient = (config: ApiClientConfig) => {
 		},
 
 		transactions: {
+			getBySpaceAndId: (spaceId: string | number, id: string | number) =>
+				fetchJson<Transaction>(
+					withBase(`/api/v1/spaces/${spaceId}/transactions/${id}`),
+					{
+						method: "GET",
+						headers: authHeaders(),
+					},
+				),
 			getById: (id: string | number) =>
 				fetchJson<Transaction>(withBase(`/api/v1/transactions/${id}`), {
 					method: "GET",
