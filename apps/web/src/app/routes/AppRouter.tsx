@@ -2,7 +2,6 @@ import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AuthEntryPage } from "../../features/auth/AuthEntryPage";
 import { LoginPage } from "../../features/auth/LoginPage";
 import { RegisterPage } from "../../features/auth/RegisterPage";
-import { DashboardPage } from "../../features/dashboard/DashboardPage";
 import { DraftsPage } from "../../features/drafts/DraftsPage";
 import { ExpenseThreadPage } from "../../features/expense-thread/ExpenseThreadPage";
 import { GlobalHomePage } from "../../features/home/GlobalHomePage";
@@ -50,7 +49,10 @@ export const AppRouter = () => {
 						<Route element={<ConsoleWorkspaceSplit />}>
 							<Route element={<ConsoleIndexRedirect />} index />
 							<Route element={<GlobalHomePage />} path="home" />
-							<Route element={<DashboardPage />} path="dashboard" />
+							<Route
+								element={<Navigate replace to="/console/home" />}
+								path="dashboard"
+							/>
 							<Route
 								element={<Navigate replace to="/console/home" />}
 								path="dashboard/personal"
