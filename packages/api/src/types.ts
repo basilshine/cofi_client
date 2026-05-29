@@ -142,6 +142,36 @@ export type SpaceMembersListResponse = {
 	can_manage_member_roles: boolean;
 };
 
+export type SpaceParticipant = {
+	id: number;
+	space_id: number;
+	user_id?: number | null;
+	display_name: string;
+	participant_type: string;
+	status: string;
+	email?: string;
+	telegram_username?: string;
+	telegram_user_id?: number | null;
+	contact_data?: Record<string, unknown>;
+	invitation_id?: number | null;
+	linked_user_id?: number | null;
+	created_at: string;
+	updated_at: string;
+};
+
+export type SpaceParticipantsListResponse = {
+	participants: SpaceParticipant[];
+};
+
+export type SpaceParticipantPatch = {
+	display_name?: string;
+	email?: string;
+	telegram_username?: string;
+	telegram_user_id?: number | null;
+	contact_data?: Record<string, unknown>;
+	status?: string;
+};
+
 export type InviteSuggestionUser = {
 	user_id: number;
 	name: string;
@@ -388,11 +418,10 @@ export type ExpenseThreadSummary = {
 };
 
 export type ExpenseSplitRow = {
-	expense_id: number;
-	user_id: number;
+	user_id?: number | null;
+	space_participant_id?: number | null;
+	participant?: SpaceParticipant | null;
 	amount: number;
-	created_at: string;
-	updated_at: string;
 };
 
 /** `GET /spaces/:spaceId/my-share` */

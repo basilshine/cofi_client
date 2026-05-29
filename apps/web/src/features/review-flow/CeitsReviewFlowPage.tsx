@@ -366,10 +366,22 @@ export const CeitsReviewFlowPage = () => {
 		[filteredQueue],
 	);
 
-	const participantName = (uid: number) =>
-		members.find((m) => Number(m.user_id) === Number(uid))?.name ||
-		members.find((m) => Number(m.user_id) === Number(uid))?.email ||
-		`Member ${uid}`;
+	const participantName = (split: ExpenseSplitRow) => {
+		if (split.participant?.display_name?.trim()) {
+			return split.participant.display_name.trim();
+		}
+		if (split.participant?.email?.trim()) return split.participant.email.trim();
+		if (split.user_id != null) {
+			const member = members.find(
+				(m) => Number(m.user_id) === Number(split.user_id),
+			);
+			return member?.name || member?.email || `Member ${split.user_id}`;
+		}
+		if (split.space_participant_id != null) {
+			return `Participant ${split.space_participant_id}`;
+		}
+		return "Participant";
+	};
 	const splitPct = (amount: number, total: number): string => {
 		if (!Number.isFinite(total) || total <= 0) return "—";
 		return `${Math.round((amount / total) * 100)}%`;
@@ -621,16 +633,14 @@ export const CeitsReviewFlowPage = () => {
 													current.splits.map((s) => (
 														<div
 															className="flex items-center justify-between rounded-xl border border-border/60 bg-background/70 px-3 py-2"
-															key={`${s.user_id}-${s.amount}`}
+															key={`${s.user_id ?? s.space_participant_id ?? "participant"}-${s.amount}`}
 														>
 															<div className="flex min-w-0 items-center gap-2">
 																<span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[rgba(100,110,126,0.2)] text-[11px] font-semibold text-foreground/80">
-																	{participantName(s.user_id)
-																		.slice(0, 1)
-																		.toUpperCase()}
+																	{participantName(s).slice(0, 1).toUpperCase()}
 																</span>
 																<span className="truncate text-sm">
-																	{participantName(s.user_id)}
+																	{participantName(s)}
 																</span>
 															</div>
 															<span className="text-sm text-muted-foreground">

@@ -130,6 +130,33 @@ const humanizeSourceStatusLabel = (raw: string): string => {
 	return toTitleCase(raw.replace(/_/g, " "));
 };
 
+const splitParticipantId = (row: ExpenseSplitRow): string =>
+	row.user_id != null
+		? `user:${row.user_id}`
+		: row.space_participant_id != null
+			? `participant:${row.space_participant_id}`
+			: "participant:unknown";
+
+const splitParticipantName = (
+	row: ExpenseSplitRow,
+	members: SpaceMember[],
+): string => {
+	if (row.participant?.display_name?.trim()) {
+		return row.participant.display_name.trim();
+	}
+	if (row.participant?.email?.trim()) return row.participant.email.trim();
+	if (row.user_id != null) {
+		const member =
+			members.find((entry) => Number(entry.user_id) === Number(row.user_id)) ??
+			null;
+		return member?.name || member?.email || `Member ${row.user_id}`;
+	}
+	if (row.space_participant_id != null) {
+		return `Participant ${row.space_participant_id}`;
+	}
+	return "Participant";
+};
+
 const buildSplitRowContextLine = (
 	mappedStatus: SplitDecisionRow["statusLabel"],
 	sourceStatus: string,
@@ -434,13 +461,9 @@ export const SpaceSplitsWorkspacePage = () => {
 			if (statusLabel === "Missing splits") return [];
 
 			const participantsDetailed = rows.map((row) => {
-				const member =
-					members.find(
-						(entry) => Number(entry.user_id) === Number(row.user_id),
-					) ?? null;
 				return {
-					id: String(row.user_id),
-					name: member?.name || member?.email || `Member ${row.user_id}`,
+					id: splitParticipantId(row),
+					name: splitParticipantName(row, members),
 					amountLabel: formatMoney(row.amount),
 				};
 			});
@@ -571,20 +594,26 @@ export const SpaceSplitsWorkspacePage = () => {
 
 	const memberExposure = Object.values(splitRows)
 		.flat()
-		.reduce<Record<number, number>>((acc, row) => {
-			acc[row.user_id] = (acc[row.user_id] ?? 0) + row.amount;
-			return acc;
-		}, {});
+		.reduce<Record<string, { amount: number; row: ExpenseSplitRow }>>(
+			(acc, row) => {
+				const id = splitParticipantId(row);
+				acc[id] = {
+					amount: (acc[id]?.amount ?? 0) + row.amount,
+					row,
+				};
+				return acc;
+			},
+			{},
+		);
 	const membersSummary: SplitMemberSummary[] = Object.entries(memberExposure)
-		.map(([userId, amount]) => {
-			const member = members.find(
-				(entry) => Number(entry.user_id) === Number(userId),
-			);
-			const isCurrentUser = Number(userId) === Number(user?.id);
+		.map(([id, exposure]) => {
+			const isCurrentUser =
+				exposure.row.user_id != null &&
+				Number(exposure.row.user_id) === Number(user?.id);
 			return {
-				id: userId,
-				name: member?.name || member?.email || `Member ${userId}`,
-				exposureLabel: formatMoney(amount),
+				id,
+				name: splitParticipantName(exposure.row, members),
+				exposureLabel: formatMoney(exposure.amount),
 				directionLabel: isCurrentUser
 					? "Your current exposure"
 					: "Direction TBD",

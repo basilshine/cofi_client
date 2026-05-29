@@ -1,4 +1,9 @@
-import type { DashboardResponse, Space, SpaceMember } from "@cofi/api";
+import type {
+	DashboardResponse,
+	Space,
+	SpaceMember,
+	SpaceParticipant,
+} from "@cofi/api";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
@@ -11,6 +16,7 @@ import { apiClient } from "../../shared/lib/apiClient";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
 import { ActivityListCard } from "../../widgets/activity-list-card";
 import { OverviewRightRail } from "../../widgets/overview-right-rail";
+import { SpaceParticipantsPanel } from "./SpaceParticipantsPanel";
 
 const sectionHeading =
 	"flex items-center justify-between gap-3 border-b border-[rgba(95,105,125,0.12)] px-6 py-4";
@@ -155,6 +161,9 @@ export const SpaceOverviewPage = () => {
 		null,
 	);
 	const [members, setMembers] = useState<SpaceMember[] | null>(null);
+	const [participants, setParticipants] = useState<SpaceParticipant[] | null>(
+		null,
+	);
 	const [canManageMemberRoles, setCanManageMemberRoles] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -166,19 +175,22 @@ export const SpaceOverviewPage = () => {
 		setIsLoading(true);
 		setLoadError(null);
 		setCanManageMemberRoles(false);
+		setParticipants(null);
 		void (async () => {
 			try {
-				const [res, mem] = await Promise.all([
+				const [res, mem, participantRes] = await Promise.all([
 					apiClient.dashboard.get({
 						variant: "personal",
 						period: "month",
 						space_id: numericSpaceId,
 					}),
 					apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
+					apiClient.spaces.listParticipants(numericSpaceId).catch(() => null),
 				]);
 				if (!cancelled) {
 					setDashboardData(res);
 					setMembers(mem?.members ?? null);
+					setParticipants(participantRes?.participants ?? null);
 					setCanManageMemberRoles(Boolean(mem?.can_manage_member_roles));
 				}
 			} catch (e) {
@@ -197,6 +209,15 @@ export const SpaceOverviewPage = () => {
 			cancelled = true;
 		};
 	}, [numericSpaceId]);
+
+	const handleParticipantSaved = (participant: SpaceParticipant) => {
+		setParticipants((current) => {
+			if (!current) return [participant];
+			return current.map((item) =>
+				Number(item.id) === Number(participant.id) ? participant : item,
+			);
+		});
+	};
 
 	const chatWorkspace = useMemo((): ChatWorkspaceScope | null => {
 		if (workspaceScope) return workspaceScope;
@@ -770,6 +791,11 @@ export const SpaceOverviewPage = () => {
 										);
 									})}
 								</ul>
+								<SpaceParticipantsPanel
+									onParticipantSaved={handleParticipantSaved}
+									participants={participants}
+									spaceId={numericSpaceId}
+								/>
 							</section>
 						</div>
 
