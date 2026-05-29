@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useOutlet } from "react-router-dom";
 import { workspacePageVariants } from "../../../shared/lib/appMotion";
 import { GlobalComposerDock } from "./GlobalComposerDock";
@@ -9,6 +9,18 @@ import {
 	WorkspaceSpacesProvider,
 	useWorkspaceSpaces,
 } from "./WorkspaceSpacesContext";
+
+const composerCollapsedStorageKey = "ceits.globalComposer.collapsed";
+
+const getInitialComposerCollapsed = () => {
+	if (typeof window === "undefined") return false;
+
+	const saved = window.localStorage.getItem(composerCollapsedStorageKey);
+	if (saved === "true") return true;
+	if (saved === "false") return false;
+
+	return window.matchMedia("(max-width: 640px)").matches;
+};
 
 const WorkspaceSidebar = () => {
 	const { chatSidebarProps, sidebarExpanded } = useWorkspaceSpaces();
@@ -30,11 +42,20 @@ const WorkspaceSidebar = () => {
 const ConsoleWorkspaceSplitInner = () => {
 	const location = useLocation();
 	const outlet = useOutlet();
-	const [composerCollapsed, setComposerCollapsed] = useState(false);
+	const [composerCollapsed, setComposerCollapsed] = useState(
+		getInitialComposerCollapsed,
+	);
 	const isSpaceScopedRoute =
 		/^\/console\/spaces\/[^/]+(\/|$)/.test(location.pathname) ||
 		/^\/console\/dashboard(\/|$)/.test(location.pathname);
 	const showGlobalComposer = !location.pathname.startsWith("/console/chat");
+
+	useEffect(() => {
+		window.localStorage.setItem(
+			composerCollapsedStorageKey,
+			String(composerCollapsed),
+		);
+	}, [composerCollapsed]);
 
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">

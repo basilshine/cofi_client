@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
 	type ComposerPayload,
@@ -80,6 +80,8 @@ export const GlobalComposerDock = ({
 
 	const [busy, setBusy] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
+	const [pendingComposerState, setPendingComposerState] =
+		useState<ComposerState | null>(null);
 	const [statusText, setStatusText] = useState<string | null>(null);
 	const [errorText, setErrorText] = useState<string | null>(null);
 
@@ -280,12 +282,16 @@ export const GlobalComposerDock = ({
 		setIsRecording(false);
 	}, []);
 
+	useEffect(() => {
+		if (isCollapsed || !pendingComposerState) return;
+		composerRef.current?.navigateTo(pendingComposerState);
+		setPendingComposerState(null);
+	}, [isCollapsed, pendingComposerState]);
+
 	const expandTo = useCallback(
 		(state?: ComposerState) => {
+			setPendingComposerState(state ?? null);
 			onCollapsedChange(false);
-			if (state) {
-				window.setTimeout(() => composerRef.current?.navigateTo(state), 0);
-			}
 		},
 		[onCollapsedChange],
 	);
@@ -311,6 +317,12 @@ export const GlobalComposerDock = ({
 					</p>
 					<div className="flex shrink-0 items-center gap-3">
 						<button
+							aria-label={
+								isCollapsed
+									? "Expand global composer"
+									: "Collapse global composer"
+							}
+							aria-pressed={isCollapsed}
 							className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							onClick={handleCollapseToggle}
 							type="button"
