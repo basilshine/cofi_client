@@ -27,9 +27,6 @@ const ENDPOINTS = {
 	recurringResume: (id: number | string) =>
 		`/api/v1/finances/recurring/${id}/resume` as const,
 	analyticsSummary: "/api/v1/analytics/stats/summary" as const,
-	analyticsWeek: "/api/v1/analytics/stats/week" as const,
-	analyticsMonth: "/api/v1/analytics/stats/month" as const,
-	analyticsEmotions: "/api/v1/analytics/stats/emotions" as const,
 	analyticsReports: "/api/v1/analytics/reports" as const,
 	analyticsReportsSchedule: "/api/v1/analytics/reports/schedule" as const,
 	reminders: "/api/v1/notify/reminders" as const,
@@ -296,22 +293,6 @@ export const apiService = {
 					format: format || "json",
 					...(userId ? { user_id: userId } : {}),
 				},
-			}),
-		week: (userId: string, format?: string) =>
-			api.get<Record<string, unknown>>(ENDPOINTS.analyticsWeek, {
-				params: { user_id: userId, format: format || "json" },
-			}),
-		month: (userId: string, format?: string) =>
-			api.get<Record<string, unknown>>(ENDPOINTS.analyticsMonth, {
-				params: { user_id: userId, format: format || "json" },
-			}),
-		emotions: (userId: string, period?: string) =>
-			api.get<{
-				emotions?: Record<string, unknown>;
-				most_common?: string;
-				regret_amount?: number;
-			}>(ENDPOINTS.analyticsEmotions, {
-				params: { user_id: userId, period: period || "week" },
 			}),
 		reports: () =>
 			api.get<components["schemas"]["ReportSchedule"][]>(

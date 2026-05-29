@@ -65,14 +65,7 @@ export const analyticsService = {
 			});
 
 			const uid = userId != null ? String(userId) : undefined;
-			if (!uid) {
-				throw new Error("user_id is required for analytics stats");
-			}
-
-			const response =
-				period === "week"
-					? await apiService.analytics.week(uid)
-					: await apiService.analytics.month(uid);
+			const response = await apiService.analytics.summary(period, "json", uid);
 
 			LogRocket.log("[analyticsService.getStats] Success:", response.data);
 			return response.data as unknown as StatsResponse;
@@ -113,16 +106,17 @@ export const analyticsService = {
 			});
 
 			const uid = userId != null ? String(userId) : undefined;
-			if (!uid) {
-				throw new Error("user_id is required for emotion stats");
-			}
-
-			const response = await apiService.analytics.emotions(uid, period);
+			const response = await apiService.analytics.summary(period, "json", uid);
 			LogRocket.log(
 				"[analyticsService.getEmotionStats] Success:",
 				response.data,
 			);
-			return response.data as EmotionStatsResponse;
+			const stats = response.data as unknown as StatsResponse;
+			return {
+				emotions: stats.emotion_stats as unknown as Record<string, unknown>,
+				most_common: stats.most_common_emotion,
+				regret_amount: stats.regret_amount,
+			};
 		} catch (error) {
 			LogRocket.error("[analyticsService.getEmotionStats] Failed:", error);
 			throw error;
