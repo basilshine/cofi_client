@@ -23,14 +23,6 @@ export interface PaginatedExpensesResponse {
 	has_more: boolean;
 }
 
-export interface PaginatedExpenseItemsResponse {
-	expense_items: components["schemas"]["ExpenseItem"][];
-	total_count: number;
-	page: number;
-	limit: number;
-	has_more: boolean;
-}
-
 export const expensesService = {
 	getExpenses: async () => {
 		try {
@@ -205,41 +197,6 @@ export const expensesService = {
 			} satisfies components["schemas"]["ExpenseSummary"];
 		} catch (error) {
 			LogRocket.error("[expensesService.getSummary] Failed:", error);
-			throw error;
-		}
-	},
-
-	getExpenseItemsWithFilters: async (
-		filters: ExpenseFilters,
-	): Promise<PaginatedExpenseItemsResponse> => {
-		try {
-			LogRocket.log(
-				"[expensesService.getExpenseItemsWithFilters] Starting request",
-				filters,
-			);
-
-			// Create query parameters
-			const params = new URLSearchParams();
-			if (filters.tag) params.append("category", filters.tag);
-			if (filters.emotion) params.append("emotion", filters.emotion);
-			if (filters.dateRange) params.append("date_range", filters.dateRange);
-			if (filters.search) params.append("search", filters.search);
-			if (filters.page) params.append("page", filters.page.toString());
-			if (filters.limit) params.append("limit", filters.limit.toString());
-
-			const url = `/api/v1/finances/expenses/items?${params.toString()}`;
-			const response = await apiService.expenses.listItemsWithFilters(url);
-
-			LogRocket.log(
-				"[expensesService.getExpenseItemsWithFilters] Success:",
-				response.data,
-			);
-			return response.data as PaginatedExpenseItemsResponse;
-		} catch (error) {
-			LogRocket.error(
-				"[expensesService.getExpenseItemsWithFilters] Failed:",
-				error,
-			);
 			throw error;
 		}
 	},
