@@ -4920,7 +4920,11 @@ export interface paths {
 			path?: never;
 			cookie?: never;
 		};
-		/** Get transactions */
+		/**
+		 * Get transactions
+		 * @deprecated
+		 * @description Legacy global transaction list. Space views should use GET /api/v1/spaces/{spaceId}/transactions.
+		 */
 		get: {
 			parameters: {
 				query?: never;

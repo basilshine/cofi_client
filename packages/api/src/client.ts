@@ -477,13 +477,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 		},
 
 		transactions: {
-			list: (params?: { limit?: number }) => {
-				const qs = params?.limit ? `?limit=${params.limit}` : "";
-				return fetchJson<Transaction[]>(withBase(`/api/v1/transactions${qs}`), {
-					method: "GET",
-					headers: authHeaders(),
-				});
-			},
 			getById: (id: string | number) =>
 				fetchJson<Transaction>(withBase(`/api/v1/transactions/${id}`), {
 					method: "GET",
