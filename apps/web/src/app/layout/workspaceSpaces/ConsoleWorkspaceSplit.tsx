@@ -10,7 +10,7 @@ import {
 	useWorkspaceSpaces,
 } from "./WorkspaceSpacesContext";
 
-const composerCollapsedStorageKey = "ceits.globalComposer.collapsed";
+const composerCollapsedStorageKey = "ceits.globalComposer.v2.collapsed";
 const settingsLikeRoutePattern =
 	/^\/console\/(?:settings|account|organization|quota)(?:\/|$)/;
 const spaceSettingsRoutePattern = /^\/console\/spaces\/[^/]+\/settings(?:\/|$)/;
@@ -22,7 +22,7 @@ const getInitialComposerCollapsed = () => {
 	if (saved === "true") return true;
 	if (saved === "false") return false;
 
-	return window.matchMedia("(max-width: 640px)").matches;
+	return true;
 };
 
 const WorkspaceSidebar = () => {
