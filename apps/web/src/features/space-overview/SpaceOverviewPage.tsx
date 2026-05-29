@@ -9,10 +9,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
-import { PARSE_DUMMY_TEST_SNIPPETS } from "../../shared/lib/parseDummySnippets";
 import { ActivityListCard } from "../../widgets/activity-list-card";
 import { OverviewRightRail } from "../../widgets/overview-right-rail";
-import { QuickCaptureComposer } from "../../widgets/quick-capture-composer";
 
 const sectionHeading =
 	"flex items-center justify-between gap-3 border-b border-[rgba(95,105,125,0.12)] px-6 py-4";
@@ -158,7 +156,6 @@ export const SpaceOverviewPage = () => {
 	);
 	const [members, setMembers] = useState<SpaceMember[] | null>(null);
 	const [canManageMemberRoles, setCanManageMemberRoles] = useState(false);
-	const [captureInput, setCaptureInput] = useState("");
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [decisionCtaHovered, setDecisionCtaHovered] = useState(false);
@@ -276,11 +273,6 @@ export const SpaceOverviewPage = () => {
 			state,
 		});
 	};
-
-	const quickCaptureSuggestions = useMemo(
-		() => PARSE_DUMMY_TEST_SNIPPETS.slice(0, 6).map((snippet) => snippet.text),
-		[],
-	);
 
 	/** TODO: replace with space-scoped balances when API exposes owe / owed / net. */
 	const spacePositionPlaceholder = useMemo(
@@ -457,29 +449,6 @@ export const SpaceOverviewPage = () => {
 								Loading workspace…
 							</p>
 						) : null}
-
-						<div className="relative rounded-[1.15rem] border border-[rgba(195,155,88,0.42)] bg-gradient-to-br from-[#fff4e6] via-[#ffecd8] to-[rgba(255,235,210,0.65)] p-[3px] shadow-[0_28px_64px_-32px_rgba(105,72,28,0.38),0_12px_28px_-18px_rgba(120,88,42,0.18)] ring-1 ring-inset ring-white/55 transition-[box-shadow,transform] duration-150 ease-out hover:shadow-[0_30px_68px_-30px_rgba(105,72,28,0.34)]">
-							<div className="rounded-[1.02rem] bg-[rgba(255,255,252,0.45)] p-1.5 sm:p-2">
-								<QuickCaptureComposer
-									emphasized
-									errorText={null}
-									helperText="Adds a draft in this space only. Voice and receipt open chat here."
-									inputPlaceholder="Coffee 4.50, taxi home, Netflix subscription..."
-									inputValue={captureInput}
-									onInputChange={setCaptureInput}
-									onPrimaryAction={() => handleQuickCapture("compose")}
-									onReceiptAction={() => handleQuickCapture("photo")}
-									onSuggestionClick={(value) => setCaptureInput(value)}
-									onVoiceAction={() => handleQuickCapture("voice")}
-									primaryDisabled={false}
-									receiptDisabled={false}
-									suggestions={quickCaptureSuggestions}
-									targetSpaceName={space?.name ?? null}
-									title={`Capture into ${space?.name ?? "this space"}`}
-									voiceDisabled={false}
-								/>
-							</div>
-						</div>
 
 						<div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start lg:gap-7">
 							<section

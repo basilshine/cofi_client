@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation, useOutlet } from "react-router-dom";
 import { workspacePageVariants } from "../../../shared/lib/appMotion";
+import { GlobalComposerDock } from "./GlobalComposerDock";
 import { SpaceScopedMembersSidebarBridge } from "./SpaceScopedMembersSidebarBridge";
 import { WorkspaceSpaceListNav } from "./WorkspaceSpaceListNav";
 import {
@@ -50,6 +51,7 @@ const ConsoleWorkspaceSplitInner = () => {
 					</motion.div>
 				</AnimatePresence>
 			</div>
+			<GlobalComposerDock />
 		</div>
 	);
 };
