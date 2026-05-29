@@ -4647,6 +4647,13 @@ export interface components {
             deep_allowed?: boolean;
             /** @description Whether the parser classified or requested this input as needing Deep intelligence. */
             deep_requested?: boolean;
+            /**
+             * @description Coarse cost class for the selected parser profile.
+             * @enum {string}
+             */
+            cost_class?: "low" | "medium" | "high";
+            /** @description Relative AI parse quota units reserved or expected for this parser profile. */
+            quota_units?: number;
             /** @description Present when the requested profile was capped by tenant capability. */
             downgraded_reason?: string;
         };
