@@ -95,6 +95,7 @@ type Props = {
 	onStartExpenseRecording: () => void;
 	onStopRecording: () => void;
 	onCancelRecording?: () => void;
+	surface?: "chat" | "dock";
 };
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -184,6 +185,7 @@ export const SmartTextareaComposer = forwardRef<
 			onStartExpenseRecording,
 			onStopRecording,
 			onCancelRecording,
+			surface = "chat",
 		},
 		ref,
 	) => {
@@ -810,29 +812,44 @@ export const SmartTextareaComposer = forwardRef<
 		return (
 			<motion.div
 				animate={{ opacity: 1, y: 0 }}
-				className="relative shrink-0 overflow-hidden border-t border-[rgba(120,100,80,0.2)] bg-gradient-to-b from-card/98 via-card/96 to-background/92 shadow-[0_-10px_26px_-18px_rgba(0,0,0,0.2)] backdrop-blur-md dark:from-background/95 dark:via-background/90 dark:to-background/85"
+				className={
+					surface === "dock"
+						? "relative shrink-0 overflow-hidden bg-transparent"
+						: "relative shrink-0 overflow-hidden border-t border-[rgba(120,100,80,0.2)] bg-gradient-to-b from-card/98 via-card/96 to-background/92 shadow-[0_-10px_26px_-18px_rgba(0,0,0,0.2)] backdrop-blur-md dark:from-background/95 dark:via-background/90 dark:to-background/85"
+				}
 				initial={reduceMotion ? false : { opacity: 0.92, y: 10 }}
 				transition={spring}
 			>
-				{/* Top accent line */}
-				<div
-					aria-hidden
-					className="h-px w-full bg-[linear-gradient(90deg,transparent,hsl(38_92%_50%_/_0.35),hsl(var(--primary)_/_0.4),transparent)]"
-				/>
+				{surface === "chat" ? (
+					<div
+						aria-hidden
+						className="h-px w-full bg-[linear-gradient(90deg,transparent,hsl(38_92%_50%_/_0.35),hsl(var(--primary)_/_0.4),transparent)]"
+					/>
+				) : null}
 
-				{/* Ambient glow */}
-				<div
-					aria-hidden
-					className="pointer-events-none absolute inset-0 opacity-[0.06] dark:opacity-[0.1]"
-					style={{
-						background:
-							"radial-gradient(ellipse 80% 60% at 50% 100%, hsl(38 90% 45%), transparent 70%)",
-					}}
-				/>
+				{surface === "chat" ? (
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 opacity-[0.06] dark:opacity-[0.1]"
+						style={{
+							background:
+								"radial-gradient(ellipse 80% 60% at 50% 100%, hsl(38 90% 45%), transparent 70%)",
+						}}
+					/>
+				) : null}
 
-				<div className="relative p-3 sm:p-4">
-					{/* Rounded smart textarea card */}
-					<div className="rounded-[0.9rem] border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,248,0.97)] p-3 shadow-sm ring-1 ring-white/25 dark:bg-card/95 dark:ring-white/5">
+				<div
+					className={
+						surface === "dock" ? "relative p-2" : "relative p-3 sm:p-4"
+					}
+				>
+					<div
+						className={
+							surface === "dock"
+								? "rounded-[0.85rem] border border-border/60 bg-card/95 p-3 ring-1 ring-white/20 dark:bg-card/95 dark:ring-white/5"
+								: "rounded-[0.9rem] border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,248,0.97)] p-3 shadow-sm ring-1 ring-white/25 dark:bg-card/95 dark:ring-white/5"
+						}
+					>
 						<AnimatePresence initial={false} mode="wait">
 							<motion.div
 								animate={{ opacity: 1, y: 0 }}
