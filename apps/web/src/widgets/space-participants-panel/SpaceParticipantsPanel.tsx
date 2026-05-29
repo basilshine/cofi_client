@@ -197,9 +197,13 @@ export const SpaceParticipantsPanel = ({
 					const isEditing = editingId === participant.id;
 					const isSaving = savingId === participant.id;
 					const isInviting = invitingId === participant.id;
+					const isRegistered =
+						participant.participant_type === "registered_member" ||
+						participant.status === "active" ||
+						participant.status === "linked";
 					const canInvite =
 						participant.email?.trim() &&
-						participant.status !== "linked" &&
+						!isRegistered &&
 						participant.status !== "invited";
 					const label =
 						participant.display_name?.trim() ||
@@ -342,8 +346,8 @@ export const SpaceParticipantsPanel = ({
 												? "Invite participant"
 												: participant.status === "invited"
 													? "Invite already created"
-													: participant.status === "linked"
-														? "Participant linked"
+													: isRegistered
+														? "Participant already registered"
 														: "Add email before inviting"
 										}
 										type="button"
