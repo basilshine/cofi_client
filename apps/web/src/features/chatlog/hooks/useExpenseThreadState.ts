@@ -11,7 +11,11 @@ import type {
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiClient } from "../../../shared/lib/apiClient";
-import { httpClient } from "../../../shared/lib/httpClient";
+import {
+	parseCapturePhoto,
+	parseCaptureText,
+	parseCaptureVoice,
+} from "../../../shared/lib/quickCaptureTransactions";
 import { wsClient } from "../../../shared/lib/wsClient";
 import type { BuilderItem } from "../components/transactionBuilderTypes";
 import {
@@ -848,22 +852,11 @@ export const useExpenseThreadState = (
 		setThreadCaptureBusy(true);
 		setActionError(null);
 		try {
-			const res = await httpClient.post<{
-				items?: {
-					name: string;
-					amount: number;
-					tags?: string[];
-					notes?: string;
-				}[];
-				vendor_name?: string;
-				payee_text?: string;
-			}>(`/api/v1/spaces/${String(spaceId)}/transactions/parse/text`, {
-				text,
-			});
-			const parsed = res.data?.items ?? [];
+			const res = await parseCaptureText(text, { spaceId });
+			const parsed = res.items ?? [];
 			await createProposalFromParsed(text, parsed, {
-				vendorName: res.data?.vendor_name,
-				payeeText: res.data?.payee_text,
+				vendorName: res.vendor_name,
+				payeeText: res.payee_text,
 			});
 		} catch (e) {
 			setActionError(e instanceof Error ? e.message : "Failed to parse text");
@@ -878,25 +871,12 @@ export const useExpenseThreadState = (
 			setThreadCaptureBusy(true);
 			setActionError(null);
 			try {
-				const fd = new FormData();
-				fd.append("image", file);
-				const res = await httpClient.post<{
-					items?: {
-						name: string;
-						amount: number;
-						tags?: string[];
-						notes?: string;
-					}[];
-					vendor_name?: string;
-					payee_text?: string;
-				}>(`/api/v1/spaces/${String(spaceId)}/transactions/parse/photo`, fd, {
-					headers: { "Content-Type": "multipart/form-data" },
-				});
-				const parsed = res.data?.items ?? [];
+				const res = await parseCapturePhoto(file, { spaceId });
+				const parsed = res.items ?? [];
 				const description = `Photo: ${file.name}`;
 				await createProposalFromParsed(description, parsed, {
-					vendorName: res.data?.vendor_name,
-					payeeText: res.data?.payee_text,
+					vendorName: res.vendor_name,
+					payeeText: res.payee_text,
 				});
 			} catch (e) {
 				setActionError(
@@ -925,29 +905,14 @@ export const useExpenseThreadState = (
 		setThreadCaptureBusy(true);
 		setActionError(null);
 		try {
-			const fd = new FormData();
-			fd.append(
-				"voice",
-				new File([blob], "voice.webm", { type: blob.type || "audio/webm" }),
-			);
-			const res = await httpClient.post<{
-				items?: {
-					name: string;
-					amount: number;
-					tags?: string[];
-					notes?: string;
-				}[];
-				transcription?: string;
-				vendor_name?: string;
-				payee_text?: string;
-			}>(`/api/v1/spaces/${String(spaceId)}/transactions/parse/voice`, fd, {
-				headers: { "Content-Type": "multipart/form-data" },
+			const res = await parseCaptureVoice(blob, blob.type || "audio/webm", {
+				spaceId,
 			});
-			const parsed = res.data?.items ?? [];
-			const description = res.data?.transcription?.trim() || "Voice expense";
+			const parsed = res.items ?? [];
+			const description = res.transcription?.trim() || "Voice expense";
 			await createProposalFromParsed(description, parsed, {
-				vendorName: res.data?.vendor_name,
-				payeeText: res.data?.payee_text,
+				vendorName: res.vendor_name,
+				payeeText: res.payee_text,
 			});
 		} catch (e) {
 			setActionError(e instanceof Error ? e.message : "Failed to parse voice");

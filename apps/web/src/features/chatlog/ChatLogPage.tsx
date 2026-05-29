@@ -27,6 +27,11 @@ import { readCeitsFirstChat } from "../../shared/lib/ceitsUserPrefs";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
 import { httpClient } from "../../shared/lib/httpClient";
 import {
+	parseCapturePhoto,
+	parseCaptureText,
+	parseCaptureVoice,
+} from "../../shared/lib/quickCaptureTransactions";
+import {
 	sortSpacesByLastActivity,
 	touchRecentSpaceId,
 } from "../../shared/lib/recentSpaceIds";
@@ -1006,18 +1011,10 @@ export const ChatLogPage = () => {
 					setIsLoading(true);
 					setErrorMessage(null);
 					try {
-						const res = await httpClient.post<{
-							items?: {
-								name: string;
-								amount: number;
-								tags?: string[];
-								notes?: string;
-							}[];
-						}>(
-							`/api/v1/spaces/${String(selectedSpaceId)}/transactions/parse/text`,
-							{ text },
-						);
-						const parsed = res.data?.items ?? [];
+						const res = await parseCaptureText(text, {
+							spaceId: selectedSpaceId,
+						});
+						const parsed = res.items ?? [];
 						const builderItems = parsed
 							.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
 							.map((p) => ({
@@ -1075,23 +1072,8 @@ export const ChatLogPage = () => {
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
-			const fd = new FormData();
-			fd.append("image", file);
-			const res = await httpClient.post<{
-				items?: {
-					name: string;
-					amount: number;
-					tags?: string[];
-					notes?: string;
-				}[];
-			}>(
-				`/api/v1/spaces/${String(selectedSpaceId)}/transactions/parse/photo`,
-				fd,
-				{
-					headers: { "Content-Type": "multipart/form-data" },
-				},
-			);
-			const parsed = res.data?.items ?? [];
+			const res = await parseCapturePhoto(file, { spaceId: selectedSpaceId });
+			const parsed = res.items ?? [];
 			const builderItems = parsed
 				.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
 				.map((p) => ({
@@ -1134,27 +1116,10 @@ export const ChatLogPage = () => {
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
-			const fd = new FormData();
-			fd.append(
-				"voice",
-				new File([blob], "voice.webm", { type: blob.type || "audio/webm" }),
-			);
-			const res = await httpClient.post<{
-				items?: {
-					name: string;
-					amount: number;
-					tags?: string[];
-					notes?: string;
-				}[];
-				transcription?: string;
-			}>(
-				`/api/v1/spaces/${String(selectedSpaceId)}/transactions/parse/voice`,
-				fd,
-				{
-					headers: { "Content-Type": "multipart/form-data" },
-				},
-			);
-			const parsed = res.data?.items ?? [];
+			const res = await parseCaptureVoice(blob, blob.type || "audio/webm", {
+				spaceId: selectedSpaceId,
+			});
+			const parsed = res.items ?? [];
 			const builderItems = parsed
 				.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
 				.map((p) => ({
@@ -1170,7 +1135,7 @@ export const ChatLogPage = () => {
 				);
 				return;
 			}
-			const description = res.data?.transcription?.trim() || "Voice expense";
+			const description = res.transcription?.trim() || "Voice expense";
 			await finalizeParsedDraft(description, builderItems);
 		} catch (e) {
 			setErrorMessage(e instanceof Error ? e.message : "Failed to parse voice");
@@ -1199,19 +1164,10 @@ export const ChatLogPage = () => {
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
-			const fd = new FormData();
-			fd.append(
-				"voice",
-				new File([blob], "voice.webm", { type: blob.type || "audio/webm" }),
-			);
-			const res = await httpClient.post<{ transcription?: string }>(
-				`/api/v1/spaces/${String(selectedSpaceId)}/transactions/parse/voice`,
-				fd,
-				{
-					headers: { "Content-Type": "multipart/form-data" },
-				},
-			);
-			const text = res.data?.transcription?.trim();
+			const res = await parseCaptureVoice(blob, blob.type || "audio/webm", {
+				spaceId: selectedSpaceId,
+			});
+			const text = res.transcription?.trim();
 			if (!text) {
 				setErrorMessage("Nothing transcribed — try again.");
 				return;
