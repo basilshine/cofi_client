@@ -88,6 +88,7 @@ export const GlobalComposerDock = () => {
 	const activeSpaceName =
 		activeSpace?.name?.trim() ||
 		(activeSpaceId == null ? "Choose a space" : `Space ${activeSpaceId}`);
+	const hasSpaceContext = activeSpaceId != null;
 	const contextSource = routeSpaceId
 		? "page"
 		: querySpaceId
@@ -96,7 +97,13 @@ export const GlobalComposerDock = () => {
 				? "workspace"
 				: null;
 
-	const disabled = busy || isLoading || activeSpaceId == null;
+	const disabled = busy || isLoading || !hasSpaceContext;
+	const composerNotice =
+		errorText ??
+		statusText ??
+		(!hasSpaceContext
+			? "Choose a space before capturing expenses or posting messages."
+			: null);
 
 	const showTransientStatus = useCallback((message: string) => {
 		setStatusText(message);
@@ -272,14 +279,21 @@ export const GlobalComposerDock = () => {
 						Context: {activeSpaceName}
 						{contextSource ? ` · ${contextSource}` : ""}
 					</p>
-					{activeSpaceId != null ? (
+					{hasSpaceContext ? (
 						<Link
 							className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
 							to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
 						>
 							Open chat
 						</Link>
-					) : null}
+					) : (
+						<Link
+							className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+							to="/console/spaces"
+						>
+							Choose space
+						</Link>
+					)}
 				</div>
 				<SmartTextareaComposer
 					disabled={disabled}
@@ -290,16 +304,19 @@ export const GlobalComposerDock = () => {
 					onStopRecording={() => void handleStopRecording()}
 					spaceId={activeSpaceId ?? "0"}
 				/>
-				{errorText || statusText ? (
+				{composerNotice ? (
 					<div
+						aria-live="polite"
 						className={[
 							"border-t px-4 py-2 text-xs",
 							errorText
 								? "border-destructive/20 bg-destructive/10 text-destructive"
-								: "border-[rgba(90,130,96,0.18)] bg-[rgba(230,246,232,0.9)] text-[#355a3c]",
+								: statusText
+									? "border-[rgba(90,130,96,0.18)] bg-[rgba(230,246,232,0.9)] text-[#355a3c]"
+									: "border-border/50 bg-muted/45 text-muted-foreground",
 						].join(" ")}
 					>
-						{errorText ?? statusText}
+						{composerNotice}
 					</div>
 				) : null}
 			</div>
