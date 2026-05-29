@@ -50,6 +50,10 @@ export const SpaceParticipantsPanel = ({
 	const [savingId, setSavingId] = useState<number | null>(null);
 	const [invitingId, setInvitingId] = useState<number | null>(null);
 	const [inviteToken, setInviteToken] = useState<string | null>(null);
+	const [inviteDelivery, setInviteDelivery] = useState<{
+		status?: "sent" | "skipped" | "failed";
+		message?: string;
+	} | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	const visibleParticipants = useMemo(() => {
@@ -113,6 +117,7 @@ export const SpaceParticipantsPanel = ({
 
 		setInvitingId(participant.id);
 		setInviteToken(null);
+		setInviteDelivery(null);
 		setError(null);
 		try {
 			const result = await apiClient.spaces.inviteParticipant(
@@ -121,6 +126,10 @@ export const SpaceParticipantsPanel = ({
 			);
 			onParticipantSaved(result.participant);
 			setInviteToken(result.token);
+			setInviteDelivery({
+				status: result.email_delivery_status,
+				message: result.email_delivery_message,
+			});
 		} catch (e) {
 			setError(
 				e instanceof Error ? e.message : "Failed to invite participant.",
@@ -154,7 +163,16 @@ export const SpaceParticipantsPanel = ({
 			{inviteToken ? (
 				<div className="mt-3">
 					<div className="mb-2 rounded-lg border border-[rgba(90,130,98,0.24)] bg-[rgba(120,154,124,0.12)] px-3 py-2 text-xs font-medium text-[#214027]">
-						Invite created. Share this link with the participant.
+						{inviteDelivery?.status === "sent"
+							? "Invite email sent. You can also share this link manually."
+							: inviteDelivery?.status === "failed"
+								? "Invite created, but email delivery failed. Share this link manually."
+								: "Invite created. Share this link with the participant."}
+						{inviteDelivery?.message ? (
+							<span className="mt-1 block text-[11px] text-[#5a3920]">
+								{inviteDelivery.message}
+							</span>
+						) : null}
 					</div>
 					<InviteLinkSharePanel token={inviteToken} />
 				</div>

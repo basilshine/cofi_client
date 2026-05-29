@@ -176,6 +176,8 @@ export type SpaceParticipantInviteResponse = {
 	token: string;
 	expires_at: string;
 	participant: SpaceParticipant;
+	email_delivery_status?: "sent" | "skipped" | "failed";
+	email_delivery_message?: string;
 };
 
 export type InviteSuggestionUser = {
