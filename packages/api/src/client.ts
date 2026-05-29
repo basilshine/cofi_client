@@ -916,7 +916,11 @@ export const createApiClient = (config: ApiClientConfig) => {
 					),
 				putSplits: (
 					id: string | number,
-					lines: Array<{ user_id: number; amount: number }>,
+					lines: Array<{
+						user_id?: number | null;
+						space_participant_id?: number | null;
+						amount: number;
+					}>,
 				) =>
 					fetchJson<void>(withBase(`/api/v1/finances/expenses/${id}/splits`), {
 						method: "PUT",

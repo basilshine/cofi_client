@@ -6,6 +6,7 @@ import type {
 	ExpenseThreadSummary,
 	PayeeMismatchHint,
 	SpaceMember,
+	SpaceParticipant,
 	WsEnvelope,
 } from "@cofi/api";
 import type { KeyboardEvent } from "react";
@@ -118,7 +119,107 @@ export const percentsToAmounts = (pcts: number[], total: number): number[] => {
 	return rounded;
 };
 
-export type SplitPercentRow = { user_id: number; percent: string };
+export type SplitPercentRow = {
+	user_id?: number | null;
+	space_participant_id?: number | null;
+	label: string;
+	percent: string;
+};
+
+export const splitRowKey = (row: SplitPercentRow): string =>
+	row.space_participant_id != null
+		? `participant:${row.space_participant_id}`
+		: `user:${row.user_id ?? "unknown"}`;
+
+export const splitParticipantLabel = (participant: SpaceParticipant): string =>
+	participant.display_name?.trim() ||
+	participant.email?.trim() ||
+	(participant.user_id != null
+		? `User #${participant.user_id}`
+		: `Participant #${participant.id}`);
+
+const participantRowsFromMembers = (
+	members: SpaceMember[],
+): SplitPercentRow[] =>
+	members.map((m) => ({
+		user_id: Number(m.user_id),
+		label: m.name?.trim() || m.email?.trim() || `User #${m.user_id}`,
+		percent: "0",
+	}));
+
+export const splitRowsFromParticipants = (
+	participants: SpaceParticipant[],
+	members: SpaceMember[],
+): SplitPercentRow[] => {
+	if (participants.length === 0) return participantRowsFromMembers(members);
+	return participants.map((participant) => ({
+		user_id: participant.user_id ?? null,
+		space_participant_id: participant.id,
+		label: splitParticipantLabel(participant),
+		percent: "0",
+	}));
+};
+
+export const applyAmountsToSplitRows = (
+	rows: SplitPercentRow[],
+	splits: {
+		user_id?: number | null;
+		space_participant_id?: number | null;
+		amount: number;
+	}[],
+	total: number,
+): SplitPercentRow[] => {
+	const byParticipant = new Map(
+		splits
+			.filter((s) => s.space_participant_id != null)
+			.map((s) => [Number(s.space_participant_id), Number(s.amount) || 0]),
+	);
+	const byUser = new Map(
+		splits
+			.filter((s) => s.user_id != null)
+			.map((s) => [Number(s.user_id), Number(s.amount) || 0]),
+	);
+	return rows.map((row) => {
+		const amount =
+			row.space_participant_id != null
+				? (byParticipant.get(Number(row.space_participant_id)) ?? 0)
+				: row.user_id != null
+					? (byUser.get(Number(row.user_id)) ?? 0)
+					: 0;
+		const pct = total > 0 ? (amount / total) * 100 : 0;
+		return { ...row, percent: String(Math.round(pct * 100) / 100) };
+	});
+};
+
+export const ownerHundredSplitRows = (
+	rows: SplitPercentRow[],
+	ownerUserId: number,
+): SplitPercentRow[] => {
+	let matchedOwner = false;
+	const next = rows.map((row) => {
+		const isOwner = row.user_id != null && Number(row.user_id) === ownerUserId;
+		if (isOwner) matchedOwner = true;
+		return { ...row, percent: isOwner ? "100" : "0" };
+	});
+	if (matchedOwner || next.length === 0) return next;
+	return next.map((row, index) => ({
+		...row,
+		percent: index === 0 ? "100" : "0",
+	}));
+};
+
+export const equalSplitRows = (rows: SplitPercentRow[]): SplitPercentRow[] => {
+	const n = rows.length;
+	if (n <= 0) return [];
+	const eq = 100 / n;
+	return rows.map((row, i) => ({
+		...row,
+		percent:
+			i === n - 1
+				? String(Math.round((100 - eq * (n - 1)) * 100) / 100)
+				: String(Math.round(eq * 100) / 100),
+	}));
+};
 
 export const useExpenseThreadState = (
 	spaceId: string | number | null,
@@ -248,13 +349,15 @@ export const useExpenseThreadState = (
 		setActionError(null);
 		try {
 			await apiClient.threads.getOrCreate(spaceId, expenseId);
-			const [exp, sum, mem, splitRes, propRes] = await Promise.all([
-				apiClient.threads.getThreadExpense(spaceId, expenseId),
-				apiClient.threads.getSummary(spaceId, expenseId),
-				apiClient.spaces.listMembers(spaceId).then((r) => r.members),
-				apiClient.finances.expenses.listSplits(expenseId).catch(() => null),
-				apiClient.threads.listProposals(spaceId, expenseId),
-			]);
+			const [exp, sum, mem, participantRes, splitRes, propRes] =
+				await Promise.all([
+					apiClient.threads.getThreadExpense(spaceId, expenseId),
+					apiClient.threads.getSummary(spaceId, expenseId),
+					apiClient.spaces.listMembers(spaceId).then((r) => r.members),
+					apiClient.spaces.listParticipants(spaceId).catch(() => null),
+					apiClient.finances.expenses.listSplits(expenseId).catch(() => null),
+					apiClient.threads.listProposals(spaceId, expenseId),
+				]);
 			setExpense(exp);
 			setProposals(propRes.proposals ?? []);
 			applyExpenseToDraftHeaders(exp);
@@ -269,34 +372,19 @@ export const useExpenseThreadState = (
 			setHasOlder(initial.length === MESSAGE_LIMIT);
 
 			const t = expenseTotal(exp);
+			const participantRows = splitRowsFromParticipants(
+				participantRes?.participants ?? [],
+				mem,
+			);
 			if (splitRes?.splits?.length && t > 0) {
-				const byUser = new Map(
-					splitRes.splits.map((s) => [s.user_id, s.amount]),
-				);
 				setSplitRows(
-					mem.map((m) => {
-						const uid = Number(m.user_id);
-						const amt = byUser.get(uid) ?? 0;
-						const pct = t > 0 ? (amt / t) * 100 : 0;
-						return {
-							user_id: uid,
-							percent: String(Math.round(pct * 100) / 100),
-						};
-					}),
+					applyAmountsToSplitRows(participantRows, splitRes.splits, t),
 				);
 			} else {
 				// No saved splits yet: draft owner (thread creator) holds 100%; others 0%.
 				// Creator adjusts after others contribute via capture proposals.
 				const creatorId = Number(sum.thread.created_by_user_id);
-				setSplitRows(
-					mem.map((m) => {
-						const uid = Number(m.user_id);
-						return {
-							user_id: uid,
-							percent: uid === creatorId ? "100" : "0",
-						};
-					}),
-				);
+				setSplitRows(ownerHundredSplitRows(participantRows, creatorId));
 			}
 		} catch (e) {
 			setActionError(
@@ -584,39 +672,20 @@ export const useExpenseThreadState = (
 	}, [threadId, load]);
 
 	const setEqualSplitPercents = useCallback(() => {
-		const n = threadMembers.length;
-		if (n <= 0) return;
-		const eq = 100 / n;
-		setSplitRows(
-			threadMembers.map((m, i) => ({
-				user_id: Number(m.user_id),
-				percent:
-					i === n - 1
-						? String(Math.round((100 - eq * (n - 1)) * 100) / 100)
-						: String(Math.round(eq * 100) / 100),
-			})),
-		);
-	}, [threadMembers]);
+		setSplitRows((current) => equalSplitRows(current));
+	}, []);
 
 	/** 100% to draft owner, 0% to everyone else (matches default before first save). */
 	const resetSplitOwnerHundred = useCallback(() => {
 		if (summary == null) return;
 		const creatorId = Number(summary.thread.created_by_user_id);
-		setSplitRows(
-			threadMembers.map((m) => {
-				const uid = Number(m.user_id);
-				return {
-					user_id: uid,
-					percent: uid === creatorId ? "100" : "0",
-				};
-			}),
-		);
-	}, [summary, threadMembers]);
+		setSplitRows((current) => ownerHundredSplitRows(current, creatorId));
+	}, [summary]);
 
-	const setPercentChange = useCallback((userId: number, value: string) => {
+	const setPercentChange = useCallback((rowKey: string, value: string) => {
 		setSplitRows((prev) =>
 			prev.map((row) =>
-				row.user_id === userId ? { ...row, percent: value } : row,
+				splitRowKey(row) === rowKey ? { ...row, percent: value } : row,
 			),
 		);
 	}, []);
@@ -644,7 +713,9 @@ export const useExpenseThreadState = (
 				await apiClient.finances.expenses.putSplits(
 					expenseId,
 					splitRows.map((r, i) => ({
-						user_id: r.user_id,
+						...(r.space_participant_id != null
+							? { space_participant_id: r.space_participant_id }
+							: { user_id: Number(r.user_id) }),
 						amount: amounts[i] ?? 0,
 					})),
 				);

@@ -11,71 +11,41 @@ import { createPortal } from "react-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
 import {
 	type SplitPercentRow,
+	applyAmountsToSplitRows,
+	equalSplitRows,
+	ownerHundredSplitRows,
 	percentsToAmounts,
+	splitRowKey,
+	splitRowsFromParticipants,
 	userIsThreadOrSpaceMaster,
 } from "../hooks/useExpenseThreadState";
 
-const memberLabel = (members: SpaceMember[], userId: number): string => {
-	const m = members.find((x) => Number(x.user_id) === userId);
-	if (!m) return `User #${userId}`;
-	return m.name?.trim() || m.email?.trim() || `User #${userId}`;
-};
-
-const equalPercentsForMembers = (members: SpaceMember[]): SplitPercentRow[] => {
-	const n = members.length;
-	if (n <= 0) return [];
-	const eq = 100 / n;
-	return members.map((m, i) => ({
-		user_id: Number(m.user_id),
-		percent:
-			i === n - 1
-				? String(Math.round((100 - eq * (n - 1)) * 100) / 100)
-				: String(Math.round(eq * 100) / 100),
-	}));
-};
-
-const ownerHundredPercents = (
-	members: SpaceMember[],
-	ownerUserId: number,
-): SplitPercentRow[] =>
-	members.map((m) => {
-		const uid = Number(m.user_id);
-		return {
-			user_id: uid,
-			percent: uid === ownerUserId ? "100" : "0",
-		};
-	});
-
 /** 50% draft owner, remaining 50% split equally among everyone else in the space. */
 const ownerHalfRestEqualPercents = (
-	members: SpaceMember[],
+	rows: SplitPercentRow[],
 	ownerUserId: number,
 ): SplitPercentRow[] => {
-	const others = members.filter((m) => Number(m.user_id) !== ownerUserId);
+	const others = rows.filter((row) => Number(row.user_id) !== ownerUserId);
 	const n = others.length;
-	if (n === 0) return ownerHundredPercents(members, ownerUserId);
+	if (n === 0) return ownerHundredSplitRows(rows, ownerUserId);
 	const eq = 50 / n;
-	const otherRows: SplitPercentRow[] = others.map((m, i) => ({
-		user_id: Number(m.user_id),
-		percent:
+	const byRow = new Map(
+		others.map((row, i) => [
+			splitRowKey(row),
 			i === n - 1
 				? String(Math.round((50 - eq * (n - 1)) * 100) / 100)
 				: String(Math.round(eq * 100) / 100),
-	}));
-	const byId = new Map(otherRows.map((r) => [r.user_id, r]));
-	return members.map((m) => {
-		const uid = Number(m.user_id);
-		if (uid === ownerUserId) return { user_id: uid, percent: "50" };
-		return byId.get(uid) ?? { user_id: uid, percent: "0" };
+		]),
+	);
+	return rows.map((row) => {
+		if (Number(row.user_id) === ownerUserId) return { ...row, percent: "50" };
+		return { ...row, percent: byRow.get(splitRowKey(row)) ?? "0" };
 	});
 };
 
-const twoWaySplitPercents = (members: SpaceMember[]): SplitPercentRow[] => {
-	if (members.length !== 2) return equalPercentsForMembers(members);
-	return members.map((m) => ({
-		user_id: Number(m.user_id),
-		percent: "50",
-	}));
+const twoWaySplitPercents = (rows: SplitPercentRow[]): SplitPercentRow[] => {
+	if (rows.length !== 2) return equalSplitRows(rows);
+	return rows.map((row) => ({ ...row, percent: "50" }));
 };
 
 export type ExpenseSplitDialogProps = {
@@ -137,32 +107,28 @@ export const ExpenseSplitDialog = ({
 		}
 		try {
 			await apiClient.threads.getOrCreate(spaceId, expenseId);
-			const [sum, memRes, splitRes] = await Promise.all([
+			const [sum, memRes, participantRes, splitRes] = await Promise.all([
 				apiClient.threads.getSummary(spaceId, expenseId),
 				apiClient.spaces.listMembers(spaceId),
+				apiClient.spaces.listParticipants(spaceId).catch(() => null),
 				apiClient.finances.expenses.listSplits(expenseId).catch(() => null),
 			]);
 			const mem = memRes.members ?? [];
 			setSummary(sum);
 			setMembers(mem);
 			const total = expenseTotal;
+			const participantRows = splitRowsFromParticipants(
+				participantRes?.participants ?? [],
+				mem,
+			);
 			if (splitRes?.splits?.length && total > 0) {
-				const byUser = new Map(
-					splitRes.splits.map((s) => [s.user_id, s.amount]),
-				);
 				setSplitRows(
-					mem.map((m) => {
-						const uid = Number(m.user_id);
-						const amt = byUser.get(uid) ?? 0;
-						const pct = total > 0 ? (amt / total) * 100 : 0;
-						return {
-							user_id: uid,
-							percent: String(Math.round(pct * 100) / 100),
-						};
-					}),
+					applyAmountsToSplitRows(participantRows, splitRes.splits, total),
 				);
 			} else {
-				setSplitRows(ownerHundredPercents(mem, expenseOwnerUserId));
+				setSplitRows(
+					ownerHundredSplitRows(participantRows, expenseOwnerUserId),
+				);
 			}
 		} catch (e) {
 			setLoadError(
@@ -188,18 +154,18 @@ export const ExpenseSplitDialog = ({
 		!finalized &&
 		userIsThreadOrSpaceMaster(summary, members, currentUserId);
 
-	const setPercentChange = useCallback((userId: number, value: string) => {
+	const setPercentChange = useCallback((rowKey: string, value: string) => {
 		setSplitRows((prev) =>
 			prev.map((row) =>
-				row.user_id === userId ? { ...row, percent: value } : row,
+				splitRowKey(row) === rowKey ? { ...row, percent: value } : row,
 			),
 		);
 	}, []);
 
-	const bumpPercent = useCallback((userId: number, delta: number) => {
+	const bumpPercent = useCallback((rowKey: string, delta: number) => {
 		setSplitRows((prev) =>
 			prev.map((row) => {
-				if (row.user_id !== userId) return row;
+				if (splitRowKey(row) !== rowKey) return row;
 				const p = Number.parseFloat(row.percent);
 				const base = Number.isNaN(p) ? 0 : p;
 				const next = Math.max(
@@ -237,7 +203,9 @@ export const ExpenseSplitDialog = ({
 			await apiClient.finances.expenses.putSplits(
 				expenseId,
 				splitRows.map((r, i) => ({
-					user_id: r.user_id,
+					...(r.space_participant_id != null
+						? { space_participant_id: r.space_participant_id }
+						: { user_id: Number(r.user_id) }),
 					amount: amounts[i] ?? 0,
 				})),
 			);
@@ -250,7 +218,7 @@ export const ExpenseSplitDialog = ({
 		}
 	};
 
-	const nMembers = members.length;
+	const nParticipants = splitRows.length;
 
 	const dialogNode = (
 		<dialog
@@ -283,7 +251,7 @@ export const ExpenseSplitDialog = ({
 						</div>
 					) : null}
 
-					{!loading && !loadError && members.length > 0 ? (
+					{!loading && !loadError && splitRows.length > 0 ? (
 						<>
 							<div className="mt-4 overflow-x-auto rounded-lg border border-border">
 								<table className="w-full min-w-[280px] text-left text-sm">
@@ -304,30 +272,30 @@ export const ExpenseSplitDialog = ({
 											return (
 												<tr
 													className="border-b border-border/60"
-													key={row.user_id}
+													key={splitRowKey(row)}
 												>
-													<td className="px-2 py-2">
-														{memberLabel(members, row.user_id)}
-													</td>
+													<td className="px-2 py-2">{row.label}</td>
 													<td className="px-2 py-2">
 														{canEdit ? (
 															<div className="flex items-center gap-1">
 																<button
-																	aria-label={`Decrease percent for ${memberLabel(members, row.user_id)}`}
+																	aria-label={`Decrease percent for ${row.label}`}
 																	className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-sm hover:bg-accent disabled:opacity-50"
 																	disabled={saving}
-																	onClick={() => bumpPercent(row.user_id, -1)}
+																	onClick={() =>
+																		bumpPercent(splitRowKey(row), -1)
+																	}
 																	type="button"
 																>
 																	−
 																</button>
 																<input
-																	aria-label={`Percent for ${memberLabel(members, row.user_id)}`}
+																	aria-label={`Percent for ${row.label}`}
 																	className="w-16 rounded border border-border bg-background px-1 py-1 text-center font-mono text-xs"
 																	inputMode="decimal"
 																	onChange={(e) =>
 																		setPercentChange(
-																			row.user_id,
+																			splitRowKey(row),
 																			e.target.value,
 																		)
 																	}
@@ -335,10 +303,12 @@ export const ExpenseSplitDialog = ({
 																	value={row.percent}
 																/>
 																<button
-																	aria-label={`Increase percent for ${memberLabel(members, row.user_id)}`}
+																	aria-label={`Increase percent for ${row.label}`}
 																	className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border text-sm hover:bg-accent disabled:opacity-50"
 																	disabled={saving}
-																	onClick={() => bumpPercent(row.user_id, 1)}
+																	onClick={() =>
+																		bumpPercent(splitRowKey(row), 1)
+																	}
 																	type="button"
 																>
 																	+
@@ -366,7 +336,7 @@ export const ExpenseSplitDialog = ({
 										className="rounded-md border border-border px-2 py-1.5 text-xs font-medium hover:bg-accent"
 										onClick={() =>
 											setSplitRows(
-												ownerHundredPercents(members, expenseOwnerUserId),
+												ownerHundredSplitRows(splitRows, expenseOwnerUserId),
 											)
 										}
 										type="button"
@@ -377,7 +347,10 @@ export const ExpenseSplitDialog = ({
 										className="rounded-md border border-border px-2 py-1.5 text-xs font-medium hover:bg-accent"
 										onClick={() =>
 											setSplitRows(
-												ownerHalfRestEqualPercents(members, expenseOwnerUserId),
+												ownerHalfRestEqualPercents(
+													splitRows,
+													expenseOwnerUserId,
+												),
 											)
 										}
 										type="button"
@@ -386,17 +359,17 @@ export const ExpenseSplitDialog = ({
 									</button>
 									<button
 										className="rounded-md border border-border px-2 py-1.5 text-xs font-medium hover:bg-accent"
-										onClick={() =>
-											setSplitRows(equalPercentsForMembers(members))
-										}
+										onClick={() => setSplitRows(equalSplitRows(splitRows))}
 										type="button"
 									>
-										Equal ({nMembers})
+										Equal ({nParticipants})
 									</button>
-									{nMembers === 2 ? (
+									{nParticipants === 2 ? (
 										<button
 											className="rounded-md border border-border px-2 py-1.5 text-xs font-medium hover:bg-accent"
-											onClick={() => setSplitRows(twoWaySplitPercents(members))}
+											onClick={() =>
+												setSplitRows(twoWaySplitPercents(splitRows))
+											}
 											type="button"
 										>
 											50 / 50

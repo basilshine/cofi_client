@@ -19,6 +19,7 @@ import { Link } from "react-router-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
 import { ceitsSpaceExpenseEditUrl } from "../../../shared/lib/ceitsAppUrls";
 import type { ExpenseThreadController } from "../hooks/useExpenseThreadState";
+import { splitRowKey } from "../hooks/useExpenseThreadState";
 import { ChatComposerDock, type ChatComposerMode } from "./ChatComposerDock";
 import { ComposerHorizontalBar } from "./ComposerHorizontalBar";
 import { ComposerVoiceRecording } from "./ComposerVoiceRecording";
@@ -1094,20 +1095,18 @@ export const ExpenseThreadInlinePanel = ({
 														return (
 															<tr
 																className="border-b border-border/60"
-																key={row.user_id}
+																key={splitRowKey(row)}
 															>
-																<td className="px-2 py-1">
-																	{memberLabel(threadMembers, row.user_id)}
-																</td>
+																<td className="px-2 py-1">{row.label}</td>
 																<td className="px-2 py-1">
 																	{isThreadOrSpaceMaster && !finalized ? (
 																		<input
-																			aria-label={`Percent for ${memberLabel(threadMembers, row.user_id)}`}
+																			aria-label={`Percent for ${row.label}`}
 																			className="w-14 rounded border border-border bg-background px-1 py-0.5 font-mono"
 																			inputMode="decimal"
 																			onChange={(e) =>
 																				setPercentChange(
-																					row.user_id,
+																					splitRowKey(row),
 																					e.target.value,
 																				)
 																			}
@@ -1306,10 +1305,10 @@ export const ExpenseThreadInlinePanel = ({
 															return (
 																<tr
 																	className="border-b border-border/50 last:border-0"
-																	key={row.user_id}
+																	key={splitRowKey(row)}
 																>
 																	<td className="px-2.5 py-2 text-foreground/90">
-																		{memberLabel(threadMembers, row.user_id)}
+																		{row.label}
 																	</td>
 																	<td className="px-2.5 py-2 font-mono tabular-nums text-muted-foreground">
 																		{row.percent}%
