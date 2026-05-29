@@ -377,6 +377,51 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
+	"/api/v1/auth/telegram/bot-sync": {
+		parameters: {
+			query?: never;
+			header?: never;
+			path?: never;
+			cookie?: never;
+		};
+		get?: never;
+		put?: never;
+		/**
+		 * Sync Telegram bot user
+		 * @description Bot-owned sync endpoint protected by X-Internal-Api-Key. Use this for Telegram bot service authentication instead of the user JWT-protected /auth/sync route.
+		 */
+		post: {
+			parameters: {
+				query?: never;
+				header: {
+					"X-Internal-Api-Key": string;
+				};
+				path?: never;
+				cookie?: never;
+			};
+			requestBody: {
+				content: {
+					"application/json": components["schemas"]["SyncUserRequest"];
+				};
+			};
+			responses: {
+				/** @description Auth response */
+				200: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["AuthResponse"];
+					};
+				};
+			};
+		};
+		delete?: never;
+		options?: never;
+		head?: never;
+		patch?: never;
+		trace?: never;
+	};
 	"/api/v1/auth/sync": {
 		parameters: {
 			query?: never;
