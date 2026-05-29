@@ -19,7 +19,6 @@ const ENDPOINTS = {
 		`/api/v1/finances/expenses/${id}` as const,
 	expensesSummary: "/api/v1/finances/expenses/summary" as const,
 	expensesTags: "/api/v1/finances/expenses/tags" as const,
-	expensesMostUsedTags: "/api/v1/finances/expenses/most-used-tags" as const,
 	vendors: "/api/v1/finances/vendors" as const,
 	recurring: "/api/v1/finances/recurring" as const,
 	recurringById: (id: number | string) =>
@@ -244,8 +243,6 @@ export const apiService = {
 			api.get<components["schemas"]["Tag"][]>(ENDPOINTS.expensesTags, {
 				params,
 			}),
-		mostUsedTags: () =>
-			api.get<components["schemas"]["Tag"][]>(ENDPOINTS.expensesMostUsedTags),
 	},
 	vendors: {
 		list: (params?: { space_id?: number }) =>

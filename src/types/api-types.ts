@@ -1742,7 +1742,11 @@ export interface paths {
 			path?: never;
 			cookie?: never;
 		};
-		/** Get most used tags */
+		/**
+		 * Get most used tags
+		 * @deprecated
+		 * @description Legacy global tag usage endpoint. Space transaction filters should use GET /api/v1/spaces/{spaceId}/transaction-tags.
+		 */
 		get: {
 			parameters: {
 				query?: never;

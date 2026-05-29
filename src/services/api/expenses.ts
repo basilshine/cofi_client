@@ -209,21 +209,6 @@ export const expensesService = {
 		}
 	},
 
-	getMostUsedTags: async () => {
-		try {
-			LogRocket.log("[expensesService.getMostUsedTags] Starting request");
-			const response = await apiService.expenses.mostUsedTags();
-			LogRocket.log(
-				"[expensesService.getMostUsedTags] Success:",
-				response.data,
-			);
-			return response.data;
-		} catch (error) {
-			LogRocket.error("[expensesService.getMostUsedTags] Failed:", error);
-			throw error;
-		}
-	},
-
 	getExpenseItems: async () => {
 		try {
 			LogRocket.log("[expensesService.getExpenseItems] Starting request");

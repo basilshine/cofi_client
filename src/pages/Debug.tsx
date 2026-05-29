@@ -97,20 +97,6 @@ export const Debug = () => {
 					};
 				}
 			}
-
-			// Most-used tags (B9)
-			try {
-				const tagUsage = await expensesService.getMostUsedTags();
-				results.mostUsedTags = {
-					success: true,
-					data: tagUsage,
-				};
-			} catch (error: unknown) {
-				results.mostUsedTags = {
-					success: false,
-					error: error instanceof Error ? error.message : "Unknown error",
-				};
-			}
 		}
 
 		LogRocket.log("[Debug] Test results:", results);
