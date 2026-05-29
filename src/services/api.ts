@@ -27,8 +27,6 @@ const ENDPOINTS = {
 	recurringResume: (id: number | string) =>
 		`/api/v1/finances/recurring/${id}/resume` as const,
 	analyticsSummary: "/api/v1/analytics/stats/summary" as const,
-	analyticsReports: "/api/v1/analytics/reports" as const,
-	analyticsReportsSchedule: "/api/v1/analytics/reports/schedule" as const,
 	reminders: "/api/v1/notify/reminders" as const,
 	reminderById: (id: number | string) =>
 		`/api/v1/notify/reminders/${id}` as const,
@@ -294,20 +292,6 @@ export const apiService = {
 					...(userId ? { user_id: userId } : {}),
 				},
 			}),
-		reports: () =>
-			api.get<components["schemas"]["ReportSchedule"][]>(
-				ENDPOINTS.analyticsReports,
-			),
-		createReport: (data: components["schemas"]["ReportSchedule"]) =>
-			api.post<components["schemas"]["ReportSchedule"]>(
-				ENDPOINTS.analyticsReports,
-				data,
-			),
-		scheduleReport: (data: components["schemas"]["ReportSchedule"]) =>
-			api.post<components["schemas"]["ReportSchedule"]>(
-				ENDPOINTS.analyticsReportsSchedule,
-				data,
-			),
 	},
 	reminders: {
 		list: () =>
