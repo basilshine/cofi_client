@@ -26,6 +26,7 @@ import {
 	type SpaceMember,
 	type SpaceMembersListResponse,
 	type SpaceParticipant,
+	type SpaceParticipantInviteResponse,
 	type SpaceParticipantPatch,
 	type SpaceParticipantsListResponse,
 	type SpaceRole,
@@ -258,6 +259,19 @@ export const createApiClient = (config: ApiClientConfig) => {
 						method: "PATCH",
 						headers: authHeaders(),
 						body: payload,
+					},
+				),
+			inviteParticipant: (
+				spaceId: string | number,
+				participantId: string | number,
+			) =>
+				fetchJson<SpaceParticipantInviteResponse>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/participants/${encodeURIComponent(String(participantId))}/invite`,
+					),
+					{
+						method: "POST",
+						headers: authHeaders(),
 					},
 				),
 			/** Requires tenant admin + space owner; cannot change the space owner’s role. */

@@ -172,6 +172,12 @@ export type SpaceParticipantPatch = {
 	status?: string;
 };
 
+export type SpaceParticipantInviteResponse = {
+	token: string;
+	expires_at: string;
+	participant: SpaceParticipant;
+};
+
 export type InviteSuggestionUser = {
 	user_id: number;
 	name: string;

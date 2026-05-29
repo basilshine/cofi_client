@@ -1,5 +1,5 @@
 import type { SpaceParticipant } from "@cofi/api";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, MailPlus, Pencil, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
 
@@ -47,6 +47,8 @@ export const SpaceParticipantsPanel = ({
 	const [editingId, setEditingId] = useState<number | null>(null);
 	const [draft, setDraft] = useState<ParticipantDraft | null>(null);
 	const [savingId, setSavingId] = useState<number | null>(null);
+	const [invitingId, setInvitingId] = useState<number | null>(null);
+	const [inviteToken, setInviteToken] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
 	const visibleParticipants = useMemo(() => {
@@ -101,6 +103,32 @@ export const SpaceParticipantsPanel = ({
 		}
 	};
 
+	const inviteParticipant = async (participant: SpaceParticipant) => {
+		if (!participant.email?.trim()) {
+			setError("Add an email before inviting this participant.");
+			startEditing(participant);
+			return;
+		}
+
+		setInvitingId(participant.id);
+		setInviteToken(null);
+		setError(null);
+		try {
+			const result = await apiClient.spaces.inviteParticipant(
+				spaceId,
+				participant.id,
+			);
+			onParticipantSaved(result.participant);
+			setInviteToken(result.token);
+		} catch (e) {
+			setError(
+				e instanceof Error ? e.message : "Failed to invite participant.",
+			);
+		} finally {
+			setInvitingId(null);
+		}
+	};
+
 	return (
 		<div className="border-t border-[rgba(95,105,125,0.1)] px-5 py-5">
 			<div className="flex items-start justify-between gap-3">
@@ -122,6 +150,12 @@ export const SpaceParticipantsPanel = ({
 					{error}
 				</div>
 			) : null}
+			{inviteToken ? (
+				<div className="mt-3 rounded-lg border border-[rgba(90,130,98,0.24)] bg-[rgba(120,154,124,0.12)] px-3 py-2 text-xs font-medium text-[#214027]">
+					Invite created. Token:{" "}
+					<span className="font-mono text-[11px]">{inviteToken}</span>
+				</div>
+			) : null}
 
 			<ul className="mt-4 space-y-2">
 				{visibleParticipants.length === 0 ? (
@@ -132,6 +166,11 @@ export const SpaceParticipantsPanel = ({
 				{visibleParticipants.slice(0, 8).map((participant) => {
 					const isEditing = editingId === participant.id;
 					const isSaving = savingId === participant.id;
+					const isInviting = invitingId === participant.id;
+					const canInvite =
+						participant.email?.trim() &&
+						participant.status !== "linked" &&
+						participant.status !== "invited";
 					const label =
 						participant.display_name?.trim() ||
 						participant.email?.trim() ||
@@ -263,6 +302,23 @@ export const SpaceParticipantsPanel = ({
 										type="button"
 									>
 										<Pencil className="h-4 w-4" />
+									</button>
+									<button
+										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(90,130,98,0.28)] bg-[rgba(120,154,124,0.14)] text-[#24452b] transition hover:bg-[rgba(120,154,124,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45"
+										disabled={isInviting || !canInvite}
+										onClick={() => void inviteParticipant(participant)}
+										title={
+											canInvite
+												? "Invite participant"
+												: participant.status === "invited"
+													? "Invite already created"
+													: participant.status === "linked"
+														? "Participant linked"
+														: "Add email before inviting"
+										}
+										type="button"
+									>
+										<MailPlus className="h-4 w-4" />
 									</button>
 								</div>
 							)}
