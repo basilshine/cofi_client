@@ -32,6 +32,7 @@ const ConsoleWorkspaceSplitInner = () => {
 	const isSpaceScopedRoute =
 		/^\/console\/spaces\/[^/]+(\/|$)/.test(location.pathname) ||
 		/^\/console\/dashboard(\/|$)/.test(location.pathname);
+	const showGlobalComposer = !location.pathname.startsWith("/console/chat");
 
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
@@ -41,7 +42,10 @@ const ConsoleWorkspaceSplitInner = () => {
 				<AnimatePresence mode="wait">
 					<motion.div
 						animate="animate"
-						className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+						className={[
+							"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+							showGlobalComposer ? "pb-[9.25rem] sm:pb-[8.75rem]" : "",
+						].join(" ")}
 						exit="exit"
 						initial="initial"
 						key={location.pathname}
@@ -51,7 +55,7 @@ const ConsoleWorkspaceSplitInner = () => {
 					</motion.div>
 				</AnimatePresence>
 			</div>
-			<GlobalComposerDock />
+			{showGlobalComposer ? <GlobalComposerDock /> : null}
 		</div>
 	);
 };

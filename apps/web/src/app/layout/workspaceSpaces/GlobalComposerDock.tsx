@@ -35,6 +35,11 @@ const spaceIdFromPath = (pathname: string): string | null => {
 	return match?.[1] ? decodeURIComponent(match[1]) : null;
 };
 
+const spaceIdFromSearch = (search: string): string | null => {
+	const params = new URLSearchParams(search);
+	return params.get("spaceId") ?? params.get("space_id");
+};
+
 const askPayloadToMessage = (
 	payload: Extract<ComposerPayload, { composer_mode: "ask" }>,
 ) => {
@@ -69,7 +74,8 @@ export const GlobalComposerDock = () => {
 
 	const isChatRoute = location.pathname.startsWith("/console/chat");
 	const routeSpaceId = spaceIdFromPath(location.pathname);
-	const activeSpaceId = routeSpaceId ?? selectedSpaceId;
+	const querySpaceId = spaceIdFromSearch(location.search);
+	const activeSpaceId = routeSpaceId ?? querySpaceId ?? selectedSpaceId;
 	const activeSpace = useMemo(
 		() =>
 			activeSpaceId == null
@@ -79,7 +85,16 @@ export const GlobalComposerDock = () => {
 					) ?? null),
 		[activeSpaceId, spaces],
 	);
-	const activeSpaceName = activeSpace?.name?.trim() || "Selected space";
+	const activeSpaceName =
+		activeSpace?.name?.trim() ||
+		(activeSpaceId == null ? "Choose a space" : `Space ${activeSpaceId}`);
+	const contextSource = routeSpaceId
+		? "page"
+		: querySpaceId
+			? "linked page"
+			: selectedSpaceId != null
+				? "workspace"
+				: null;
 
 	const disabled = busy || isLoading || activeSpaceId == null;
 
@@ -255,6 +270,7 @@ export const GlobalComposerDock = () => {
 				<div className="flex items-center justify-between gap-3 border-b border-border/50 px-4 py-2">
 					<p className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
 						Context: {activeSpaceName}
+						{contextSource ? ` · ${contextSource}` : ""}
 					</p>
 					{activeSpaceId != null ? (
 						<Link
