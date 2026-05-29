@@ -4612,6 +4612,7 @@ export interface components {
             confidence?: number;
             requires_review?: boolean;
             requires_deep_parse?: boolean;
+            model_policy?: components["schemas"]["CaptureModelPolicy"];
             clarification_message?: string;
             intent?: string;
             data?: {
@@ -4629,6 +4630,25 @@ export interface components {
             space_suggestion?: {
                 [key: string]: unknown;
             };
+        };
+        /** @description Capability-aware parser model selection metadata returned with capture previews. */
+        CaptureModelPolicy: {
+            /**
+             * @description Effective intelligence profile selected for this parse.
+             * @enum {string}
+             */
+            profile?: "basic" | "smart" | "deep";
+            /**
+             * @description Highest intelligence profile allowed by the current tenant capability.
+             * @enum {string}
+             */
+            max_profile?: "basic" | "smart" | "deep";
+            /** @description Whether Deep intelligence is available for the current tenant/context. */
+            deep_allowed?: boolean;
+            /** @description Whether the parser classified or requested this input as needing Deep intelligence. */
+            deep_requested?: boolean;
+            /** @description Present when the requested profile was capped by tenant capability. */
+            downgraded_reason?: string;
         };
         SpaceCaptureResponse: {
             expense?: components["schemas"]["Expense"];
