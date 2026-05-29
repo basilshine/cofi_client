@@ -937,7 +937,11 @@ export interface paths {
 		};
 		get?: never;
 		put?: never;
-		/** Approve expenses */
+		/**
+		 * Approve expense (legacy batch endpoint)
+		 * @deprecated
+		 * @description Legacy body-based draft approval endpoint. Use POST /api/v1/finances/expenses/{id}/confirm instead.
+		 */
 		post: {
 			parameters: {
 				query?: never;
@@ -979,7 +983,11 @@ export interface paths {
 		};
 		get?: never;
 		put?: never;
-		/** Cancel draft expenses */
+		/**
+		 * Cancel draft expense (legacy batch endpoint)
+		 * @deprecated
+		 * @description Legacy body-based draft cancellation endpoint. Use POST /api/v1/finances/expenses/{id}/cancel instead.
+		 */
 		post: {
 			parameters: {
 				query?: never;

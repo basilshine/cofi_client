@@ -18,8 +18,6 @@ const ENDPOINTS = {
 	expenseById: (id: number | string) =>
 		`/api/v1/finances/expenses/${id}` as const,
 	expensesSummary: "/api/v1/finances/expenses/summary" as const,
-	expensesApprove: "/api/v1/finances/expenses/approve" as const,
-	expensesCancel: "/api/v1/finances/expenses/cancel" as const,
 	expensesTags: "/api/v1/finances/expenses/tags" as const,
 	expensesMostUsedTags: "/api/v1/finances/expenses/most-used-tags" as const,
 	vendors: "/api/v1/finances/vendors" as const,
@@ -242,10 +240,6 @@ export const apiService = {
 			api.get<components["schemas"]["ExpenseSummary"]>(
 				ENDPOINTS.expensesSummary,
 			),
-		approve: (data: components["schemas"]["ApproveExpensesRequest"]) =>
-			api.post<{ message?: string }>(ENDPOINTS.expensesApprove, data),
-		cancel: (data: components["schemas"]["CancelDraftExpensesRequest"]) =>
-			api.post<{ message?: string }>(ENDPOINTS.expensesCancel, data),
 		tags: (params?: { language?: string }) =>
 			api.get<components["schemas"]["Tag"][]>(ENDPOINTS.expensesTags, {
 				params,

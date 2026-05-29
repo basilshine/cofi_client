@@ -191,34 +191,6 @@ export const expensesService = {
 		}
 	},
 
-	approveExpense: async (expenseId: string) => {
-		const { user } = useAuthStore.getState();
-		const userId = user?.id;
-		if (!userId) throw new Error("User not authenticated");
-		const response = await apiService.expenses.approve({
-			user_id: Number(userId),
-			expense_id: Number(expenseId),
-		});
-		if (response.status !== 200) {
-			throw new Error("Failed to approve expense");
-		}
-		return response.data;
-	},
-
-	cancelExpense: async (expenseId: string) => {
-		const { user } = useAuthStore.getState();
-		const userId = user?.id;
-		if (!userId) throw new Error("User not authenticated");
-		const response = await apiService.expenses.cancel({
-			user_id: Number(userId),
-			expense_id: Number(expenseId),
-		});
-		if (response.status !== 200) {
-			throw new Error("Failed to cancel expense");
-		}
-		return response.data;
-	},
-
 	getSummary: async (_userId: number) => {
 		try {
 			LogRocket.log("[expensesService.getSummary] Starting request");
