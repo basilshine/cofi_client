@@ -306,7 +306,11 @@ export interface paths {
 		};
 		get?: never;
 		put?: never;
-		/** Telegram update */
+		/**
+		 * Telegram update
+		 * @deprecated
+		 * @description Legacy Telegram profile update endpoint. User profile updates should use PUT /api/v1/auth/profile with the authenticated user token.
+		 */
 		post: {
 			parameters: {
 				query?: never;
