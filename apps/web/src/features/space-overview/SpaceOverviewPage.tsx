@@ -5,7 +5,13 @@ import type {
 	SpaceParticipant,
 } from "@cofi/api";
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import {
+	Link,
+	Navigate,
+	useLocation,
+	useNavigate,
+	useParams,
+} from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceHeader } from "../../app/layout/workspaceSpaces/SpaceHeader";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
@@ -129,6 +135,7 @@ const humanizeStatus = (
 
 export const SpaceOverviewPage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
+	const location = useLocation();
 	const navigate = useNavigate();
 	const { user } = useAuth();
 	const { formatMoney } = useUserFormat();
@@ -271,28 +278,18 @@ export const SpaceOverviewPage = () => {
 
 	const sidStr = String(numericSpaceId);
 
-	const handleQuickCapture = (
-		mode: "photo" | "voice" | "compose" | "recurring",
-	) => {
-		if (mode === "recurring") {
-			navigate(`/console/spaces/${encodeURIComponent(sidStr)}/recurring`);
-			return;
-		}
-		const state =
-			chatWorkspace != null
-				? {
-						chatWorkspace,
-						selectSpaceId: numericSpaceId,
-						quickCapture:
-							mode === "photo" || mode === "voice"
-								? (mode as "photo" | "voice")
-								: undefined,
-						focusMessageComposer: mode === "compose",
-					}
-				: undefined;
-		navigate(`/console/chat?spaceId=${encodeURIComponent(sidStr)}`, {
-			state,
-		});
+	const handleOpenAddExpense = () => {
+		navigate(
+			{
+				hash: location.hash,
+				pathname: location.pathname,
+				search: location.search,
+			},
+			{
+				replace: true,
+				state: { globalComposerIntent: "expense" },
+			},
+		);
 	};
 
 	/** TODO: replace with space-scoped balances when API exposes owe / owed / net. */
@@ -434,7 +431,7 @@ export const SpaceOverviewPage = () => {
 								<>
 									<button
 										className={ghostButton}
-										onClick={() => handleQuickCapture("compose")}
+										onClick={handleOpenAddExpense}
 										type="button"
 									>
 										Add expense

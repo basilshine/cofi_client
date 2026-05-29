@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
 	type ComposerPayload,
 	type ComposerState,
@@ -68,11 +68,16 @@ type GlobalComposerDockProps = {
 	onCollapsedChange: (isCollapsed: boolean) => void;
 };
 
+type GlobalComposerLocationState = {
+	globalComposerIntent?: "expense" | "ask" | "message";
+};
+
 export const GlobalComposerDock = ({
 	isCollapsed,
 	onCollapsedChange,
 }: GlobalComposerDockProps) => {
 	const location = useLocation();
+	const navigate = useNavigate();
 	const { selectedSpaceId, spaces, isLoading } = useWorkspaceSpaces();
 	const composerRef = useRef<SmartTextareaComposerHandle | null>(null);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -304,6 +309,37 @@ export const GlobalComposerDock = ({
 		handleCancelRecording();
 		onCollapsedChange(true);
 	}, [expandTo, handleCancelRecording, isCollapsed, onCollapsedChange]);
+
+	useEffect(() => {
+		const intent = (location.state as GlobalComposerLocationState | null)
+			?.globalComposerIntent;
+		if (!intent || isChatRoute) return;
+
+		if (intent === "expense") {
+			expandTo("expense_method_select");
+		} else if (intent === "ask") {
+			expandTo("ask_topic_select");
+		} else if (intent === "message") {
+			expandTo("message_text");
+		}
+
+		navigate(
+			{
+				hash: location.hash,
+				pathname: location.pathname,
+				search: location.search,
+			},
+			{ replace: true, state: null },
+		);
+	}, [
+		expandTo,
+		isChatRoute,
+		location.hash,
+		location.pathname,
+		location.search,
+		location.state,
+		navigate,
+	]);
 
 	if (isChatRoute) return null;
 
