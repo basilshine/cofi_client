@@ -16,6 +16,6 @@
 		}
 	},
 	"files": {
-		"ignore": ["node_modules", "dist", "build"]
+		"ignore": ["node_modules", "dist", "build", "src/types/api-types.ts"]
 	}
 }
