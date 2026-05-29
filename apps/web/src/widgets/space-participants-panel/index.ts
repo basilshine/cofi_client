@@ -1,0 +1,1 @@
+export { SpaceParticipantsPanel } from "./SpaceParticipantsPanel";

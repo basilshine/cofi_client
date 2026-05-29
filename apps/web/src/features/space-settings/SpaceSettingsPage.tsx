@@ -1,4 +1,4 @@
-import type { Space } from "@cofi/api";
+import type { Space, SpaceParticipant } from "@cofi/api";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -13,6 +13,7 @@ import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient } from "../../shared/lib/apiClient";
+import { SpaceParticipantsPanel } from "../../widgets/space-participants-panel";
 import { SpaceMembersInvitesPanel } from "./SpaceMembersInvitesPanel";
 import {
 	useSpaceMembersInvites,
@@ -85,6 +86,9 @@ export const SpaceSettingsPage = () => {
 	>(null);
 	const [cloneBusy, setCloneBusy] = useState(false);
 	const [destructiveBusy, setDestructiveBusy] = useState(false);
+	const [participants, setParticipants] = useState<SpaceParticipant[] | null>(
+		null,
+	);
 
 	useEffect(() => {
 		setName(space?.name ?? "");
@@ -173,6 +177,35 @@ export const SpaceSettingsPage = () => {
 	);
 
 	useEffect(() => {
+		if (numericSpaceId == null || space == null) return;
+		let cancelled = false;
+		setParticipants(null);
+		void apiClient.spaces
+			.listParticipants(numericSpaceId)
+			.then((res) => {
+				if (!cancelled) setParticipants(res.participants ?? null);
+			})
+			.catch(() => {
+				if (!cancelled) setParticipants(null);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [numericSpaceId, space]);
+
+	const handleParticipantSaved = useCallback(
+		(participant: SpaceParticipant) => {
+			setParticipants((current) => {
+				if (!current) return [participant];
+				return current.map((item) =>
+					Number(item.id) === Number(participant.id) ? participant : item,
+				);
+			});
+		},
+		[],
+	);
+
+	useEffect(() => {
 		if (location.hash !== "#space-settings-members") return;
 		window.requestAnimationFrame(() => {
 			document.getElementById("space-settings-members")?.scrollIntoView({
@@ -248,6 +281,14 @@ export const SpaceSettingsPage = () => {
 								selectedSpace={space}
 								selectedSpaceId={numericSpaceId}
 							/>
+							<div className="overflow-hidden rounded-xl border border-border/70 bg-muted/20">
+								<SpaceParticipantsPanel
+									onParticipantSaved={handleParticipantSaved}
+									participants={participants}
+									showTopBorder={false}
+									spaceId={numericSpaceId}
+								/>
+							</div>
 						</div>
 					</section>
 

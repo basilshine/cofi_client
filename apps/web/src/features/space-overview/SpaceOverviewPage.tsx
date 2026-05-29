@@ -16,7 +16,7 @@ import { apiClient } from "../../shared/lib/apiClient";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
 import { ActivityListCard } from "../../widgets/activity-list-card";
 import { OverviewRightRail } from "../../widgets/overview-right-rail";
-import { SpaceParticipantsPanel } from "./SpaceParticipantsPanel";
+import { SpaceParticipantsPanel } from "../../widgets/space-participants-panel";
 
 const sectionHeading =
 	"flex items-center justify-between gap-3 border-b border-[rgba(95,105,125,0.12)] px-6 py-4";

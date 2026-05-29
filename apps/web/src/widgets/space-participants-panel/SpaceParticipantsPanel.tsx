@@ -2,7 +2,7 @@ import type { SpaceParticipant } from "@cofi/api";
 import { Check, MailPlus, Pencil, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
-import { InviteLinkSharePanel } from "../../widgets/space-invite-management";
+import { InviteLinkSharePanel } from "../space-invite-management";
 
 type ParticipantDraft = {
 	displayName: string;
@@ -14,6 +14,7 @@ type SpaceParticipantsPanelProps = {
 	spaceId: string | number;
 	participants: SpaceParticipant[] | null;
 	onParticipantSaved: (participant: SpaceParticipant) => void;
+	showTopBorder?: boolean;
 };
 
 const participantTypeLabel = (value: string): string => {
@@ -44,6 +45,7 @@ export const SpaceParticipantsPanel = ({
 	spaceId,
 	participants,
 	onParticipantSaved,
+	showTopBorder = true,
 }: SpaceParticipantsPanelProps) => {
 	const [editingId, setEditingId] = useState<number | null>(null);
 	const [draft, setDraft] = useState<ParticipantDraft | null>(null);
@@ -140,7 +142,14 @@ export const SpaceParticipantsPanel = ({
 	};
 
 	return (
-		<div className="border-t border-[rgba(95,105,125,0.1)] px-5 py-5">
+		<div
+			className={[
+				"px-5 py-5",
+				showTopBorder ? "border-t border-[rgba(95,105,125,0.1)]" : "",
+			]
+				.filter(Boolean)
+				.join(" ")}
+		>
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0">
 					<h3 className="text-sm font-bold tracking-tight text-foreground">
