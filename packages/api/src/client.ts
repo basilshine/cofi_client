@@ -4,6 +4,7 @@ import {
 	type ChatMessage,
 	type CreatePromoCodeRequest,
 	type DocumentCandidateListResponse,
+	type DocumentCandidateState,
 	type Draft,
 	type ExpenseDetail,
 	type ExpensePatch,
@@ -545,6 +546,16 @@ export const createApiClient = (config: ApiClientConfig) => {
 					{ method: "GET", headers: authHeaders() },
 				);
 			},
+			ignoreDocumentCandidate: (
+				spaceId: string | number,
+				candidateId: string | number,
+			) =>
+				fetchJson<DocumentCandidateState>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/document-candidates/${encodeURIComponent(String(candidateId))}/ignore`,
+					),
+					{ method: "POST", headers: authHeaders() },
+				),
 		},
 
 		drafts: {

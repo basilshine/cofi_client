@@ -141,6 +141,12 @@ export const CeitsReviewFlowPage = () => {
 	const [documentCandidates, setDocumentCandidates] = useState<
 		DocumentCandidate[]
 	>([]);
+	const [documentCandidateError, setDocumentCandidateError] = useState<
+		string | null
+	>(null);
+	const [documentCandidateActingId, setDocumentCandidateActingId] = useState<
+		number | null
+	>(null);
 	const [currentId, setCurrentId] = useState<string | null>(null);
 	const [filter, setFilter] = useState<ReviewFilter>("all");
 	const [acting, setActing] = useState(false);
@@ -169,6 +175,7 @@ export const CeitsReviewFlowPage = () => {
 		let cancelled = false;
 		setLoading(true);
 		setError(null);
+		setDocumentCandidateError(null);
 		void (async () => {
 			try {
 				const [dash, tx, mem, participantRes, documentCandidateRes] =
@@ -447,6 +454,26 @@ export const CeitsReviewFlowPage = () => {
 		setCurrentId(nextFiltered[0]?.id ?? null);
 	};
 
+	const handleIgnoreDocumentCandidate = async (
+		candidate: DocumentCandidate,
+	) => {
+		if (spaceId == null) return;
+		setDocumentCandidateActingId(candidate.id);
+		setDocumentCandidateError(null);
+		try {
+			await apiClient.spaces.ignoreDocumentCandidate(spaceId, candidate.id);
+			setDocumentCandidates((prev) =>
+				prev.filter((item) => item.id !== candidate.id),
+			);
+		} catch (e) {
+			setDocumentCandidateError(
+				e instanceof Error ? e.message : "Failed to ignore document candidate",
+			);
+		} finally {
+			setDocumentCandidateActingId(null);
+		}
+	};
+
 	const handleApprove = async () => {
 		if (!current) return;
 		setActing(true);
@@ -570,9 +597,23 @@ export const CeitsReviewFlowPage = () => {
 													{documentCandidateTitle(candidate)}
 												</h3>
 											</div>
-											<span className="shrink-0 rounded-full border border-[rgba(102,134,108,0.28)] bg-[rgba(237,247,239,0.82)] px-2 py-0.5 text-[11px] font-semibold text-[#58745f]">
-												Draft
-											</span>
+											<div className="flex shrink-0 items-center gap-1.5">
+												<span className="rounded-full border border-[rgba(102,134,108,0.28)] bg-[rgba(237,247,239,0.82)] px-2 py-0.5 text-[11px] font-semibold text-[#58745f]">
+													Draft
+												</span>
+												<button
+													className="rounded-full border border-border/70 bg-white px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-50"
+													disabled={documentCandidateActingId === candidate.id}
+													onClick={() =>
+														void handleIgnoreDocumentCandidate(candidate)
+													}
+													type="button"
+												>
+													{documentCandidateActingId === candidate.id
+														? "Ignoring"
+														: "Ignore"}
+												</button>
+											</div>
 										</div>
 										<p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
 											{documentCandidateMeta(candidate)}
@@ -580,6 +621,11 @@ export const CeitsReviewFlowPage = () => {
 									</article>
 								))}
 							</div>
+							{documentCandidateError ? (
+								<p className="mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+									{documentCandidateError}
+								</p>
+							) : null}
 							{documentCandidates.length > 6 ? (
 								<p className="mt-3 text-xs text-muted-foreground">
 									Showing 6 newest document signals. Full resolution controls

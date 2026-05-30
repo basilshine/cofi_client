@@ -323,6 +323,11 @@ export type DocumentCandidateListResponse = {
 	candidates: DocumentCandidate[];
 };
 
+export type DocumentCandidateState = {
+	id: number;
+	status: string;
+};
+
 export type BenefitCandidateState = {
 	id: number;
 	status: string;
