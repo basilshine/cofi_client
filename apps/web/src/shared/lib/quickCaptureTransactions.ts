@@ -12,6 +12,23 @@ export type CaptureParsePreview = {
 	transcription?: string;
 	vendor_name?: string;
 	payee_text?: string;
+	intent?: string;
+	confidence?: number;
+	requires_review?: boolean;
+	requires_deep_parse?: boolean;
+	clarification_message?: string;
+	source_document_id?: number;
+	model_policy?: {
+		profile?: string;
+		max_profile?: string;
+		cost_class?: string;
+		quota_units?: number;
+	};
+	data?: Record<string, unknown>;
+	draft?: Record<string, unknown>;
+	split_draft?: Record<string, unknown>;
+	participants_draft?: Record<string, unknown>;
+	space_suggestion?: Record<string, unknown>;
 };
 
 const mapParsedToManual = (items: ParsedApiItem[]) =>

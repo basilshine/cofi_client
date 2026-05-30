@@ -15,11 +15,13 @@ import {
 	parseCaptureVoice,
 } from "../../../shared/lib/quickCaptureTransactions";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
+import { summarizeCapturePreview } from "./globalComposerFlow";
 import { readGlobalComposerIntent } from "./globalComposerIntent";
 import {
 	hasNativeChatComposer,
 	hasSettingsActionDock,
 } from "./globalComposerRoutePolicy";
+import { useGlobalComposerFlow } from "./useGlobalComposerFlow";
 
 const toDraftItems = (
 	items:
@@ -95,6 +97,14 @@ export const GlobalComposerDock = ({
 		useState<ComposerState | null>(null);
 	const [statusText, setStatusText] = useState<string | null>(null);
 	const [errorText, setErrorText] = useState<string | null>(null);
+	const {
+		flow: composerFlow,
+		beginDetecting,
+		clarify,
+		complete,
+		fail,
+		showCandidateSummary,
+	} = useGlobalComposerFlow();
 
 	const hasNativeComposer = hasNativeChatComposer(location.pathname);
 	const settingsActionDock = hasSettingsActionDock(location.pathname);
@@ -143,7 +153,7 @@ export const GlobalComposerDock = ({
 		statusText ??
 		(!hasSpaceContext
 			? "Choose a space before capturing expenses or posting messages."
-			: null);
+			: (composerFlow.message ?? null));
 
 	const showTransientStatus = useCallback((message: string) => {
 		setStatusText(message);
@@ -175,22 +185,43 @@ export const GlobalComposerDock = ({
 
 	const handleSubmit = useCallback(
 		async (payload: ComposerPayload) => {
-			if (activeSpaceId == null) return;
+			if (activeSpaceId == null) {
+				clarify(
+					"Choose a space first. Soon Ceits will also help create or suggest the right space from here.",
+				);
+				return;
+			}
 			setBusy(true);
 			setErrorText(null);
 			try {
 				if (payload.composer_mode === "expense") {
 					if (payload.expense_input_type === "text") {
+						beginDetecting("text");
 						const text = payload.content.trim();
 						const parsed = await parseCaptureText(text, {
 							spaceId: activeSpaceId,
 						});
+						showCandidateSummary(
+							summarizeCapturePreview(parsed, {
+								fallbackIntent: "expense",
+								inputKind: "text",
+								spaceId: activeSpaceId,
+							}),
+						);
 						await createDraftFromParsed(activeSpaceId, text, parsed.items);
 						showTransientStatus(`Draft saved to ${activeSpaceName}`);
 					} else if (payload.expense_input_type === "photo") {
+						beginDetecting("photo");
 						const parsed = await parseCapturePhoto(payload.file, {
 							spaceId: activeSpaceId,
 						});
+						showCandidateSummary(
+							summarizeCapturePreview(parsed, {
+								fallbackIntent: "expense",
+								inputKind: "photo",
+								spaceId: activeSpaceId,
+							}),
+						);
 						await createDraftFromParsed(
 							activeSpaceId,
 							payload.file.name || "Receipt photo",
@@ -206,12 +237,15 @@ export const GlobalComposerDock = ({
 						? payload.content.trim()
 						: askPayloadToMessage(payload).trim();
 				if (!text) return;
+				beginDetecting(payload.composer_mode === "message" ? "message" : "ask");
 				await apiClient.chatlog.postNote(activeSpaceId, { text });
+				complete(`Message posted to ${activeSpaceName}`);
 				showTransientStatus(`Message posted to ${activeSpaceName}`);
 			} catch (error) {
-				setErrorText(
-					error instanceof Error ? error.message : "Composer failed",
-				);
+				const message =
+					error instanceof Error ? error.message : "Composer failed";
+				fail(message);
+				setErrorText(message);
 			} finally {
 				setBusy(false);
 			}
@@ -219,7 +253,12 @@ export const GlobalComposerDock = ({
 		[
 			activeSpaceId,
 			activeSpaceName,
+			beginDetecting,
+			clarify,
+			complete,
 			createDraftFromParsed,
+			fail,
+			showCandidateSummary,
 			showTransientStatus,
 		],
 	);
@@ -276,10 +315,18 @@ export const GlobalComposerDock = ({
 		setBusy(true);
 		setErrorText(null);
 		try {
+			beginDetecting("voice");
 			const parsed = await parseCaptureVoice(
 				blob,
 				recorder.mimeType || "audio/webm",
 				{ spaceId: activeSpaceId },
+			);
+			showCandidateSummary(
+				summarizeCapturePreview(parsed, {
+					fallbackIntent: "expense",
+					inputKind: "voice",
+					spaceId: activeSpaceId,
+				}),
 			);
 			await createDraftFromParsed(
 				activeSpaceId,
@@ -288,16 +335,20 @@ export const GlobalComposerDock = ({
 			);
 			showTransientStatus(`Voice draft saved to ${activeSpaceName}`);
 		} catch (error) {
-			setErrorText(
-				error instanceof Error ? error.message : "Failed to parse voice",
-			);
+			const message =
+				error instanceof Error ? error.message : "Failed to parse voice";
+			fail(message);
+			setErrorText(message);
 		} finally {
 			setBusy(false);
 		}
 	}, [
 		activeSpaceId,
 		activeSpaceName,
+		beginDetecting,
 		createDraftFromParsed,
+		fail,
+		showCandidateSummary,
 		showTransientStatus,
 	]);
 
