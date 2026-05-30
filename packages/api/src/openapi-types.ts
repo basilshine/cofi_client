@@ -582,6 +582,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/capture/intent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Parse composer intent
+         * @description Experimental composer intent endpoint. It returns the validated `ceits_capture_v1` contract for text, image, or voice input without creating draft expenses or persisted source documents. Existing capture parse and capture draft endpoints remain unchanged.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CaptureParseJSONRequest"];
+                    "multipart/form-data": components["schemas"]["CaptureParseMultipartRequest"];
+                };
+            };
+            responses: {
+                /** @description Composer intent preview */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CaptureIntentPreview"];
+                    };
+                };
+                /** @description Invalid request */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden space context */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finances/vendors": {
         parameters: {
             query?: never;
@@ -5098,6 +5156,49 @@ export interface components {
         CaptureParsePreview: components["schemas"]["SpaceParsePreview"] & {
             /** @description Echoed explicit space context when provided. */
             space_id?: number;
+        };
+        /** @description Validated `ceits_capture_v1` composer/capture intent contract. This is a preview contract and must not imply final entity creation. */
+        CaptureIntentPreview: {
+            /** @enum {string} */
+            schema_version: "ceits_capture_v1";
+            /** @enum {string} */
+            intent: "create_space" | "select_space" | "expense_text" | "expense_voice" | "expense_photo" | "expense_with_promo" | "promo_only" | "loyalty_or_bonus" | "recurring_or_membership" | "payment_proof" | "split_request" | "participant_placeholder" | "ask_ceits" | "chat_message" | "unknown_or_ambiguous";
+            confidence: number;
+            requires_review: boolean;
+            required_clarification?: string | null;
+            target_context: components["schemas"]["CaptureTargetContext"];
+            source: components["schemas"]["CaptureSource"];
+            candidates: components["schemas"]["CaptureIntentCandidate"][];
+            model_policy: components["schemas"]["CaptureModelPolicy"];
+            /** @enum {string} */
+            next_action: "review" | "ask_clarification" | "save_draft" | "open_chat" | "select_space";
+            metadata?: {
+                [key: string]: string;
+            };
+        };
+        CaptureTargetContext: {
+            /** Format: int64 */
+            space_id?: number | null;
+            space_name?: string;
+            /** @description route, model, user_selected, or unknown. */
+            source: string;
+        };
+        CaptureSource: {
+            /** @enum {string} */
+            input_kind: "text" | "image" | "voice";
+            /** @description manual_text, receipt, audio, telegram, screenshot, or unknown. */
+            source_type: string;
+            raw_text?: string;
+        };
+        CaptureIntentCandidate: {
+            /** @enum {string} */
+            candidate_type: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
+            title: string;
+            confidence: number;
+            /** @description Draft/candidate payload. Must not contain final entity creation instructions. */
+            structured_data: {
+                [key: string]: unknown;
+            };
         };
         SpaceManualCaptureItem: {
             name: string;
