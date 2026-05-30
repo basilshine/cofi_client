@@ -585,18 +585,6 @@ export const ChatLogPage = () => {
 				} else {
 					setThreadDraftLineScroll(null);
 				}
-			} else if (opts?.openExpensesPanel) {
-				setRightSidebarExpanded(true);
-			} else if (opts?.quickCapture != null) {
-				quickCaptureIntentRef.current = opts.quickCapture;
-			} else if (opts?.focusCaptureComposer) {
-				window.setTimeout(() => {
-					smartComposerRef.current?.navigateTo("expense_text");
-				}, 200);
-			} else if (opts?.focusMessageComposer) {
-				window.setTimeout(() => {
-					smartComposerRef.current?.navigateTo("message_text");
-				}, 200);
 			}
 			const sidNum = Number(spaceId);
 			if (Number.isFinite(sidNum) && sidNum > 0) touchRecentSpaceId(sidNum);
@@ -729,10 +717,6 @@ export const ChatLogPage = () => {
 		if (st?.openThreadExpenseId != null) return;
 		const sid = st?.selectSpaceId;
 		if (sid == null) return;
-		const qcap = st?.quickCapture;
-		const focusCap = st?.focusCaptureComposer === true;
-		const focusMsg = st?.focusMessageComposer === true;
-		const openExpensesPanel = st?.openExpensesPanel === true;
 		const scope = workspaceScopeRef.current;
 		navigate(
 			{
@@ -745,12 +729,7 @@ export const ChatLogPage = () => {
 				state: scope ? { chatWorkspace: scope } : {},
 			},
 		);
-		void handleSelectSpace(sid, {
-			quickCapture: qcap,
-			focusCaptureComposer: focusCap,
-			focusMessageComposer: focusMsg,
-			openExpensesPanel,
-		});
+		void handleSelectSpace(sid);
 	}, [
 		location.hash,
 		location.pathname,
