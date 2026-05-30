@@ -1,4 +1,5 @@
 import type {
+	CaptureIntentPreview,
 	CaptureParseCandidate,
 	CaptureParsePreview,
 } from "../../../shared/lib/quickCaptureTransactions";
@@ -165,6 +166,35 @@ export const summarizeCapturePreview = (
 	};
 };
 
+export const summarizeCaptureIntentPreview = (
+	preview: CaptureIntentPreview,
+	input: {
+		inputKind: GlobalComposerInputKind;
+		spaceId?: string | number;
+		fallbackIntent?: string;
+	},
+): GlobalComposerCandidateBundle => {
+	const candidates = summarizeServerCandidates(preview.candidates ?? []);
+	const clarificationMessage =
+		preview.required_clarification?.trim() ||
+		(preview.next_action === "ask_clarification"
+			? "Ceits needs one more detail before continuing."
+			: undefined);
+
+	return {
+		inputKind: input.inputKind,
+		intent: preview.intent?.trim() || input.fallbackIntent || "unknown",
+		spaceId: preview.target_context?.space_id ?? input.spaceId,
+		candidates,
+		requiresReview: preview.requires_review === true || candidates.length > 0,
+		requiresDeepParse: false,
+		clarificationMessage,
+		modelProfile: preview.model_policy?.profile,
+		modelMaxProfile: preview.model_policy?.max_profile,
+		capabilityNotice: capabilityNoticeForIntent(preview),
+	};
+};
+
 const capabilityNoticeForPreview = (
 	preview: CaptureParsePreview,
 ): string | undefined => {
@@ -172,6 +202,15 @@ const capabilityNoticeForPreview = (
 		return undefined;
 	}
 	return "Basic keeps expense and item candidates only. Medium and Premium can surface promos, loyalty, payment proof, privacy, merge, and space suggestions when detected.";
+};
+
+const capabilityNoticeForIntent = (
+	preview: CaptureIntentPreview,
+): string | undefined => {
+	if (preview.model_policy?.max_profile?.toLowerCase() !== "basic") {
+		return undefined;
+	}
+	return "Basic intent keeps expense and item candidates only. Medium and Premium can surface promos, loyalty, payment proof, privacy, merge, and space suggestions when detected.";
 };
 
 const summarizePreviewShape = (
@@ -277,7 +316,7 @@ const summarizeServerCandidates = (
 };
 
 const candidateKindFromServer = (
-	candidateType: CaptureParseCandidate["candidate_type"] | undefined,
+	candidateType: CaptureParseCandidate["candidate_type"] | string | undefined,
 ): GlobalComposerCandidateKind | null => {
 	if (candidateType === "expense_candidate") return "expense";
 	if (candidateType === "expense_item_candidate") return "expense_item";
@@ -292,6 +331,10 @@ const candidateKindFromServer = (
 	if (candidateType === "space_suggestion_candidate") return "space_suggestion";
 	if (candidateType === "supporting_document_candidate") {
 		return "supporting_document";
+	}
+	if (candidateType === "split_candidate") return "split";
+	if (candidateType === "participant_placeholder_candidate") {
+		return "participant";
 	}
 	return null;
 };

@@ -7,9 +7,9 @@ import {
 	SmartTextareaComposer,
 	type SmartTextareaComposerHandle,
 } from "../../../features/chatlog/components/SmartTextareaComposer";
-import { apiClient } from "../../../shared/lib/apiClient";
 import {
 	createManualDraftInSpace,
+	parseCaptureIntentText,
 	parseCapturePhoto,
 	parseCaptureText,
 	parseCaptureVoice,
@@ -17,6 +17,7 @@ import {
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 import {
 	type GlobalComposerCandidateBundle,
+	summarizeCaptureIntentPreview,
 	summarizeCapturePreview,
 } from "./globalComposerFlow";
 import { readGlobalComposerIntent } from "./globalComposerIntent";
@@ -410,9 +411,35 @@ export const GlobalComposerDock = ({
 						: askPayloadToMessage(payload).trim();
 				if (!text) return;
 				beginDetecting(payload.composer_mode === "message" ? "message" : "ask");
-				await apiClient.chatlog.postNote(activeSpaceId, { text });
-				complete(`Message posted to ${activeSpaceName}`);
-				showTransientStatus(`Message posted to ${activeSpaceName}`);
+				const intentPreview = await parseCaptureIntentText(text, {
+					spaceId: activeSpaceId,
+				});
+				const bundle = summarizeCaptureIntentPreview(intentPreview, {
+					fallbackIntent: payload.composer_mode,
+					inputKind: payload.composer_mode === "message" ? "message" : "ask",
+					spaceId: activeSpaceId,
+				});
+				if (bundle.clarificationMessage) {
+					clarify(bundle.clarificationMessage);
+					return;
+				}
+				if (bundle.candidates.length > 0 || bundle.capabilityNotice) {
+					showCandidateSummary(bundle);
+					showTransientStatus(candidateOnlyStatus(bundle, activeSpaceName));
+					return;
+				}
+				if (
+					intentPreview.next_action === "open_chat" ||
+					intentPreview.intent === "chat_message"
+				) {
+					complete(`Open chat to send this in ${activeSpaceName}`);
+					showTransientStatus(`Open chat to send this in ${activeSpaceName}`);
+					return;
+				}
+				complete(`Ceits understood this as ${intentPreview.intent}.`);
+				showTransientStatus(
+					`Ceits understood this as ${intentPreview.intent}.`,
+				);
 			} catch (error) {
 				const message =
 					error instanceof Error ? error.message : "Composer failed";

@@ -22,7 +22,9 @@ export type CaptureParseCandidate = {
 		| "reminder_candidate"
 		| "merge_candidate"
 		| "space_suggestion_candidate"
-		| "supporting_document_candidate";
+		| "supporting_document_candidate"
+		| "split_candidate"
+		| "participant_placeholder_candidate";
 	title?: string;
 	confidence?: number;
 	status?: string;
@@ -53,6 +55,60 @@ export type CaptureParsePreview = {
 	space_suggestion?: Record<string, unknown>;
 };
 
+export type CaptureIntentPreview = {
+	schema_version: "ceits_capture_v1";
+	intent:
+		| "create_space"
+		| "select_space"
+		| "expense_text"
+		| "expense_voice"
+		| "expense_photo"
+		| "expense_with_promo"
+		| "promo_only"
+		| "loyalty_or_bonus"
+		| "recurring_or_membership"
+		| "payment_proof"
+		| "split_request"
+		| "participant_placeholder"
+		| "ask_ceits"
+		| "chat_message"
+		| "unknown_or_ambiguous";
+	confidence: number;
+	requires_review: boolean;
+	required_clarification?: string | null;
+	target_context: {
+		space_id?: number | null;
+		space_name?: string;
+		source: string;
+	};
+	source: {
+		input_kind: "text" | "image" | "voice";
+		source_type: string;
+		raw_text?: string;
+	};
+	candidates: Array<
+		Omit<CaptureParseCandidate, "id" | "source_document_id" | "status"> & {
+			candidate_type: NonNullable<CaptureParseCandidate["candidate_type"]>;
+			title: string;
+			confidence: number;
+			structured_data: Record<string, unknown>;
+		}
+	>;
+	model_policy: {
+		profile?: string;
+		max_profile?: string;
+		cost_class?: string;
+		quota_units?: number;
+	};
+	next_action:
+		| "review"
+		| "ask_clarification"
+		| "save_draft"
+		| "open_chat"
+		| "select_space";
+	metadata?: Record<string, string>;
+};
+
 const mapParsedToManual = (items: ParsedApiItem[]) =>
 	items
 		.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
@@ -77,6 +133,23 @@ export const parseCaptureText = async (
 		},
 	);
 	return data ?? {};
+};
+
+export const parseCaptureIntentText = async (
+	text: string,
+	options: { spaceId?: string | number; channel?: string } = {},
+): Promise<CaptureIntentPreview> => {
+	const { data } = await httpClient.post<CaptureIntentPreview>(
+		"/api/v1/capture/intent",
+		{
+			input_kind: "text",
+			text,
+			space_id:
+				options.spaceId === undefined ? undefined : Number(options.spaceId),
+			channel: options.channel ?? "web",
+		},
+	);
+	return data;
 };
 
 export const parseCapturePhoto = async (
