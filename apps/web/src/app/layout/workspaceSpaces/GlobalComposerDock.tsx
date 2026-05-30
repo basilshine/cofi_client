@@ -340,87 +340,113 @@ export const GlobalComposerDock = ({
 
 	if (hasNativeComposer) return null;
 
+	const actionButtonClass =
+		"inline-flex h-8 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card/90 px-3 text-xs font-semibold text-foreground/85 transition hover:border-[rgba(120,100,80,0.34)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
+
 	return (
 		<div
-			className="pointer-events-none absolute inset-x-0 bottom-2 z-40 flex justify-center px-3 sm:bottom-3"
+			className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center border-t border-border/55 bg-background/80 px-3 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.45)] backdrop-blur-xl sm:px-5"
 			data-testid="global-composer-dock"
 		>
-			<div className="pointer-events-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border/70 bg-background/94 shadow-[0_18px_48px_-30px_rgba(44,32,18,0.58)] ring-1 ring-white/55 backdrop-blur-xl">
-				<div className="flex items-center justify-between gap-3 border-b border-border/40 px-3.5 py-1.5">
-					<p className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-						Context: {activeSpaceName}
-						{contextSource ? ` · ${contextSource}` : ""}
-					</p>
-					<div className="flex shrink-0 items-center gap-3">
-						<button
-							aria-label={
-								isCollapsed
-									? "Expand global composer"
-									: "Collapse global composer"
-							}
-							aria-pressed={isCollapsed}
-							className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							onClick={handleCollapseToggle}
-							type="button"
-						>
-							{isCollapsed ? "Expand" : "Collapse"}
-						</button>
-						{hasSpaceContext ? (
-							<Link
-								className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
-								to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
-							>
-								Open chat
-							</Link>
-						) : (
-							<Link
-								className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
-								to="/console/spaces"
-							>
-								Choose space
-							</Link>
-						)}
-					</div>
-				</div>
+			<div className="pointer-events-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-border/70 bg-background/94 shadow-[0_18px_52px_-34px_rgba(44,32,18,0.5)] ring-1 ring-white/55">
 				{isCollapsed ? (
-					<div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+					<div className="grid gap-2 p-2.5 lg:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)_auto] lg:items-center">
+						<div className="min-w-0 px-1">
+							<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+								Context: {activeSpaceName}
+							</p>
+							{contextSource ? (
+								<p className="mt-0.5 truncate text-[11px] text-muted-foreground/75">
+									{contextSource}
+								</p>
+							) : null}
+						</div>
 						<button
-							className="rounded-full border border-[rgba(120,100,80,0.28)] bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
-							disabled={disabled}
-							onClick={() => expandTo("expense_method_select")}
-							type="button"
-						>
-							Add expense
-						</button>
-						<button
-							className="rounded-full border border-[rgba(120,100,80,0.28)] bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
-							disabled={disabled}
-							onClick={() => expandTo("ask_topic_select")}
-							type="button"
-						>
-							Ask Ceits
-						</button>
-						<button
-							className="rounded-full border border-[rgba(120,100,80,0.28)] bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+							aria-label="Expand global composer"
+							className="flex h-11 min-w-0 items-center rounded-xl border border-[rgba(120,100,80,0.18)] bg-card/82 px-3.5 text-left text-sm text-muted-foreground shadow-inner transition hover:border-[rgba(120,100,80,0.3)] hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
 							disabled={disabled}
 							onClick={() => expandTo("message_text")}
 							type="button"
 						>
-							Message
+							<span className="truncate">What would you like to do?</span>
 						</button>
+						<div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+							<button
+								className={actionButtonClass}
+								disabled={disabled}
+								onClick={() => expandTo("expense_method_select")}
+								type="button"
+							>
+								Add expense
+							</button>
+							<button
+								className={actionButtonClass}
+								disabled={disabled}
+								onClick={() => expandTo("ask_topic_select")}
+								type="button"
+							>
+								Ask Ceits
+							</button>
+							{hasSpaceContext ? (
+								<Link
+									className={actionButtonClass}
+									to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
+								>
+									Open chat
+								</Link>
+							) : (
+								<Link className={actionButtonClass} to="/console/spaces">
+									Choose space
+								</Link>
+							)}
+						</div>
 					</div>
 				) : (
-					<SmartTextareaComposer
-						ref={composerRef}
-						disabled={disabled}
-						isRecording={isRecording}
-						onCancelRecording={handleCancelRecording}
-						onComposerSubmit={(payload) => void handleSubmit(payload)}
-						onStartExpenseRecording={() => void handleStartRecording()}
-						onStopRecording={() => void handleStopRecording()}
-						spaceId={activeSpaceId ?? "0"}
-						surface="dock"
-					/>
+					<>
+						<div className="flex items-center justify-between gap-3 border-b border-border/40 px-3.5 py-1.5">
+							<p className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+								Context: {activeSpaceName}
+								{contextSource ? ` · ${contextSource}` : ""}
+							</p>
+							<div className="flex shrink-0 items-center gap-3">
+								<button
+									aria-label="Collapse global composer"
+									aria-pressed={isCollapsed}
+									className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									onClick={handleCollapseToggle}
+									type="button"
+								>
+									Collapse
+								</button>
+								{hasSpaceContext ? (
+									<Link
+										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+										to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
+									>
+										Open chat
+									</Link>
+								) : (
+									<Link
+										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+										to="/console/spaces"
+									>
+										Choose space
+									</Link>
+								)}
+							</div>
+						</div>
+						<SmartTextareaComposer
+							ref={composerRef}
+							disabled={disabled}
+							isRecording={isRecording}
+							onCancelRecording={handleCancelRecording}
+							onComposerSubmit={(payload) => void handleSubmit(payload)}
+							onStartExpenseRecording={() => void handleStartRecording()}
+							onStopRecording={() => void handleStopRecording()}
+							spaceId={activeSpaceId ?? "0"}
+							surface="dock"
+						/>
+					</>
 				)}
 				{composerNotice ? (
 					<div
