@@ -219,6 +219,80 @@ const CandidateBundlePanel = ({
 const reviewActionClass =
 	"inline-flex h-7 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card px-2.5 text-[11px] font-semibold text-foreground/82 transition hover:border-[rgba(120,100,80,0.34)] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
+const clarificationActionClass =
+	"inline-flex h-8 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-background px-3 text-xs font-semibold text-foreground/82 transition hover:border-[rgba(120,100,80,0.34)] hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
+
+const ClarificationActionsPanel = ({
+	chatHref,
+	disabled,
+	hasSpaceContext,
+	onAddExpense,
+	onAskCeits,
+	onCreateSpace,
+	spacesHref,
+}: {
+	chatHref: string;
+	disabled: boolean;
+	hasSpaceContext: boolean;
+	onAddExpense: () => void;
+	onAskCeits: () => void;
+	onCreateSpace: () => void;
+	spacesHref: string;
+}) => (
+	<div
+		className="border-t border-border/45 bg-card/55 px-3.5 py-2"
+		data-testid="global-composer-clarification-actions"
+	>
+		<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+			<div className="min-w-0">
+				<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+					Choose next step
+				</p>
+				<p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+					Ceits is not sure whether this should become a record, a question, or
+					a chat message.
+				</p>
+			</div>
+			<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+				<button
+					className={clarificationActionClass}
+					disabled={disabled}
+					onClick={onAddExpense}
+					type="button"
+				>
+					Add expense
+				</button>
+				<button
+					className={clarificationActionClass}
+					disabled={disabled}
+					onClick={onAskCeits}
+					type="button"
+				>
+					Ask Ceits
+				</button>
+				{hasSpaceContext ? (
+					<Link className={clarificationActionClass} to={chatHref}>
+						Open chat
+					</Link>
+				) : (
+					<>
+						<Link className={clarificationActionClass} to={spacesHref}>
+							Choose space
+						</Link>
+						<button
+							className={clarificationActionClass}
+							onClick={onCreateSpace}
+							type="button"
+						>
+							New space
+						</button>
+					</>
+				)}
+			</div>
+		</div>
+	</div>
+);
+
 type GlobalComposerDockProps = {
 	isCollapsed: boolean;
 	onCollapsedChange: (isCollapsed: boolean) => void;
@@ -838,6 +912,17 @@ export const GlobalComposerDock = ({
 						expensesHref={activeSpaceExpensesHref}
 						reviewHref={activeSpaceReviewHref}
 						splitsHref={activeSpaceSplitsHref}
+					/>
+				) : null}
+				{composerFlow.step === "clarifying" ? (
+					<ClarificationActionsPanel
+						chatHref={activeSpaceChatHref}
+						disabled={busy || isLoading || !hasSpaceContext}
+						hasSpaceContext={hasSpaceContext}
+						onAddExpense={() => expandTo("expense_method_select")}
+						onAskCeits={() => expandTo("ask_topic_select")}
+						onCreateSpace={() => setCreateSpaceDialogOpen(true)}
+						spacesHref="/console/settings/spaces"
 					/>
 				) : null}
 				{composerNotice ? (
