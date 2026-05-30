@@ -92,7 +92,7 @@ const CandidateBundlePanel = ({
 	benefitsHref: string;
 	splitsHref: string;
 }) => {
-	if (!bundle.candidates.length) return null;
+	if (!bundle.candidates.length && !bundle.capabilityNotice) return null;
 
 	const hasExpense = bundleHasAny(bundle, ["expense", "expense_item"]);
 	const hasBenefits = bundleHasAny(bundle, ["promo", "loyalty"]);
@@ -110,23 +110,30 @@ const CandidateBundlePanel = ({
 					<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
 						Parsed result
 					</p>
-					<div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-						{visibleCandidates.map((candidate) => (
-							<span
-								className="inline-flex h-6 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-background px-2 text-[11px] font-semibold text-foreground/78"
-								key={candidate.kind}
-							>
-								{candidate.count > 1
-									? `${candidate.count} ${candidate.label}`
-									: candidate.label}
-							</span>
-						))}
-						{hiddenCount > 0 ? (
-							<span className="inline-flex h-6 items-center rounded-full border border-dashed border-border bg-transparent px-2 text-[11px] font-semibold text-muted-foreground">
-								+{hiddenCount} more
-							</span>
-						) : null}
-					</div>
+					{visibleCandidates.length ? (
+						<div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+							{visibleCandidates.map((candidate) => (
+								<span
+									className="inline-flex h-6 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-background px-2 text-[11px] font-semibold text-foreground/78"
+									key={candidate.kind}
+								>
+									{candidate.count > 1
+										? `${candidate.count} ${candidate.label}`
+										: candidate.label}
+								</span>
+							))}
+							{hiddenCount > 0 ? (
+								<span className="inline-flex h-6 items-center rounded-full border border-dashed border-border bg-transparent px-2 text-[11px] font-semibold text-muted-foreground">
+									+{hiddenCount} more
+								</span>
+							) : null}
+						</div>
+					) : null}
+					{bundle.capabilityNotice ? (
+						<p className="mt-1.5 max-w-3xl text-[11px] leading-4 text-muted-foreground">
+							{bundle.capabilityNotice}
+						</p>
+					) : null}
 				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
 					{hasExpense ? (

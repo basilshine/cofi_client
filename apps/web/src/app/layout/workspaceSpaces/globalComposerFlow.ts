@@ -51,6 +51,8 @@ export type GlobalComposerCandidateBundle = {
 	requiresDeepParse: boolean;
 	clarificationMessage?: string;
 	modelProfile?: string;
+	modelMaxProfile?: string;
+	capabilityNotice?: string;
 };
 
 export type GlobalComposerFlowState = {
@@ -158,7 +160,18 @@ export const summarizeCapturePreview = (
 		requiresDeepParse: preview.requires_deep_parse === true,
 		clarificationMessage: preview.clarification_message,
 		modelProfile: preview.model_policy?.profile,
+		modelMaxProfile: preview.model_policy?.max_profile,
+		capabilityNotice: capabilityNoticeForPreview(preview),
 	};
+};
+
+const capabilityNoticeForPreview = (
+	preview: CaptureParsePreview,
+): string | undefined => {
+	if (preview.model_policy?.max_profile?.toLowerCase() !== "basic") {
+		return undefined;
+	}
+	return "Basic keeps expense and item candidates only. Medium and Premium can surface promos, loyalty, payment proof, privacy, merge, and space suggestions when detected.";
 };
 
 const summarizePreviewShape = (
