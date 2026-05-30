@@ -14,6 +14,7 @@ import {
 	SettingsHubPage,
 	type SettingsSectionKey,
 } from "../../features/settings/SettingsHubPage";
+import { SettingsSpacesPage } from "../../features/settings/SettingsSpacesPage";
 import { SpaceBenefitsPage } from "../../features/space-benefits/SpaceBenefitsPage";
 import { SpaceOverviewPage } from "../../features/space-overview/SpaceOverviewPage";
 import { SpaceRecurringPage } from "../../features/space-recurring/SpaceRecurringPage";
@@ -117,6 +118,11 @@ export const AppRouter = () => {
 							<Route
 								element={<SettingsSectionRoute section="billing" />}
 								path="settings/billing"
+							/>
+							<Route element={<SettingsSpacesPage />} path="settings/spaces" />
+							<Route
+								element={<SpaceSettingsPage surface="settings" />}
+								path="settings/spaces/:spaceId"
 							/>
 							<Route
 								element={<Navigate replace to="/console/home" />}

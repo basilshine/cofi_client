@@ -120,6 +120,36 @@ const buildCrumbs = (
 		return base;
 	}
 
+	if (pathname.startsWith("/console/settings")) {
+		const tail = pathname
+			.replace(/^\/console\/settings\/?/, "")
+			.split("/")
+			.filter(Boolean);
+		const section = tail[0] ?? "account";
+		const sectionLabel: Record<string, string> = {
+			account: "Account",
+			appearance: "Appearance",
+			notifications: "Notifications",
+			security: "Security",
+			billing: "Billing",
+			spaces: "Spaces",
+		};
+		const crumbs: Crumb[] = [
+			{ label: "Console", to: "/console" },
+			workspace,
+			{ label: "Settings", to: "/console/settings/account" },
+			{ label: sectionLabel[section] ?? "Settings" },
+		];
+		if (section === "spaces" && tail[1]) {
+			crumbs[crumbs.length - 1] = {
+				label: "Spaces",
+				to: "/console/settings/spaces",
+			};
+			crumbs.push({ label: "Space settings" });
+		}
+		return crumbs;
+	}
+
 	const tail = pathname
 		.replace(/^\/console\/?/, "")
 		.split("/")

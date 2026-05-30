@@ -132,7 +132,7 @@ const memberInitial = (m: SpaceMember) => {
 const spaceSettingsMembersHash = (spaceId: string | number | null) =>
 	spaceId == null
 		? "/console/home"
-		: `/console/spaces/${encodeURIComponent(String(spaceId))}/settings#space-settings-members`;
+		: `/console/settings/spaces/${encodeURIComponent(String(spaceId))}#space-settings-members`;
 
 export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 	const {

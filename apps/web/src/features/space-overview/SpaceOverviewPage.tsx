@@ -707,7 +707,7 @@ export const SpaceOverviewPage = () => {
 						{canManageMemberRoles ? (
 							<Link
 								className={ghostButton}
-								to={`/console/spaces/${encodeURIComponent(sidStr)}/settings#space-settings-members`}
+								to={`/console/settings/spaces/${encodeURIComponent(sidStr)}#space-settings-members`}
 							>
 								Invite users
 							</Link>

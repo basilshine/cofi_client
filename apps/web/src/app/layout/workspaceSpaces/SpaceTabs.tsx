@@ -266,7 +266,7 @@ export const SpaceTabs = ({ className = "" }: SpaceTabsProps) => {
 					aria-label={`Members and invites — open in space settings, ${contextSpaceName}`}
 					className="shrink-0 rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					onClick={() => setSelectedSpaceId(selectedSpaceId)}
-					to={`/console/spaces/${encodeURIComponent(sid)}/settings#space-settings-members`}
+					to={`/console/settings/spaces/${encodeURIComponent(sid)}#space-settings-members`}
 				>
 					Manage
 				</Link>

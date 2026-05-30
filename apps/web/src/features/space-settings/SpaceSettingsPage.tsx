@@ -34,7 +34,11 @@ const inputBase =
 
 type AppearanceTheme = "default" | "calm" | "contrast";
 
-export const SpaceSettingsPage = () => {
+export const SpaceSettingsPage = ({
+	surface = "space",
+}: {
+	surface?: "space" | "settings";
+}) => {
 	const { spaceId } = useParams<{ spaceId: string }>();
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -73,6 +77,7 @@ export const SpaceSettingsPage = () => {
 		space?.owner_user_id != null &&
 		user?.id != null &&
 		Number(space.owner_user_id) === Number(user.id);
+	const settingsSurface = surface === "settings";
 
 	const [name, setName] = useState(space?.name ?? "");
 	const [description, setDescription] = useState(space?.description ?? "");
@@ -108,7 +113,9 @@ export const SpaceSettingsPage = () => {
 			setSelectedSpaceId(created.id);
 			void refreshSpaces();
 			navigate(
-				`/console/spaces/${encodeURIComponent(String(created.id))}/overview`,
+				settingsSurface
+					? `/console/settings/spaces/${encodeURIComponent(String(created.id))}`
+					: `/console/spaces/${encodeURIComponent(String(created.id))}/overview`,
 			);
 		} catch (e) {
 			setError(e instanceof Error ? e.message : "Failed to clone this space");
@@ -121,6 +128,7 @@ export const SpaceSettingsPage = () => {
 		patchSpaces,
 		refreshSpaces,
 		setSelectedSpaceId,
+		settingsSurface,
 	]);
 
 	const handleConfirmDestructive = useCallback(async () => {
@@ -142,7 +150,7 @@ export const SpaceSettingsPage = () => {
 			}
 			void refreshSpaces();
 			setPendingDestructive(null);
-			navigate("/console/home");
+			navigate(settingsSurface ? "/console/settings/spaces" : "/console/home");
 		} catch (e) {
 			setError(
 				e instanceof Error
@@ -162,6 +170,7 @@ export const SpaceSettingsPage = () => {
 		refreshSpaces,
 		selectedSpaceId,
 		setSelectedSpaceId,
+		settingsSurface,
 	]);
 
 	const membersModel = useSpaceMembersInvites({
@@ -222,9 +231,11 @@ export const SpaceSettingsPage = () => {
 	if (space == null) {
 		return (
 			<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
-				<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
-					<SpaceTabs />
-				</header>
+				{settingsSurface ? null : (
+					<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
+						<SpaceTabs />
+					</header>
+				)}
 				<div className="flex min-h-0 flex-1 items-center justify-center px-4">
 					<p className="text-sm text-muted-foreground">Loading space...</p>
 				</div>
@@ -234,13 +245,57 @@ export const SpaceSettingsPage = () => {
 
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
-			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
-				<SpaceTabs />
-			</header>
+			{settingsSurface ? null : (
+				<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
+					<SpaceTabs />
+				</header>
+			)}
 			<div className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
 				<div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 lg:px-8 lg:py-8">
+					{settingsSurface ? (
+						<section className="rounded-2xl border border-border/70 bg-card p-4 text-card-foreground soft-shadow inner-glow">
+							<div className="flex flex-wrap items-center justify-between gap-3">
+								<div className="min-w-0">
+									<p className={sectionEyebrow}>Settings / Spaces</p>
+									<p className="mt-1 text-sm text-muted-foreground">
+										Switch between spaces to edit per-space settings.
+									</p>
+								</div>
+								<Link className={buttonBase} to="/console/settings/spaces">
+									All spaces
+								</Link>
+							</div>
+							{spaces?.length ? (
+								<nav
+									aria-label="Space settings navigation"
+									className="mt-4 flex gap-2 overflow-x-auto pb-1"
+								>
+									{spaces.map((entry) => {
+										const active = String(entry.id) === String(numericSpaceId);
+										return (
+											<Link
+												aria-current={active ? "page" : undefined}
+												className={[
+													"inline-flex h-10 shrink-0 items-center rounded-xl border px-3 text-sm font-medium transition-[background-color,color,transform] active:scale-[0.96]",
+													active
+														? "border-primary/30 bg-primary text-primary-foreground"
+														: "border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
+												].join(" ")}
+												key={String(entry.id)}
+												to={`/console/settings/spaces/${encodeURIComponent(String(entry.id))}`}
+											>
+												{entry.name || `Space ${String(entry.id)}`}
+											</Link>
+										);
+									})}
+								</nav>
+							) : null}
+						</section>
+					) : null}
 					<header className="space-y-2">
-						<p className={sectionEyebrow}>Space settings</p>
+						<p className={sectionEyebrow}>
+							{settingsSurface ? "Space settings" : "Space settings"}
+						</p>
 						<h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-[34px]">
 							{space.name}
 						</h1>
@@ -323,9 +378,13 @@ export const SpaceSettingsPage = () => {
 							<div className="flex flex-wrap items-center gap-2">
 								<Link
 									className={buttonBase}
-									to={`/console/spaces/${encodeURIComponent(String(numericSpaceId))}/overview`}
+									to={
+										settingsSurface
+											? "/console/settings/spaces"
+											: `/console/spaces/${encodeURIComponent(String(numericSpaceId))}/overview`
+									}
 								>
-									Back to overview
+									{settingsSurface ? "Back to spaces" : "Back to overview"}
 								</Link>
 							</div>
 						</>
@@ -453,9 +512,13 @@ export const SpaceSettingsPage = () => {
 								</button>
 								<Link
 									className={buttonBase}
-									to={`/console/spaces/${encodeURIComponent(String(numericSpaceId))}/overview`}
+									to={
+										settingsSurface
+											? "/console/settings/spaces"
+											: `/console/spaces/${encodeURIComponent(String(numericSpaceId))}/overview`
+									}
 								>
-									Back to overview
+									{settingsSurface ? "Back to spaces" : "Back to overview"}
 								</Link>
 							</div>
 							<section className={sectionCard}>

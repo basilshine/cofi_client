@@ -269,7 +269,7 @@ export const WorkspaceSpaceListNav = ({
 	/** When no chat panel is stacked below, let the space list use remaining sidebar height. */
 	soloNav?: boolean;
 }) => {
-	const { user, logout } = useAuth();
+	const { user } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const {
@@ -323,6 +323,11 @@ export const WorkspaceSpaceListNav = ({
 			label: "Billing",
 			Icon: IconCard,
 		},
+		{
+			to: "/console/settings/spaces",
+			label: "Spaces",
+			Icon: IconPlusSquare,
+		},
 	] as const;
 
 	const handleSelectSpace = useCallback(
@@ -359,11 +364,6 @@ export const WorkspaceSpaceListNav = ({
 			location.pathname,
 		],
 	);
-
-	const userDisplay =
-		user?.name?.trim() || user?.email?.split("@")[0] || "Account";
-	const userEmail = user?.email ?? "";
-	const userInitial = (userDisplay || "?").charAt(0).toUpperCase();
 
 	if (!workspaceScope) {
 		return (
@@ -403,7 +403,10 @@ export const WorkspaceSpaceListNav = ({
 			<div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden py-1">
 				{inSettingsShell
 					? settingsLinks.map((item) => {
-							const active = location.pathname === item.to;
+							const active =
+								location.pathname === item.to ||
+								(item.to === "/console/settings/spaces" &&
+									location.pathname.startsWith("/console/settings/spaces"));
 							const SettingsIcon = item.Icon;
 							return (
 								<Link
@@ -488,14 +491,6 @@ export const WorkspaceSpaceListNav = ({
 				>
 					<IconShield className="h-4 w-4" />
 				</Link>
-				<Link
-					aria-label="Profile"
-					className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-foreground text-[11px] font-semibold uppercase tracking-tight text-background shadow-sm transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					title={userDisplay}
-					to="/console/account"
-				>
-					{userInitial}
-				</Link>
 			</div>
 		</div>
 	);
@@ -578,7 +573,10 @@ export const WorkspaceSpaceListNav = ({
 								Settings
 							</p>
 							{settingsLinks.map((item) => {
-								const active = location.pathname === item.to;
+								const active =
+									location.pathname === item.to ||
+									(item.to === "/console/settings/spaces" &&
+										location.pathname.startsWith("/console/settings/spaces"));
 								const SettingsIcon = item.Icon;
 								return (
 									<Link
@@ -750,36 +748,6 @@ export const WorkspaceSpaceListNav = ({
 					<span>Support</span>
 				</a>
 				<SpaceSidebarActivity selectedSpaceId={selectedSpaceId} />
-				<div className="mt-3 flex items-center gap-3 rounded-2xl border border-border/60 bg-card p-2.5 soft-shadow inner-glow">
-					<Link
-						aria-label="Open profile"
-						className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-[12px] font-bold uppercase tracking-tight text-secondary-foreground"
-						to="/console/settings/account"
-					>
-						{userInitial}
-					</Link>
-					<div className="min-w-0 flex-1">
-						<Link
-							className="block truncate text-[13px] font-bold tracking-tight text-foreground hover:underline"
-							to="/console/settings/account"
-						>
-							{userDisplay}
-						</Link>
-						{userEmail ? (
-							<p className="truncate text-[10px] leading-tight text-muted-foreground">
-								{userEmail}
-							</p>
-						) : null}
-					</div>
-					<button
-						aria-label="Sign out"
-						className="inline-flex h-7 shrink-0 items-center rounded-md px-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						onClick={() => logout()}
-						type="button"
-					>
-						Sign out
-					</button>
-				</div>
 			</div>
 		</div>
 	);

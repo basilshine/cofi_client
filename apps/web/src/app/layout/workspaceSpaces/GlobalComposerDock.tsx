@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../../contexts/AuthContext";
 import {
 	type ComposerPayload,
 	type ComposerState,
@@ -76,6 +77,7 @@ export const GlobalComposerDock = ({
 }: GlobalComposerDockProps) => {
 	const location = useLocation();
 	const navigate = useNavigate();
+	const { user } = useAuth();
 	const { selectedSpaceId, spaces, isLoading } = useWorkspaceSpaces();
 	const composerRef = useRef<SmartTextareaComposerHandle | null>(null);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -112,6 +114,13 @@ export const GlobalComposerDock = ({
 			: selectedSpaceId != null
 				? "workspace"
 				: null;
+	const userDisplay =
+		user?.name?.trim() || user?.email?.split("@")[0] || "Account";
+	const userInitial = userDisplay.trim().charAt(0).toUpperCase() || "?";
+	const spaceSettingsHref =
+		activeSpaceId == null
+			? "/console/settings/spaces"
+			: `/console/settings/spaces/${encodeURIComponent(String(activeSpaceId))}`;
 
 	const disabled = busy || isLoading || !hasSpaceContext;
 	const composerNotice =
@@ -342,6 +351,10 @@ export const GlobalComposerDock = ({
 
 	const actionButtonClass =
 		"inline-flex h-8 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card/90 px-3 text-xs font-semibold text-foreground/85 transition hover:border-[rgba(120,100,80,0.34)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
+	const dockLinkClass =
+		"inline-flex h-8 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card/90 px-3 text-xs font-semibold text-foreground/85 transition-[background-color,border-color,transform] hover:border-[rgba(120,100,80,0.34)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]";
+	const userLinkClass =
+		"inline-flex h-8 min-w-0 shrink-0 items-center gap-2 rounded-full border border-border/70 bg-background px-2.5 text-xs font-semibold text-foreground/85 shadow-sm transition-[background-color,transform] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]";
 
 	return (
 		<div
@@ -350,7 +363,7 @@ export const GlobalComposerDock = ({
 		>
 			<div className="pointer-events-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-border/70 bg-background/94 shadow-[0_18px_52px_-34px_rgba(44,32,18,0.5)] ring-1 ring-white/55">
 				{isCollapsed ? (
-					<div className="grid gap-2 p-2.5 lg:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)_auto] lg:items-center">
+					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)_auto_auto] xl:items-center">
 						<div className="min-w-0 px-1">
 							<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
 								Context: {activeSpaceName}
@@ -387,19 +400,30 @@ export const GlobalComposerDock = ({
 							>
 								Ask Ceits
 							</button>
+							<Link className={dockLinkClass} to={spaceSettingsHref}>
+								Space settings
+							</Link>
 							{hasSpaceContext ? (
 								<Link
-									className={actionButtonClass}
+									className={dockLinkClass}
 									to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
 								>
 									Open chat
 								</Link>
 							) : (
-								<Link className={actionButtonClass} to="/console/spaces">
+								<Link className={dockLinkClass} to="/console/settings/spaces">
 									Choose space
 								</Link>
 							)}
 						</div>
+						<Link className={userLinkClass} to="/console/settings/account">
+							<span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold uppercase text-secondary-foreground">
+								{userInitial}
+							</span>
+							<span className="hidden max-w-[8rem] truncate sm:inline">
+								{userDisplay}
+							</span>
+						</Link>
 					</div>
 				) : (
 					<>
@@ -418,6 +442,27 @@ export const GlobalComposerDock = ({
 								>
 									Collapse
 								</button>
+								{hasSpaceContext ? (
+									<Link
+										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+										to={spaceSettingsHref}
+									>
+										Space settings
+									</Link>
+								) : (
+									<Link
+										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+										to="/console/settings/spaces"
+									>
+										Spaces
+									</Link>
+								)}
+								<Link
+									className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+									to="/console/settings/account"
+								>
+									Account
+								</Link>
 								{hasSpaceContext ? (
 									<Link
 										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
