@@ -9,22 +9,9 @@ import {
 	WorkspaceSpacesProvider,
 	useWorkspaceSpaces,
 } from "./WorkspaceSpacesContext";
+import { shouldShowGlobalComposer } from "./globalComposerRoutePolicy";
 
 const composerCollapsedStorageKey = "ceits.globalComposer.v2.collapsed";
-const settingsLikeRoutePattern =
-	/^\/console\/(?:settings|account|organization|quota)(?:\/|$)/;
-const spaceSettingsRoutePattern = /^\/console\/spaces\/[^/]+\/settings(?:\/|$)/;
-const nativeComposerRoutePattern = /^\/console\/chat(?:\/|$)/;
-
-const hasNativeComposer = (pathname: string) =>
-	nativeComposerRoutePattern.test(pathname);
-
-const isSettingsLikeWorkspaceRoute = (pathname: string) =>
-	settingsLikeRoutePattern.test(pathname) ||
-	spaceSettingsRoutePattern.test(pathname);
-
-const shouldShowGlobalComposer = (pathname: string) =>
-	!hasNativeComposer(pathname) && !isSettingsLikeWorkspaceRoute(pathname);
 
 const getInitialComposerCollapsed = () => {
 	if (typeof window === "undefined") return false;

@@ -15,6 +15,7 @@ import {
 } from "../../../shared/lib/quickCaptureTransactions";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 import { readGlobalComposerIntent } from "./globalComposerIntent";
+import { hasNativeChatComposer } from "./globalComposerRoutePolicy";
 
 const toDraftItems = (
 	items:
@@ -87,7 +88,7 @@ export const GlobalComposerDock = ({
 	const [statusText, setStatusText] = useState<string | null>(null);
 	const [errorText, setErrorText] = useState<string | null>(null);
 
-	const isChatRoute = location.pathname.startsWith("/console/chat");
+	const hasNativeComposer = hasNativeChatComposer(location.pathname);
 	const routeSpaceId = spaceIdFromPath(location.pathname);
 	const querySpaceId = spaceIdFromSearch(location.search);
 	const activeSpaceId = routeSpaceId ?? querySpaceId ?? selectedSpaceId;
@@ -309,7 +310,7 @@ export const GlobalComposerDock = ({
 
 	useEffect(() => {
 		const intent = readGlobalComposerIntent(location.state);
-		if (!intent || isChatRoute) return;
+		if (!intent || hasNativeComposer) return;
 
 		if (intent === "expense") {
 			expandTo("expense_method_select");
@@ -329,7 +330,7 @@ export const GlobalComposerDock = ({
 		);
 	}, [
 		expandTo,
-		isChatRoute,
+		hasNativeComposer,
 		location.hash,
 		location.pathname,
 		location.search,
@@ -337,7 +338,7 @@ export const GlobalComposerDock = ({
 		navigate,
 	]);
 
-	if (isChatRoute) return null;
+	if (hasNativeComposer) return null;
 
 	return (
 		<div className="pointer-events-none absolute inset-x-0 bottom-2 z-40 flex justify-center px-3 sm:bottom-3">
