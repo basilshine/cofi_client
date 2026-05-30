@@ -51,13 +51,14 @@ const buildCrumbs = (
 	}
 
 	const spaceMatch = pathname.match(
-		/^\/console\/spaces\/([^/]+)\/(overview|splits|recurring)\/?$/,
+		/^\/console\/spaces\/([^/]+)\/(overview|splits|benefits|recurring)\/?$/,
 	);
 	if (spaceMatch) {
 		const tail = spaceMatch[2];
 		const tailLabel: Record<string, string> = {
 			overview: "Overview",
 			splits: "Splits",
+			benefits: "Benefits",
 			recurring: "Recurring",
 		};
 		return [

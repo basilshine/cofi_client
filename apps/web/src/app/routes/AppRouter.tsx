@@ -14,6 +14,7 @@ import {
 	SettingsHubPage,
 	type SettingsSectionKey,
 } from "../../features/settings/SettingsHubPage";
+import { SpaceBenefitsPage } from "../../features/space-benefits/SpaceBenefitsPage";
 import { SpaceOverviewPage } from "../../features/space-overview/SpaceOverviewPage";
 import { SpaceRecurringPage } from "../../features/space-recurring/SpaceRecurringPage";
 import { SpaceSettingsPage } from "../../features/space-settings/SpaceSettingsPage";
@@ -70,6 +71,10 @@ export const AppRouter = () => {
 							<Route
 								element={<SpaceSplitsWorkspacePage />}
 								path="spaces/:spaceId/splits"
+							/>
+							<Route
+								element={<SpaceBenefitsPage />}
+								path="spaces/:spaceId/benefits"
 							/>
 							<Route
 								element={<SpaceRecurringPage />}

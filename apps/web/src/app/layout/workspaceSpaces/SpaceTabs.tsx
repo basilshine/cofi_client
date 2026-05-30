@@ -17,12 +17,19 @@ const compactContextInitial = (name: string | null) => {
 	return t.charAt(0).toUpperCase();
 };
 
-type TabKey = "overview" | "chat" | "expenses" | "splits" | "recurring";
+type TabKey =
+	| "overview"
+	| "chat"
+	| "expenses"
+	| "benefits"
+	| "splits"
+	| "recurring";
 
 const tabsOrder: { key: TabKey; label: string }[] = [
 	{ key: "overview", label: "Overview" },
 	{ key: "chat", label: "Chat" },
 	{ key: "expenses", label: "Expenses" },
+	{ key: "benefits", label: "Benefits" },
 	{ key: "splits", label: "Splits" },
 	{ key: "recurring", label: "Recurring" },
 ];
@@ -94,6 +101,24 @@ const TabIcon = ({ tab }: { tab: TabKey }) => {
 					<path d="M5 7h14M5 17h14M8 7l4 5 4-5" />
 				</svg>
 			);
+		case "benefits":
+			return (
+				<svg
+					aria-hidden
+					className="h-3.5 w-3.5"
+					fill="none"
+					stroke="currentColor"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeWidth="1.8"
+					viewBox="0 0 24 24"
+				>
+					<title>Benefits</title>
+					<path d="M20 12v8H4v-8" />
+					<path d="M2 7h20v5H2z" />
+					<path d="M12 7v13M12 7H8.5A2.5 2.5 0 1 1 11 4.5L12 7zM12 7h3.5A2.5 2.5 0 1 0 13 4.5L12 7z" />
+				</svg>
+			);
 		case "recurring":
 			return (
 				<svg
@@ -119,6 +144,7 @@ const TabIcon = ({ tab }: { tab: TabKey }) => {
 const matchActiveTab = (pathname: string): TabKey | null => {
 	if (/^\/console\/spaces\/[^/]+\/overview/.test(pathname)) return "overview";
 	if (/^\/console\/spaces\/[^/]+\/splits/.test(pathname)) return "splits";
+	if (/^\/console\/spaces\/[^/]+\/benefits/.test(pathname)) return "benefits";
 	if (/^\/console\/spaces\/[^/]+\/recurring/.test(pathname)) return "recurring";
 	if (pathname.startsWith("/console/chat/expenses")) return "expenses";
 	if (pathname.startsWith("/console/chat")) return "chat";
@@ -185,6 +211,7 @@ export const SpaceTabs = ({ className = "" }: SpaceTabsProps) => {
 		overview: `/console/spaces/${encodeURIComponent(sid)}/overview`,
 		chat: `/console/chat?spaceId=${encodeURIComponent(sid)}`,
 		expenses: `/console/chat/expenses?spaceId=${encodeURIComponent(sid)}`,
+		benefits: `/console/spaces/${encodeURIComponent(sid)}/benefits`,
 		splits: `/console/spaces/${encodeURIComponent(sid)}/splits`,
 		recurring: `/console/spaces/${encodeURIComponent(sid)}/recurring`,
 	};

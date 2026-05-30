@@ -42,6 +42,11 @@ test("shows the global composer on workspace pages but not native chat composer 
 	});
 	await expect(dock).toBeVisible();
 
+	await page.goto("/console/spaces/11/benefits", {
+		waitUntil: "domcontentloaded",
+	});
+	await expect(dock).toBeVisible();
+
 	await page.goto("/console/chat?spaceId=11", {
 		waitUntil: "domcontentloaded",
 	});
