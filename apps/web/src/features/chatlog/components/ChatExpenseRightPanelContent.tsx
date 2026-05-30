@@ -1,6 +1,7 @@
 import type { Transaction } from "@cofi/api";
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { openGlobalComposerIntent } from "../../../app/layout/workspaceSpaces/globalComposerIntent";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import type { ExpenseThreadController } from "../hooks/useExpenseThreadState";
 import { ExpenseThreadInlinePanel } from "./ExpenseThreadInlinePanel";
@@ -86,9 +87,14 @@ export const ChatExpenseRightPanelContent = ({
 	onWorkspaceEditModeChange,
 	workspaceEditSurfaceActive = false,
 }: Props) => {
+	const location = useLocation();
+	const navigate = useNavigate();
 	const { formatMoney, formatDateTime } = useUserFormat();
 	const spaceLabel = spaceName?.trim() || "this space";
 	const chatHref = `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}`;
+	const handleOpenAddExpense = () => {
+		openGlobalComposerIntent(navigate, location, "expense");
+	};
 
 	const stats = useMemo(() => {
 		const list = spaceTransactions ?? [];
@@ -251,12 +257,22 @@ export const ChatExpenseRightPanelContent = ({
 							>
 								{listLoading ? "Refreshing…" : "Refresh list"}
 							</button>
-							<Link
-								className="inline-flex h-10 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
-								to={chatHref}
-							>
-								Add expense
-							</Link>
+							{expensesWorkspaceRoute ? (
+								<button
+									className="inline-flex h-10 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+									onClick={handleOpenAddExpense}
+									type="button"
+								>
+									Add expense
+								</button>
+							) : (
+								<Link
+									className="inline-flex h-10 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+									to={chatHref}
+								>
+									Add expense
+								</Link>
+							)}
 						</div>
 					</section>
 				) : null}
