@@ -1,6 +1,5 @@
 /*
- * Transitional entrypoint for web app styles.
- * The canonical token/tailwind stylesheet still lives at cofi_client/src/index.css
- * until the full frontend FSD migration completes.
+ * Web app style entrypoint.
+ * Shared Ceits tokens live in packages/ui so active apps do not depend on the retired root client.
  */
-@import "../../../src/index.css";
+@import "../../../packages/ui/src/global.css";

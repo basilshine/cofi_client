@@ -1,9 +1,10 @@
 # Ceits Frontend (`cofi_client`)
 
-Frontend monorepo with two separate products:
+Frontend monorepo with three separate products:
 
 - `apps/telegram-webapp`: Telegram-embedded product
-- `apps/web`: public browser product
+- `apps/web`: authenticated browser workspace product
+- `apps/marketing`: public marketing/landing pages
 
 Shared cross-product modules:
 

@@ -16,6 +16,11 @@
 		}
 	},
 	"files": {
-		"ignore": ["node_modules", "dist", "build", "src/types/api-types.ts"]
+		"ignore": [
+			"node_modules",
+			"dist",
+			"build",
+			"packages/api/src/openapi-types.ts"
+		]
 	}
 }

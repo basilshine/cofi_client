@@ -8,7 +8,7 @@ const rootDir = path.resolve(
 	"..",
 );
 const schemaPath = path.resolve(rootDir, "../cofi_infra/shared/openapi.yaml");
-const outputPath = path.resolve(rootDir, "src/types/api-types.ts");
+const outputPath = path.resolve(rootDir, "packages/api/src/openapi-types.ts");
 const ast = await openapiTS(await readFile(schemaPath));
 
 await writeFile(outputPath, `${COMMENT_HEADER}${astToString(ast)}`, "utf8");
