@@ -556,6 +556,16 @@ export const createApiClient = (config: ApiClientConfig) => {
 					),
 					{ method: "POST", headers: authHeaders() },
 				),
+			confirmDocumentCandidate: (
+				spaceId: string | number,
+				candidateId: string | number,
+			) =>
+				fetchJson<DocumentCandidateState>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/document-candidates/${encodeURIComponent(String(candidateId))}/confirm`,
+					),
+					{ method: "POST", headers: authHeaders() },
+				),
 		},
 
 		drafts: {

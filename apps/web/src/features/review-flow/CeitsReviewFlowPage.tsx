@@ -62,6 +62,7 @@ type CandidateReviewItem = {
 	fields: Array<{ label: string; value: string }>;
 	tone: CandidateReviewTone;
 	confidenceLabel: string;
+	canMarkReviewed: boolean;
 	canSavePromo: boolean;
 	createdAt: string;
 	raw: BenefitCandidate | DocumentCandidate;
@@ -184,6 +185,15 @@ const candidateBadgeClass = (tone: CandidateReviewTone): string => {
 	}
 	return "border-border/70 bg-white text-muted-foreground";
 };
+
+const canMarkDocumentCandidateReviewed = (type: string): boolean =>
+	[
+		"payment_proof_candidate",
+		"privacy_signal_candidate",
+		"merge_candidate",
+		"supporting_document_candidate",
+		"space_suggestion_candidate",
+	].includes(type);
 
 const confidenceLabel = (confidence?: number): string =>
 	Number.isFinite(confidence) && confidence != null && confidence > 0
@@ -341,6 +351,9 @@ const toCandidateReviewItem = (
 		fields: summary.fields,
 		tone: candidateTone(candidate.candidate_type),
 		confidenceLabel: confidenceLabel(candidate.confidence),
+		canMarkReviewed:
+			source === "document" &&
+			canMarkDocumentCandidateReviewed(candidate.candidate_type),
 		canSavePromo: candidate.candidate_type === "promo_code_candidate",
 		createdAt: candidate.created_at,
 		raw: candidate,
@@ -785,6 +798,26 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 
+	const handleConfirmDocumentCandidate = async (
+		candidate: DocumentCandidate,
+	) => {
+		if (spaceId == null) return;
+		setDocumentCandidateActingId(candidate.id);
+		setDocumentCandidateError(null);
+		try {
+			await apiClient.spaces.confirmDocumentCandidate(spaceId, candidate.id);
+			setDocumentCandidates((prev) =>
+				prev.filter((item) => item.id !== candidate.id),
+			);
+		} catch (e) {
+			setDocumentCandidateError(
+				e instanceof Error ? e.message : "Failed to mark candidate reviewed",
+			);
+		} finally {
+			setDocumentCandidateActingId(null);
+		}
+	};
+
 	const handleSavePromoCandidate = async (candidate: BenefitCandidate) => {
 		if (spaceId == null) return;
 		setBenefitCandidateActingId(candidate.id);
@@ -979,6 +1012,20 @@ export const CeitsReviewFlowPage = () => {
 															type="button"
 														>
 															{isActing ? "Saving" : "Save promo"}
+														</button>
+													) : null}
+													{candidate.canMarkReviewed ? (
+														<button
+															className="rounded-full border border-[rgba(78,92,72,0.26)] bg-[rgba(246,249,242,0.92)] px-2 py-0.5 text-[11px] font-semibold text-[#495944] transition hover:border-[rgba(78,92,72,0.42)] hover:bg-[rgba(232,239,225,0.96)] disabled:opacity-50"
+															disabled={isActing}
+															onClick={() =>
+																void handleConfirmDocumentCandidate(
+																	candidate.raw as DocumentCandidate,
+																)
+															}
+															type="button"
+														>
+															{isActing ? "Saving" : "Reviewed"}
 														</button>
 													) : null}
 													<button
