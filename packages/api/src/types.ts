@@ -289,6 +289,40 @@ export type BenefitCandidateListResponse = {
 	candidates: BenefitCandidate[];
 };
 
+export type DocumentCandidateType =
+	| "payment_proof_candidate"
+	| "privacy_signal_candidate"
+	| "recurring_candidate"
+	| "membership_candidate"
+	| "reminder_candidate"
+	| "merge_candidate"
+	| "space_suggestion_candidate"
+	| "supporting_document_candidate";
+
+export type DocumentCandidate = {
+	id: number;
+	tenant_id: number;
+	source_document_id: number;
+	candidate_type: DocumentCandidateType | string;
+	title: string;
+	structured_data?: Record<string, unknown>;
+	confidence: number;
+	status: BenefitCandidateStatus | string;
+	created_at: string;
+	resolved_at?: string | null;
+	source_type: string;
+	input_kind: string;
+	document_type: string;
+	merchant_text?: string;
+	document_date?: string | null;
+	total_amount?: number | null;
+	currency?: string;
+};
+
+export type DocumentCandidateListResponse = {
+	candidates: DocumentCandidate[];
+};
+
 export type BenefitCandidateState = {
 	id: number;
 	status: string;

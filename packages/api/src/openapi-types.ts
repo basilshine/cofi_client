@@ -1241,6 +1241,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/document-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List document intelligence candidates waiting for review
+         * @description Returns draft document-level candidates such as payment proof, privacy, merge/supporting document, space suggestion, recurring, membership, and reminder signals for the selected space.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Maximum number of draft candidates to return. */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Draft document candidates ordered by newest first. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentCandidateListResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/benefits/candidates/{candidateId}/save-promo": {
         parameters: {
             query?: never;
@@ -5176,6 +5228,39 @@ export interface components {
         };
         BenefitCandidateListResponse: {
             candidates?: components["schemas"]["BenefitCandidate"][];
+        };
+        /** @description Reviewable document-level signal extracted from a source document. */
+        DocumentCandidate: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            tenant_id?: number;
+            /** Format: int64 */
+            source_document_id?: number;
+            /** @enum {string} */
+            candidate_type?: "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate";
+            title?: string;
+            structured_data?: {
+                [key: string]: unknown;
+            };
+            confidence?: number;
+            /** @enum {string} */
+            status?: "draft" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            resolved_at?: string;
+            source_type?: string;
+            input_kind?: string;
+            document_type?: string;
+            merchant_text?: string;
+            /** Format: date-time */
+            document_date?: string;
+            total_amount?: number;
+            currency?: string;
+        };
+        DocumentCandidateListResponse: {
+            candidates?: components["schemas"]["DocumentCandidate"][];
         };
         BenefitCandidateState: {
             /** Format: int64 */

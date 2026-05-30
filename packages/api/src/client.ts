@@ -3,6 +3,7 @@ import {
 	type BenefitCandidateListResponse,
 	type ChatMessage,
 	type CreatePromoCodeRequest,
+	type DocumentCandidateListResponse,
 	type Draft,
 	type ExpenseDetail,
 	type ExpensePatch,
@@ -531,6 +532,19 @@ export const createApiClient = (config: ApiClientConfig) => {
 					),
 					{ method: "POST", headers: authHeaders() },
 				),
+			listDocumentCandidates: (
+				spaceId: string | number,
+				params?: { limit?: number },
+			) => {
+				const qs =
+					params?.limit != null
+						? `?limit=${encodeURIComponent(String(params.limit))}`
+						: "";
+				return fetchJson<DocumentCandidateListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/document-candidates${qs}`),
+					{ method: "GET", headers: authHeaders() },
+				);
+			},
 		},
 
 		drafts: {

@@ -1,6 +1,7 @@
 import type {
 	DashboardExpenseThreadApprovalItem,
 	DashboardReviewQueueItem,
+	DocumentCandidate,
 	ExpenseDetail,
 	ExpenseSplitRow,
 	Space,
@@ -40,6 +41,34 @@ type ReviewItem = {
 	splits: ExpenseSplitRow[];
 	splitMethod: "equal" | "custom" | "manual";
 	isDraftLike: boolean;
+};
+
+const documentCandidateLabel = (type: string): string => {
+	if (type === "payment_proof_candidate") return "Payment proof";
+	if (type === "privacy_signal_candidate") return "Privacy signal";
+	if (type === "merge_candidate") return "Merge candidate";
+	if (type === "supporting_document_candidate") return "Supporting document";
+	if (type === "space_suggestion_candidate") return "Space suggestion";
+	if (type === "recurring_candidate") return "Recurring hint";
+	if (type === "membership_candidate") return "Membership hint";
+	if (type === "reminder_candidate") return "Reminder hint";
+	return type.replace(/_/g, " ");
+};
+
+const documentCandidateTitle = (candidate: DocumentCandidate): string =>
+	candidate.title?.trim() ||
+	candidate.merchant_text?.trim() ||
+	documentCandidateLabel(candidate.candidate_type);
+
+const documentCandidateMeta = (candidate: DocumentCandidate): string => {
+	const parts = [
+		candidate.source_type,
+		candidate.document_type,
+		candidate.merchant_text,
+	]
+		.map((value) => value?.trim())
+		.filter(Boolean);
+	return parts.length ? parts.join(" • ") : "Document intelligence";
 };
 
 const isThreadApproval = (
@@ -109,6 +138,9 @@ export const CeitsReviewFlowPage = () => {
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
 	const [queue, setQueue] = useState<ReviewItem[]>([]);
+	const [documentCandidates, setDocumentCandidates] = useState<
+		DocumentCandidate[]
+	>([]);
 	const [currentId, setCurrentId] = useState<string | null>(null);
 	const [filter, setFilter] = useState<ReviewFilter>("all");
 	const [acting, setActing] = useState(false);
@@ -139,16 +171,20 @@ export const CeitsReviewFlowPage = () => {
 		setError(null);
 		void (async () => {
 			try {
-				const [dash, tx, mem, participantRes] = await Promise.all([
-					apiClient.dashboard.get({
-						variant: "personal",
-						period: "month",
-						space_id: spaceId,
-					}),
-					apiClient.spaces.listTransactions(spaceId, { limit: 120 }),
-					apiClient.spaces.listMembers(spaceId).catch(() => null),
-					apiClient.spaces.listParticipants(spaceId).catch(() => null),
-				]);
+				const [dash, tx, mem, participantRes, documentCandidateRes] =
+					await Promise.all([
+						apiClient.dashboard.get({
+							variant: "personal",
+							period: "month",
+							space_id: spaceId,
+						}),
+						apiClient.spaces.listTransactions(spaceId, { limit: 120 }),
+						apiClient.spaces.listMembers(spaceId).catch(() => null),
+						apiClient.spaces.listParticipants(spaceId).catch(() => null),
+						apiClient.spaces
+							.listDocumentCandidates(spaceId, { limit: 50 })
+							.catch(() => null),
+					]);
 
 				const txById = new Map<number, Transaction>(
 					tx
@@ -327,6 +363,7 @@ export const CeitsReviewFlowPage = () => {
 				if (!cancelled) {
 					setMembers(mem?.members ?? []);
 					setParticipants(participantRes?.participants ?? []);
+					setDocumentCandidates(documentCandidateRes?.candidates ?? []);
 					setQueue(built);
 					setCurrentId(built[0]?.id ?? null);
 				}
@@ -499,7 +536,62 @@ export const CeitsReviewFlowPage = () => {
 							{error}
 						</p>
 					) : null}
-					{!loading && !error && current == null ? (
+					{!loading && !error && documentCandidates.length > 0 ? (
+						<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.92)] p-4 shadow-sm">
+							<div className="flex flex-wrap items-start justify-between gap-3">
+								<div>
+									<p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+										Document intelligence
+									</p>
+									<h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+										Document signals waiting for review
+									</h2>
+									<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+										These are not expenses yet. Review them before attaching,
+										merging, or projecting anything into the space.
+									</p>
+								</div>
+								<span className="rounded-full border border-[rgba(120,100,80,0.22)] bg-white px-2.5 py-1 text-xs font-semibold text-foreground/75">
+									{documentCandidates.length} pending
+								</span>
+							</div>
+							<div className="mt-4 grid gap-2 md:grid-cols-2">
+								{documentCandidates.slice(0, 6).map((candidate) => (
+									<article
+										className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-white/80 p-3"
+										key={candidate.id}
+									>
+										<div className="flex items-start justify-between gap-3">
+											<div className="min-w-0">
+												<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+													{documentCandidateLabel(candidate.candidate_type)}
+												</p>
+												<h3 className="mt-1 truncate text-sm font-semibold text-foreground">
+													{documentCandidateTitle(candidate)}
+												</h3>
+											</div>
+											<span className="shrink-0 rounded-full border border-[rgba(102,134,108,0.28)] bg-[rgba(237,247,239,0.82)] px-2 py-0.5 text-[11px] font-semibold text-[#58745f]">
+												Draft
+											</span>
+										</div>
+										<p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+											{documentCandidateMeta(candidate)}
+										</p>
+									</article>
+								))}
+							</div>
+							{documentCandidates.length > 6 ? (
+								<p className="mt-3 text-xs text-muted-foreground">
+									Showing 6 newest document signals. Full resolution controls
+									come with the unified candidate review surface.
+								</p>
+							) : null}
+						</section>
+					) : null}
+					{!loading &&
+					!error &&
+					current == null &&
+					documentCandidates.length === 0 ? (
 						<section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.9)] px-6 py-8 text-center shadow-sm">
 							<h2 className="text-2xl font-semibold tracking-tight text-foreground">
 								All caught up
