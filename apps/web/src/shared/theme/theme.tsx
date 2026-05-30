@@ -17,18 +17,17 @@ export const themeRegistry: Record<
 	{ label: string; description: string }
 > = {
 	"legacy-technical": {
-		label: "Theme 1 — Legacy technical",
-		description:
-			"Current Ceits interface with technical density and strong contrast.",
+		label: "Classic technical",
+		description: "Older dense interface kept for existing accounts.",
 	},
 	"ceits-editorial": {
-		label: "Theme 2 — Ceits editorial",
+		label: "Ceits editorial",
 		description:
 			"Premium editorial styling with softer surfaces and refined hierarchy.",
 	},
 };
 
-export const DEFAULT_THEME_ID: ThemeId = "legacy-technical";
+export const DEFAULT_THEME_ID: ThemeId = "ceits-editorial";
 
 const isThemeId = (value: unknown): value is ThemeId =>
 	typeof value === "string" && (themeIds as readonly string[]).includes(value);
@@ -58,14 +57,25 @@ export const getThemeFromUserPreferences = (value: unknown): ThemeId | null => {
 		return null;
 	const appearance = (value as Record<string, unknown>).appearance;
 	if (
-		typeof appearance !== "object" ||
-		appearance === null ||
-		Array.isArray(appearance)
+		typeof appearance === "object" &&
+		appearance !== null &&
+		!Array.isArray(appearance)
 	) {
-		return null;
+		const theme = (appearance as Record<string, unknown>).theme;
+		if (isThemeId(theme)) return theme;
 	}
-	const theme = (appearance as Record<string, unknown>).theme;
-	return isThemeId(theme) ? theme : null;
+
+	const legacyTheme = (value as Record<string, unknown>).theme;
+	if (
+		typeof legacyTheme === "object" &&
+		legacyTheme !== null &&
+		!Array.isArray(legacyTheme)
+	) {
+		const legacyPreference = (legacyTheme as Record<string, unknown>)
+			.preference;
+		if (isThemeId(legacyPreference)) return legacyPreference;
+	}
+	return null;
 };
 
 type ThemeContextValue = {
