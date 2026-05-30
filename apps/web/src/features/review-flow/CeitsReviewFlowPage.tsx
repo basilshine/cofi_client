@@ -21,6 +21,12 @@ import { apiClient } from "../../shared/lib/apiClient";
 type ReviewKind = "draft" | "split_approval" | "needs_confirmation";
 type ReviewFilter = "all" | "draft" | "split_approval" | "needs_confirmation";
 type CandidateReviewSource = "benefit" | "document";
+type CandidateReviewTone =
+	| "benefit"
+	| "document"
+	| "split"
+	| "participant"
+	| "warning";
 
 type ReviewItem = {
 	id: string;
@@ -53,8 +59,11 @@ type CandidateReviewItem = {
 	title: string;
 	meta: string;
 	detail: string;
+	fields: Array<{ label: string; value: string }>;
+	tone: CandidateReviewTone;
 	confidenceLabel: string;
 	canSavePromo: boolean;
+	createdAt: string;
 	raw: BenefitCandidate | DocumentCandidate;
 };
 
@@ -113,106 +122,230 @@ const firstCandidateText = (
 	return null;
 };
 
+const nestedCandidateData = (
+	data: Record<string, unknown>,
+	keys: string[],
+): Record<string, unknown> => {
+	for (const key of keys) {
+		const nested = toRecord(data[key]);
+		if (Object.keys(nested).length > 0) return nested;
+	}
+	return data;
+};
+
+const appendField = (
+	fields: Array<{ label: string; value: string }>,
+	label: string,
+	value: string | null | undefined,
+) => {
+	if (value == null || value.trim() === "") return;
+	fields.push({ label, value: value.trim() });
+};
+
+const candidateTone = (type: string): CandidateReviewTone => {
+	if (type === "promo_code_candidate" || type === "loyalty_event_candidate")
+		return "benefit";
+	if (type === "split_candidate") return "split";
+	if (type === "participant_placeholder_candidate") return "participant";
+	if (
+		type === "payment_proof_candidate" ||
+		type === "merge_candidate" ||
+		type === "supporting_document_candidate"
+	)
+		return "document";
+	return "warning";
+};
+
+const candidateToneClass = (tone: CandidateReviewTone): string => {
+	if (tone === "benefit") {
+		return "border-[rgba(91,128,91,0.24)] bg-[rgba(249,255,249,0.88)]";
+	}
+	if (tone === "split") {
+		return "border-[rgba(170,126,54,0.25)] bg-[rgba(255,250,238,0.9)]";
+	}
+	if (tone === "participant") {
+		return "border-[rgba(89,112,150,0.22)] bg-[rgba(247,250,255,0.9)]";
+	}
+	if (tone === "document") {
+		return "border-[rgba(92,92,86,0.2)] bg-white/84";
+	}
+	return "border-[rgba(176,126,70,0.24)] bg-[rgba(255,249,240,0.9)]";
+};
+
+const candidateBadgeClass = (tone: CandidateReviewTone): string => {
+	if (tone === "benefit") {
+		return "border-[rgba(102,134,108,0.28)] bg-[rgba(237,247,239,0.82)] text-[#58745f]";
+	}
+	if (tone === "split") {
+		return "border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] text-[#73501b]";
+	}
+	if (tone === "participant") {
+		return "border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.82)] text-[#405574]";
+	}
+	return "border-border/70 bg-white text-muted-foreground";
+};
+
 const confidenceLabel = (confidence?: number): string =>
 	Number.isFinite(confidence) && confidence != null && confidence > 0
 		? `${Math.round(confidence * 100)}%`
 		: "Review";
 
-const candidateDetail = (
+const candidateSummary = (
 	candidate: BenefitCandidate | DocumentCandidate,
-): string => {
+): { detail: string; fields: Array<{ label: string; value: string }> } => {
 	const data = candidateData(candidate);
 	const type = candidate.candidate_type;
+	const fields: Array<{ label: string; value: string }> = [];
 	if (type === "promo_code_candidate") {
-		return (
-			firstCandidateText(data, [
-				"promo_code",
-				"code",
-				"coupon",
-				"discount_code",
-			]) ?? "Promo code needs review"
+		const promo = nestedCandidateData(data, ["promo", "coupon"]);
+		const code = firstCandidateText(promo, [
+			"promo_code",
+			"code",
+			"coupon",
+			"discount_code",
+		]);
+		appendField(
+			fields,
+			"Discount",
+			firstCandidateText(promo, ["discount_type"]),
 		);
+		appendField(
+			fields,
+			"Value",
+			firstCandidateText(promo, ["discount_value", "discount_amount", "value"]),
+		);
+		appendField(fields, "Until", firstCandidateText(promo, ["valid_until"]));
+		appendField(
+			fields,
+			"Redeem",
+			firstCandidateText(promo, ["redeem_platform", "redeem_merchant_name"]),
+		);
+		return { detail: code ?? "Promo code needs review", fields };
 	}
 	if (type === "loyalty_event_candidate") {
-		const program = firstCandidateText(data, [
+		const loyalty = nestedCandidateData(data, ["loyalty", "bonus"]);
+		const program = firstCandidateText(loyalty, [
 			"program_name",
 			"loyalty_program",
 			"name",
 		]);
-		const balance = firstCandidateText(data, [
+		const balance = firstCandidateText(loyalty, [
 			"available_balance",
 			"points_earned",
 			"points_spent",
 		]);
-		return (
-			[program, balance ? `${balance} points` : null]
-				.filter(Boolean)
-				.join(" • ") || "Loyalty event needs review"
+		appendField(
+			fields,
+			"Balance",
+			firstCandidateText(loyalty, ["available_balance"]),
 		);
+		appendField(
+			fields,
+			"Earned",
+			firstCandidateText(loyalty, ["points_earned"]),
+		);
+		appendField(fields, "Spent", firstCandidateText(loyalty, ["points_spent"]));
+		appendField(fields, "Card", firstCandidateText(loyalty, ["card_mask"]));
+		return {
+			detail:
+				[program, balance ? `${balance} points` : null]
+					.filter(Boolean)
+					.join(" • ") || "Loyalty event needs review",
+			fields,
+		};
 	}
 	if (type === "split_candidate") {
 		const strategy = firstCandidateText(data, ["split_strategy", "strategy"]);
 		const count = firstCandidateText(data, ["participant_count"]);
-		return (
-			[strategy, count ? `${count} participants` : null]
-				.filter(Boolean)
-				.join(" • ") || "Split details need review"
-		);
+		appendField(fields, "Strategy", strategy);
+		appendField(fields, "People", count);
+		return {
+			detail:
+				[strategy, count ? `${count} participants` : null]
+					.filter(Boolean)
+					.join(" • ") || "Split details need review",
+			fields,
+		};
 	}
 	if (type === "participant_placeholder_candidate") {
-		return (
-			firstCandidateText(data, [
-				"display_name",
-				"name",
-				"email",
-				"telegram_username",
-			]) ?? "Participant placeholder"
+		const name =
+			firstCandidateText(data, ["display_name", "name"]) ??
+			"Participant placeholder";
+		appendField(fields, "Email", firstCandidateText(data, ["email"]));
+		appendField(
+			fields,
+			"Telegram",
+			firstCandidateText(data, ["telegram_username", "telegram"]),
 		);
+		appendField(fields, "Type", firstCandidateText(data, ["participant_type"]));
+		return { detail: name, fields };
 	}
 	if (type === "payment_proof_candidate") {
-		return (
-			firstCandidateText(data, [
-				"merchant_text",
-				"amount",
-				"card_last4",
-				"rrn",
-			]) ?? "Payment proof needs review"
+		const payment = nestedCandidateData(data, ["payment_proof", "payment"]);
+		appendField(fields, "Amount", firstCandidateText(payment, ["amount"]));
+		appendField(fields, "Card", firstCandidateText(payment, ["card_last4"]));
+		appendField(fields, "RRN", firstCandidateText(payment, ["rrn"]));
+		appendField(
+			fields,
+			"Terminal",
+			firstCandidateText(payment, ["terminal_id"]),
 		);
+		return {
+			detail:
+				firstCandidateText(payment, [
+					"merchant_text",
+					"amount",
+					"card_last4",
+					"rrn",
+				]) ?? "Payment proof needs review",
+			fields,
+		};
 	}
-	if (type === "merge_candidate") return "Attach to an existing record";
-	if (type === "supporting_document_candidate")
-		return "Keep as supporting proof";
-	return "Review before anything becomes final.";
+	if (type === "merge_candidate") {
+		appendField(fields, "Action", firstCandidateText(data, ["action"]));
+		return { detail: "Attach to an existing record", fields };
+	}
+	if (type === "supporting_document_candidate") {
+		appendField(fields, "Role", firstCandidateText(data, ["document_role"]));
+		return { detail: "Keep as supporting proof", fields };
+	}
+	return { detail: "Review before anything becomes final.", fields };
 };
 
 const toCandidateReviewItem = (
 	source: CandidateReviewSource,
 	candidate: BenefitCandidate | DocumentCandidate,
-): CandidateReviewItem => ({
-	id: Number(candidate.id),
-	source,
-	candidateType: candidate.candidate_type,
-	label: documentCandidateLabel(candidate.candidate_type),
-	title:
-		candidate.title?.trim() ||
-		candidate.merchant_text?.trim() ||
-		documentCandidateLabel(candidate.candidate_type),
-	meta:
-		source === "document"
-			? documentCandidateMeta(candidate as DocumentCandidate)
-			: [
-					(candidate as BenefitCandidate).source_type,
-					(candidate as BenefitCandidate).input_kind,
-					(candidate as BenefitCandidate).merchant_text,
-				]
-					.map((value) => value?.trim())
-					.filter(Boolean)
-					.join(" • ") || "Benefits intelligence",
-	detail: candidateDetail(candidate),
-	confidenceLabel: confidenceLabel(candidate.confidence),
-	canSavePromo: candidate.candidate_type === "promo_code_candidate",
-	raw: candidate,
-});
+): CandidateReviewItem => {
+	const summary = candidateSummary(candidate);
+	return {
+		id: Number(candidate.id),
+		source,
+		candidateType: candidate.candidate_type,
+		label: documentCandidateLabel(candidate.candidate_type),
+		title:
+			candidate.title?.trim() ||
+			candidate.merchant_text?.trim() ||
+			documentCandidateLabel(candidate.candidate_type),
+		meta:
+			source === "document"
+				? documentCandidateMeta(candidate as DocumentCandidate)
+				: [
+						(candidate as BenefitCandidate).source_type,
+						(candidate as BenefitCandidate).input_kind,
+						(candidate as BenefitCandidate).merchant_text,
+					]
+						.map((value) => value?.trim())
+						.filter(Boolean)
+						.join(" • ") || "Benefits intelligence",
+		detail: summary.detail,
+		fields: summary.fields,
+		tone: candidateTone(candidate.candidate_type),
+		confidenceLabel: confidenceLabel(candidate.confidence),
+		canSavePromo: candidate.candidate_type === "promo_code_candidate",
+		createdAt: candidate.created_at,
+		raw: candidate,
+	};
+};
 
 const isThreadApproval = (
 	item: DashboardReviewQueueItem,
@@ -557,14 +690,22 @@ export const CeitsReviewFlowPage = () => {
 		[filteredQueue, currentId],
 	);
 	const captureCandidates = useMemo(
-		() => [
-			...benefitCandidates.map((candidate) =>
-				toCandidateReviewItem("benefit", candidate),
-			),
-			...documentCandidates.map((candidate) =>
-				toCandidateReviewItem("document", candidate),
-			),
-		],
+		() =>
+			[
+				...benefitCandidates.map((candidate) =>
+					toCandidateReviewItem("benefit", candidate),
+				),
+				...documentCandidates.map((candidate) =>
+					toCandidateReviewItem("document", candidate),
+				),
+			].sort((a, b) => {
+				const left = Date.parse(a.createdAt);
+				const right = Date.parse(b.createdAt);
+				if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
+				if (!Number.isFinite(left)) return 1;
+				if (!Number.isFinite(right)) return -1;
+				return right - left;
+			}),
 		[benefitCandidates, documentCandidates],
 	);
 	const idx = useMemo(
@@ -808,7 +949,7 @@ export const CeitsReviewFlowPage = () => {
 									const isActing = actingId === candidate.id;
 									return (
 										<article
-											className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-white/80 p-3"
+											className={`rounded-xl border p-3 ${candidateToneClass(candidate.tone)}`}
 											key={`${candidate.source}-${candidate.id}`}
 										>
 											<div className="flex items-start justify-between gap-3">
@@ -821,7 +962,9 @@ export const CeitsReviewFlowPage = () => {
 													</h3>
 												</div>
 												<div className="flex shrink-0 items-center gap-1.5">
-													<span className="rounded-full border border-[rgba(102,134,108,0.28)] bg-[rgba(237,247,239,0.82)] px-2 py-0.5 text-[11px] font-semibold text-[#58745f]">
+													<span
+														className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${candidateBadgeClass(candidate.tone)}`}
+													>
 														{candidate.confidenceLabel}
 													</span>
 													{candidate.canSavePromo ? (
@@ -853,6 +996,23 @@ export const CeitsReviewFlowPage = () => {
 											<p className="mt-2 text-xs font-medium text-foreground/82">
 												{candidate.detail}
 											</p>
+											{candidate.fields.length > 0 ? (
+												<div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+													{candidate.fields.slice(0, 4).map((field) => (
+														<div
+															className="min-w-0 rounded-lg border border-[rgba(120,100,80,0.12)] bg-white/58 px-2.5 py-1.5"
+															key={`${candidate.source}-${candidate.id}-${field.label}`}
+														>
+															<p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+																{field.label}
+															</p>
+															<p className="mt-0.5 truncate text-xs font-medium text-foreground/82">
+																{field.value}
+															</p>
+														</div>
+													))}
+												</div>
+											) : null}
 											<p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
 												{candidate.meta}
 											</p>
