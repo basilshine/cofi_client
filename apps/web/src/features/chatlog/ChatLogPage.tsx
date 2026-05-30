@@ -2,7 +2,6 @@ import type {
 	ChatMessage,
 	SpaceMember,
 	SpaceRole,
-	Transaction,
 	WsEnvelope,
 } from "@cofi/api";
 import {
@@ -58,7 +57,7 @@ import {
 } from "./components/ThreadDiscussionRichText";
 import type { BuilderItem } from "./components/transactionBuilderTypes";
 import { parseTags, toNumber } from "./components/transactionBuilderTypes";
-import { useExpenseThreadState } from "./hooks/useExpenseThreadState";
+import { useSpaceExpensesWorkspaceState } from "./hooks/useSpaceExpensesWorkspaceState";
 import {
 	asChronological,
 	isMainChatUnread,
@@ -170,27 +169,6 @@ export const ChatLogPage = () => {
 	const [hardPurgeFeedback, setHardPurgeFeedback] = useState<string | null>(
 		null,
 	);
-	/** When set, the workspace right panel shows the full expense thread (same features as before). */
-	const [sidebarThreadExpenseId, setSidebarThreadExpenseId] = useState<
-		string | number | null
-	>(null);
-	/** Space Expenses route: expense thread is in workspace edit mode (dim main list). */
-	const [
-		expenseInspectorWorkspaceEditing,
-		setExpenseInspectorWorkspaceEditing,
-	] = useState(false);
-	const [spaceTransactions, setSpaceTransactions] = useState<
-		Transaction[] | null
-	>(null);
-	const [spaceTransactionsError, setSpaceTransactionsError] = useState<
-		string | null
-	>(null);
-	const [spaceTransactionsLoading, setSpaceTransactionsLoading] =
-		useState(false);
-	/** One-shot scroll to a draft line after deep link (`?line=`). Cleared when consumed or thread closes. */
-	const [threadDraftLineScroll, setThreadDraftLineScroll] = useState<
-		number | null
-	>(null);
 	const [editingMessageId, setEditingMessageId] = useState<
 		string | number | null
 	>(null);
@@ -208,52 +186,39 @@ export const ChatLogPage = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const [searchParams, setSearchParams] = useSearchParams();
+	const isExpensesRoute = location.pathname.startsWith(
+		"/console/chat/expenses",
+	);
 	/** Dedupe processing the same `?invite=` token from the URL in one session. */
 	const lastUrlInviteTokenProcessedRef = useRef<string | null>(null);
 	/** When true, auto-run accept invite once workspace + WS are ready (from invite link). */
 	const autoAcceptInviteFromUrlRef = useRef(false);
 	const workspaceScopeRef = useRef<ChatWorkspaceScope | null>(null);
 	const prevWorkspaceTenantRef = useRef<number | null>(null);
+	const openExpenseInspectorPanel = useCallback(() => {
+		setRightSidebarExpanded(true);
+	}, [setRightSidebarExpanded]);
 
-	const expenseThreadCtrl = useExpenseThreadState(
-		selectedSpaceId,
+	const {
+		clearDraftLineScroll,
+		clearExpenseThread,
+		closeExpenseThread,
+		expenseInspectorWorkspaceEditing,
+		expenseThreadCtrl,
+		loadSpaceTransactions,
+		openExpenseThread,
+		selectExpense,
+		setExpenseInspectorWorkspaceEditing,
 		sidebarThreadExpenseId,
-	);
-
-	const loadSpaceTransactions = useCallback(async () => {
-		if (selectedSpaceId == null) {
-			setSpaceTransactions(null);
-			return;
-		}
-		setSpaceTransactionsLoading(true);
-		setSpaceTransactionsError(null);
-		try {
-			const data = await apiClient.spaces.listTransactions(selectedSpaceId, {
-				limit: 200,
-			});
-			setSpaceTransactions(data ?? []);
-		} catch (e) {
-			setSpaceTransactions(null);
-			setSpaceTransactionsError(
-				e instanceof Error ? e.message : "Failed to load expenses",
-			);
-		} finally {
-			setSpaceTransactionsLoading(false);
-		}
-	}, [selectedSpaceId]);
-
-	useEffect(() => {
-		void loadSpaceTransactions();
-	}, [loadSpaceTransactions]);
-
-	useEffect(() => {
-		const onExpensesRoute = location.pathname.startsWith(
-			"/console/chat/expenses",
-		);
-		if (!onExpensesRoute || sidebarThreadExpenseId == null) {
-			setExpenseInspectorWorkspaceEditing(false);
-		}
-	}, [location.pathname, sidebarThreadExpenseId]);
+		spaceTransactions,
+		spaceTransactionsError,
+		spaceTransactionsLoading,
+		threadDraftLineScroll,
+	} = useSpaceExpensesWorkspaceState({
+		isExpensesRoute,
+		onOpenInspector: openExpenseInspectorPanel,
+		selectedSpaceId,
+	});
 
 	useEffect(() => {
 		workspaceScopeRef.current = workspaceScope;
@@ -292,11 +257,10 @@ export const ChatLogPage = () => {
 		setMessages(null);
 		setOldestMessageId(null);
 		setHasMore(true);
-		setSidebarThreadExpenseId(null);
-		setThreadDraftLineScroll(null);
+		clearExpenseThread();
 		setLatestMainMessageIdBySpace({});
 		setErrorMessage(null);
-	}, [workspaceScope]);
+	}, [workspaceScope, clearExpenseThread]);
 
 	useEffect(() => {
 		spacesRef.current = spaces;
@@ -539,8 +503,7 @@ export const ChatLogPage = () => {
 		setHasMore(true);
 
 		if (opts?.openThreadExpenseId == null) {
-			setSidebarThreadExpenseId(null);
-			setThreadDraftLineScroll(null);
+			clearExpenseThread();
 		}
 
 		setIsLoading(true);
@@ -578,13 +541,12 @@ export const ChatLogPage = () => {
 
 			if (opts?.openThreadExpenseId != null) {
 				setComposerMode("message");
-				setSidebarThreadExpenseId(opts.openThreadExpenseId);
-				setRightSidebarExpanded(true);
-				if (opts.openThreadDraftLine != null && opts.openThreadDraftLine >= 1) {
-					setThreadDraftLineScroll(opts.openThreadDraftLine);
-				} else {
-					setThreadDraftLineScroll(null);
-				}
+				openExpenseThread(opts.openThreadExpenseId, {
+					draftLine:
+						opts.openThreadDraftLine != null && opts.openThreadDraftLine >= 1
+							? opts.openThreadDraftLine
+							: null,
+				});
 			}
 			const sidNum = Number(spaceId);
 			if (Number.isFinite(sidNum) && sidNum > 0) touchRecentSpaceId(sidNum);
@@ -593,8 +555,7 @@ export const ChatLogPage = () => {
 			setMembers(null);
 			setCanManageMemberRoles(false);
 			setMessages(null);
-			setSidebarThreadExpenseId(null);
-			setThreadDraftLineScroll(null);
+			clearExpenseThread();
 			setErrorMessage(
 				err instanceof Error ? err.message : "Failed to load space",
 			);
@@ -656,16 +617,14 @@ export const ChatLogPage = () => {
 	const openExpenseInSidebar = useCallback(
 		(expenseId: string | number) => {
 			setComposerMode("message");
-			setThreadDraftLineScroll(null);
-			setSidebarThreadExpenseId(expenseId);
-			setRightSidebarExpanded(true);
+			openExpenseThread(expenseId);
 		},
-		[setRightSidebarExpanded],
+		[openExpenseThread],
 	);
 
 	const handleDraftLineScrollConsumed = useCallback(() => {
-		setThreadDraftLineScroll(null);
-	}, []);
+		clearDraftLineScroll();
+	}, [clearDraftLineScroll]);
 
 	useEffect(() => {
 		const st = location.state as ChatLogLocationState | null;
@@ -696,20 +655,14 @@ export const ChatLogPage = () => {
 			return;
 		}
 		setComposerMode("message");
-		setSidebarThreadExpenseId(eid);
-		setRightSidebarExpanded(true);
-		if (draftLine != null) {
-			setThreadDraftLineScroll(draftLine);
-		} else {
-			setThreadDraftLineScroll(null);
-		}
+		openExpenseThread(eid, { draftLine: draftLine ?? null });
 	}, [
 		location.hash,
 		location.pathname,
 		location.search,
 		location.state,
 		navigate,
-		setRightSidebarExpanded,
+		openExpenseThread,
 	]);
 
 	useEffect(() => {
@@ -1498,14 +1451,10 @@ export const ChatLogPage = () => {
 			spaces: spacesSortedForSidebar,
 			selectedSpaceId,
 			onSelectSpace: (id: string | number) => {
-				setSidebarThreadExpenseId(null);
-				setThreadDraftLineScroll(null);
+				clearExpenseThread();
 				setSelectedSpaceId(id);
 			},
-			onClearThread: () => {
-				setSidebarThreadExpenseId(null);
-				setThreadDraftLineScroll(null);
-			},
+			onClearThread: clearExpenseThread,
 			spaceHasUnread: (spaceId) =>
 				isMainChatUnread(
 					readLastReadMain(spaceId),
@@ -1577,8 +1526,7 @@ export const ChatLogPage = () => {
 		inviteSuggestionsNonce,
 		incomingInvitesRefreshKey,
 		latestMainMessageIdBySpace,
-		setSidebarThreadExpenseId,
-		setThreadDraftLineScroll,
+		clearExpenseThread,
 	]);
 
 	useEffect(() => {
@@ -1588,17 +1536,14 @@ export const ChatLogPage = () => {
 	useEffect(() => () => setChatSidebarProps(null), [setChatSidebarProps]);
 
 	const handleCloseSidebarThread = useCallback(() => {
-		setSidebarThreadExpenseId(null);
-		setThreadDraftLineScroll(null);
-		void loadSpaceTransactions();
-	}, [loadSpaceTransactions]);
+		closeExpenseThread();
+	}, [closeExpenseThread]);
 
 	const handleSelectExpenseFromPanel = useCallback(
 		(expenseId: string | number) => {
-			setSidebarThreadExpenseId(expenseId);
-			setRightSidebarExpanded(true);
+			selectExpense(expenseId);
 		},
-		[setRightSidebarExpanded],
+		[selectExpense],
 	);
 
 	const handleInsertLineLinkToMainChat = useCallback((markdown: string) => {
@@ -1620,11 +1565,9 @@ export const ChatLogPage = () => {
 				return;
 			}
 			setComposerMode("message");
-			setSidebarThreadExpenseId(link.expenseId);
-			setRightSidebarExpanded(true);
-			setThreadDraftLineScroll(draftLine ?? null);
+			openExpenseThread(link.expenseId, { draftLine: draftLine ?? null });
 		},
-		[selectedSpaceId, setRightSidebarExpanded],
+		[selectedSpaceId, openExpenseThread],
 	);
 
 	useEffect(() => {
@@ -1751,10 +1694,6 @@ export const ChatLogPage = () => {
 			</section>
 		);
 	}
-
-	const isExpensesRoute = location.pathname.startsWith(
-		"/console/chat/expenses",
-	);
 
 	const expenseRightPanel =
 		selectedSpaceId == null ? (
