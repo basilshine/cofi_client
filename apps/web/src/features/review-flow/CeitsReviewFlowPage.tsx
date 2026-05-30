@@ -64,6 +64,7 @@ type CandidateReviewItem = {
 	confidenceLabel: string;
 	canMarkReviewed: boolean;
 	canCreateParticipant: boolean;
+	canOpenSplitReview: boolean;
 	canSavePromo: boolean;
 	createdAt: string;
 	raw: BenefitCandidate | DocumentCandidate;
@@ -199,6 +200,9 @@ const canMarkDocumentCandidateReviewed = (type: string): boolean =>
 const canCreateParticipantFromCandidate = (type: string): boolean =>
 	type === "participant_placeholder_candidate";
 
+const canOpenSplitReviewFromCandidate = (type: string): boolean =>
+	type === "split_candidate";
+
 const confidenceLabel = (confidence?: number): string =>
 	Number.isFinite(confidence) && confidence != null && confidence > 0
 		? `${Math.round(confidence * 100)}%`
@@ -273,6 +277,7 @@ const candidateSummary = (
 		const count = firstCandidateText(data, ["participant_count"]);
 		appendField(fields, "Strategy", strategy);
 		appendField(fields, "People", count);
+		appendField(fields, "Target", "Choose an expense before applying");
 		return {
 			detail:
 				[strategy, count ? `${count} participants` : null]
@@ -361,6 +366,9 @@ const toCandidateReviewItem = (
 		canCreateParticipant:
 			source === "document" &&
 			canCreateParticipantFromCandidate(candidate.candidate_type),
+		canOpenSplitReview:
+			source === "document" &&
+			canOpenSplitReviewFromCandidate(candidate.candidate_type),
 		canSavePromo: candidate.candidate_type === "promo_code_candidate",
 		createdAt: candidate.created_at,
 		raw: candidate,
@@ -1071,6 +1079,14 @@ export const CeitsReviewFlowPage = () => {
 														>
 															{isActing ? "Creating" : "Add person"}
 														</button>
+													) : null}
+													{candidate.canOpenSplitReview ? (
+														<Link
+															className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)]"
+															to={`/console/spaces/${spaceId}/splits`}
+														>
+															Open splits
+														</Link>
 													) : null}
 													<button
 														className="rounded-full border border-border/70 bg-white px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-50"
