@@ -54,6 +54,7 @@ import { SpaceExpensesWorkspace } from "./components/SpaceExpensesWorkspace";
 import type { ThreadDeepLink } from "./components/ThreadDiscussionRichText";
 import type { BuilderItem } from "./components/transactionBuilderTypes";
 import { parseTags, toNumber } from "./components/transactionBuilderTypes";
+import { useNativeChatVoiceRecorder } from "./hooks/useNativeChatVoiceRecorder";
 import { useSpaceExpensesWorkspaceState } from "./hooks/useSpaceExpensesWorkspaceState";
 import {
 	asChronological,
@@ -139,9 +140,6 @@ export const ChatLogPage = () => {
 	const [acceptInviteToken, setAcceptInviteToken] = useState("");
 
 	const [composerMode, setComposerMode] = useState<ChatComposerMode>("message");
-	const [isRecording, setIsRecording] = useState(false);
-	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-	const mediaChunksRef = useRef<BlobPart[]>([]);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	/** Latest main-chat message id per space (from loads + WS). */
@@ -169,8 +167,8 @@ export const ChatLogPage = () => {
 	const smartComposerRef = useRef<SmartTextareaComposerHandle>(null);
 	const quickCaptureIntentRef = useRef<"photo" | "voice" | null>(null);
 	const handleToggleRecordingRef = useRef<() => Promise<void>>(async () => {});
-	/** When true, stopping the recorder sends transcribed text as chat only (no expense). */
-	const recordingForMessageRef = useRef(false);
+	const { beginRecording, cancelRecording, isRecording, stopRecording } =
+		useNativeChatVoiceRecorder({ onError: setErrorMessage });
 
 	const navigate = useNavigate();
 	const location = useLocation();
@@ -852,17 +850,6 @@ export const ChatLogPage = () => {
 		}
 	};
 
-	/** Drop an in-progress recording without processing it (e.g. Back/Cancel from voice state). */
-	const handleCancelRecording = useCallback(() => {
-		const rec = mediaRecorderRef.current;
-		if (rec && rec.state === "recording") {
-			rec.stop();
-		}
-		mediaChunksRef.current = [];
-		setIsRecording(false);
-		recordingForMessageRef.current = false;
-	}, []);
-
 	/** After parse (text/photo/voice), persist draft + chat message immediately so the user sees the draft card in the thread. */
 	const finalizeParsedDraft = useCallback(
 		async (description: string, builderItems: BuilderItem[]) => {
@@ -1019,22 +1006,7 @@ export const ChatLogPage = () => {
 		}
 	};
 
-	const handleStopRecordingAndParse = async () => {
-		const rec = mediaRecorderRef.current;
-		if (!rec) return;
-		if (rec.state !== "recording") return;
-
-		const stopPromise = new Promise<void>((resolve) => {
-			rec.addEventListener("stop", () => resolve(), { once: true });
-		});
-		rec.stop();
-		await stopPromise;
-
-		const blob = new Blob(mediaChunksRef.current, {
-			type: rec.mimeType || "audio/webm",
-		});
-		mediaChunksRef.current = [];
-
+	const handleParseVoiceBlob = async (blob: Blob) => {
 		if (!selectedSpaceId) return;
 		setIsLoading(true);
 		setErrorMessage(null);
@@ -1067,22 +1039,7 @@ export const ChatLogPage = () => {
 		}
 	};
 
-	const handleStopRecordingAsChatMessage = async () => {
-		const rec = mediaRecorderRef.current;
-		if (!rec) return;
-		if (rec.state !== "recording") return;
-
-		const stopPromise = new Promise<void>((resolve) => {
-			rec.addEventListener("stop", () => resolve(), { once: true });
-		});
-		rec.stop();
-		await stopPromise;
-
-		const blob = new Blob(mediaChunksRef.current, {
-			type: rec.mimeType || "audio/webm",
-		});
-		mediaChunksRef.current = [];
-
+	const handleSendVoiceBlobAsChatMessage = async (blob: Blob) => {
 		if (!selectedSpaceId) return;
 		setIsLoading(true);
 		setErrorMessage(null);
@@ -1120,43 +1077,14 @@ export const ChatLogPage = () => {
 		}
 	};
 
-	const beginRecording = async (forMessage: boolean) => {
-		if (isRecording) return;
-		recordingForMessageRef.current = forMessage;
-		setErrorMessage(null);
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-			const rec = new MediaRecorder(stream);
-			mediaRecorderRef.current = rec;
-			mediaChunksRef.current = [];
-			rec.addEventListener("dataavailable", (e) => {
-				if (e.data && e.data.size > 0) mediaChunksRef.current.push(e.data);
-			});
-			rec.addEventListener("stop", () => {
-				for (const t of stream.getTracks()) {
-					t.stop();
-				}
-			});
-			rec.start();
-			setIsRecording(true);
-		} catch (e) {
-			setIsRecording(false);
-			recordingForMessageRef.current = false;
-			setErrorMessage(
-				e instanceof Error ? e.message : "Microphone permission denied",
-			);
-		}
-	};
-
 	const handleToggleRecording = async () => {
 		if (isRecording) {
-			setIsRecording(false);
-			const forMsg = recordingForMessageRef.current;
-			recordingForMessageRef.current = false;
-			if (forMsg) {
-				await handleStopRecordingAsChatMessage();
+			const result = await stopRecording();
+			if (!result) return;
+			if (result.forMessage) {
+				await handleSendVoiceBlobAsChatMessage(result.blob);
 			} else {
-				await handleStopRecordingAndParse();
+				await handleParseVoiceBlob(result.blob);
 			}
 			return;
 		}
@@ -1406,13 +1334,8 @@ export const ChatLogPage = () => {
 	// Leaving Capture composer mode drops an in-progress recording (no upload).
 	useEffect(() => {
 		if (composerMode === "capture") return;
-		const rec = mediaRecorderRef.current;
-		if (rec && rec.state === "recording") {
-			rec.stop();
-		}
-		mediaChunksRef.current = [];
-		setIsRecording(false);
-	}, [composerMode]);
+		cancelRecording();
+	}, [composerMode, cancelRecording]);
 
 	useEffect(() => {
 		setSpaceHasUnread((spaceId) =>
@@ -1722,7 +1645,7 @@ export const ChatLogPage = () => {
 							ref={smartComposerRef}
 							disabled={isLoading || !selectedSpaceId}
 							isRecording={isRecording}
-							onCancelRecording={handleCancelRecording}
+							onCancelRecording={cancelRecording}
 							onComposerSubmit={(p) => void handleComposerSubmit(p)}
 							onStartExpenseRecording={() => void beginRecording(false)}
 							onStopRecording={() => void handleToggleRecording()}
