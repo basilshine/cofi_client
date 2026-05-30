@@ -157,7 +157,7 @@ const CandidateBundlePanel = ({
 						<div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
 							{visibleCandidates.map((candidate) => (
 								<span
-									className="inline-flex h-6 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-background px-2 text-[11px] font-semibold text-foreground/78"
+									className="inline-flex min-h-7 items-center rounded-full bg-background px-2.5 text-[11px] font-semibold text-foreground/78 shadow-[0_0_0_1px_rgba(87,70,49,0.1)]"
 									key={candidate.kind}
 								>
 									{candidate.count > 1
@@ -217,10 +217,10 @@ const CandidateBundlePanel = ({
 };
 
 const reviewActionClass =
-	"inline-flex h-7 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card px-2.5 text-[11px] font-semibold text-foreground/82 transition hover:border-[rgba(120,100,80,0.34)] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+	"inline-flex min-h-8 shrink-0 items-center rounded-full bg-card px-3 text-[11px] font-semibold text-foreground/82 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const clarificationActionClass =
-	"inline-flex h-8 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-background px-3 text-xs font-semibold text-foreground/82 transition hover:border-[rgba(120,100,80,0.34)] hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
+	"inline-flex min-h-10 shrink-0 items-center rounded-full bg-background px-3.5 text-xs font-semibold text-foreground/82 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
 
 const ClarificationActionsPanel = ({
 	chatHref,
@@ -242,7 +242,7 @@ const ClarificationActionsPanel = ({
 	spacesHref: string;
 }) => (
 	<div
-		className="border-t border-border/45 bg-card/55 px-3.5 py-2"
+		className="border-t border-border/35 bg-[linear-gradient(180deg,rgba(255,251,244,0.78),rgba(255,248,235,0.55))] px-3.5 py-2.5"
 		data-testid="global-composer-clarification-actions"
 	>
 		<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -250,7 +250,7 @@ const ClarificationActionsPanel = ({
 				<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
 					Choose next step
 				</p>
-				<p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+				<p className="mt-0.5 max-w-xl text-[11px] leading-4 text-muted-foreground [text-wrap:pretty]">
 					Ceits is not sure whether this should become a record, a question, or
 					a chat message.
 				</p>
@@ -739,22 +739,24 @@ export const GlobalComposerDock = ({
 	if (hasNativeComposer) return null;
 
 	const actionButtonClass =
-		"inline-flex h-8 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card/90 px-3 text-xs font-semibold text-foreground/85 transition hover:border-[rgba(120,100,80,0.34)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
+		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.46)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
 	const dockLinkClass =
-		"inline-flex h-8 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card/90 px-3 text-xs font-semibold text-foreground/85 transition-[background-color,border-color,transform] hover:border-[rgba(120,100,80,0.34)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]";
+		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.46)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	const userLinkClass =
-		"inline-flex h-8 min-w-0 shrink-0 items-center gap-2 rounded-full border border-border/70 bg-background px-2.5 text-xs font-semibold text-foreground/85 shadow-sm transition-[background-color,transform] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]";
+		"inline-flex min-h-10 min-w-0 shrink-0 items-center gap-2 rounded-full bg-background px-3 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	const settingsActionClass =
-		"inline-flex h-9 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card/90 px-3.5 text-xs font-semibold text-foreground/85 transition-[background-color,border-color,transform] hover:border-[rgba(120,100,80,0.34)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]";
+		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.44)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+	const dockHeaderLinkClass =
+		"inline-flex min-h-8 items-center rounded-full px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-[color,transform] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 	if (settingsActionDock) {
 		return (
 			<div
-				className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center border-t border-border/55 bg-background/80 px-3 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.45)] backdrop-blur-xl sm:px-5"
+				className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center border-t border-border/35 bg-[linear-gradient(180deg,rgba(250,247,240,0.62),rgba(250,247,240,0.9))] px-3 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.42)] backdrop-blur-xl sm:px-5"
 				data-testid="global-composer-dock"
 			>
 				<div
-					className="pointer-events-auto flex w-full max-w-5xl flex-col gap-2 rounded-2xl border border-border/70 bg-background/94 p-2.5 shadow-[0_18px_52px_-34px_rgba(44,32,18,0.5)] ring-1 ring-white/55 sm:flex-row sm:items-center sm:justify-between"
+					className="pointer-events-auto flex w-full max-w-5xl flex-col gap-2 rounded-[1.35rem] bg-background/96 p-2.5 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65 sm:flex-row sm:items-center sm:justify-between"
 					data-testid="settings-action-dock"
 				>
 					<div className="min-w-0 px-1">
@@ -817,25 +819,28 @@ export const GlobalComposerDock = ({
 
 	return (
 		<div
-			className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center border-t border-border/55 bg-background/80 px-3 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.45)] backdrop-blur-xl sm:px-5"
+			className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center border-t border-border/35 bg-[linear-gradient(180deg,rgba(250,247,240,0.56),rgba(250,247,240,0.92))] px-3 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.42)] backdrop-blur-xl sm:px-5"
 			data-testid="global-composer-dock"
 		>
-			<div className="pointer-events-auto w-full max-w-5xl overflow-hidden rounded-2xl border border-border/70 bg-background/94 shadow-[0_18px_52px_-34px_rgba(44,32,18,0.5)] ring-1 ring-white/55">
+			<div className="pointer-events-auto w-full max-w-5xl overflow-hidden rounded-[1.35rem] bg-background/96 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65">
 				{isCollapsed ? (
-					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(10rem,14rem)_minmax(0,1fr)_auto_auto] xl:items-center">
-						<div className="min-w-0 px-1">
-							<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-								Context: {activeSpaceName}
+					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)_auto_auto] xl:items-center">
+						<div className="min-w-0 rounded-[0.85rem] bg-muted/35 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(87,70,49,0.06)]">
+							<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/88">
+								Context
+							</p>
+							<p className="mt-0.5 truncate text-sm font-semibold text-foreground">
+								{activeSpaceName}
 							</p>
 							{contextSource ? (
-								<p className="mt-0.5 truncate text-[11px] text-muted-foreground/75">
+								<p className="truncate text-[11px] text-muted-foreground/72">
 									{contextSource}
 								</p>
 							) : null}
 						</div>
 						<button
 							aria-label="Expand global composer"
-							className="flex h-11 min-w-0 items-center rounded-xl border border-[rgba(120,100,80,0.18)] bg-card/82 px-3.5 text-left text-sm text-muted-foreground shadow-inner transition hover:border-[rgba(120,100,80,0.3)] hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+							className="flex min-h-12 min-w-0 items-center rounded-[0.95rem] bg-card/88 px-4 text-left text-sm text-muted-foreground shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08),inset_0_1px_2px_rgba(44,32,18,0.04)] transition-[background-color,box-shadow] hover:bg-background hover:shadow-[inset_0_0_0_1px_rgba(87,70,49,0.14),inset_0_1px_2px_rgba(44,32,18,0.05)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
 							disabled={disabled}
 							onClick={() => expandTo("message_text")}
 							type="button"
@@ -886,54 +891,51 @@ export const GlobalComposerDock = ({
 					</div>
 				) : (
 					<>
-						<div className="flex items-center justify-between gap-3 border-b border-border/40 px-3.5 py-1.5">
-							<p className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-								Context: {activeSpaceName}
-								{contextSource ? ` · ${contextSource}` : ""}
-							</p>
-							<div className="flex shrink-0 items-center gap-3">
+						<div className="flex items-center justify-between gap-3 border-b border-border/35 bg-muted/20 px-3.5 py-2">
+							<div className="flex min-w-0 items-center gap-2">
+								<span className="h-2 w-2 shrink-0 rounded-full bg-[rgba(72,112,76,0.72)] shadow-[0_0_0_4px_rgba(72,112,76,0.1)]" />
+								<p className="min-w-0 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+									Context: {activeSpaceName}
+									{contextSource ? ` · ${contextSource}` : ""}
+								</p>
+							</div>
+							<div className="flex shrink-0 items-center gap-3 rounded-full bg-background/72 px-2.5 py-1 shadow-[0_0_0_1px_rgba(87,70,49,0.07)]">
 								<button
 									aria-label="Collapse global composer"
 									aria-pressed={isCollapsed}
-									className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									className="min-h-8 rounded-full px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-[color,transform] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									onClick={handleCollapseToggle}
 									type="button"
 								>
 									Collapse
 								</button>
 								{hasSpaceContext ? (
-									<Link
-										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
-										to={spaceSettingsHref}
-									>
+									<Link className={dockHeaderLinkClass} to={spaceSettingsHref}>
 										Space settings
 									</Link>
 								) : (
 									<Link
-										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+										className={dockHeaderLinkClass}
 										to="/console/settings/spaces"
 									>
 										Spaces
 									</Link>
 								)}
 								<Link
-									className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+									className={dockHeaderLinkClass}
 									to="/console/settings/account"
 								>
 									Account
 								</Link>
 								{hasSpaceContext ? (
 									<Link
-										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+										className={dockHeaderLinkClass}
 										to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
 									>
 										Open chat
 									</Link>
 								) : (
-									<Link
-										className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
-										to="/console/spaces"
-									>
+									<Link className={dockHeaderLinkClass} to="/console/spaces">
 										Choose space
 									</Link>
 								)}
