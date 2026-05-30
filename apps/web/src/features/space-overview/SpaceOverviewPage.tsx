@@ -16,6 +16,7 @@ import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterConte
 import { SpaceHeader } from "../../app/layout/workspaceSpaces/SpaceHeader";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
+import { openGlobalComposerIntent } from "../../app/layout/workspaceSpaces/globalComposerIntent";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
@@ -279,17 +280,7 @@ export const SpaceOverviewPage = () => {
 	const sidStr = String(numericSpaceId);
 
 	const handleOpenAddExpense = () => {
-		navigate(
-			{
-				hash: location.hash,
-				pathname: location.pathname,
-				search: location.search,
-			},
-			{
-				replace: true,
-				state: { globalComposerIntent: "expense" },
-			},
-		);
+		openGlobalComposerIntent(navigate, location, "expense");
 	};
 
 	/** TODO: replace with space-scoped balances when API exposes owe / owed / net. */

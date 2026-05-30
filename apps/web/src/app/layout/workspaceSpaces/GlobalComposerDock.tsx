@@ -14,6 +14,7 @@ import {
 	parseCaptureVoice,
 } from "../../../shared/lib/quickCaptureTransactions";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
+import { readGlobalComposerIntent } from "./globalComposerIntent";
 
 const toDraftItems = (
 	items:
@@ -66,10 +67,6 @@ const askPayloadToMessage = (
 type GlobalComposerDockProps = {
 	isCollapsed: boolean;
 	onCollapsedChange: (isCollapsed: boolean) => void;
-};
-
-type GlobalComposerLocationState = {
-	globalComposerIntent?: "expense" | "ask" | "message";
 };
 
 export const GlobalComposerDock = ({
@@ -311,8 +308,7 @@ export const GlobalComposerDock = ({
 	}, [expandTo, handleCancelRecording, isCollapsed, onCollapsedChange]);
 
 	useEffect(() => {
-		const intent = (location.state as GlobalComposerLocationState | null)
-			?.globalComposerIntent;
+		const intent = readGlobalComposerIntent(location.state);
 		if (!intent || isChatRoute) return;
 
 		if (intent === "expense") {
