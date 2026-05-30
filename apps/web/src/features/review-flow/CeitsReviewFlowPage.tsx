@@ -63,6 +63,7 @@ type CandidateReviewItem = {
 	tone: CandidateReviewTone;
 	confidenceLabel: string;
 	canMarkReviewed: boolean;
+	canCreateParticipant: boolean;
 	canSavePromo: boolean;
 	createdAt: string;
 	raw: BenefitCandidate | DocumentCandidate;
@@ -194,6 +195,9 @@ const canMarkDocumentCandidateReviewed = (type: string): boolean =>
 		"supporting_document_candidate",
 		"space_suggestion_candidate",
 	].includes(type);
+
+const canCreateParticipantFromCandidate = (type: string): boolean =>
+	type === "participant_placeholder_candidate";
 
 const confidenceLabel = (confidence?: number): string =>
 	Number.isFinite(confidence) && confidence != null && confidence > 0
@@ -354,6 +358,9 @@ const toCandidateReviewItem = (
 		canMarkReviewed:
 			source === "document" &&
 			canMarkDocumentCandidateReviewed(candidate.candidate_type),
+		canCreateParticipant:
+			source === "document" &&
+			canCreateParticipantFromCandidate(candidate.candidate_type),
 		canSavePromo: candidate.candidate_type === "promo_code_candidate",
 		createdAt: candidate.created_at,
 		raw: candidate,
@@ -818,6 +825,29 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 
+	const handleCreateParticipantCandidate = async (
+		candidate: DocumentCandidate,
+	) => {
+		if (spaceId == null) return;
+		setDocumentCandidateActingId(candidate.id);
+		setDocumentCandidateError(null);
+		try {
+			await apiClient.spaces.createParticipantFromCandidate(
+				spaceId,
+				candidate.id,
+			);
+			setDocumentCandidates((prev) =>
+				prev.filter((item) => item.id !== candidate.id),
+			);
+		} catch (e) {
+			setDocumentCandidateError(
+				e instanceof Error ? e.message : "Failed to create participant",
+			);
+		} finally {
+			setDocumentCandidateActingId(null);
+		}
+	};
+
 	const handleSavePromoCandidate = async (candidate: BenefitCandidate) => {
 		if (spaceId == null) return;
 		setBenefitCandidateActingId(candidate.id);
@@ -1026,6 +1056,20 @@ export const CeitsReviewFlowPage = () => {
 															type="button"
 														>
 															{isActing ? "Saving" : "Reviewed"}
+														</button>
+													) : null}
+													{candidate.canCreateParticipant ? (
+														<button
+															className="rounded-full border border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.86)] px-2 py-0.5 text-[11px] font-semibold text-[#405574] transition hover:border-[rgba(83,103,139,0.45)] hover:bg-[rgba(222,232,249,0.96)] disabled:opacity-50"
+															disabled={isActing}
+															onClick={() =>
+																void handleCreateParticipantCandidate(
+																	candidate.raw as DocumentCandidate,
+																)
+															}
+															type="button"
+														>
+															{isActing ? "Creating" : "Add person"}
 														</button>
 													) : null}
 													<button

@@ -1409,6 +1409,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/create-participant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a space participant from a participant placeholder candidate
+         * @description Projects a draft `participant_placeholder_candidate` into a `space_participants` placeholder, records a resolution/projection, and marks the candidate as projected. It reuses an existing matching participant by email or display name when possible.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Document candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Space participant created or reused. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreateParticipantCandidateResponse"];
+                    };
+                };
+                /** @description Candidate cannot be projected into a participant */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/ignore": {
         parameters: {
             query?: never;
@@ -5483,6 +5548,10 @@ export interface components {
             /** Format: int64 */
             id?: number;
             status?: string;
+        };
+        CreateParticipantCandidateResponse: {
+            participant?: components["schemas"]["SpaceParticipant"];
+            candidate?: components["schemas"]["DocumentCandidateState"];
         };
         BenefitCandidateState: {
             /** Format: int64 */

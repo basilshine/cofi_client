@@ -330,6 +330,11 @@ export type DocumentCandidateState = {
 	status: string;
 };
 
+export type CreateParticipantCandidateResponse = {
+	participant: SpaceParticipant;
+	candidate: DocumentCandidateState;
+};
+
 export type BenefitCandidateState = {
 	id: number;
 	status: string;

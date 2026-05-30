@@ -2,6 +2,7 @@ import type { DashboardResponse, DashboardVariant } from "./dashboard";
 import {
 	type BenefitCandidateListResponse,
 	type ChatMessage,
+	type CreateParticipantCandidateResponse,
 	type CreatePromoCodeRequest,
 	type DocumentCandidateListResponse,
 	type DocumentCandidateState,
@@ -563,6 +564,16 @@ export const createApiClient = (config: ApiClientConfig) => {
 				fetchJson<DocumentCandidateState>(
 					withBase(
 						`/api/v1/spaces/${spaceId}/document-candidates/${encodeURIComponent(String(candidateId))}/confirm`,
+					),
+					{ method: "POST", headers: authHeaders() },
+				),
+			createParticipantFromCandidate: (
+				spaceId: string | number,
+				candidateId: string | number,
+			) =>
+				fetchJson<CreateParticipantCandidateResponse>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/document-candidates/${encodeURIComponent(String(candidateId))}/create-participant`,
 					),
 					{ method: "POST", headers: authHeaders() },
 				),
