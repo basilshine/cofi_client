@@ -15,7 +15,10 @@ import {
 	parseCaptureVoice,
 } from "../../../shared/lib/quickCaptureTransactions";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
-import { summarizeCapturePreview } from "./globalComposerFlow";
+import {
+	type GlobalComposerCandidateBundle,
+	summarizeCapturePreview,
+} from "./globalComposerFlow";
 import { readGlobalComposerIntent } from "./globalComposerIntent";
 import {
 	hasNativeChatComposer,
@@ -72,6 +75,83 @@ const askPayloadToMessage = (
 	}
 	return payload.content;
 };
+
+const bundleHasAny = (
+	bundle: GlobalComposerCandidateBundle,
+	kinds: GlobalComposerCandidateBundle["candidates"][number]["kind"][],
+) => bundle.candidates.some((candidate) => kinds.includes(candidate.kind));
+
+const CandidateBundlePanel = ({
+	bundle,
+	expensesHref,
+	benefitsHref,
+	splitsHref,
+}: {
+	bundle: GlobalComposerCandidateBundle;
+	expensesHref: string;
+	benefitsHref: string;
+	splitsHref: string;
+}) => {
+	if (!bundle.candidates.length) return null;
+
+	const hasExpense = bundleHasAny(bundle, ["expense", "expense_item"]);
+	const hasBenefits = bundleHasAny(bundle, ["promo", "loyalty"]);
+	const hasSplits = bundleHasAny(bundle, ["split", "participant"]);
+	const visibleCandidates = bundle.candidates.slice(0, 5);
+	const hiddenCount = bundle.candidates.length - visibleCandidates.length;
+
+	return (
+		<div
+			className="border-t border-border/45 bg-muted/25 px-3.5 py-2"
+			data-testid="global-composer-candidate-summary"
+		>
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div className="min-w-0">
+					<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+						Parsed result
+					</p>
+					<div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+						{visibleCandidates.map((candidate) => (
+							<span
+								className="inline-flex h-6 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-background px-2 text-[11px] font-semibold text-foreground/78"
+								key={candidate.kind}
+							>
+								{candidate.count > 1
+									? `${candidate.count} ${candidate.label}`
+									: candidate.label}
+							</span>
+						))}
+						{hiddenCount > 0 ? (
+							<span className="inline-flex h-6 items-center rounded-full border border-dashed border-border bg-transparent px-2 text-[11px] font-semibold text-muted-foreground">
+								+{hiddenCount} more
+							</span>
+						) : null}
+					</div>
+				</div>
+				<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+					{hasExpense ? (
+						<Link className={reviewActionClass} to={expensesHref}>
+							Review expenses
+						</Link>
+					) : null}
+					{hasBenefits ? (
+						<Link className={reviewActionClass} to={benefitsHref}>
+							Review benefits
+						</Link>
+					) : null}
+					{hasSplits ? (
+						<Link className={reviewActionClass} to={splitsHref}>
+							Review splits
+						</Link>
+					) : null}
+				</div>
+			</div>
+		</div>
+	);
+};
+
+const reviewActionClass =
+	"inline-flex h-7 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card px-2.5 text-[11px] font-semibold text-foreground/82 transition hover:border-[rgba(120,100,80,0.34)] hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 type GlobalComposerDockProps = {
 	isCollapsed: boolean;
@@ -146,6 +226,18 @@ export const GlobalComposerDock = ({
 		activeSpaceId == null
 			? "/console/settings/spaces"
 			: `/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
+	const activeSpaceBenefitsHref =
+		activeSpaceId == null
+			? "/console/settings/spaces"
+			: `/console/spaces/${encodeURIComponent(String(activeSpaceId))}/benefits`;
+	const activeSpaceSplitsHref =
+		activeSpaceId == null
+			? "/console/settings/spaces"
+			: `/console/spaces/${encodeURIComponent(String(activeSpaceId))}/splits`;
+	const activeSpaceExpensesHref =
+		activeSpaceId == null
+			? "/console/settings/spaces"
+			: `/console/chat/expenses?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
 
 	const disabled = busy || isLoading || !hasSpaceContext;
 	const composerNotice =
@@ -629,6 +721,14 @@ export const GlobalComposerDock = ({
 						/>
 					</>
 				)}
+				{composerFlow.bundle ? (
+					<CandidateBundlePanel
+						benefitsHref={activeSpaceBenefitsHref}
+						bundle={composerFlow.bundle}
+						expensesHref={activeSpaceExpensesHref}
+						splitsHref={activeSpaceSplitsHref}
+					/>
+				) : null}
 				{composerNotice ? (
 					<div
 						aria-live="polite"
