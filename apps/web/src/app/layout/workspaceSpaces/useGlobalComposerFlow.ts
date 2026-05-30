@@ -16,9 +16,12 @@ export const useGlobalComposerFlow = () => {
 		dispatch({ type: "detecting_intent", inputKind });
 	}, []);
 
-	const clarify = useCallback((message: string) => {
-		dispatch({ type: "clarifying", message });
-	}, []);
+	const clarify = useCallback(
+		(message: string, bundle?: GlobalComposerCandidateBundle) => {
+			dispatch({ type: "clarifying", message, bundle });
+		},
+		[],
+	);
 
 	const showCandidateSummary = useCallback(
 		(bundle: GlobalComposerCandidateBundle) => {

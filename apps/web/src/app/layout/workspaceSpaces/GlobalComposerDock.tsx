@@ -82,6 +82,11 @@ const bundleHasAny = (
 	kinds: GlobalComposerCandidateBundle["candidates"][number]["kind"][],
 ) => bundle.candidates.some((candidate) => kinds.includes(candidate.kind));
 
+const isPromoCapabilityGate = (bundle?: GlobalComposerCandidateBundle) =>
+	bundle?.intent === "promo_only" &&
+	!bundleHasAny(bundle, ["promo"]) &&
+	bundle.capabilityNotice != null;
+
 const candidateOnlyStatus = (
 	bundle: GlobalComposerCandidateBundle,
 	spaceName: string,
@@ -223,6 +228,9 @@ const clarificationActionClass =
 	"inline-flex min-h-10 shrink-0 items-center rounded-full bg-background px-3.5 text-xs font-semibold text-foreground/82 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
 
 const ClarificationActionsPanel = ({
+	benefitsHref,
+	billingHref,
+	bundle,
 	chatHref,
 	chatDraftText,
 	disabled,
@@ -232,6 +240,9 @@ const ClarificationActionsPanel = ({
 	onCreateSpace,
 	spacesHref,
 }: {
+	benefitsHref: string;
+	billingHref: string;
+	bundle?: GlobalComposerCandidateBundle;
 	chatHref: string;
 	chatDraftText: string | null;
 	disabled: boolean;
@@ -240,68 +251,86 @@ const ClarificationActionsPanel = ({
 	onAskCeits: () => void;
 	onCreateSpace: () => void;
 	spacesHref: string;
-}) => (
-	<div
-		className="border-t border-border/35 bg-[linear-gradient(180deg,rgba(255,251,244,0.78),rgba(255,248,235,0.55))] px-3.5 py-2.5"
-		data-testid="global-composer-clarification-actions"
-	>
-		<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-			<div className="min-w-0">
-				<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-					Choose next step
-				</p>
-				<p className="mt-0.5 max-w-xl text-[11px] leading-4 text-muted-foreground [text-wrap:pretty]">
-					Ceits is not sure whether this should become a record, a question, or
-					a chat message.
-				</p>
-			</div>
-			<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-				<button
-					className={clarificationActionClass}
-					disabled={disabled}
-					onClick={onAddExpense}
-					type="button"
-				>
-					Add expense
-				</button>
-				<button
-					className={clarificationActionClass}
-					disabled={disabled}
-					onClick={onAskCeits}
-					type="button"
-				>
-					Ask Ceits
-				</button>
-				{hasSpaceContext ? (
-					<Link
-						className={clarificationActionClass}
-						state={
-							chatDraftText?.trim()
-								? { composerDraftText: chatDraftText.trim() }
-								: undefined
-						}
-						to={chatHref}
-					>
-						Open chat
-					</Link>
-				) : (
-					<>
-						<Link className={clarificationActionClass} to={spacesHref}>
-							Choose space
-						</Link>
+}) => {
+	const promoGate = isPromoCapabilityGate(bundle);
+	const title = promoGate ? "Promo found" : "Choose next step";
+	const body = promoGate
+		? "This looks like a promo code. Basic can detect it, but saving promo candidates is available in Medium or Premium."
+		: "Ceits is not sure whether this should become a record, a question, or a chat message.";
+
+	return (
+		<div
+			className="border-t border-border/35 bg-[linear-gradient(180deg,rgba(255,251,244,0.78),rgba(255,248,235,0.55))] px-3.5 py-2.5"
+			data-testid="global-composer-clarification-actions"
+		>
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div className="min-w-0">
+					<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+						{title}
+					</p>
+					<p className="mt-0.5 max-w-xl text-[11px] leading-4 text-muted-foreground [text-wrap:pretty]">
+						{body}
+					</p>
+				</div>
+				<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+					{promoGate ? (
+						<>
+							<Link className={clarificationActionClass} to={billingHref}>
+								Test plan
+							</Link>
+							<Link className={clarificationActionClass} to={benefitsHref}>
+								Open benefits
+							</Link>
+						</>
+					) : (
 						<button
 							className={clarificationActionClass}
-							onClick={onCreateSpace}
+							disabled={disabled}
+							onClick={onAddExpense}
 							type="button"
 						>
-							New space
+							Add expense
 						</button>
-					</>
-				)}
+					)}
+					<button
+						className={clarificationActionClass}
+						disabled={disabled}
+						onClick={onAskCeits}
+						type="button"
+					>
+						Ask Ceits
+					</button>
+					{hasSpaceContext ? (
+						<Link
+							className={clarificationActionClass}
+							state={
+								chatDraftText?.trim()
+									? { composerDraftText: chatDraftText.trim() }
+									: undefined
+							}
+							to={chatHref}
+						>
+							Open chat
+						</Link>
+					) : (
+						<>
+							<Link className={clarificationActionClass} to={spacesHref}>
+								Choose space
+							</Link>
+							<button
+								className={clarificationActionClass}
+								onClick={onCreateSpace}
+								type="button"
+							>
+								New space
+							</button>
+						</>
+					)}
+				</div>
 			</div>
 		</div>
-	</div>
-);
+	);
+};
 
 type GlobalComposerDockProps = {
 	isCollapsed: boolean;
@@ -514,7 +543,7 @@ export const GlobalComposerDock = ({
 				});
 				if (bundle.clarificationMessage) {
 					setClarificationDraftText(text);
-					clarify(bundle.clarificationMessage);
+					clarify(bundle.clarificationMessage, bundle);
 					return;
 				}
 				if (bundle.candidates.length > 0 || bundle.capabilityNotice) {
@@ -965,6 +994,9 @@ export const GlobalComposerDock = ({
 				) : null}
 				{composerFlow.step === "clarifying" ? (
 					<ClarificationActionsPanel
+						benefitsHref={activeSpaceBenefitsHref}
+						billingHref="/console/settings/billing"
+						bundle={composerFlow.bundle}
 						chatHref={activeSpaceChatHref}
 						chatDraftText={clarificationDraftText}
 						disabled={busy || isLoading || !hasSpaceContext}

@@ -72,6 +72,7 @@ type GlobalComposerFlowAction =
 	| {
 			type: "clarifying";
 			message: string;
+			bundle?: GlobalComposerCandidateBundle;
 	  }
 	| {
 			type: "candidate_summary";
@@ -110,7 +111,11 @@ export const globalComposerFlowReducer = (
 		};
 	}
 	if (action.type === "clarifying") {
-		return { step: "clarifying", message: action.message };
+		return {
+			step: "clarifying",
+			message: action.message,
+			bundle: action.bundle,
+		};
 	}
 	if (action.type === "candidate_summary") {
 		return {
