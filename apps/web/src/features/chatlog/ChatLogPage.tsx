@@ -12,7 +12,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { createPortal } from "react-dom";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useSetChatBreadcrumb } from "../../app/layout/ChatBreadcrumbContext";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
@@ -38,6 +37,8 @@ import { wsClient } from "../../shared/lib/wsClient";
 import type { ChatComposerMode } from "./components/ChatComposerDock";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
+import { ChatToastPortal } from "./components/ChatToastPortal";
+import { DeleteChatMessageDialog } from "./components/DeleteChatMessageDialog";
 import {
 	isDraftExpenseSystemMessage,
 	isRecurringExpenseChatMessage,
@@ -2190,54 +2191,13 @@ export const ChatLogPage = () => {
 					</main>
 				</div>
 
-				{toastMessage
-					? createPortal(
-							<output
-								aria-live="polite"
-								className="pointer-events-none fixed bottom-6 left-1/2 z-[9999] block max-w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-border bg-card px-4 py-2.5 text-center text-sm text-foreground shadow-lg"
-							>
-								{toastMessage}
-							</output>,
-							document.body,
-						)
-					: null}
-				{pendingDeleteMessage ? (
-					<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4">
-						<div
-							aria-modal="true"
-							className="w-full max-w-md rounded-lg border border-border bg-card p-4 shadow-xl"
-							role="dialog"
-						>
-							<h3 className="text-sm font-semibold text-foreground">
-								Delete message?
-							</h3>
-							<p className="mt-2 text-sm text-muted-foreground">
-								Only this chat message will be removed. Linked expense data is
-								kept.
-							</p>
-							<div className="mt-4 flex items-center justify-end gap-2">
-								<button
-									className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-accent disabled:opacity-50"
-									disabled={deleteMessageBusy}
-									onClick={() => setPendingDeleteMessage(null)}
-									type="button"
-								>
-									Keep message
-								</button>
-								<button
-									className="inline-flex h-9 items-center rounded-md bg-destructive px-3 text-xs font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
-									disabled={deleteMessageBusy}
-									onClick={() =>
-										void handleDeleteOneMessage(pendingDeleteMessage)
-									}
-									type="button"
-								>
-									{deleteMessageBusy ? "Deleting…" : "Delete message"}
-								</button>
-							</div>
-						</div>
-					</div>
-				) : null}
+				<ChatToastPortal message={toastMessage} />
+				<DeleteChatMessageDialog
+					busy={deleteMessageBusy}
+					message={pendingDeleteMessage}
+					onCancel={() => setPendingDeleteMessage(null)}
+					onConfirm={(message) => void handleDeleteOneMessage(message)}
+				/>
 			</section>
 			<WorkspaceRightSidebar
 				expanded={rightSidebarExpanded}

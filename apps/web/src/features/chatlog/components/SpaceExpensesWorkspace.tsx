@@ -1,7 +1,7 @@
 import type { Transaction } from "@cofi/api";
 import type { ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { SpaceWorkspaceLayout } from "../../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
+import { ChatToastPortal } from "./ChatToastPortal";
 import { SpaceExpensesMain } from "./SpaceExpensesMain";
 
 type SpaceExpensesWorkspaceProps = {
@@ -75,17 +75,7 @@ export const SpaceExpensesWorkspace = ({
 				</div>
 			)}
 
-			{toastMessage
-				? createPortal(
-						<output
-							aria-live="polite"
-							className="pointer-events-none fixed bottom-6 left-1/2 z-[9999] block max-w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-border bg-card px-4 py-2.5 text-center text-sm text-foreground shadow-lg"
-						>
-							{toastMessage}
-						</output>,
-						document.body,
-					)
-				: null}
+			<ChatToastPortal message={toastMessage} />
 		</SpaceWorkspaceLayout>
 	);
 };
