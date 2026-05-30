@@ -18,7 +18,6 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useSetChatBreadcrumb } from "../../app/layout/ChatBreadcrumbContext";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
-import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { WorkspaceRightSidebar } from "../../app/layout/workspaceSpaces/WorkspaceRightSidebar";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -52,7 +51,7 @@ import {
 	SmartTextareaComposer,
 	type SmartTextareaComposerHandle,
 } from "./components/SmartTextareaComposer";
-import { SpaceExpensesMain } from "./components/SpaceExpensesMain";
+import { SpaceExpensesWorkspace } from "./components/SpaceExpensesWorkspace";
 import {
 	type ThreadDeepLink,
 	ThreadDiscussionRichText,
@@ -1793,57 +1792,21 @@ export const ChatLogPage = () => {
 
 	if (isExpensesRoute) {
 		return (
-			<SpaceWorkspaceLayout
-				contentClassName="flex min-h-0 flex-1 flex-col p-0"
-				rightRail={expenseRightPanel}
-				rightRailClassName="xl:w-[22rem]"
-				rightRailInnerClassName="min-h-0 flex-1 overflow-hidden p-0"
-				rightRailLabel="Expenses inspector"
-			>
-				{errorMessage ? (
-					<div className="shrink-0 border-b border-destructive/25 bg-destructive/10 px-4 py-2 text-sm text-destructive lg:px-6">
-						{errorMessage}
-					</div>
-				) : null}
-
-				{selectedSpaceId ? (
-					<div
-						className={
-							expenseInspectorWorkspaceEditing
-								? "flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-card opacity-[0.52] saturate-[0.68] contrast-[0.94] transition-[opacity,filter] duration-300 ease-out"
-								: "flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-card transition-[opacity,filter] duration-300 ease-out"
-						}
-					>
-						<SpaceExpensesMain
-							currentUserId={currentUserId}
-							listError={spaceTransactionsError}
-							listLoading={spaceTransactionsLoading}
-							onReload={() => void loadSpaceTransactions()}
-							onSelectExpense={handleSelectExpenseFromPanel}
-							selectedExpenseId={sidebarThreadExpenseId}
-							spaceId={selectedSpaceId}
-							spaceName={selectedSpace?.name ?? null}
-							transactions={spaceTransactions}
-						/>
-					</div>
-				) : (
-					<div className="border-b border-border px-4 py-6 text-sm text-muted-foreground">
-						Select a space to load expenses.
-					</div>
-				)}
-
-				{toastMessage
-					? createPortal(
-							<output
-								aria-live="polite"
-								className="pointer-events-none fixed bottom-6 left-1/2 z-[9999] block max-w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-border bg-card px-4 py-2.5 text-center text-sm text-foreground shadow-lg"
-							>
-								{toastMessage}
-							</output>,
-							document.body,
-						)
-					: null}
-			</SpaceWorkspaceLayout>
+			<SpaceExpensesWorkspace
+				currentUserId={currentUserId}
+				errorMessage={errorMessage}
+				expenseInspectorWorkspaceEditing={expenseInspectorWorkspaceEditing}
+				expenseRightPanel={expenseRightPanel}
+				listError={spaceTransactionsError}
+				listLoading={spaceTransactionsLoading}
+				onReload={() => void loadSpaceTransactions()}
+				onSelectExpense={handleSelectExpenseFromPanel}
+				selectedExpenseId={sidebarThreadExpenseId}
+				selectedSpaceId={selectedSpaceId}
+				spaceName={selectedSpace?.name ?? null}
+				spaceTransactions={spaceTransactions}
+				toastMessage={toastMessage}
+			/>
 		);
 	}
 
@@ -1864,461 +1827,421 @@ export const ChatLogPage = () => {
 					<main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
 						<div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-muted/30 to-background">
 							{selectedSpaceId ? (
-								<>
-									{isExpensesRoute ? (
-										<div
-											className={
-												expenseInspectorWorkspaceEditing
-													? "flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t border-border/60 bg-card opacity-[0.52] saturate-[0.68] contrast-[0.94] transition-[opacity,filter] duration-300 ease-out"
-													: "flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t border-border/60 bg-card transition-[opacity,filter] duration-300 ease-out"
-											}
-										>
-											<SpaceExpensesMain
-												currentUserId={currentUserId}
-												listError={spaceTransactionsError}
-												listLoading={spaceTransactionsLoading}
-												onReload={() => void loadSpaceTransactions()}
-												onSelectExpense={handleSelectExpenseFromPanel}
-												selectedExpenseId={sidebarThreadExpenseId}
-												spaceId={selectedSpaceId}
-												spaceName={selectedSpace?.name ?? null}
-												transactions={spaceTransactions}
-											/>
-										</div>
-									) : (
-										<div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t border-border/60 bg-card">
-											<div className="relative flex min-h-0 flex-1 flex-col bg-background/30">
-												{hasMore ? (
-													<button
-														aria-label="Load older messages"
-														className={`absolute left-3 top-3 z-20 max-w-[42%] sm:max-w-none ${navPillBase} ${navPillInactive} disabled:opacity-50`}
-														disabled={
-															isLoading || !selectedSpaceId || !oldestMessageId
-														}
-														onClick={() => void handleLoadOlder()}
-														type="button"
-													>
-														Older
-													</button>
-												) : null}
-												<div className="relative min-h-0 flex-1">
-													<div
-														className="scrollbar-chat absolute inset-0 space-y-2 overflow-y-auto px-4 pb-3 pt-12 sm:px-6 sm:pt-14"
-														onScroll={handleMessagesScroll}
-														ref={messagesScrollRef}
-													>
-														{messages?.length ? (
-															messages.map((m, idx) => {
-																const isUser = m.sender_type === "user";
-																const accent = isUser
-																	? userMessageAccent(m.user_id)
+								<div className="flex min-h-0 w-full flex-1 flex-col overflow-hidden border-t border-border/60 bg-card">
+									<div className="relative flex min-h-0 flex-1 flex-col bg-background/30">
+										{hasMore ? (
+											<button
+												aria-label="Load older messages"
+												className={`absolute left-3 top-3 z-20 max-w-[42%] sm:max-w-none ${navPillBase} ${navPillInactive} disabled:opacity-50`}
+												disabled={
+													isLoading || !selectedSpaceId || !oldestMessageId
+												}
+												onClick={() => void handleLoadOlder()}
+												type="button"
+											>
+												Older
+											</button>
+										) : null}
+										<div className="relative min-h-0 flex-1">
+											<div
+												className="scrollbar-chat absolute inset-0 space-y-2 overflow-y-auto px-4 pb-3 pt-12 sm:px-6 sm:pt-14"
+												onScroll={handleMessagesScroll}
+												ref={messagesScrollRef}
+											>
+												{messages?.length ? (
+													messages.map((m, idx) => {
+														const isUser = m.sender_type === "user";
+														const accent = isUser
+															? userMessageAccent(m.user_id)
+															: null;
+														const showCaptionAboveExpense =
+															Boolean(
+																m.related_transaction_id ||
+																	m.related_expense_id,
+															) &&
+															Boolean(m.text?.trim()) &&
+															!isRecurringExpenseChatMessage(m) &&
+															!isDraftExpenseSystemMessage(m) &&
+															!(
+																editingMessageId != null &&
+																String(editingMessageId) === String(m.id)
+															);
+														const isRelatedSelected =
+															sidebarThreadExpenseId != null &&
+															((m.related_expense_id != null &&
+																String(m.related_expense_id) ===
+																	String(sidebarThreadExpenseId)) ||
+																(m.related_transaction_id != null &&
+																	String(m.related_transaction_id) ===
+																		String(sidebarThreadExpenseId)));
+														const hasExpenseAttachment = Boolean(
+															m.related_expense_id || m.related_transaction_id,
+														);
+														const messageDateKey = m.created_at
+															? new Date(m.created_at).toDateString()
+															: "";
+														const prev = idx > 0 ? messages[idx - 1] : null;
+														const prevDateKey =
+															prev?.created_at != null
+																? new Date(prev.created_at).toDateString()
+																: "";
+														const showDaySeparator =
+															idx === 0 || messageDateKey !== prevDateKey;
+														const dateLabel = (() => {
+															if (!m.created_at) return "";
+															const d = new Date(m.created_at);
+															const today = new Date();
+															const y = new Date();
+															y.setDate(today.getDate() - 1);
+															if (d.toDateString() === today.toDateString())
+																return "Today";
+															if (d.toDateString() === y.toDateString())
+																return "Yesterday";
+															return d.toLocaleDateString(undefined, {
+																month: "short",
+																day: "numeric",
+															});
+														})();
+														const currentRelatedId =
+															m.related_expense_id != null
+																? String(m.related_expense_id)
+																: m.related_transaction_id != null
+																	? String(m.related_transaction_id)
 																	: null;
-																const showCaptionAboveExpense =
-																	Boolean(
-																		m.related_transaction_id ||
-																			m.related_expense_id,
-																	) &&
-																	Boolean(m.text?.trim()) &&
-																	!isRecurringExpenseChatMessage(m) &&
-																	!isDraftExpenseSystemMessage(m) &&
-																	!(
-																		editingMessageId != null &&
-																		String(editingMessageId) === String(m.id)
-																	);
-																const isRelatedSelected =
-																	sidebarThreadExpenseId != null &&
-																	((m.related_expense_id != null &&
-																		String(m.related_expense_id) ===
-																			String(sidebarThreadExpenseId)) ||
-																		(m.related_transaction_id != null &&
-																			String(m.related_transaction_id) ===
-																				String(sidebarThreadExpenseId)));
-																const hasExpenseAttachment = Boolean(
-																	m.related_expense_id ||
-																		m.related_transaction_id,
-																);
-																const messageDateKey = m.created_at
-																	? new Date(m.created_at).toDateString()
-																	: "";
-																const prev = idx > 0 ? messages[idx - 1] : null;
-																const prevDateKey =
-																	prev?.created_at != null
-																		? new Date(prev.created_at).toDateString()
-																		: "";
-																const showDaySeparator =
-																	idx === 0 || messageDateKey !== prevDateKey;
-																const dateLabel = (() => {
-																	if (!m.created_at) return "";
-																	const d = new Date(m.created_at);
-																	const today = new Date();
-																	const y = new Date();
-																	y.setDate(today.getDate() - 1);
-																	if (d.toDateString() === today.toDateString())
-																		return "Today";
-																	if (d.toDateString() === y.toDateString())
-																		return "Yesterday";
-																	return d.toLocaleDateString(undefined, {
-																		month: "short",
-																		day: "numeric",
-																	});
-																})();
-																const currentRelatedId =
-																	m.related_expense_id != null
-																		? String(m.related_expense_id)
-																		: m.related_transaction_id != null
-																			? String(m.related_transaction_id)
-																			: null;
-																const prevRelatedId =
-																	prev?.related_expense_id != null
-																		? String(prev.related_expense_id)
-																		: prev?.related_transaction_id != null
-																			? String(prev.related_transaction_id)
-																			: null;
-																const sameRelatedAsPrev =
-																	currentRelatedId != null &&
-																	prevRelatedId != null &&
-																	currentRelatedId === prevRelatedId;
-																const isLatestForExpense =
-																	currentRelatedId == null
-																		? true
-																		: expenseRenderMeta.latestIndexByKey.get(
-																				currentRelatedId,
-																			) === idx;
-																const groupedUpdates =
-																	currentRelatedId == null
-																		? []
-																		: (expenseRenderMeta.updatesByKey.get(
-																				currentRelatedId,
-																			) ?? []);
-																const inspectorOpen =
-																	sidebarThreadExpenseId != null;
-																// Chat cards are compact event summaries. Detailed expense work belongs to the shared inspector or review flow.
-																if (
-																	hasExpenseAttachment &&
-																	!isLatestForExpense &&
-																	!showCaptionAboveExpense &&
-																	!m.text?.trim()
-																) {
-																	return null;
+														const prevRelatedId =
+															prev?.related_expense_id != null
+																? String(prev.related_expense_id)
+																: prev?.related_transaction_id != null
+																	? String(prev.related_transaction_id)
+																	: null;
+														const sameRelatedAsPrev =
+															currentRelatedId != null &&
+															prevRelatedId != null &&
+															currentRelatedId === prevRelatedId;
+														const isLatestForExpense =
+															currentRelatedId == null
+																? true
+																: expenseRenderMeta.latestIndexByKey.get(
+																		currentRelatedId,
+																	) === idx;
+														const groupedUpdates =
+															currentRelatedId == null
+																? []
+																: (expenseRenderMeta.updatesByKey.get(
+																		currentRelatedId,
+																	) ?? []);
+														const inspectorOpen =
+															sidebarThreadExpenseId != null;
+														// Chat cards are compact event summaries. Detailed expense work belongs to the shared inspector or review flow.
+														if (
+															hasExpenseAttachment &&
+															!isLatestForExpense &&
+															!showCaptionAboveExpense &&
+															!m.text?.trim()
+														) {
+															return null;
+														}
+
+														return (
+															<div
+																className={
+																	sameRelatedAsPrev
+																		? "space-y-0.5"
+																		: "space-y-1"
 																}
-
-																return (
+																key={String(m.id)}
+															>
+																{showDaySeparator ? (
+																	<div className="flex items-center py-0.5">
+																		<div className="h-px flex-1 bg-border/45" />
+																		<span className="px-2 text-[10px] font-medium text-muted-foreground">
+																			{dateLabel}
+																		</span>
+																		<div className="h-px flex-1 bg-border/45" />
+																	</div>
+																) : null}
+																{sameRelatedAsPrev && hasExpenseAttachment ? (
+																	<div className="ml-2.5 h-2 w-px bg-[rgba(120,100,80,0.26)]" />
+																) : null}
+																<div
+																	className={[
+																		"flex",
+																		isUser ? "justify-end" : "justify-start",
+																	].join(" ")}
+																>
 																	<div
-																		className={
-																			sameRelatedAsPrev
-																				? "space-y-0.5"
-																				: "space-y-1"
+																		className={[
+																			"group relative transition-colors",
+																			hasExpenseAttachment
+																				? "max-w-[min(780px,95%)]"
+																				: isUser
+																					? "max-w-[min(620px,88%)]"
+																					: "max-w-[min(700px,92%)]",
+																			hasExpenseAttachment
+																				? "space-y-1 px-0 py-0"
+																				: "space-y-2 rounded-xl border px-4 py-3 shadow-sm",
+																			hasExpenseAttachment
+																				? ""
+																				: isUser
+																					? "border-primary/35 bg-primary/[0.16]"
+																					: "border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.94)]",
+																			isRelatedSelected
+																				? hasExpenseAttachment
+																					? "border-l-2 border-l-[rgba(120,98,62,0.45)] pl-2"
+																					: "border-[rgba(120,98,62,0.38)] bg-[rgba(255,248,235,0.96)]"
+																				: "",
+																		].join(" ")}
+																		style={
+																			isUser && accent && !hasExpenseAttachment
+																				? {
+																						borderLeftWidth: 4,
+																						borderLeftStyle: "solid",
+																						borderLeftColor:
+																							accent.borderLeftColor,
+																						backgroundColor: accent.surface,
+																					}
+																				: undefined
 																		}
-																		key={String(m.id)}
 																	>
-																		{showDaySeparator ? (
-																			<div className="flex items-center py-0.5">
-																				<div className="h-px flex-1 bg-border/45" />
-																				<span className="px-2 text-[10px] font-medium text-muted-foreground">
-																					{dateLabel}
-																				</span>
-																				<div className="h-px flex-1 bg-border/45" />
-																			</div>
-																		) : null}
-																		{sameRelatedAsPrev &&
-																		hasExpenseAttachment ? (
-																			<div className="ml-2.5 h-2 w-px bg-[rgba(120,100,80,0.26)]" />
-																		) : null}
-																		<div
-																			className={[
-																				"flex",
-																				isUser
-																					? "justify-end"
-																					: "justify-start",
-																			].join(" ")}
-																		>
-																			<div
-																				className={[
-																					"group relative transition-colors",
-																					hasExpenseAttachment
-																						? "max-w-[min(780px,95%)]"
-																						: isUser
-																							? "max-w-[min(620px,88%)]"
-																							: "max-w-[min(700px,92%)]",
-																					hasExpenseAttachment
-																						? "space-y-1 px-0 py-0"
-																						: "space-y-2 rounded-xl border px-4 py-3 shadow-sm",
-																					hasExpenseAttachment
-																						? ""
-																						: isUser
-																							? "border-primary/35 bg-primary/[0.16]"
-																							: "border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.94)]",
-																					isRelatedSelected
-																						? hasExpenseAttachment
-																							? "border-l-2 border-l-[rgba(120,98,62,0.45)] pl-2"
-																							: "border-[rgba(120,98,62,0.38)] bg-[rgba(255,248,235,0.96)]"
-																						: "",
-																				].join(" ")}
-																				style={
-																					isUser &&
-																					accent &&
-																					!hasExpenseAttachment
-																						? {
-																								borderLeftWidth: 4,
-																								borderLeftStyle: "solid",
-																								borderLeftColor:
-																									accent.borderLeftColor,
-																								backgroundColor: accent.surface,
-																							}
-																						: undefined
-																				}
-																			>
-																				<div className="flex items-center justify-between gap-2">
-																					{hasExpenseAttachment ? (
-																						<span />
-																					) : (
-																						<div className="min-w-0 text-[10px] font-semibold text-foreground">
-																							{getMessageSenderLabel(m)}
-																						</div>
-																					)}
-																					<div className="flex shrink-0 items-center gap-2">
-																						{canEditMessage(m) ? (
-																							<button
-																								aria-label="Edit message"
-																								className="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary opacity-0 transition-opacity hover:bg-primary/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-																								onClick={() => {
-																									setEditingMessageId(m.id);
-																									setEditingMessageText(
-																										m.text ?? "",
-																									);
-																								}}
-																								title="Edit message"
-																								type="button"
-																							>
-																								Edit
-																							</button>
-																						) : null}
-																						{canDeleteMessage(m) ? (
-																							<button
-																								aria-label="Delete message"
-																								className="rounded px-1.5 py-0.5 text-[10px] font-medium text-destructive opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-																								onClick={() =>
-																									setPendingDeleteMessage(m)
-																								}
-																								title="Delete message"
-																								type="button"
-																							>
-																								Delete
-																							</button>
-																						) : null}
-																						<div className="text-[10px] text-muted-foreground">
-																							{m.created_at
-																								? formatDateTime(m.created_at)
-																								: ""}
-																						</div>
-																					</div>
+																		<div className="flex items-center justify-between gap-2">
+																			{hasExpenseAttachment ? (
+																				<span />
+																			) : (
+																				<div className="min-w-0 text-[10px] font-semibold text-foreground">
+																					{getMessageSenderLabel(m)}
 																				</div>
-
-																				{showCaptionAboveExpense ? (
-																					<div className="whitespace-pre-wrap text-sm text-foreground">
-																						<ThreadDiscussionRichText
-																							body={m.text ?? ""}
-																							expenseId={null}
-																							onOpenThreadLink={
-																								handleOpenThreadLinkFromMainChat
-																							}
-																							onJumpToLine={() => {}}
-																							spaceId={selectedSpaceId ?? "0"}
-																						/>
-																					</div>
+																			)}
+																			<div className="flex shrink-0 items-center gap-2">
+																				{canEditMessage(m) ? (
+																					<button
+																						aria-label="Edit message"
+																						className="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary opacity-0 transition-opacity hover:bg-primary/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+																						onClick={() => {
+																							setEditingMessageId(m.id);
+																							setEditingMessageText(
+																								m.text ?? "",
+																							);
+																						}}
+																						title="Edit message"
+																						type="button"
+																					>
+																						Edit
+																					</button>
 																				) : null}
-
-																				{m.related_transaction_id &&
-																				isLatestForExpense ? (
-																					<ExpenseMessageCard
-																						chatWorkspace={workspaceScope}
-																						compact
-																						inspectorOpen={inspectorOpen}
-																						isSelected={isRelatedSelected}
-																						onOpenExpenseThread={
-																							openExpenseInSidebar
+																				{canDeleteMessage(m) ? (
+																					<button
+																						aria-label="Delete message"
+																						className="rounded px-1.5 py-0.5 text-[10px] font-medium text-destructive opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+																						onClick={() =>
+																							setPendingDeleteMessage(m)
 																						}
-																						onTransactionOrphaned={() =>
-																							handleRelatedResourceGone(m.id)
-																						}
-																						spaceId={
-																							selectedSpaceId ?? undefined
-																						}
-																						transactionId={
-																							m.related_transaction_id
-																						}
-																						updates={groupedUpdates}
-																					/>
+																						title="Delete message"
+																						type="button"
+																					>
+																						Delete
+																					</button>
 																				) : null}
-
-																				{m.related_expense_id &&
-																				isLatestForExpense ? (
-																					<DraftExpenseCard
-																						chatWorkspace={workspaceScope}
-																						compact
-																						expenseId={m.related_expense_id}
-																						inspectorOpen={inspectorOpen}
-																						isSelected={isRelatedSelected}
-																						onExpenseOrphaned={() =>
-																							handleRelatedResourceGone(m.id)
-																						}
-																						onOpenExpenseThread={
-																							openExpenseInSidebar
-																						}
-																						originMessageId={m.id}
-																						relatedExpenseStatusHint={
-																							m.related_expense_status
-																						}
-																						spaceId={
-																							selectedSpaceId ?? undefined
-																						}
-																					/>
-																				) : null}
-
-																				{canEditMessage(m) &&
-																				editingMessageId != null &&
-																				String(editingMessageId) ===
-																					String(m.id) ? (
-																					<div className="mt-2 space-y-2">
-																						<label className="grid gap-1">
-																							<span className="sr-only">
-																								Edit message
-																							</span>
-																							<textarea
-																								className="min-h-[5rem] w-full resize-y rounded-md border border-border bg-background p-2 text-sm text-foreground"
-																								onChange={(e) =>
-																									setEditingMessageText(
-																										e.target.value,
-																									)
-																								}
-																								rows={5}
-																								value={editingMessageText}
-																							/>
-																						</label>
-																						<div className="flex flex-wrap gap-2">
-																							<button
-																								className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-																								onClick={() =>
-																									void handleSaveEditMessage()
-																								}
-																								type="button"
-																							>
-																								Save
-																							</button>
-																							<button
-																								className="rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent"
-																								onClick={
-																									handleCancelEditMessage
-																								}
-																								type="button"
-																							>
-																								Cancel
-																							</button>
-																						</div>
-																					</div>
-																				) : isRecurringExpenseChatMessage(m) ? (
-																					<div className="space-y-1">
-																						<p className="text-[11px] font-semibold uppercase tracking-wide text-primary/90">
-																							Recurring schedule
-																						</p>
-																						<div className="whitespace-pre-wrap text-sm text-foreground">
-																							<ThreadDiscussionRichText
-																								body={m.text ?? ""}
-																								expenseId={null}
-																								onOpenThreadLink={
-																									handleOpenThreadLinkFromMainChat
-																								}
-																								onJumpToLine={() => {}}
-																								spaceId={selectedSpaceId ?? "0"}
-																							/>
-																						</div>
-																					</div>
-																				) : isDraftExpenseSystemMessage(
-																						m,
-																					) ? null : showCaptionAboveExpense ? null : (
-																					<div className="whitespace-pre-wrap text-sm text-foreground">
-																						<ThreadDiscussionRichText
-																							body={m.text ?? ""}
-																							expenseId={null}
-																							onOpenThreadLink={
-																								handleOpenThreadLinkFromMainChat
-																							}
-																							onJumpToLine={() => {}}
-																							spaceId={selectedSpaceId ?? "0"}
-																						/>
-																					</div>
-																				)}
+																				<div className="text-[10px] text-muted-foreground">
+																					{m.created_at
+																						? formatDateTime(m.created_at)
+																						: ""}
+																				</div>
 																			</div>
 																		</div>
+
+																		{showCaptionAboveExpense ? (
+																			<div className="whitespace-pre-wrap text-sm text-foreground">
+																				<ThreadDiscussionRichText
+																					body={m.text ?? ""}
+																					expenseId={null}
+																					onOpenThreadLink={
+																						handleOpenThreadLinkFromMainChat
+																					}
+																					onJumpToLine={() => {}}
+																					spaceId={selectedSpaceId ?? "0"}
+																				/>
+																			</div>
+																		) : null}
+
+																		{m.related_transaction_id &&
+																		isLatestForExpense ? (
+																			<ExpenseMessageCard
+																				chatWorkspace={workspaceScope}
+																				compact
+																				inspectorOpen={inspectorOpen}
+																				isSelected={isRelatedSelected}
+																				onOpenExpenseThread={
+																					openExpenseInSidebar
+																				}
+																				onTransactionOrphaned={() =>
+																					handleRelatedResourceGone(m.id)
+																				}
+																				spaceId={selectedSpaceId ?? undefined}
+																				transactionId={m.related_transaction_id}
+																				updates={groupedUpdates}
+																			/>
+																		) : null}
+
+																		{m.related_expense_id &&
+																		isLatestForExpense ? (
+																			<DraftExpenseCard
+																				chatWorkspace={workspaceScope}
+																				compact
+																				expenseId={m.related_expense_id}
+																				inspectorOpen={inspectorOpen}
+																				isSelected={isRelatedSelected}
+																				onExpenseOrphaned={() =>
+																					handleRelatedResourceGone(m.id)
+																				}
+																				onOpenExpenseThread={
+																					openExpenseInSidebar
+																				}
+																				originMessageId={m.id}
+																				relatedExpenseStatusHint={
+																					m.related_expense_status
+																				}
+																				spaceId={selectedSpaceId ?? undefined}
+																			/>
+																		) : null}
+
+																		{canEditMessage(m) &&
+																		editingMessageId != null &&
+																		String(editingMessageId) ===
+																			String(m.id) ? (
+																			<div className="mt-2 space-y-2">
+																				<label className="grid gap-1">
+																					<span className="sr-only">
+																						Edit message
+																					</span>
+																					<textarea
+																						className="min-h-[5rem] w-full resize-y rounded-md border border-border bg-background p-2 text-sm text-foreground"
+																						onChange={(e) =>
+																							setEditingMessageText(
+																								e.target.value,
+																							)
+																						}
+																						rows={5}
+																						value={editingMessageText}
+																					/>
+																				</label>
+																				<div className="flex flex-wrap gap-2">
+																					<button
+																						className="rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+																						onClick={() =>
+																							void handleSaveEditMessage()
+																						}
+																						type="button"
+																					>
+																						Save
+																					</button>
+																					<button
+																						className="rounded-md border border-border px-2.5 py-1 text-xs font-medium hover:bg-accent"
+																						onClick={handleCancelEditMessage}
+																						type="button"
+																					>
+																						Cancel
+																					</button>
+																				</div>
+																			</div>
+																		) : isRecurringExpenseChatMessage(m) ? (
+																			<div className="space-y-1">
+																				<p className="text-[11px] font-semibold uppercase tracking-wide text-primary/90">
+																					Recurring schedule
+																				</p>
+																				<div className="whitespace-pre-wrap text-sm text-foreground">
+																					<ThreadDiscussionRichText
+																						body={m.text ?? ""}
+																						expenseId={null}
+																						onOpenThreadLink={
+																							handleOpenThreadLinkFromMainChat
+																						}
+																						onJumpToLine={() => {}}
+																						spaceId={selectedSpaceId ?? "0"}
+																					/>
+																				</div>
+																			</div>
+																		) : isDraftExpenseSystemMessage(
+																				m,
+																			) ? null : showCaptionAboveExpense ? null : (
+																			<div className="whitespace-pre-wrap text-sm text-foreground">
+																				<ThreadDiscussionRichText
+																					body={m.text ?? ""}
+																					expenseId={null}
+																					onOpenThreadLink={
+																						handleOpenThreadLinkFromMainChat
+																					}
+																					onJumpToLine={() => {}}
+																					spaceId={selectedSpaceId ?? "0"}
+																				/>
+																			</div>
+																		)}
 																	</div>
-																);
-															})
-														) : isLoading ? (
-															<div className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-4 py-3 text-sm text-muted-foreground">
-																Loading conversation…
+																</div>
 															</div>
-														) : (
-															<div className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-4 py-3 text-sm text-muted-foreground">
-																<p className="font-medium text-foreground/85">
-																	Start with a quick expense note:
-																</p>
-																<p className="mt-1 text-xs">
-																	Coffee 4.50 · Taxi home 500 · Split dinner
-																	with Natalia
-																</p>
-															</div>
-														)}
-														<div
-															aria-hidden
-															className="h-px w-full shrink-0"
-															ref={messagesEndRef}
-														/>
+														);
+													})
+												) : isLoading ? (
+													<div className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-4 py-3 text-sm text-muted-foreground">
+														Loading conversation…
 													</div>
-													{showJumpToLatest ? (
-														<button
-															aria-label="Jump to latest messages"
-															className="pointer-events-auto absolute bottom-3 right-3 z-30 inline-flex h-10 items-center gap-1.5 rounded-full border border-primary/25 bg-primary px-3 text-primary-foreground shadow-lg ring-2 ring-background transition hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-11 sm:px-4"
-															onClick={handleJumpToLatest}
-															type="button"
-														>
-															<span
-																aria-hidden
-																className="text-base leading-none sm:text-lg"
-															>
-																↓
-															</span>
-															<span className="max-w-[5.5rem] truncate text-xs font-semibold sm:max-w-none">
-																Latest
-															</span>
-														</button>
-													) : null}
-												</div>
-												{selectedSpaceId && showFirstChatQuickStrip ? (
-													<FirstChatQuickActions
-														actions={firstChatQuick?.quick_actions ?? []}
-														onAction={handleFirstChatQuickAction}
-													/>
-												) : null}
-												{selectedSpaceId ? (
-													<SmartTextareaComposer
-														ref={smartComposerRef}
-														disabled={isLoading || !selectedSpaceId}
-														isRecording={isRecording}
-														onCancelRecording={handleCancelRecording}
-														onComposerSubmit={(p) =>
-															void handleComposerSubmit(p)
-														}
-														onStartExpenseRecording={() =>
-															void beginRecording(false)
-														}
-														onStopRecording={() => void handleToggleRecording()}
-														spaceId={selectedSpaceId}
-													/>
-												) : null}
+												) : (
+													<div className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-4 py-3 text-sm text-muted-foreground">
+														<p className="font-medium text-foreground/85">
+															Start with a quick expense note:
+														</p>
+														<p className="mt-1 text-xs">
+															Coffee 4.50 · Taxi home 500 · Split dinner with
+															Natalia
+														</p>
+													</div>
+												)}
+												<div
+													aria-hidden
+													className="h-px w-full shrink-0"
+													ref={messagesEndRef}
+												/>
 											</div>
+											{showJumpToLatest ? (
+												<button
+													aria-label="Jump to latest messages"
+													className="pointer-events-auto absolute bottom-3 right-3 z-30 inline-flex h-10 items-center gap-1.5 rounded-full border border-primary/25 bg-primary px-3 text-primary-foreground shadow-lg ring-2 ring-background transition hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-11 sm:px-4"
+													onClick={handleJumpToLatest}
+													type="button"
+												>
+													<span
+														aria-hidden
+														className="text-base leading-none sm:text-lg"
+													>
+														↓
+													</span>
+													<span className="max-w-[5.5rem] truncate text-xs font-semibold sm:max-w-none">
+														Latest
+													</span>
+												</button>
+											) : null}
 										</div>
-									)}
-								</>
+										{selectedSpaceId && showFirstChatQuickStrip ? (
+											<FirstChatQuickActions
+												actions={firstChatQuick?.quick_actions ?? []}
+												onAction={handleFirstChatQuickAction}
+											/>
+										) : null}
+										{selectedSpaceId ? (
+											<SmartTextareaComposer
+												ref={smartComposerRef}
+												disabled={isLoading || !selectedSpaceId}
+												isRecording={isRecording}
+												onCancelRecording={handleCancelRecording}
+												onComposerSubmit={(p) => void handleComposerSubmit(p)}
+												onStartExpenseRecording={() =>
+													void beginRecording(false)
+												}
+												onStopRecording={() => void handleToggleRecording()}
+												spaceId={selectedSpaceId}
+											/>
+										) : null}
+									</div>
+								</div>
 							) : (
 								<div className="border-b border-border px-4 py-6 text-sm text-muted-foreground">
 									Select a space to load messages and tools.
