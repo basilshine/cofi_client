@@ -17,7 +17,6 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
-import { ceitsSpaceExpenseEditUrl } from "../../../shared/lib/ceitsAppUrls";
 import type { ExpenseThreadController } from "../hooks/useExpenseThreadState";
 import { splitRowKey } from "../hooks/useExpenseThreadState";
 import { ChatComposerDock, type ChatComposerMode } from "./ChatComposerDock";
@@ -498,14 +497,6 @@ export const ExpenseThreadInlinePanel = ({
 
 	const headingTitle = useMemo(() => expenseHeadingLabel(expense), [expense]);
 
-	const ceitsEditUrl = useMemo(
-		() =>
-			expense?.id != null
-				? ceitsSpaceExpenseEditUrl(spaceId, expense.id)
-				: null,
-		[expense?.id, spaceId],
-	);
-
 	const expenseThreadHref =
 		expense?.id != null
 			? `/console/chat/thread?spaceId=${encodeURIComponent(String(spaceId))}&expenseId=${encodeURIComponent(String(expense.id))}`
@@ -939,18 +930,6 @@ export const ExpenseThreadInlinePanel = ({
 								</span>
 							) : null}
 						</div>
-						{ceitsEditUrl ? (
-							<div className="mt-2">
-								<a
-									className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-									href={ceitsEditUrl}
-									rel="noopener noreferrer"
-									target="_blank"
-								>
-									Open in Ceits app
-								</a>
-							</div>
-						) : null}
 					</div>
 				</header>
 
