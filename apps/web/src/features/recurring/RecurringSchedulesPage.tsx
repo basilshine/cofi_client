@@ -6,7 +6,7 @@ import {
 } from "@cofi/api";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
-import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
+import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 
@@ -1301,499 +1301,483 @@ export const RecurringSchedulesPage = () => {
 	);
 
 	return (
-		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
-			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
-				<SpaceTabs />
-			</header>
-			<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
-				<div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-					<div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 lg:px-8 lg:py-8">
-						<section
-							aria-label="Recurring averages"
-							className="rounded-2xl border border-border/70 bg-card p-4 soft-shadow inner-glow sm:p-5"
-						>
-							<div className="flex items-start justify-between gap-3">
-								<div>
-									<p className={sectionEyebrow}>Spending forecast</p>
-									<h2 className="font-display text-base font-semibold tracking-tight text-foreground sm:text-lg">
-										Average recurring spend
-									</h2>
+		<SpaceWorkspaceLayout
+			contentClassName="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 lg:px-8 lg:py-8"
+			mainClassName=""
+			rightRail={plannerPanel}
+			rightRailClassName="border-border/60 bg-muted/30"
+			rightRailInnerClassName="min-h-0 flex-1 overflow-y-auto px-4 py-6"
+			rightRailLabel="Recurring planner sidebar"
+		>
+			<section
+				aria-label="Recurring averages"
+				className="rounded-2xl border border-border/70 bg-card p-4 soft-shadow inner-glow sm:p-5"
+			>
+				<div className="flex items-start justify-between gap-3">
+					<div>
+						<p className={sectionEyebrow}>Spending forecast</p>
+						<h2 className="font-display text-base font-semibold tracking-tight text-foreground sm:text-lg">
+							Average recurring spend
+						</h2>
+					</div>
+					<p className="rounded-full border border-border/70 bg-muted/30 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+						Active only
+					</p>
+				</div>
+				<div className="mt-4 grid gap-3 sm:grid-cols-3">
+					{periodForecastSummaries.map((summary) => {
+						const tone = forecastTone(summary.label);
+						const ratio =
+							summary.average > 0
+								? Math.max(
+										0.12,
+										Math.min(1, summary.projectedTotal / summary.average),
+									)
+								: 0;
+						return (
+							<div
+								className={`${forecastCardBaseClass} ${tone.card}`}
+								key={summary.label}
+							>
+								<div className="flex items-center justify-between gap-2">
+									<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+										Average / {summary.label}
+									</p>
+									<span
+										className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-[10px] font-semibold uppercase ${tone.badge}`}
+									>
+										{summary.label[0]}
+									</span>
 								</div>
-								<p className="rounded-full border border-border/70 bg-muted/30 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-									Active only
+								<p className="mt-2 text-2xl font-semibold leading-none text-foreground">
+									{formatMoney(summary.average)}
 								</p>
-							</div>
-							<div className="mt-4 grid gap-3 sm:grid-cols-3">
-								{periodForecastSummaries.map((summary) => {
-									const tone = forecastTone(summary.label);
-									const ratio =
-										summary.average > 0
-											? Math.max(
-													0.12,
-													Math.min(1, summary.projectedTotal / summary.average),
-												)
-											: 0;
-									return (
-										<div
-											className={`${forecastCardBaseClass} ${tone.card}`}
-											key={summary.label}
-										>
-											<div className="flex items-center justify-between gap-2">
-												<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-													Average / {summary.label}
-												</p>
-												<span
-													className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-[10px] font-semibold uppercase ${tone.badge}`}
-												>
-													{summary.label[0]}
-												</span>
-											</div>
-											<p className="mt-2 text-2xl font-semibold leading-none text-foreground">
-												{formatMoney(summary.average)}
-											</p>
-											<p className="mt-1.5 text-xs text-muted-foreground">
-												Projected this {summary.label.toLowerCase()}:{" "}
-												{formatMoney(summary.projectedTotal)}
-											</p>
-											<p className="text-xs text-muted-foreground">
-												{summary.projectedRuns} run
-												{summary.projectedRuns === 1 ? "" : "s"}
-											</p>
-											<div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background/70">
-												<div
-													className={`h-full rounded-full ${tone.fill}`}
-													style={{
-														width: `${Math.round(ratio * 100)}%`,
-													}}
-												/>
-											</div>
-										</div>
-									);
-								})}
-							</div>
-						</section>
-						<section className={sectionCard}>
-							<div className={sectionHeading}>
-								<div>
-									<p className={sectionEyebrow}>Recurring schedules</p>
-									<h1 className={sectionTitle}>Recurring items</h1>
+								<p className="mt-1.5 text-xs text-muted-foreground">
+									Projected this {summary.label.toLowerCase()}:{" "}
+									{formatMoney(summary.projectedTotal)}
+								</p>
+								<p className="text-xs text-muted-foreground">
+									{summary.projectedRuns} run
+									{summary.projectedRuns === 1 ? "" : "s"}
+								</p>
+								<div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background/70">
+									<div
+										className={`h-full rounded-full ${tone.fill}`}
+										style={{
+											width: `${Math.round(ratio * 100)}%`,
+										}}
+									/>
 								</div>
+							</div>
+						);
+					})}
+				</div>
+			</section>
+			<section className={sectionCard}>
+				<div className={sectionHeading}>
+					<div>
+						<p className={sectionEyebrow}>Recurring schedules</p>
+						<h1 className={sectionTitle}>Recurring items</h1>
+					</div>
+					<button
+						aria-expanded={createOpen}
+						className={ghostButton}
+						disabled={createBusy}
+						onClick={handleToggleCreate}
+						type="button"
+					>
+						{createOpen ? "Close form" : "Add recurring"}
+					</button>
+				</div>
+				<div className="space-y-4 p-6">
+					<output aria-live="polite" className="sr-only">
+						{successMessage ?? ""}
+					</output>
+					<p className="text-sm text-muted-foreground">
+						Pause to stop future runs without removing the schedule. Delete
+						removes it permanently.
+					</p>
+					{createOpen ? (
+						<form
+							className="space-y-3 rounded-xl border border-border/70 bg-muted/30 p-4"
+							onSubmit={(e) => {
+								e.preventDefault();
+								void handleCreateRecurring();
+							}}
+						>
+							<p className="text-sm font-semibold text-foreground">
+								New recurring schedule
+							</p>
+							<div className="grid gap-3 sm:grid-cols-2">
+								<label className="space-y-1.5">
+									<span className={formLabelClass}>Name</span>
+									<input
+										aria-label="New recurring name"
+										className={formInputClass}
+										onChange={(e) =>
+											setCreateDraft((prev) => ({
+												...prev,
+												name: e.target.value,
+											}))
+										}
+										placeholder="Ride home"
+										type="text"
+										value={createDraft.name}
+									/>
+								</label>
+								<label className="space-y-1.5">
+									<span className={formLabelClass}>Amount</span>
+									<input
+										aria-label="New recurring amount"
+										className={formInputClass}
+										inputMode="decimal"
+										onChange={(e) => {
+											const next = e.target.value;
+											const parsed = Number(next);
+											setCreateDraft((prev) => ({
+												...prev,
+												amountInput: next,
+												amount: Number.isFinite(parsed) ? parsed : 0,
+											}));
+										}}
+										placeholder="0.00"
+										type="text"
+										value={createDraft.amountInput}
+									/>
+								</label>
+								<label className="space-y-1.5">
+									<span className={formLabelClass}>Interval</span>
+									<select
+										aria-label="New recurring interval"
+										className={formInputClass}
+										onChange={(e) =>
+											setCreateDraft((prev) => ({
+												...prev,
+												interval: e.target.value as StandardRecurringInterval,
+											}))
+										}
+										value={createDraft.interval}
+									>
+										{recurringIntervalChoices().map((iv) => (
+											<option key={iv} value={iv}>
+												{iv === "minute"
+													? "minute (test)"
+													: iv === "test"
+														? "test (30s, dev)"
+														: iv}
+											</option>
+										))}
+									</select>
+								</label>
+								<label className="space-y-1.5">
+									<span className={formLabelClass}>Tag</span>
+									<input
+										aria-label="New recurring tag"
+										className={formInputClass}
+										onChange={(e) =>
+											setCreateDraft((prev) => ({
+												...prev,
+												tagLabel: e.target.value,
+											}))
+										}
+										placeholder="transport"
+										type="text"
+										value={createDraft.tagLabel}
+									/>
+								</label>
+							</div>
+							{createError ? (
+								<p className="text-xs text-destructive">{createError}</p>
+							) : null}
+							<div className="flex items-center justify-end gap-2">
 								<button
-									aria-expanded={createOpen}
-									className={ghostButton}
+									aria-label="Cancel new recurring form"
+									className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-accent disabled:opacity-50"
 									disabled={createBusy}
-									onClick={handleToggleCreate}
+									onClick={handleCancelCreate}
 									type="button"
 								>
-									{createOpen ? "Close form" : "Add recurring"}
+									Cancel
+								</button>
+								<button
+									aria-label="Create recurring schedule"
+									className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+									disabled={createBusy}
+									type="submit"
+								>
+									{createBusy ? "Creating..." : "Create recurring"}
 								</button>
 							</div>
-							<div className="space-y-4 p-6">
-								<output aria-live="polite" className="sr-only">
-									{successMessage ?? ""}
-								</output>
-								<p className="text-sm text-muted-foreground">
-									Pause to stop future runs without removing the schedule.
-									Delete removes it permanently.
-								</p>
-								{createOpen ? (
-									<form
-										className="space-y-3 rounded-xl border border-border/70 bg-muted/30 p-4"
-										onSubmit={(e) => {
-											e.preventDefault();
-											void handleCreateRecurring();
-										}}
-									>
-										<p className="text-sm font-semibold text-foreground">
-											New recurring schedule
-										</p>
-										<div className="grid gap-3 sm:grid-cols-2">
-											<label className="space-y-1.5">
-												<span className={formLabelClass}>Name</span>
-												<input
-													aria-label="New recurring name"
-													className={formInputClass}
-													onChange={(e) =>
-														setCreateDraft((prev) => ({
-															...prev,
-															name: e.target.value,
-														}))
-													}
-													placeholder="Ride home"
-													type="text"
-													value={createDraft.name}
-												/>
-											</label>
-											<label className="space-y-1.5">
-												<span className={formLabelClass}>Amount</span>
-												<input
-													aria-label="New recurring amount"
-													className={formInputClass}
-													inputMode="decimal"
-													onChange={(e) => {
-														const next = e.target.value;
-														const parsed = Number(next);
-														setCreateDraft((prev) => ({
-															...prev,
-															amountInput: next,
-															amount: Number.isFinite(parsed) ? parsed : 0,
-														}));
-													}}
-													placeholder="0.00"
-													type="text"
-													value={createDraft.amountInput}
-												/>
-											</label>
-											<label className="space-y-1.5">
-												<span className={formLabelClass}>Interval</span>
-												<select
-													aria-label="New recurring interval"
-													className={formInputClass}
-													onChange={(e) =>
-														setCreateDraft((prev) => ({
-															...prev,
-															interval: e.target
-																.value as StandardRecurringInterval,
-														}))
-													}
-													value={createDraft.interval}
-												>
-													{recurringIntervalChoices().map((iv) => (
-														<option key={iv} value={iv}>
-															{iv === "minute"
-																? "minute (test)"
-																: iv === "test"
-																	? "test (30s, dev)"
-																	: iv}
-														</option>
-													))}
-												</select>
-											</label>
-											<label className="space-y-1.5">
-												<span className={formLabelClass}>Tag</span>
-												<input
-													aria-label="New recurring tag"
-													className={formInputClass}
-													onChange={(e) =>
-														setCreateDraft((prev) => ({
-															...prev,
-															tagLabel: e.target.value,
-														}))
-													}
-													placeholder="transport"
-													type="text"
-													value={createDraft.tagLabel}
-												/>
-											</label>
-										</div>
-										{createError ? (
-											<p className="text-xs text-destructive">{createError}</p>
-										) : null}
-										<div className="flex items-center justify-end gap-2">
-											<button
-												aria-label="Cancel new recurring form"
-												className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-accent disabled:opacity-50"
-												disabled={createBusy}
-												onClick={handleCancelCreate}
-												type="button"
-											>
-												Cancel
-											</button>
-											<button
-												aria-label="Create recurring schedule"
-												className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-												disabled={createBusy}
-												type="submit"
-											>
-												{createBusy ? "Creating..." : "Create recurring"}
-											</button>
-										</div>
-									</form>
-								) : null}
-								{errorMessage ? (
-									<div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-										{errorMessage}
-									</div>
-								) : null}
-								{isLoading && !items ? (
-									<p className="text-sm text-muted-foreground">Loading...</p>
-								) : null}
-								{items?.length === 0 ? (
-									<p className="text-sm text-muted-foreground">
-										No recurring schedules yet. Create one from Chat.
-									</p>
-								) : null}
-								<ul className="space-y-3">
-									{(items ?? []).map((row) => {
-										const id = row.id;
-										const paused = row.paused === true;
-										const isActing =
-											actingId != null && id != null && actingId === id;
-										const label = row.name?.trim() || "Schedule";
-										const tag = row.tag_label ?? row.tagLabel;
-										const cadence = recurringIntervalLabel(row.interval);
-										const projectedInPeriod =
-											id != null
-												? (upcomingCountByRecurringId.get(id) ?? 0)
-												: 0;
-										return (
-											<li
-												className={[
-													"rounded-xl border border-border/80 bg-card p-4 shadow-sm transition hover:border-border hover:shadow-md",
-													highlightedRecurringId != null &&
-													id != null &&
-													highlightedRecurringId === id
-														? "ring-2 ring-primary/60 ring-offset-2 ring-offset-background border-primary/40 bg-primary/5 shadow-lg"
-														: "",
-												].join(" ")}
-												id={`recurring-${String(id ?? `${label}-${row.interval}`)}`}
-												key={id ?? `${label}-${row.interval}`}
-											>
-												<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-													<div className="min-w-0 space-y-2.5">
-														<div className="flex items-start gap-3">
-															<div className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted/40 text-muted-foreground">
-																<IconCalendarMini />
-															</div>
-															<div className="min-w-0 space-y-1">
-																<div className="flex flex-wrap items-center gap-2">
-																	<span className="truncate font-semibold text-foreground">
-																		{label}
-																	</span>
-																	{paused ? (
-																		<span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-900 dark:text-amber-100">
-																			Paused
-																		</span>
-																	) : (
-																		<span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:text-emerald-100">
-																			Active
-																		</span>
-																	)}
-																</div>
-																<div className="text-sm">
-																	<span className="font-semibold text-foreground">
-																		{formatMoney(row.amount ?? 0)}
-																	</span>
-																</div>
-															</div>
-														</div>
-														<div className="flex flex-wrap items-center gap-1.5">
-															<span className={metaPillClass}>{cadence}</span>
-															{tag ? (
-																<span className={metaPillClass}>
-																	<IconTagMini />
-																	{tag}
-																</span>
-															) : null}
-														</div>
-														<div className="space-y-1.5 text-xs text-muted-foreground">
-															<div className="inline-flex items-center gap-1.5">
-																<IconCalendarMini />
-																{paused ? (
-																	<span>
-																		No runs while paused. Resume to continue
-																		creating expenses.
-																	</span>
-																) : (
-																	<span>
-																		{(row.next_run ?? row.nextRun)
-																			? `Next active run: ${formatDateTime(String(row.next_run ?? row.nextRun))}`
-																			: "Next active run: -"}
-																	</span>
-																)}
-															</div>
-															<div className="inline-flex items-center gap-1.5">
-																<IconTrendMini />
-																Projected in selected period:{" "}
-																{projectedInPeriod}
-															</div>
-														</div>
-													</div>
-													<div className="flex shrink-0 flex-wrap gap-1.5">
-														<button
-															aria-label={`Edit recurring schedule ${label}`}
-															className={actionButtonClass}
-															disabled={busy || editBusy}
-															onClick={() => handleStartEdit(row)}
-															type="button"
-														>
-															<IconEditMini />
-															Edit
-														</button>
+						</form>
+					) : null}
+					{errorMessage ? (
+						<div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+							{errorMessage}
+						</div>
+					) : null}
+					{isLoading && !items ? (
+						<p className="text-sm text-muted-foreground">Loading...</p>
+					) : null}
+					{items?.length === 0 ? (
+						<p className="text-sm text-muted-foreground">
+							No recurring schedules yet. Create one from Chat.
+						</p>
+					) : null}
+					<ul className="space-y-3">
+						{(items ?? []).map((row) => {
+							const id = row.id;
+							const paused = row.paused === true;
+							const isActing =
+								actingId != null && id != null && actingId === id;
+							const label = row.name?.trim() || "Schedule";
+							const tag = row.tag_label ?? row.tagLabel;
+							const cadence = recurringIntervalLabel(row.interval);
+							const projectedInPeriod =
+								id != null ? (upcomingCountByRecurringId.get(id) ?? 0) : 0;
+							return (
+								<li
+									className={[
+										"rounded-xl border border-border/80 bg-card p-4 shadow-sm transition hover:border-border hover:shadow-md",
+										highlightedRecurringId != null &&
+										id != null &&
+										highlightedRecurringId === id
+											? "ring-2 ring-primary/60 ring-offset-2 ring-offset-background border-primary/40 bg-primary/5 shadow-lg"
+											: "",
+									].join(" ")}
+									id={`recurring-${String(id ?? `${label}-${row.interval}`)}`}
+									key={id ?? `${label}-${row.interval}`}
+								>
+									<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+										<div className="min-w-0 space-y-2.5">
+											<div className="flex items-start gap-3">
+												<div className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted/40 text-muted-foreground">
+													<IconCalendarMini />
+												</div>
+												<div className="min-w-0 space-y-1">
+													<div className="flex flex-wrap items-center gap-2">
+														<span className="truncate font-semibold text-foreground">
+															{label}
+														</span>
 														{paused ? (
-															<button
-																className={actionButtonClass}
-																disabled={busy}
-																onClick={() => void handleResume(row)}
-																type="button"
-															>
-																<IconPlayMini />
-																{isActing ? "..." : "Resume"}
-															</button>
+															<span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-900 dark:text-amber-100">
+																Paused
+															</span>
 														) : (
-															<button
-																className={actionButtonClass}
-																disabled={busy}
-																onClick={() => void handlePause(row)}
-																type="button"
-															>
-																<IconPauseMini />
-																{isActing ? "..." : "Pause"}
-															</button>
+															<span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:text-emerald-100">
+																Active
+															</span>
 														)}
-														<button
-															className={destructiveActionButtonClass}
-															disabled={busy}
-															onClick={() => void handleDelete(row)}
-															type="button"
-														>
-															<IconTrashMini />
-															{isActing ? "..." : "Delete"}
-														</button>
+													</div>
+													<div className="text-sm">
+														<span className="font-semibold text-foreground">
+															{formatMoney(row.amount ?? 0)}
+														</span>
 													</div>
 												</div>
-												{editingId === id && editDraft != null ? (
-													<form
-														className="mt-4 space-y-3 rounded-xl border border-border/70 bg-muted/30 p-4"
-														onSubmit={(e) => {
-															e.preventDefault();
-															void handleSaveEdit(row);
-														}}
-													>
-														<div className="grid gap-3 sm:grid-cols-2">
-															<label className="space-y-1.5">
-																<span className={formLabelClass}>Name</span>
-																<input
-																	aria-label="Recurring name"
-																	className={formInputClass}
-																	onChange={(e) =>
-																		setEditDraft((prev) =>
-																			prev == null
-																				? prev
-																				: { ...prev, name: e.target.value },
-																		)
-																	}
-																	placeholder="Ride home"
-																	type="text"
-																	value={editDraft.name}
-																/>
-															</label>
-															<label className="space-y-1.5">
-																<span className={formLabelClass}>Amount</span>
-																<input
-																	aria-label="Recurring amount"
-																	className={formInputClass}
-																	inputMode="decimal"
-																	onChange={(e) => {
-																		const next = e.target.value;
-																		const parsed = Number(next);
-																		setEditDraft((prev) =>
-																			prev == null
-																				? prev
-																				: {
-																						...prev,
-																						amountInput: next,
-																						amount: Number.isFinite(parsed)
-																							? parsed
-																							: 0,
-																					},
-																		);
-																	}}
-																	placeholder="0.00"
-																	type="text"
-																	value={editDraft.amountInput}
-																/>
-															</label>
-															<label className="space-y-1.5">
-																<span className={formLabelClass}>Interval</span>
-																<select
-																	aria-label="Recurring interval"
-																	className={formInputClass}
-																	onChange={(e) =>
-																		setEditDraft((prev) =>
-																			prev == null
-																				? prev
-																				: {
-																						...prev,
-																						interval: e.target
-																							.value as StandardRecurringInterval,
-																					},
-																		)
-																	}
-																	value={editDraft.interval}
-																>
-																	{recurringIntervalChoices().map((iv) => (
-																		<option key={iv} value={iv}>
-																			{iv === "minute"
-																				? "minute (test)"
-																				: iv === "test"
-																					? "test (30s, dev)"
-																					: iv}
-																		</option>
-																	))}
-																</select>
-															</label>
-															<label className="space-y-1.5">
-																<span className={formLabelClass}>Tag</span>
-																<input
-																	aria-label="Recurring tag"
-																	className={formInputClass}
-																	onChange={(e) =>
-																		setEditDraft((prev) =>
-																			prev == null
-																				? prev
-																				: { ...prev, tagLabel: e.target.value },
-																		)
-																	}
-																	placeholder="transport"
-																	type="text"
-																	value={editDraft.tagLabel}
-																/>
-															</label>
-														</div>
-														{editError ? (
-															<p className="text-xs text-destructive">
-																{editError}
-															</p>
-														) : null}
-														<div className="flex items-center justify-end gap-2">
-															<button
-																aria-label="Cancel recurring edit"
-																className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-accent disabled:opacity-50"
-																disabled={editBusy}
-																onClick={handleCancelEdit}
-																type="button"
-															>
-																Cancel
-															</button>
-															<button
-																aria-label="Save recurring changes"
-																className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-																disabled={editBusy}
-																type="submit"
-															>
-																{editBusy ? "Saving..." : "Save changes"}
-															</button>
-														</div>
-													</form>
+											</div>
+											<div className="flex flex-wrap items-center gap-1.5">
+												<span className={metaPillClass}>{cadence}</span>
+												{tag ? (
+													<span className={metaPillClass}>
+														<IconTagMini />
+														{tag}
+													</span>
 												) : null}
-											</li>
-										);
-									})}
-								</ul>
-							</div>
-						</section>
-					</div>
+											</div>
+											<div className="space-y-1.5 text-xs text-muted-foreground">
+												<div className="inline-flex items-center gap-1.5">
+													<IconCalendarMini />
+													{paused ? (
+														<span>
+															No runs while paused. Resume to continue creating
+															expenses.
+														</span>
+													) : (
+														<span>
+															{(row.next_run ?? row.nextRun)
+																? `Next active run: ${formatDateTime(String(row.next_run ?? row.nextRun))}`
+																: "Next active run: -"}
+														</span>
+													)}
+												</div>
+												<div className="inline-flex items-center gap-1.5">
+													<IconTrendMini />
+													Projected in selected period: {projectedInPeriod}
+												</div>
+											</div>
+										</div>
+										<div className="flex shrink-0 flex-wrap gap-1.5">
+											<button
+												aria-label={`Edit recurring schedule ${label}`}
+												className={actionButtonClass}
+												disabled={busy || editBusy}
+												onClick={() => handleStartEdit(row)}
+												type="button"
+											>
+												<IconEditMini />
+												Edit
+											</button>
+											{paused ? (
+												<button
+													className={actionButtonClass}
+													disabled={busy}
+													onClick={() => void handleResume(row)}
+													type="button"
+												>
+													<IconPlayMini />
+													{isActing ? "..." : "Resume"}
+												</button>
+											) : (
+												<button
+													className={actionButtonClass}
+													disabled={busy}
+													onClick={() => void handlePause(row)}
+													type="button"
+												>
+													<IconPauseMini />
+													{isActing ? "..." : "Pause"}
+												</button>
+											)}
+											<button
+												className={destructiveActionButtonClass}
+												disabled={busy}
+												onClick={() => void handleDelete(row)}
+												type="button"
+											>
+												<IconTrashMini />
+												{isActing ? "..." : "Delete"}
+											</button>
+										</div>
+									</div>
+									{editingId === id && editDraft != null ? (
+										<form
+											className="mt-4 space-y-3 rounded-xl border border-border/70 bg-muted/30 p-4"
+											onSubmit={(e) => {
+												e.preventDefault();
+												void handleSaveEdit(row);
+											}}
+										>
+											<div className="grid gap-3 sm:grid-cols-2">
+												<label className="space-y-1.5">
+													<span className={formLabelClass}>Name</span>
+													<input
+														aria-label="Recurring name"
+														className={formInputClass}
+														onChange={(e) =>
+															setEditDraft((prev) =>
+																prev == null
+																	? prev
+																	: { ...prev, name: e.target.value },
+															)
+														}
+														placeholder="Ride home"
+														type="text"
+														value={editDraft.name}
+													/>
+												</label>
+												<label className="space-y-1.5">
+													<span className={formLabelClass}>Amount</span>
+													<input
+														aria-label="Recurring amount"
+														className={formInputClass}
+														inputMode="decimal"
+														onChange={(e) => {
+															const next = e.target.value;
+															const parsed = Number(next);
+															setEditDraft((prev) =>
+																prev == null
+																	? prev
+																	: {
+																			...prev,
+																			amountInput: next,
+																			amount: Number.isFinite(parsed)
+																				? parsed
+																				: 0,
+																		},
+															);
+														}}
+														placeholder="0.00"
+														type="text"
+														value={editDraft.amountInput}
+													/>
+												</label>
+												<label className="space-y-1.5">
+													<span className={formLabelClass}>Interval</span>
+													<select
+														aria-label="Recurring interval"
+														className={formInputClass}
+														onChange={(e) =>
+															setEditDraft((prev) =>
+																prev == null
+																	? prev
+																	: {
+																			...prev,
+																			interval: e.target
+																				.value as StandardRecurringInterval,
+																		},
+															)
+														}
+														value={editDraft.interval}
+													>
+														{recurringIntervalChoices().map((iv) => (
+															<option key={iv} value={iv}>
+																{iv === "minute"
+																	? "minute (test)"
+																	: iv === "test"
+																		? "test (30s, dev)"
+																		: iv}
+															</option>
+														))}
+													</select>
+												</label>
+												<label className="space-y-1.5">
+													<span className={formLabelClass}>Tag</span>
+													<input
+														aria-label="Recurring tag"
+														className={formInputClass}
+														onChange={(e) =>
+															setEditDraft((prev) =>
+																prev == null
+																	? prev
+																	: { ...prev, tagLabel: e.target.value },
+															)
+														}
+														placeholder="transport"
+														type="text"
+														value={editDraft.tagLabel}
+													/>
+												</label>
+											</div>
+											{editError ? (
+												<p className="text-xs text-destructive">{editError}</p>
+											) : null}
+											<div className="flex items-center justify-end gap-2">
+												<button
+													aria-label="Cancel recurring edit"
+													className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium hover:bg-accent disabled:opacity-50"
+													disabled={editBusy}
+													onClick={handleCancelEdit}
+													type="button"
+												>
+													Cancel
+												</button>
+												<button
+													aria-label="Save recurring changes"
+													className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+													disabled={editBusy}
+													type="submit"
+												>
+													{editBusy ? "Saving..." : "Save changes"}
+												</button>
+											</div>
+										</form>
+									) : null}
+								</li>
+							);
+						})}
+					</ul>
 				</div>
-				<aside
-					aria-label="Recurring planner sidebar"
-					className="hidden shrink-0 self-stretch flex-col border-l border-border/60 bg-muted/30 xl:flex xl:w-[20rem]"
-				>
-					<div className="min-h-0 flex-1 overflow-y-auto px-4 py-6">
-						{plannerPanel}
-					</div>
-				</aside>
-			</div>
-		</div>
+			</section>
+		</SpaceWorkspaceLayout>
 	);
 };

@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceHeader } from "../../app/layout/workspaceSpaces/SpaceHeader";
-import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
+import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
@@ -725,118 +725,108 @@ export const SpaceSplitsWorkspacePage = () => {
 	};
 
 	return (
-		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
-			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
-				<SpaceTabs />
-			</header>
-			<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
-				<div className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-					<div className="w-full space-y-6 px-4 py-6 lg:px-8 lg:py-8">
-						<SpaceHeader
-							currentUserId={user?.id ?? null}
-							space={
-								space ??
-								({ id: numericSpaceId, name: "Space", tenant_id: 0 } as Space)
-							}
-						/>
-						{loadError ? (
-							<div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-								{loadError}
-							</div>
-						) : null}
-						<section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-							{[
-								{
-									key: "needs",
-									label: "Needs confirmation",
-									value: String(needsConfirmationCount),
-									note: "Decisions waiting for people to confirm.",
-								},
-								{
-									key: "drafts",
-									label: "Drafts pending",
-									value: String(pendingDrafts.length),
-									note: "Draft expenses likely to become split decisions.",
-								},
-								{
-									key: "coverage",
-									label: "Split coverage",
-									value: `${splitCoveragePercent}%`,
-									note: "Confirmed split rows across loaded decisions.",
-								},
-								{
-									key: "my-share",
-									label: "My tracked share",
-									value: totalTrackedShare,
-									note: "Your currently tracked split exposure.",
-								},
-							].map((widget) => (
-								<div
-									className="rounded-xl border border-border/60 bg-card px-4 py-3 soft-shadow"
-									key={widget.key}
-								>
-									<p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-										{widget.label}
-									</p>
-									<p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-										{widget.value}
-									</p>
-									<p className="mt-1 text-xs text-muted-foreground">
-										{widget.note}
-									</p>
-								</div>
-							))}
-						</section>
-
-						{isLoading ? (
-							<section className="rounded-xl border border-border/60 bg-card px-4 py-5 text-sm text-muted-foreground">
-								Loading split decisions...
-							</section>
-						) : null}
-
-						<SpaceSplitDecisionList
-							description="Actionable split decisions that still need confirmation."
-							emptySubtitle="New split reviews will appear here."
-							emptyTitle="All splits are clear"
-							eyebrow="Pending split approvals"
-							onSelect={setSelectedDecisionId}
-							rows={pendingSplitRecords}
-							selectedId={selectedDecisionId}
-							title={`Pending confirmations in ${space?.name ?? "this space"}`}
-							variant="pending"
-						/>
-						<SpaceSplitDecisionList
-							description="Saved split decisions with lower urgency."
-							emptySubtitle="Confirmed rows will show once approvals are saved."
-							emptyTitle="No confirmed splits yet."
-							eyebrow="Confirmed splits"
-							onSelect={setSelectedDecisionId}
-							rows={confirmedSplitRecords}
-							selectedId={selectedDecisionId}
-							title={`Confirmed split history in ${space?.name ?? "this space"}`}
-							variant="confirmed"
-						/>
-					</div>
+		<SpaceWorkspaceLayout
+			rightRail={
+				<SpaceSplitsRightRail
+					draftCount={pendingDrafts.length}
+					memberExposureCount={membersSummary.length}
+					membersSummary={membersSummary}
+					onCloseDetail={() => setSelectedDecisionId(null)}
+					recentActivity={recentActivity}
+					reviewCount={needsConfirmationCount}
+					selectedDetail={selectedDetail}
+					splitActivityCount={recentActivity.length}
+					splitCoveragePercent={splitCoveragePercent}
+					spaceId={numericSpaceId}
+					moneyFlow={moneyFlow}
+					unconfirmedAmountLabel={unconfirmedAmountLabel}
+				/>
+			}
+			rightRailLabel={`${space?.name ?? "Space"} splits rail`}
+			rightRailClassName="border-border/60 bg-muted/30"
+		>
+			<SpaceHeader
+				currentUserId={user?.id ?? null}
+				space={
+					space ??
+					({ id: numericSpaceId, name: "Space", tenant_id: 0 } as Space)
+				}
+			/>
+			{loadError ? (
+				<div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+					{loadError}
 				</div>
-				<aside className="hidden shrink-0 self-stretch border-l border-border/60 bg-muted/30 xl:block xl:w-[20rem]">
-					<div className="min-h-0 h-full overflow-y-auto px-5 py-8">
-						<SpaceSplitsRightRail
-							draftCount={pendingDrafts.length}
-							memberExposureCount={membersSummary.length}
-							membersSummary={membersSummary}
-							onCloseDetail={() => setSelectedDecisionId(null)}
-							recentActivity={recentActivity}
-							reviewCount={needsConfirmationCount}
-							selectedDetail={selectedDetail}
-							splitActivityCount={recentActivity.length}
-							splitCoveragePercent={splitCoveragePercent}
-							spaceId={numericSpaceId}
-							moneyFlow={moneyFlow}
-							unconfirmedAmountLabel={unconfirmedAmountLabel}
-						/>
+			) : null}
+			<section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+				{[
+					{
+						key: "needs",
+						label: "Needs confirmation",
+						value: String(needsConfirmationCount),
+						note: "Decisions waiting for people to confirm.",
+					},
+					{
+						key: "drafts",
+						label: "Drafts pending",
+						value: String(pendingDrafts.length),
+						note: "Draft expenses likely to become split decisions.",
+					},
+					{
+						key: "coverage",
+						label: "Split coverage",
+						value: `${splitCoveragePercent}%`,
+						note: "Confirmed split rows across loaded decisions.",
+					},
+					{
+						key: "my-share",
+						label: "My tracked share",
+						value: totalTrackedShare,
+						note: "Your currently tracked split exposure.",
+					},
+				].map((widget) => (
+					<div
+						className="rounded-xl border border-border/60 bg-card px-4 py-3 soft-shadow"
+						key={widget.key}
+					>
+						<p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+							{widget.label}
+						</p>
+						<p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
+							{widget.value}
+						</p>
+						<p className="mt-1 text-xs text-muted-foreground">{widget.note}</p>
 					</div>
-				</aside>
-			</div>
-		</div>
+				))}
+			</section>
+
+			{isLoading ? (
+				<section className="rounded-xl border border-border/60 bg-card px-4 py-5 text-sm text-muted-foreground">
+					Loading split decisions...
+				</section>
+			) : null}
+
+			<SpaceSplitDecisionList
+				description="Actionable split decisions that still need confirmation."
+				emptySubtitle="New split reviews will appear here."
+				emptyTitle="All splits are clear"
+				eyebrow="Pending split approvals"
+				onSelect={setSelectedDecisionId}
+				rows={pendingSplitRecords}
+				selectedId={selectedDecisionId}
+				title={`Pending confirmations in ${space?.name ?? "this space"}`}
+				variant="pending"
+			/>
+			<SpaceSplitDecisionList
+				description="Saved split decisions with lower urgency."
+				emptySubtitle="Confirmed rows will show once approvals are saved."
+				emptyTitle="No confirmed splits yet."
+				eyebrow="Confirmed splits"
+				onSelect={setSelectedDecisionId}
+				rows={confirmedSplitRecords}
+				selectedId={selectedDecisionId}
+				title={`Confirmed split history in ${space?.name ?? "this space"}`}
+				variant="confirmed"
+			/>
+		</SpaceWorkspaceLayout>
 	);
 };
