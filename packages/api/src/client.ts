@@ -1,5 +1,6 @@
 import type { DashboardResponse, DashboardVariant } from "./dashboard";
 import {
+	type BenefitCandidateListResponse,
 	type ChatMessage,
 	type CreatePromoCodeRequest,
 	type Draft,
@@ -21,6 +22,7 @@ import {
 	type PromoCode,
 	type QuotaStatus,
 	type RecurringExpense,
+	type SaveBenefitCandidatePromoResponse,
 	type Space,
 	type SpaceActivityListResponse,
 	type SpaceActivitySummary,
@@ -495,6 +497,39 @@ export const createApiClient = (config: ApiClientConfig) => {
 						`/api/v1/spaces/${spaceId}/benefits/promos/${encodeURIComponent(String(promoId))}`,
 					),
 					{ method: "PATCH", headers: authHeaders(), body },
+				),
+			listBenefitCandidates: (
+				spaceId: string | number,
+				params?: { limit?: number },
+			) => {
+				const qs =
+					params?.limit != null
+						? `?limit=${encodeURIComponent(String(params.limit))}`
+						: "";
+				return fetchJson<BenefitCandidateListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/benefits/candidates${qs}`),
+					{ method: "GET", headers: authHeaders() },
+				);
+			},
+			saveBenefitCandidatePromo: (
+				spaceId: string | number,
+				candidateId: string | number,
+			) =>
+				fetchJson<SaveBenefitCandidatePromoResponse>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/benefits/candidates/${encodeURIComponent(String(candidateId))}/save-promo`,
+					),
+					{ method: "POST", headers: authHeaders() },
+				),
+			ignoreBenefitCandidate: (
+				spaceId: string | number,
+				candidateId: string | number,
+			) =>
+				fetchJson<{ id: number; status: string }>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/benefits/candidates/${encodeURIComponent(String(candidateId))}/ignore`,
+					),
+					{ method: "POST", headers: authHeaders() },
 				),
 		},
 

@@ -1189,6 +1189,181 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/benefits/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List benefit candidates waiting for review
+         * @description Returns draft promo and loyalty candidates extracted from source documents in this space. Candidates remain non-final until a review action projects or ignores them.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Maximum number of draft candidates to return. */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Draft benefit candidates ordered by newest first. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BenefitCandidateListResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/benefits/candidates/{candidateId}/save-promo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save a promo candidate to the Promo Wallet
+         * @description Projects a draft `promo_code_candidate` into `promo_codes`, records a resolution/projection, and marks the candidate as projected.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Document candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Promo saved and candidate projected. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SaveBenefitCandidatePromoResponse"];
+                    };
+                };
+                /** @description Candidate is not a promo candidate or is otherwise invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/benefits/candidates/{candidateId}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ignore a benefit candidate
+         * @description Records an ignore resolution and removes the draft candidate from the active Benefits review queue.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Document candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Candidate ignored. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BenefitCandidateState"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finances/expenses/tags": {
         parameters: {
             query?: never;
@@ -4881,6 +5056,46 @@ export interface components {
             reminder_at?: string;
             /** @description RFC3339 timestamp or YYYY-MM-DD. Empty string clears the used timestamp. */
             used_at?: string;
+        };
+        /** @description Reviewable non-expense output extracted from a source document. */
+        BenefitCandidate: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            tenant_id?: number;
+            /** Format: int64 */
+            source_document_id?: number;
+            /** @enum {string} */
+            candidate_type?: "promo_code_candidate" | "loyalty_event_candidate";
+            title?: string;
+            structured_data?: {
+                [key: string]: unknown;
+            };
+            confidence?: number;
+            /** @enum {string} */
+            status?: "draft" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            resolved_at?: string;
+            source_type?: string;
+            input_kind?: string;
+            document_type?: string;
+            merchant_text?: string;
+            /** Format: date-time */
+            document_date?: string;
+        };
+        BenefitCandidateListResponse: {
+            candidates?: components["schemas"]["BenefitCandidate"][];
+        };
+        BenefitCandidateState: {
+            /** Format: int64 */
+            id?: number;
+            status?: string;
+        };
+        SaveBenefitCandidatePromoResponse: {
+            promo?: components["schemas"]["PromoCode"];
+            candidate?: components["schemas"]["BenefitCandidateState"];
         };
         /** @description Capability-aware parser model selection metadata returned with capture previews. */
         CaptureModelPolicy: {

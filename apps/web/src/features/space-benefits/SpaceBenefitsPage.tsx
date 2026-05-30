@@ -1,4 +1,4 @@
-import type { PromoCode, Space } from "@cofi/api";
+import type { BenefitCandidate, PromoCode, Space } from "@cofi/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
@@ -41,6 +41,18 @@ type LoyaltyBenefit = {
 };
 
 const loyaltyBenefits: LoyaltyBenefit[] = [];
+
+type CandidateView = {
+	id: number;
+	typeLabel: string;
+	title: string;
+	primary: string;
+	secondary: string;
+	source: string;
+	confidenceLabel: string;
+	canSavePromo: boolean;
+	raw: BenefitCandidate;
+};
 
 const toNumericId = (value: string | number | undefined): number | null => {
 	if (value == null) return null;
@@ -146,6 +158,95 @@ const formatSourceLabel = (sourceType?: string): string => {
 	if (!value) return "Unknown";
 	if (value === "manual_text") return "Manual text";
 	return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const toRecord = (value: unknown): Record<string, unknown> => {
+	if (value && typeof value === "object" && !Array.isArray(value)) {
+		return value as Record<string, unknown>;
+	}
+	return {};
+};
+
+const candidateData = (
+	candidate: BenefitCandidate,
+): Record<string, unknown> => {
+	const structured = toRecord(candidate.structured_data);
+	const nested = toRecord(structured.data);
+	return Object.keys(nested).length ? nested : structured;
+};
+
+const firstText = (
+	data: Record<string, unknown>,
+	keys: string[],
+): string | null => {
+	for (const key of keys) {
+		const value = data[key];
+		if (typeof value === "string" && value.trim()) return value.trim();
+		if (typeof value === "number" && Number.isFinite(value))
+			return String(value);
+	}
+	return null;
+};
+
+const candidateTypeLabel = (type: string): string => {
+	if (type === "promo_code_candidate") return "Promo candidate";
+	if (type === "loyalty_event_candidate") return "Loyalty candidate";
+	return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const toCandidateView = (candidate: BenefitCandidate): CandidateView => {
+	const data = candidateData(candidate);
+	const promoCode = firstText(data, [
+		"promo_code",
+		"code",
+		"coupon",
+		"discount_code",
+	]);
+	const program = firstText(data, [
+		"program_name",
+		"loyalty_program",
+		"name",
+		"card_mask",
+	]);
+	const discount = firstText(data, [
+		"discount_value",
+		"discount_amount",
+		"value",
+		"points_earned",
+		"available_balance",
+	]);
+	const validUntil = firstText(data, [
+		"valid_until",
+		"expires_at",
+		"expiration_date",
+	]);
+	const primary =
+		promoCode ||
+		program ||
+		candidate.merchant_text?.trim() ||
+		candidate.title?.trim() ||
+		"Detected benefit";
+	const secondaryParts = [
+		discount ? `Value: ${discount}` : null,
+		validUntil ? `Until: ${validUntil}` : null,
+	].filter(Boolean);
+	return {
+		id: Number(candidate.id),
+		typeLabel: candidateTypeLabel(candidate.candidate_type),
+		title:
+			candidate.title?.trim() || candidateTypeLabel(candidate.candidate_type),
+		primary,
+		secondary: secondaryParts.length
+			? secondaryParts.join(" · ")
+			: "Review before saving to this space.",
+		source: formatSourceLabel(candidate.source_type),
+		confidenceLabel:
+			Number.isFinite(candidate.confidence) && candidate.confidence > 0
+				? `${Math.round(candidate.confidence * 100)}% confidence`
+				: "Needs review",
+		canSavePromo: candidate.candidate_type === "promo_code_candidate",
+		raw: candidate,
+	};
 };
 
 const EmptyPanel = ({
@@ -281,15 +382,71 @@ const LoyaltyCard = ({ loyalty }: { loyalty: LoyaltyBenefit }) => (
 	</li>
 );
 
+const CandidateCard = ({
+	candidate,
+	busy,
+	onIgnore,
+	onSavePromo,
+}: {
+	candidate: CandidateView;
+	busy: boolean;
+	onIgnore: (candidate: CandidateView) => void;
+	onSavePromo: (candidate: CandidateView) => void;
+}) => (
+	<li className="rounded-xl border border-[rgba(200,160,95,0.2)] bg-white/62 p-3 shadow-sm">
+		<div className="flex flex-wrap items-start justify-between gap-2">
+			<div className="min-w-0">
+				<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
+					{candidate.typeLabel}
+				</p>
+				<h3 className="mt-1 truncate text-sm font-semibold text-foreground">
+					{candidate.primary}
+				</h3>
+			</div>
+			<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.84)] px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+				{candidate.confidenceLabel}
+			</span>
+		</div>
+		<p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+			{candidate.secondary}
+		</p>
+		<p className="mt-1 text-[11px] text-muted-foreground">
+			Source: {candidate.source}
+		</p>
+		<div className="mt-3 flex flex-wrap gap-2">
+			{candidate.canSavePromo ? (
+				<button
+					className="inline-flex h-8 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-xs font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
+					disabled={busy}
+					onClick={() => onSavePromo(candidate)}
+					type="button"
+				>
+					Save promo
+				</button>
+			) : null}
+			<button
+				className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
+				disabled={busy}
+				onClick={() => onIgnore(candidate)}
+				type="button"
+			>
+				Ignore
+			</button>
+		</div>
+	</li>
+);
+
 export const SpaceBenefitsPage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
 	const { user } = useAuth();
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
 	const [promos, setPromos] = useState<PromoCode[]>([]);
+	const [candidates, setCandidates] = useState<BenefitCandidate[]>([]);
 	const [candidateCount, setCandidateCount] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [savingPromoId, setSavingPromoId] = useState<number | null>(null);
+	const [candidateBusyId, setCandidateBusyId] = useState<number | null>(null);
 	const [manualOpen, setManualOpen] = useState(false);
 	const [manualBusy, setManualBusy] = useState(false);
 	const [manualError, setManualError] = useState<string | null>(null);
@@ -322,9 +479,17 @@ export const SpaceBenefitsPage = () => {
 		setIsLoading(true);
 		setLoadError(null);
 		try {
-			const data = await apiClient.spaces.listPromos(numericSpaceId);
-			setPromos(data.promos ?? []);
-			setCandidateCount(data.summary?.candidate_count ?? 0);
+			const [promoData, candidateData] = await Promise.all([
+				apiClient.spaces.listPromos(numericSpaceId),
+				apiClient.spaces.listBenefitCandidates(numericSpaceId, { limit: 20 }),
+			]);
+			setPromos(promoData.promos ?? []);
+			setCandidates(candidateData.candidates ?? []);
+			setCandidateCount(
+				(candidateData.candidates ?? []).length ||
+					promoData.summary?.candidate_count ||
+					0,
+			);
 		} catch (error) {
 			setLoadError(
 				error instanceof Error ? error.message : "Failed to load benefits",
@@ -363,6 +528,10 @@ export const SpaceBenefitsPage = () => {
 				};
 			}),
 		[promos],
+	);
+	const candidateViews = useMemo(
+		() => candidates.map((candidate) => toCandidateView(candidate)),
+		[candidates],
 	);
 	const activePromos = promoBenefits.filter((item) => item.status === "active");
 	const expiringPromos = promoBenefits.filter(
@@ -441,6 +610,52 @@ export const SpaceBenefitsPage = () => {
 			);
 		} finally {
 			setManualBusy(false);
+		}
+	};
+
+	const removeCandidate = (candidateId: number) => {
+		setCandidates((current) =>
+			current.filter((item) => Number(item.id) !== candidateId),
+		);
+		setCandidateCount((current) => Math.max(0, current - 1));
+	};
+
+	const saveCandidatePromo = async (candidate: CandidateView) => {
+		if (numericSpaceId == null) return;
+		setCandidateBusyId(candidate.id);
+		setLoadError(null);
+		try {
+			const result = await apiClient.spaces.saveBenefitCandidatePromo(
+				numericSpaceId,
+				candidate.id,
+			);
+			setPromos((current) => [result.promo, ...current]);
+			removeCandidate(candidate.id);
+		} catch (error) {
+			setLoadError(
+				error instanceof Error ? error.message : "Failed to save candidate",
+			);
+		} finally {
+			setCandidateBusyId(null);
+		}
+	};
+
+	const ignoreCandidate = async (candidate: CandidateView) => {
+		if (numericSpaceId == null) return;
+		setCandidateBusyId(candidate.id);
+		setLoadError(null);
+		try {
+			await apiClient.spaces.ignoreBenefitCandidate(
+				numericSpaceId,
+				candidate.id,
+			);
+			removeCandidate(candidate.id);
+		} catch (error) {
+			setLoadError(
+				error instanceof Error ? error.message : "Failed to ignore candidate",
+			);
+		} finally {
+			setCandidateBusyId(null);
 		}
 	};
 
@@ -697,12 +912,26 @@ export const SpaceBenefitsPage = () => {
 											? "Nothing waiting right now."
 											: `${candidateCount} detected item${candidateCount === 1 ? "" : "s"} need review.`}
 									</p>
-									<Link
-										className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[rgba(55,45,30,0.92)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
-										to={`/console/chat?spaceId=${encodeURIComponent(String(numericSpaceId))}`}
-									>
-										Open chat
-									</Link>
+									{candidateViews.length ? (
+										<ul className="mt-4 space-y-2">
+											{candidateViews.map((candidate) => (
+												<CandidateCard
+													busy={candidateBusyId === candidate.id}
+													candidate={candidate}
+													key={candidate.id}
+													onIgnore={(item) => void ignoreCandidate(item)}
+													onSavePromo={(item) => void saveCandidatePromo(item)}
+												/>
+											))}
+										</ul>
+									) : (
+										<Link
+											className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[rgba(55,45,30,0.92)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+											to={`/console/chat?spaceId=${encodeURIComponent(String(numericSpaceId))}`}
+										>
+											Open chat
+										</Link>
+									)}
 								</section>
 
 								<section className="rounded-2xl border border-[rgba(200,160,95,0.22)] bg-[rgba(255,248,235,0.7)] p-5 shadow-sm">

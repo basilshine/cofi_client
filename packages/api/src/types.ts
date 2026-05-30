@@ -255,6 +255,50 @@ export type SpacePromoListResponse = {
 	summary: PromoBenefitsSummary;
 };
 
+export type BenefitCandidateType =
+	| "promo_code_candidate"
+	| "loyalty_event_candidate";
+
+export type BenefitCandidateStatus =
+	| "draft"
+	| "confirmed"
+	| "ignored"
+	| "merged"
+	| "projected"
+	| "expired";
+
+export type BenefitCandidate = {
+	id: number;
+	tenant_id: number;
+	source_document_id: number;
+	candidate_type: BenefitCandidateType | string;
+	title: string;
+	structured_data?: Record<string, unknown>;
+	confidence: number;
+	status: BenefitCandidateStatus | string;
+	created_at: string;
+	resolved_at?: string | null;
+	source_type: string;
+	input_kind: string;
+	document_type: string;
+	merchant_text?: string;
+	document_date?: string | null;
+};
+
+export type BenefitCandidateListResponse = {
+	candidates: BenefitCandidate[];
+};
+
+export type BenefitCandidateState = {
+	id: number;
+	status: string;
+};
+
+export type SaveBenefitCandidatePromoResponse = {
+	promo: PromoCode;
+	candidate: BenefitCandidateState;
+};
+
 export type CreatePromoCodeRequest = {
 	title?: string;
 	promo_code?: string;
