@@ -18,6 +18,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useSetChatBreadcrumb } from "../../app/layout/ChatBreadcrumbContext";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
+import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { WorkspaceRightSidebar } from "../../app/layout/workspaceSpaces/WorkspaceRightSidebar";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -1789,6 +1790,62 @@ export const ChatLogPage = () => {
 				}
 			/>
 		);
+
+	if (isExpensesRoute) {
+		return (
+			<SpaceWorkspaceLayout
+				contentClassName="flex min-h-0 flex-1 flex-col p-0"
+				rightRail={expenseRightPanel}
+				rightRailClassName="xl:w-[22rem]"
+				rightRailInnerClassName="min-h-0 flex-1 overflow-hidden p-0"
+				rightRailLabel="Expenses inspector"
+			>
+				{errorMessage ? (
+					<div className="shrink-0 border-b border-destructive/25 bg-destructive/10 px-4 py-2 text-sm text-destructive lg:px-6">
+						{errorMessage}
+					</div>
+				) : null}
+
+				{selectedSpaceId ? (
+					<div
+						className={
+							expenseInspectorWorkspaceEditing
+								? "flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-card opacity-[0.52] saturate-[0.68] contrast-[0.94] transition-[opacity,filter] duration-300 ease-out"
+								: "flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-card transition-[opacity,filter] duration-300 ease-out"
+						}
+					>
+						<SpaceExpensesMain
+							currentUserId={currentUserId}
+							listError={spaceTransactionsError}
+							listLoading={spaceTransactionsLoading}
+							onReload={() => void loadSpaceTransactions()}
+							onSelectExpense={handleSelectExpenseFromPanel}
+							selectedExpenseId={sidebarThreadExpenseId}
+							spaceId={selectedSpaceId}
+							spaceName={selectedSpace?.name ?? null}
+							transactions={spaceTransactions}
+						/>
+					</div>
+				) : (
+					<div className="border-b border-border px-4 py-6 text-sm text-muted-foreground">
+						Select a space to load expenses.
+					</div>
+				)}
+
+				{toastMessage
+					? createPortal(
+							<output
+								aria-live="polite"
+								className="pointer-events-none fixed bottom-6 left-1/2 z-[9999] block max-w-[min(24rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-border bg-card px-4 py-2.5 text-center text-sm text-foreground shadow-lg"
+							>
+								{toastMessage}
+							</output>,
+							document.body,
+						)
+					: null}
+			</SpaceWorkspaceLayout>
+		);
+	}
 
 	return (
 		<div className="flex h-full min-h-0 w-full min-w-0 flex-1 overflow-hidden">
