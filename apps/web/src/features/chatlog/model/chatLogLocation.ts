@@ -12,4 +12,5 @@ export type ChatLogLocationState = {
 	openThreadSpaceId?: string | number;
 	openThreadDraftLine?: number;
 	selectSpaceId?: string | number;
+	composerDraftText?: string;
 };

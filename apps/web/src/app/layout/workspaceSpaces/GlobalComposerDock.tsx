@@ -224,6 +224,7 @@ const clarificationActionClass =
 
 const ClarificationActionsPanel = ({
 	chatHref,
+	chatDraftText,
 	disabled,
 	hasSpaceContext,
 	onAddExpense,
@@ -232,6 +233,7 @@ const ClarificationActionsPanel = ({
 	spacesHref,
 }: {
 	chatHref: string;
+	chatDraftText: string | null;
 	disabled: boolean;
 	hasSpaceContext: boolean;
 	onAddExpense: () => void;
@@ -271,7 +273,15 @@ const ClarificationActionsPanel = ({
 					Ask Ceits
 				</button>
 				{hasSpaceContext ? (
-					<Link className={clarificationActionClass} to={chatHref}>
+					<Link
+						className={clarificationActionClass}
+						state={
+							chatDraftText?.trim()
+								? { composerDraftText: chatDraftText.trim() }
+								: undefined
+						}
+						to={chatHref}
+					>
 						Open chat
 					</Link>
 				) : (
@@ -298,6 +308,11 @@ type GlobalComposerDockProps = {
 	onCollapsedChange: (isCollapsed: boolean) => void;
 };
 
+type PendingComposerTarget = {
+	state?: ComposerState;
+	text?: string;
+};
+
 export const GlobalComposerDock = ({
 	isCollapsed,
 	onCollapsedChange,
@@ -313,8 +328,11 @@ export const GlobalComposerDock = ({
 
 	const [busy, setBusy] = useState(false);
 	const [isRecording, setIsRecording] = useState(false);
-	const [pendingComposerState, setPendingComposerState] =
-		useState<ComposerState | null>(null);
+	const [pendingComposerTarget, setPendingComposerTarget] =
+		useState<PendingComposerTarget | null>(null);
+	const [clarificationDraftText, setClarificationDraftText] = useState<
+		string | null
+	>(null);
 	const [statusText, setStatusText] = useState<string | null>(null);
 	const [errorText, setErrorText] = useState<string | null>(null);
 	const {
@@ -484,6 +502,7 @@ export const GlobalComposerDock = ({
 						? payload.content.trim()
 						: askPayloadToMessage(payload).trim();
 				if (!text) return;
+				setClarificationDraftText(null);
 				beginDetecting(payload.composer_mode === "message" ? "message" : "ask");
 				const intentPreview = await parseCaptureIntentText(text, {
 					spaceId: activeSpaceId,
@@ -494,6 +513,7 @@ export const GlobalComposerDock = ({
 					spaceId: activeSpaceId,
 				});
 				if (bundle.clarificationMessage) {
+					setClarificationDraftText(text);
 					clarify(bundle.clarificationMessage);
 					return;
 				}
@@ -506,6 +526,7 @@ export const GlobalComposerDock = ({
 					intentPreview.next_action === "open_chat" ||
 					intentPreview.intent === "chat_message"
 				) {
+					setClarificationDraftText(text);
 					complete(`Open chat to send this in ${activeSpaceName}`);
 					showTransientStatus(`Open chat to send this in ${activeSpaceName}`);
 					return;
@@ -637,17 +658,43 @@ export const GlobalComposerDock = ({
 	}, []);
 
 	useEffect(() => {
-		if (isCollapsed || !pendingComposerState) return;
-		composerRef.current?.navigateTo(pendingComposerState);
-		setPendingComposerState(null);
-	}, [isCollapsed, pendingComposerState]);
+		if (isCollapsed || !pendingComposerTarget) return;
+		if (pendingComposerTarget.state && pendingComposerTarget.text) {
+			composerRef.current?.composeText(
+				pendingComposerTarget.state,
+				pendingComposerTarget.text,
+			);
+		} else if (pendingComposerTarget.state) {
+			composerRef.current?.navigateTo(pendingComposerTarget.state);
+		}
+		setPendingComposerTarget(null);
+	}, [isCollapsed, pendingComposerTarget]);
 
 	const expandTo = useCallback(
-		(state?: ComposerState) => {
-			setPendingComposerState(state ?? null);
+		(state?: ComposerState, text?: string) => {
+			const targetText = text?.trim();
+			setPendingComposerTarget(
+				state || targetText ? { state, text: targetText } : null,
+			);
 			onCollapsedChange(false);
 		},
 		[onCollapsedChange],
+	);
+
+	const expandToText = useCallback(
+		(state: ComposerState, text: string | null) => {
+			const targetText = text?.trim();
+			if (!targetText) {
+				expandTo(state);
+				return;
+			}
+			if (isCollapsed) {
+				expandTo(state, targetText);
+				return;
+			}
+			composerRef.current?.composeText(state, targetText);
+		},
+		[expandTo, isCollapsed],
 	);
 
 	const handleCollapseToggle = useCallback(() => {
@@ -917,10 +964,15 @@ export const GlobalComposerDock = ({
 				{composerFlow.step === "clarifying" ? (
 					<ClarificationActionsPanel
 						chatHref={activeSpaceChatHref}
+						chatDraftText={clarificationDraftText}
 						disabled={busy || isLoading || !hasSpaceContext}
 						hasSpaceContext={hasSpaceContext}
-						onAddExpense={() => expandTo("expense_method_select")}
-						onAskCeits={() => expandTo("ask_topic_select")}
+						onAddExpense={() =>
+							expandToText("expense_text", clarificationDraftText)
+						}
+						onAskCeits={() =>
+							expandToText("ask_custom", clarificationDraftText)
+						}
 						onCreateSpace={() => setCreateSpaceDialogOpen(true)}
 						spacesHref="/console/settings/spaces"
 					/>

@@ -81,6 +81,7 @@ export type ComposerPayload =
 
 export type SmartTextareaComposerHandle = {
 	navigateTo: (state: ComposerState) => void;
+	composeText: (state: ComposerState, text: string) => void;
 	insertMessage: (text: string) => void;
 	triggerPhotoUpload: () => void;
 };
@@ -252,6 +253,14 @@ export const SmartTextareaComposer = forwardRef<
 				setState(target);
 				setNavStack([]);
 				resetDraft();
+			},
+			composeText: (target: ComposerState, text: string) => {
+				setState(target);
+				setNavStack([]);
+				setTextInput(text);
+				setSelectedPeriod(null);
+				setSelectedChip(null);
+				window.setTimeout(() => textareaRef.current?.focus(), 100);
 			},
 			insertMessage: (text: string) => {
 				setState("message_text");

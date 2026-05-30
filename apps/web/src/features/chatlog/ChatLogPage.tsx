@@ -683,6 +683,33 @@ export const ChatLogPage = () => {
 		navigate,
 	]);
 
+	useEffect(() => {
+		const st = location.state as ChatLogLocationState | null;
+		const draftText = st?.composerDraftText?.trim();
+		if (!draftText || selectedSpaceId == null) return;
+		const scope = workspaceScopeRef.current;
+		navigate(
+			{
+				pathname: location.pathname,
+				search: location.search,
+				hash: location.hash,
+			},
+			{
+				replace: true,
+				state: scope ? { chatWorkspace: scope } : {},
+			},
+		);
+		setComposerMode("message");
+		smartComposerRef.current?.composeText("message_text", draftText);
+	}, [
+		location.hash,
+		location.pathname,
+		location.search,
+		location.state,
+		navigate,
+		selectedSpaceId,
+	]);
+
 	const handleCreateSpace = useCallback(async () => {
 		setErrorMessage(null);
 		try {
