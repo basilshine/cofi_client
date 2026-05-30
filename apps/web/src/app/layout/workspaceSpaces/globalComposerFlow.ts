@@ -143,7 +143,7 @@ export const summarizeCapturePreview = (
 ): GlobalComposerCandidateBundle => {
 	const data = objectRecord(preview.data);
 	const candidates =
-		preview.candidates && preview.candidates.length > 0
+		preview.candidates != null
 			? summarizeServerCandidates(preview.candidates)
 			: summarizePreviewShape(preview, data);
 

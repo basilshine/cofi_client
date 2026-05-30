@@ -81,6 +81,36 @@ const bundleHasAny = (
 	kinds: GlobalComposerCandidateBundle["candidates"][number]["kind"][],
 ) => bundle.candidates.some((candidate) => kinds.includes(candidate.kind));
 
+const candidateOnlyStatus = (
+	bundle: GlobalComposerCandidateBundle,
+	spaceName: string,
+) => {
+	if (bundleHasAny(bundle, ["promo", "loyalty"])) {
+		return `Benefits candidate ready in ${spaceName}`;
+	}
+	if (bundleHasAny(bundle, ["split", "participant"])) {
+		return `Split candidate ready in ${spaceName}`;
+	}
+	if (
+		bundleHasAny(bundle, [
+			"payment_proof",
+			"privacy",
+			"merge",
+			"supporting_document",
+			"space_suggestion",
+		])
+	) {
+		return `Document candidate ready for review in ${spaceName}`;
+	}
+	if (bundle.candidates.length) {
+		return `Parsed result ready for review in ${spaceName}`;
+	}
+	if (bundle.capabilityNotice) {
+		return `Basic parse finished in ${spaceName}; smart candidates are gated by plan.`;
+	}
+	return "Ceits parsed the input, but needs clearer expense details before creating a draft.";
+};
+
 const CandidateBundlePanel = ({
 	bundle,
 	expensesHref,
@@ -128,6 +158,17 @@ const CandidateBundlePanel = ({
 								</span>
 							) : null}
 						</div>
+					) : null}
+					{bundleHasAny(bundle, [
+						"payment_proof",
+						"privacy",
+						"merge",
+						"supporting_document",
+					]) ? (
+						<p className="mt-1.5 max-w-3xl text-[11px] leading-4 text-muted-foreground">
+							This result should be reviewed as a document signal, not saved as
+							a duplicate expense automatically.
+						</p>
 					) : null}
 					{bundle.capabilityNotice ? (
 						<p className="mt-1.5 max-w-3xl text-[11px] leading-4 text-muted-foreground">
@@ -275,9 +316,10 @@ export const GlobalComposerDock = ({
 		) => {
 			const draftItems = toDraftItems(items);
 			if (!draftItems.length) {
-				throw new Error("Nothing parsed - try clearer amounts and item names.");
+				return false;
 			}
 			await createManualDraftInSpace(spaceId, description, draftItems);
+			return true;
 		},
 		[],
 	);
@@ -300,33 +342,43 @@ export const GlobalComposerDock = ({
 						const parsed = await parseCaptureText(text, {
 							spaceId: activeSpaceId,
 						});
-						showCandidateSummary(
-							summarizeCapturePreview(parsed, {
-								fallbackIntent: "expense",
-								inputKind: "text",
-								spaceId: activeSpaceId,
-							}),
+						const bundle = summarizeCapturePreview(parsed, {
+							fallbackIntent: "expense",
+							inputKind: "text",
+							spaceId: activeSpaceId,
+						});
+						showCandidateSummary(bundle);
+						const savedDraft = await createDraftFromParsed(
+							activeSpaceId,
+							text,
+							parsed.items,
 						);
-						await createDraftFromParsed(activeSpaceId, text, parsed.items);
-						showTransientStatus(`Draft saved to ${activeSpaceName}`);
+						showTransientStatus(
+							savedDraft
+								? `Draft saved to ${activeSpaceName}`
+								: candidateOnlyStatus(bundle, activeSpaceName),
+						);
 					} else if (payload.expense_input_type === "photo") {
 						beginDetecting("photo");
 						const parsed = await parseCapturePhoto(payload.file, {
 							spaceId: activeSpaceId,
 						});
-						showCandidateSummary(
-							summarizeCapturePreview(parsed, {
-								fallbackIntent: "expense",
-								inputKind: "photo",
-								spaceId: activeSpaceId,
-							}),
-						);
-						await createDraftFromParsed(
+						const bundle = summarizeCapturePreview(parsed, {
+							fallbackIntent: "expense",
+							inputKind: "photo",
+							spaceId: activeSpaceId,
+						});
+						showCandidateSummary(bundle);
+						const savedDraft = await createDraftFromParsed(
 							activeSpaceId,
 							payload.file.name || "Receipt photo",
 							parsed.items,
 						);
-						showTransientStatus(`Receipt draft saved to ${activeSpaceName}`);
+						showTransientStatus(
+							savedDraft
+								? `Receipt draft saved to ${activeSpaceName}`
+								: candidateOnlyStatus(bundle, activeSpaceName),
+						);
 					}
 					return;
 				}
@@ -420,19 +472,22 @@ export const GlobalComposerDock = ({
 				recorder.mimeType || "audio/webm",
 				{ spaceId: activeSpaceId },
 			);
-			showCandidateSummary(
-				summarizeCapturePreview(parsed, {
-					fallbackIntent: "expense",
-					inputKind: "voice",
-					spaceId: activeSpaceId,
-				}),
-			);
-			await createDraftFromParsed(
+			const bundle = summarizeCapturePreview(parsed, {
+				fallbackIntent: "expense",
+				inputKind: "voice",
+				spaceId: activeSpaceId,
+			});
+			showCandidateSummary(bundle);
+			const savedDraft = await createDraftFromParsed(
 				activeSpaceId,
 				parsed.transcription?.trim() || "Voice expense",
 				parsed.items,
 			);
-			showTransientStatus(`Voice draft saved to ${activeSpaceName}`);
+			showTransientStatus(
+				savedDraft
+					? `Voice draft saved to ${activeSpaceName}`
+					: candidateOnlyStatus(bundle, activeSpaceName),
+			);
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Failed to parse voice";
