@@ -1,4 +1,5 @@
 import type {
+	BenefitCandidate,
 	DashboardExpenseThreadApprovalItem,
 	DashboardReviewQueueItem,
 	DocumentCandidate,
@@ -19,6 +20,7 @@ import { apiClient } from "../../shared/lib/apiClient";
 
 type ReviewKind = "draft" | "split_approval" | "needs_confirmation";
 type ReviewFilter = "all" | "draft" | "split_approval" | "needs_confirmation";
+type CandidateReviewSource = "benefit" | "document";
 
 type ReviewItem = {
 	id: string;
@@ -43,7 +45,22 @@ type ReviewItem = {
 	isDraftLike: boolean;
 };
 
+type CandidateReviewItem = {
+	id: number;
+	source: CandidateReviewSource;
+	candidateType: string;
+	label: string;
+	title: string;
+	meta: string;
+	detail: string;
+	confidenceLabel: string;
+	canSavePromo: boolean;
+	raw: BenefitCandidate | DocumentCandidate;
+};
+
 const documentCandidateLabel = (type: string): string => {
+	if (type === "promo_code_candidate") return "Promo code";
+	if (type === "loyalty_event_candidate") return "Loyalty";
 	if (type === "payment_proof_candidate") return "Payment proof";
 	if (type === "privacy_signal_candidate") return "Privacy signal";
 	if (type === "merge_candidate") return "Merge candidate";
@@ -52,13 +69,10 @@ const documentCandidateLabel = (type: string): string => {
 	if (type === "recurring_candidate") return "Recurring hint";
 	if (type === "membership_candidate") return "Membership hint";
 	if (type === "reminder_candidate") return "Reminder hint";
+	if (type === "split_candidate") return "Split";
+	if (type === "participant_placeholder_candidate") return "Participant";
 	return type.replace(/_/g, " ");
 };
-
-const documentCandidateTitle = (candidate: DocumentCandidate): string =>
-	candidate.title?.trim() ||
-	candidate.merchant_text?.trim() ||
-	documentCandidateLabel(candidate.candidate_type);
 
 const documentCandidateMeta = (candidate: DocumentCandidate): string => {
 	const parts = [
@@ -70,6 +84,135 @@ const documentCandidateMeta = (candidate: DocumentCandidate): string => {
 		.filter(Boolean);
 	return parts.length ? parts.join(" • ") : "Document intelligence";
 };
+
+const toRecord = (value: unknown): Record<string, unknown> => {
+	if (value && typeof value === "object" && !Array.isArray(value)) {
+		return value as Record<string, unknown>;
+	}
+	return {};
+};
+
+const candidateData = (
+	candidate: BenefitCandidate | DocumentCandidate,
+): Record<string, unknown> => {
+	const structured = toRecord(candidate.structured_data);
+	const nested = toRecord(structured.data);
+	return Object.keys(nested).length ? nested : structured;
+};
+
+const firstCandidateText = (
+	data: Record<string, unknown>,
+	keys: string[],
+): string | null => {
+	for (const key of keys) {
+		const value = data[key];
+		if (typeof value === "string" && value.trim()) return value.trim();
+		if (typeof value === "number" && Number.isFinite(value))
+			return String(value);
+	}
+	return null;
+};
+
+const confidenceLabel = (confidence?: number): string =>
+	Number.isFinite(confidence) && confidence != null && confidence > 0
+		? `${Math.round(confidence * 100)}%`
+		: "Review";
+
+const candidateDetail = (
+	candidate: BenefitCandidate | DocumentCandidate,
+): string => {
+	const data = candidateData(candidate);
+	const type = candidate.candidate_type;
+	if (type === "promo_code_candidate") {
+		return (
+			firstCandidateText(data, [
+				"promo_code",
+				"code",
+				"coupon",
+				"discount_code",
+			]) ?? "Promo code needs review"
+		);
+	}
+	if (type === "loyalty_event_candidate") {
+		const program = firstCandidateText(data, [
+			"program_name",
+			"loyalty_program",
+			"name",
+		]);
+		const balance = firstCandidateText(data, [
+			"available_balance",
+			"points_earned",
+			"points_spent",
+		]);
+		return (
+			[program, balance ? `${balance} points` : null]
+				.filter(Boolean)
+				.join(" • ") || "Loyalty event needs review"
+		);
+	}
+	if (type === "split_candidate") {
+		const strategy = firstCandidateText(data, ["split_strategy", "strategy"]);
+		const count = firstCandidateText(data, ["participant_count"]);
+		return (
+			[strategy, count ? `${count} participants` : null]
+				.filter(Boolean)
+				.join(" • ") || "Split details need review"
+		);
+	}
+	if (type === "participant_placeholder_candidate") {
+		return (
+			firstCandidateText(data, [
+				"display_name",
+				"name",
+				"email",
+				"telegram_username",
+			]) ?? "Participant placeholder"
+		);
+	}
+	if (type === "payment_proof_candidate") {
+		return (
+			firstCandidateText(data, [
+				"merchant_text",
+				"amount",
+				"card_last4",
+				"rrn",
+			]) ?? "Payment proof needs review"
+		);
+	}
+	if (type === "merge_candidate") return "Attach to an existing record";
+	if (type === "supporting_document_candidate")
+		return "Keep as supporting proof";
+	return "Review before anything becomes final.";
+};
+
+const toCandidateReviewItem = (
+	source: CandidateReviewSource,
+	candidate: BenefitCandidate | DocumentCandidate,
+): CandidateReviewItem => ({
+	id: Number(candidate.id),
+	source,
+	candidateType: candidate.candidate_type,
+	label: documentCandidateLabel(candidate.candidate_type),
+	title:
+		candidate.title?.trim() ||
+		candidate.merchant_text?.trim() ||
+		documentCandidateLabel(candidate.candidate_type),
+	meta:
+		source === "document"
+			? documentCandidateMeta(candidate as DocumentCandidate)
+			: [
+					(candidate as BenefitCandidate).source_type,
+					(candidate as BenefitCandidate).input_kind,
+					(candidate as BenefitCandidate).merchant_text,
+				]
+					.map((value) => value?.trim())
+					.filter(Boolean)
+					.join(" • ") || "Benefits intelligence",
+	detail: candidateDetail(candidate),
+	confidenceLabel: confidenceLabel(candidate.confidence),
+	canSavePromo: candidate.candidate_type === "promo_code_candidate",
+	raw: candidate,
+});
 
 const isThreadApproval = (
 	item: DashboardReviewQueueItem,
@@ -141,10 +284,16 @@ export const CeitsReviewFlowPage = () => {
 	const [documentCandidates, setDocumentCandidates] = useState<
 		DocumentCandidate[]
 	>([]);
+	const [benefitCandidates, setBenefitCandidates] = useState<
+		BenefitCandidate[]
+	>([]);
 	const [documentCandidateError, setDocumentCandidateError] = useState<
 		string | null
 	>(null);
 	const [documentCandidateActingId, setDocumentCandidateActingId] = useState<
+		number | null
+	>(null);
+	const [benefitCandidateActingId, setBenefitCandidateActingId] = useState<
 		number | null
 	>(null);
 	const [currentId, setCurrentId] = useState<string | null>(null);
@@ -178,20 +327,29 @@ export const CeitsReviewFlowPage = () => {
 		setDocumentCandidateError(null);
 		void (async () => {
 			try {
-				const [dash, tx, mem, participantRes, documentCandidateRes] =
-					await Promise.all([
-						apiClient.dashboard.get({
-							variant: "personal",
-							period: "month",
-							space_id: spaceId,
-						}),
-						apiClient.spaces.listTransactions(spaceId, { limit: 120 }),
-						apiClient.spaces.listMembers(spaceId).catch(() => null),
-						apiClient.spaces.listParticipants(spaceId).catch(() => null),
-						apiClient.spaces
-							.listDocumentCandidates(spaceId, { limit: 50 })
-							.catch(() => null),
-					]);
+				const [
+					dash,
+					tx,
+					mem,
+					participantRes,
+					benefitCandidateRes,
+					documentCandidateRes,
+				] = await Promise.all([
+					apiClient.dashboard.get({
+						variant: "personal",
+						period: "month",
+						space_id: spaceId,
+					}),
+					apiClient.spaces.listTransactions(spaceId, { limit: 120 }),
+					apiClient.spaces.listMembers(spaceId).catch(() => null),
+					apiClient.spaces.listParticipants(spaceId).catch(() => null),
+					apiClient.spaces
+						.listBenefitCandidates(spaceId, { limit: 50 })
+						.catch(() => null),
+					apiClient.spaces
+						.listDocumentCandidates(spaceId, { limit: 50 })
+						.catch(() => null),
+				]);
 
 				const txById = new Map<number, Transaction>(
 					tx
@@ -370,6 +528,7 @@ export const CeitsReviewFlowPage = () => {
 				if (!cancelled) {
 					setMembers(mem?.members ?? []);
 					setParticipants(participantRes?.participants ?? []);
+					setBenefitCandidates(benefitCandidateRes?.candidates ?? []);
 					setDocumentCandidates(documentCandidateRes?.candidates ?? []);
 					setQueue(built);
 					setCurrentId(built[0]?.id ?? null);
@@ -396,6 +555,17 @@ export const CeitsReviewFlowPage = () => {
 		() =>
 			filteredQueue.find((q) => q.id === currentId) ?? filteredQueue[0] ?? null,
 		[filteredQueue, currentId],
+	);
+	const captureCandidates = useMemo(
+		() => [
+			...benefitCandidates.map((candidate) =>
+				toCandidateReviewItem("benefit", candidate),
+			),
+			...documentCandidates.map((candidate) =>
+				toCandidateReviewItem("document", candidate),
+			),
+		],
+		[benefitCandidates, documentCandidates],
 	);
 	const idx = useMemo(
 		() => (current ? filteredQueue.findIndex((q) => q.id === current.id) : -1),
@@ -472,6 +642,52 @@ export const CeitsReviewFlowPage = () => {
 		} finally {
 			setDocumentCandidateActingId(null);
 		}
+	};
+
+	const handleSavePromoCandidate = async (candidate: BenefitCandidate) => {
+		if (spaceId == null) return;
+		setBenefitCandidateActingId(candidate.id);
+		setDocumentCandidateError(null);
+		try {
+			await apiClient.spaces.saveBenefitCandidatePromo(spaceId, candidate.id);
+			setBenefitCandidates((prev) =>
+				prev.filter((item) => item.id !== candidate.id),
+			);
+		} catch (e) {
+			setDocumentCandidateError(
+				e instanceof Error ? e.message : "Failed to save promo candidate",
+			);
+		} finally {
+			setBenefitCandidateActingId(null);
+		}
+	};
+
+	const handleIgnoreBenefitCandidate = async (candidate: BenefitCandidate) => {
+		if (spaceId == null) return;
+		setBenefitCandidateActingId(candidate.id);
+		setDocumentCandidateError(null);
+		try {
+			await apiClient.spaces.ignoreBenefitCandidate(spaceId, candidate.id);
+			setBenefitCandidates((prev) =>
+				prev.filter((item) => item.id !== candidate.id),
+			);
+		} catch (e) {
+			setDocumentCandidateError(
+				e instanceof Error ? e.message : "Failed to ignore benefit candidate",
+			);
+		} finally {
+			setBenefitCandidateActingId(null);
+		}
+	};
+
+	const handleIgnoreCaptureCandidate = async (
+		candidate: CandidateReviewItem,
+	) => {
+		if (candidate.source === "benefit") {
+			await handleIgnoreBenefitCandidate(candidate.raw as BenefitCandidate);
+			return;
+		}
+		await handleIgnoreDocumentCandidate(candidate.raw as DocumentCandidate);
 	};
 
 	const handleApprove = async () => {
@@ -563,72 +779,95 @@ export const CeitsReviewFlowPage = () => {
 							{error}
 						</p>
 					) : null}
-					{!loading && !error && documentCandidates.length > 0 ? (
+					{!loading && !error && captureCandidates.length > 0 ? (
 						<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.92)] p-4 shadow-sm">
 							<div className="flex flex-wrap items-start justify-between gap-3">
 								<div>
 									<p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-										Document intelligence
+										Capture review
 									</p>
 									<h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
-										Document signals waiting for review
+										Parsing candidates waiting for review
 									</h2>
 									<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-										These are not expenses yet. Review them before attaching,
-										merging, or projecting anything into the space.
+										Promos, loyalty, payment proof, splits, and participant
+										placeholders stay as drafts until you confirm what should
+										become part of this space.
 									</p>
 								</div>
 								<span className="rounded-full border border-[rgba(120,100,80,0.22)] bg-white px-2.5 py-1 text-xs font-semibold text-foreground/75">
-									{documentCandidates.length} pending
+									{captureCandidates.length} pending
 								</span>
 							</div>
 							<div className="mt-4 grid gap-2 md:grid-cols-2">
-								{documentCandidates.slice(0, 6).map((candidate) => (
-									<article
-										className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-white/80 p-3"
-										key={candidate.id}
-									>
-										<div className="flex items-start justify-between gap-3">
-											<div className="min-w-0">
-												<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-													{documentCandidateLabel(candidate.candidate_type)}
-												</p>
-												<h3 className="mt-1 truncate text-sm font-semibold text-foreground">
-													{documentCandidateTitle(candidate)}
-												</h3>
+								{captureCandidates.slice(0, 8).map((candidate) => {
+									const actingId =
+										candidate.source === "benefit"
+											? benefitCandidateActingId
+											: documentCandidateActingId;
+									const isActing = actingId === candidate.id;
+									return (
+										<article
+											className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-white/80 p-3"
+											key={`${candidate.source}-${candidate.id}`}
+										>
+											<div className="flex items-start justify-between gap-3">
+												<div className="min-w-0">
+													<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+														{candidate.label}
+													</p>
+													<h3 className="mt-1 truncate text-sm font-semibold text-foreground">
+														{candidate.title}
+													</h3>
+												</div>
+												<div className="flex shrink-0 items-center gap-1.5">
+													<span className="rounded-full border border-[rgba(102,134,108,0.28)] bg-[rgba(237,247,239,0.82)] px-2 py-0.5 text-[11px] font-semibold text-[#58745f]">
+														{candidate.confidenceLabel}
+													</span>
+													{candidate.canSavePromo ? (
+														<button
+															className="rounded-full border border-[rgba(91,116,87,0.34)] bg-[rgba(237,247,239,0.92)] px-2 py-0.5 text-[11px] font-semibold text-[#355238] transition hover:border-[rgba(91,116,87,0.5)] hover:bg-[rgba(218,238,222,0.98)] disabled:opacity-50"
+															disabled={isActing}
+															onClick={() =>
+																void handleSavePromoCandidate(
+																	candidate.raw as BenefitCandidate,
+																)
+															}
+															type="button"
+														>
+															{isActing ? "Saving" : "Save promo"}
+														</button>
+													) : null}
+													<button
+														className="rounded-full border border-border/70 bg-white px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-50"
+														disabled={isActing}
+														onClick={() =>
+															void handleIgnoreCaptureCandidate(candidate)
+														}
+														type="button"
+													>
+														{isActing ? "Working" : "Ignore"}
+													</button>
+												</div>
 											</div>
-											<div className="flex shrink-0 items-center gap-1.5">
-												<span className="rounded-full border border-[rgba(102,134,108,0.28)] bg-[rgba(237,247,239,0.82)] px-2 py-0.5 text-[11px] font-semibold text-[#58745f]">
-													Draft
-												</span>
-												<button
-													className="rounded-full border border-border/70 bg-white px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-50"
-													disabled={documentCandidateActingId === candidate.id}
-													onClick={() =>
-														void handleIgnoreDocumentCandidate(candidate)
-													}
-													type="button"
-												>
-													{documentCandidateActingId === candidate.id
-														? "Ignoring"
-														: "Ignore"}
-												</button>
-											</div>
-										</div>
-										<p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-											{documentCandidateMeta(candidate)}
-										</p>
-									</article>
-								))}
+											<p className="mt-2 text-xs font-medium text-foreground/82">
+												{candidate.detail}
+											</p>
+											<p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+												{candidate.meta}
+											</p>
+										</article>
+									);
+								})}
 							</div>
 							{documentCandidateError ? (
 								<p className="mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs text-destructive">
 									{documentCandidateError}
 								</p>
 							) : null}
-							{documentCandidates.length > 6 ? (
+							{captureCandidates.length > 8 ? (
 								<p className="mt-3 text-xs text-muted-foreground">
-									Showing 6 newest document signals. Full resolution controls
+									Showing 8 newest capture candidates. Full resolution controls
 									come with the unified candidate review surface.
 								</p>
 							) : null}
@@ -637,7 +876,7 @@ export const CeitsReviewFlowPage = () => {
 					{!loading &&
 					!error &&
 					current == null &&
-					documentCandidates.length === 0 ? (
+					captureCandidates.length === 0 ? (
 						<section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.9)] px-6 py-8 text-center shadow-sm">
 							<h2 className="text-2xl font-semibold tracking-tight text-foreground">
 								All caught up

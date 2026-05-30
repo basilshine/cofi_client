@@ -297,7 +297,9 @@ export type DocumentCandidateType =
 	| "reminder_candidate"
 	| "merge_candidate"
 	| "space_suggestion_candidate"
-	| "supporting_document_candidate";
+	| "supporting_document_candidate"
+	| "split_candidate"
+	| "participant_placeholder_candidate";
 
 export type DocumentCandidate = {
 	id: number;
