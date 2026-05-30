@@ -1027,6 +1027,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/benefits/promos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List saved promo codes in a space
+         * @description Space-scoped Promo Wallet list. Promos may be manually added or projected from receipt/document intelligence candidates.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Saved promo codes plus lightweight benefits summary. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SpacePromoListResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Add a promo code manually
+         * @description Creates a saved promo in the requested space tenant. Parser-projected promos use the same PromoCode shape after review.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreatePromoCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description Promo code created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PromoCode"];
+                    };
+                };
+                /** @description Invalid promo payload */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/benefits/promos/{promoId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update a saved promo code
+         * @description Updates mutable promo metadata or status, for example marking a code as used or archived.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Promo code ID */
+                    promoId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PatchPromoCodeRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated promo code */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PromoCode"];
+                    };
+                };
+                /** @description Invalid promo patch */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Promo not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/v1/finances/expenses/tags": {
         parameters: {
             query?: never;
@@ -4630,6 +4792,95 @@ export interface components {
             space_suggestion?: {
                 [key: string]: unknown;
             };
+        };
+        /** @description Saved promo code found by the user or projected from document intelligence. */
+        PromoCode: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            tenant_id?: number;
+            /** Format: int64 */
+            space_id?: number;
+            /** Format: int64 */
+            created_by_user_id?: number;
+            /** @enum {string} */
+            source_type?: "receipt" | "screenshot" | "email" | "telegram" | "sms" | "manual_text" | "website" | "manual" | "unknown";
+            /** Format: int64 */
+            source_document_id?: number;
+            source_merchant_name?: string;
+            redeem_merchant_name?: string;
+            redeem_platform?: string;
+            promo_code?: string;
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            discount_type?: "percent" | "fixed_amount" | "cashback" | "free_shipping" | "gift" | "unknown";
+            discount_value?: number;
+            minimum_order_amount?: number;
+            currency?: string;
+            /** Format: date-time */
+            valid_from?: string;
+            /** Format: date-time */
+            valid_until?: string;
+            conditions_text?: string;
+            source_text?: string;
+            confidence?: number;
+            /** @enum {string} */
+            status?: "draft" | "active" | "used" | "ignored" | "expired" | "archived";
+            /** Format: date-time */
+            reminder_at?: string;
+            /** Format: date-time */
+            used_at?: string;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        PromoBenefitsSummary: {
+            /**
+             * Format: int64
+             * @description Draft promo/loyalty candidates waiting for review in this space.
+             */
+            candidate_count?: number;
+        };
+        SpacePromoListResponse: {
+            promos?: components["schemas"]["PromoCode"][];
+            summary?: components["schemas"]["PromoBenefitsSummary"];
+        };
+        /** @description Manual promo creation request. */
+        CreatePromoCodeRequest: {
+            title?: string;
+            promo_code?: string;
+            description?: string;
+            source_type?: string;
+            source_merchant_name?: string;
+            redeem_merchant_name?: string;
+            redeem_platform?: string;
+            /** @enum {string} */
+            discount_type?: "percent" | "fixed_amount" | "cashback" | "free_shipping" | "gift" | "unknown";
+            discount_value?: number;
+            minimum_order_amount?: number;
+            currency?: string;
+            /** @description RFC3339 timestamp or YYYY-MM-DD. */
+            valid_from?: string;
+            /** @description RFC3339 timestamp or YYYY-MM-DD. */
+            valid_until?: string;
+            conditions_text?: string;
+            source_text?: string;
+            /** @enum {string} */
+            status?: "draft" | "active" | "used" | "ignored" | "expired" | "archived";
+            /** @description RFC3339 timestamp or YYYY-MM-DD. */
+            reminder_at?: string;
+        };
+        PatchPromoCodeRequest: {
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            status?: "draft" | "active" | "used" | "ignored" | "expired" | "archived";
+            /** @description RFC3339 timestamp or YYYY-MM-DD. Empty string clears the reminder. */
+            reminder_at?: string;
+            /** @description RFC3339 timestamp or YYYY-MM-DD. Empty string clears the used timestamp. */
+            used_at?: string;
         };
         /** @description Capability-aware parser model selection metadata returned with capture previews. */
         CaptureModelPolicy: {

@@ -1,6 +1,7 @@
 import type { DashboardResponse, DashboardVariant } from "./dashboard";
 import {
 	type ChatMessage,
+	type CreatePromoCodeRequest,
 	type Draft,
 	type ExpenseDetail,
 	type ExpensePatch,
@@ -14,8 +15,10 @@ import {
 	type MyShareResponse,
 	type NotificationChannelsPutBody,
 	type NotificationChannelsResponse,
+	type PatchPromoCodeRequest,
 	type PayeeMismatchHint,
 	type ProfileUpdateRequest,
+	type PromoCode,
 	type QuotaStatus,
 	type RecurringExpense,
 	type Space,
@@ -29,6 +32,7 @@ import {
 	type SpaceParticipantInviteResponse,
 	type SpaceParticipantPatch,
 	type SpaceParticipantsListResponse,
+	type SpacePromoListResponse,
 	type SpaceRole,
 	type Tenant,
 	type TenantInviteCreateResponse,
@@ -471,6 +475,27 @@ export const createApiClient = (config: ApiClientConfig) => {
 					{ method: "GET", headers: authHeaders() },
 				);
 			},
+			listPromos: (spaceId: string | number) =>
+				fetchJson<SpacePromoListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/benefits/promos`),
+					{ method: "GET", headers: authHeaders() },
+				),
+			createPromo: (spaceId: string | number, body: CreatePromoCodeRequest) =>
+				fetchJson<PromoCode>(
+					withBase(`/api/v1/spaces/${spaceId}/benefits/promos`),
+					{ method: "POST", headers: authHeaders(), body },
+				),
+			patchPromo: (
+				spaceId: string | number,
+				promoId: string | number,
+				body: PatchPromoCodeRequest,
+			) =>
+				fetchJson<PromoCode>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/benefits/promos/${encodeURIComponent(String(promoId))}`,
+					),
+					{ method: "PATCH", headers: authHeaders(), body },
+				),
 		},
 
 		drafts: {

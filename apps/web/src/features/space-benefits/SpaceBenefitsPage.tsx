@@ -1,16 +1,24 @@
-import type { Space } from "@cofi/api";
-import { useEffect, useMemo } from "react";
+import type { PromoCode, Space } from "@cofi/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceHeader } from "../../app/layout/workspaceSpaces/SpaceHeader";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
+import { apiClient } from "../../shared/lib/apiClient";
 
-type BenefitStatus = "active" | "draft" | "expires_soon" | "used";
+type BenefitStatus =
+	| "active"
+	| "draft"
+	| "expires_soon"
+	| "used"
+	| "expired"
+	| "archived"
+	| "ignored";
 
 type PromoBenefit = {
-	id: string;
+	id: number;
 	title: string;
 	code: string;
 	merchant: string;
@@ -19,6 +27,7 @@ type PromoBenefit = {
 	discountLabel: string;
 	validUntil: string;
 	source: string;
+	raw: PromoCode;
 };
 
 type LoyaltyBenefit = {
@@ -31,9 +40,7 @@ type LoyaltyBenefit = {
 	status: BenefitStatus;
 };
 
-const promoBenefits: PromoBenefit[] = [];
 const loyaltyBenefits: LoyaltyBenefit[] = [];
-const candidateCount = 0;
 
 const toNumericId = (value: string | number | undefined): number | null => {
 	if (value == null) return null;
@@ -56,7 +63,89 @@ const statusClass = (status: BenefitStatus) => {
 	if (status === "draft") {
 		return "border-[rgba(120,100,80,0.24)] bg-[rgba(255,252,246,0.72)] text-foreground/72";
 	}
+	if (status === "expired" || status === "archived" || status === "ignored") {
+		return "border-border/60 bg-muted/55 text-muted-foreground";
+	}
 	return "border-border/60 bg-muted/55 text-muted-foreground";
+};
+
+const isExpiringSoon = (iso?: string | null): boolean => {
+	if (!iso) return false;
+	const ts = Date.parse(iso);
+	if (!Number.isFinite(ts)) return false;
+	const now = Date.now();
+	const twoWeeks = 14 * 24 * 60 * 60 * 1000;
+	return ts >= now && ts <= now + twoWeeks;
+};
+
+const toBenefitStatus = (promo: PromoCode): BenefitStatus => {
+	const status = String(promo.status ?? "active").toLowerCase();
+	if (status === "active" && isExpiringSoon(promo.valid_until)) {
+		return "expires_soon";
+	}
+	if (
+		status === "draft" ||
+		status === "used" ||
+		status === "expired" ||
+		status === "archived" ||
+		status === "ignored"
+	) {
+		return status;
+	}
+	return "active";
+};
+
+const formatPromoDate = (iso?: string | null): string => {
+	if (!iso) return "No expiry";
+	const ts = Date.parse(iso);
+	if (!Number.isFinite(ts)) return iso;
+	return new Intl.DateTimeFormat(undefined, {
+		month: "short",
+		day: "numeric",
+		year: "numeric",
+	}).format(new Date(ts));
+};
+
+const formatMoneyWithCurrency = (amount: number, currency?: string): string => {
+	const code = currency?.trim().toUpperCase() || "RUB";
+	try {
+		return new Intl.NumberFormat(undefined, {
+			style: "currency",
+			currency: code,
+			maximumFractionDigits: 0,
+		}).format(amount);
+	} catch {
+		return `${amount.toLocaleString()} ${code}`;
+	}
+};
+
+const formatDiscountLabel = (promo: PromoCode): string => {
+	const value = promo.discount_value;
+	switch (promo.discount_type) {
+		case "percent":
+			return value != null ? `${value}% off` : "Percent discount";
+		case "fixed_amount":
+			return value != null
+				? `${formatMoneyWithCurrency(value, promo.currency)} off`
+				: "Fixed discount";
+		case "cashback":
+			return value != null
+				? `${formatMoneyWithCurrency(value, promo.currency)} cashback`
+				: "Cashback";
+		case "free_shipping":
+			return "Free shipping";
+		case "gift":
+			return "Gift offer";
+		default:
+			return "Promo offer";
+	}
+};
+
+const formatSourceLabel = (sourceType?: string): string => {
+	const value = sourceType?.trim().toLowerCase();
+	if (!value) return "Unknown";
+	if (value === "manual_text") return "Manual text";
+	return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
 const EmptyPanel = ({
@@ -76,7 +165,17 @@ const EmptyPanel = ({
 	</div>
 );
 
-const PromoCard = ({ promo }: { promo: PromoBenefit }) => (
+const PromoCard = ({
+	promo,
+	busy,
+	onArchive,
+	onMarkUsed,
+}: {
+	promo: PromoBenefit;
+	busy: boolean;
+	onArchive: (promo: PromoBenefit) => void;
+	onMarkUsed: (promo: PromoBenefit) => void;
+}) => (
 	<li className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.78)] p-4 shadow-sm transition hover:border-[rgba(140,115,85,0.28)] hover:bg-[rgba(255,252,246,0.94)]">
 		<div className="flex flex-wrap items-start justify-between gap-3">
 			<div className="min-w-0">
@@ -113,7 +212,27 @@ const PromoCard = ({ promo }: { promo: PromoBenefit }) => (
 				<p className="mt-1 text-muted-foreground">Until {promo.validUntil}</p>
 			</div>
 		</div>
-		<p className="mt-3 text-xs text-muted-foreground">Source: {promo.source}</p>
+		<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+			<p className="text-xs text-muted-foreground">Source: {promo.source}</p>
+			<div className="flex flex-wrap gap-2">
+				<button
+					className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-foreground/82 transition hover:bg-white disabled:opacity-50"
+					disabled={busy || promo.raw.status === "used"}
+					onClick={() => onMarkUsed(promo)}
+					type="button"
+				>
+					Mark used
+				</button>
+				<button
+					className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
+					disabled={busy || promo.raw.status === "archived"}
+					onClick={() => onArchive(promo)}
+					type="button"
+				>
+					Archive
+				</button>
+			</div>
+		</div>
 	</li>
 );
 
@@ -166,6 +285,18 @@ export const SpaceBenefitsPage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
 	const { user } = useAuth();
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
+	const [promos, setPromos] = useState<PromoCode[]>([]);
+	const [candidateCount, setCandidateCount] = useState(0);
+	const [isLoading, setIsLoading] = useState(false);
+	const [loadError, setLoadError] = useState<string | null>(null);
+	const [savingPromoId, setSavingPromoId] = useState<number | null>(null);
+	const [manualOpen, setManualOpen] = useState(false);
+	const [manualBusy, setManualBusy] = useState(false);
+	const [manualError, setManualError] = useState<string | null>(null);
+	const [manualTitle, setManualTitle] = useState("");
+	const [manualCode, setManualCode] = useState("");
+	const [manualRedeemAt, setManualRedeemAt] = useState("");
+	const [manualValidUntil, setManualValidUntil] = useState("");
 
 	const numericSpaceId = useMemo(() => toNumericId(spaceId), [spaceId]);
 	const space = useMemo(() => {
@@ -186,15 +317,136 @@ export const SpaceBenefitsPage = () => {
 		}
 	}, [numericSpaceId, selectedSpaceId, setSelectedSpaceId]);
 
-	if (numericSpaceId == null) {
-		return <Navigate replace to="/console/home" />;
-	}
+	const loadPromos = useCallback(async () => {
+		if (numericSpaceId == null) return;
+		setIsLoading(true);
+		setLoadError(null);
+		try {
+			const data = await apiClient.spaces.listPromos(numericSpaceId);
+			setPromos(data.promos ?? []);
+			setCandidateCount(data.summary?.candidate_count ?? 0);
+		} catch (error) {
+			setLoadError(
+				error instanceof Error ? error.message : "Failed to load benefits",
+			);
+		} finally {
+			setIsLoading(false);
+		}
+	}, [numericSpaceId]);
 
+	useEffect(() => {
+		void loadPromos();
+	}, [loadPromos]);
+
+	const promoBenefits = useMemo(
+		() =>
+			promos.map((promo): PromoBenefit => {
+				const merchant =
+					promo.source_merchant_name?.trim() ||
+					promo.redeem_merchant_name?.trim() ||
+					promo.redeem_platform?.trim() ||
+					"Promo";
+				return {
+					id: Number(promo.id),
+					title: promo.title?.trim() || promo.promo_code?.trim() || "Promo",
+					code: promo.promo_code?.trim() || "No code",
+					merchant,
+					redeemAt:
+						promo.redeem_platform?.trim() ||
+						promo.redeem_merchant_name?.trim() ||
+						merchant,
+					status: toBenefitStatus(promo),
+					discountLabel: formatDiscountLabel(promo),
+					validUntil: formatPromoDate(promo.valid_until),
+					source: formatSourceLabel(promo.source_type),
+					raw: promo,
+				};
+			}),
+		[promos],
+	);
 	const activePromos = promoBenefits.filter((item) => item.status === "active");
 	const expiringPromos = promoBenefits.filter(
 		(item) => item.status === "expires_soon",
 	);
 	const totalLoyaltyBalance = loyaltyBenefits.length;
+	const sourceCounts = useMemo(() => {
+		const counts = { manual: 0, messages: 0, receipts: 0 };
+		for (const promo of promos) {
+			const source = String(promo.source_type ?? "").toLowerCase();
+			if (source === "receipt" || source === "image") counts.receipts += 1;
+			else if (["email", "telegram", "sms", "message"].includes(source)) {
+				counts.messages += 1;
+			} else {
+				counts.manual += 1;
+			}
+		}
+		return counts;
+	}, [promos]);
+
+	const patchPromoStatus = async (
+		promo: PromoBenefit,
+		status: "used" | "archived",
+	) => {
+		if (numericSpaceId == null) return;
+		setSavingPromoId(promo.id);
+		setLoadError(null);
+		try {
+			const updated = await apiClient.spaces.patchPromo(
+				numericSpaceId,
+				promo.id,
+				{
+					status,
+				},
+			);
+			setPromos((current) =>
+				current.map((item) => (Number(item.id) === promo.id ? updated : item)),
+			);
+		} catch (error) {
+			setLoadError(
+				error instanceof Error ? error.message : "Failed to update promo",
+			);
+		} finally {
+			setSavingPromoId(null);
+		}
+	};
+
+	const submitManualPromo = async () => {
+		if (numericSpaceId == null) return;
+		const title = manualTitle.trim();
+		const code = manualCode.trim();
+		if (!title && !code) {
+			setManualError("Add a title or promo code.");
+			return;
+		}
+		setManualBusy(true);
+		setManualError(null);
+		try {
+			const created = await apiClient.spaces.createPromo(numericSpaceId, {
+				title,
+				promo_code: code,
+				redeem_platform: manualRedeemAt.trim(),
+				valid_until: manualValidUntil.trim() || undefined,
+				source_type: "manual",
+				status: "active",
+			});
+			setPromos((current) => [created, ...current]);
+			setManualTitle("");
+			setManualCode("");
+			setManualRedeemAt("");
+			setManualValidUntil("");
+			setManualOpen(false);
+		} catch (error) {
+			setManualError(
+				error instanceof Error ? error.message : "Failed to save promo",
+			);
+		} finally {
+			setManualBusy(false);
+		}
+	};
+
+	if (numericSpaceId == null) {
+		return <Navigate replace to="/console/home" />;
+	}
 
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
@@ -217,7 +469,7 @@ export const SpaceBenefitsPage = () => {
 								{
 									key: "active-promos",
 									label: "Active promos",
-									value: String(activePromos.length),
+									value: String(activePromos.length + expiringPromos.length),
 									note: "Saved codes ready to use.",
 								},
 								{
@@ -247,7 +499,7 @@ export const SpaceBenefitsPage = () => {
 										{widget.label}
 									</p>
 									<p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-										{widget.value}
+										{isLoading ? "…" : widget.value}
 									</p>
 									<p className="mt-1 text-xs text-muted-foreground">
 										{widget.note}
@@ -255,6 +507,12 @@ export const SpaceBenefitsPage = () => {
 								</div>
 							))}
 						</section>
+
+						{loadError ? (
+							<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+								{loadError}
+							</div>
+						) : null}
 
 						<section className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
 							<div className="space-y-6 lg:col-span-2">
@@ -276,19 +534,115 @@ export const SpaceBenefitsPage = () => {
 										</div>
 										<button
 											className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-sm transition-all duration-150 hover:bg-white disabled:opacity-50"
-											disabled
+											onClick={() => setManualOpen((open) => !open)}
 											type="button"
 										>
-											Add manually
+											{manualOpen ? "Close" : "Add manually"}
 										</button>
 									</div>
 									<div className="p-4 sm:p-5">
+										{manualOpen ? (
+											<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4">
+												<div className="grid gap-3 sm:grid-cols-2">
+													<label className="space-y-1 text-sm">
+														<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+															Title
+														</span>
+														<input
+															className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+															onChange={(event) =>
+																setManualTitle(event.target.value)
+															}
+															placeholder="Yandex Food discount"
+															value={manualTitle}
+														/>
+													</label>
+													<label className="space-y-1 text-sm">
+														<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+															Code
+														</span>
+														<input
+															className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 font-mono text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+															onChange={(event) =>
+																setManualCode(event.target.value)
+															}
+															placeholder="MINUS400"
+															value={manualCode}
+														/>
+													</label>
+													<label className="space-y-1 text-sm">
+														<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+															Redeem at
+														</span>
+														<input
+															className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+															onChange={(event) =>
+																setManualRedeemAt(event.target.value)
+															}
+															placeholder="Ozon, Yandex Food..."
+															value={manualRedeemAt}
+														/>
+													</label>
+													<label className="space-y-1 text-sm">
+														<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+															Valid until
+														</span>
+														<input
+															className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+															onChange={(event) =>
+																setManualValidUntil(event.target.value)
+															}
+															placeholder="2026-06-30"
+															value={manualValidUntil}
+														/>
+													</label>
+												</div>
+												{manualError ? (
+													<p className="mt-3 text-sm text-red-700">
+														{manualError}
+													</p>
+												) : null}
+												<div className="mt-4 flex flex-wrap justify-end gap-2">
+													<button
+														className="inline-flex h-9 items-center rounded-lg border border-border/70 bg-white px-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+														onClick={() => setManualOpen(false)}
+														type="button"
+													>
+														Cancel
+													</button>
+													<button
+														className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
+														disabled={manualBusy}
+														onClick={submitManualPromo}
+														type="button"
+													>
+														{manualBusy ? "Saving…" : "Save promo"}
+													</button>
+												</div>
+											</div>
+										) : null}
+
 										{promoBenefits.length ? (
 											<ul className="space-y-3">
 												{promoBenefits.map((promo) => (
-													<PromoCard key={promo.id} promo={promo} />
+													<PromoCard
+														busy={savingPromoId === promo.id}
+														key={promo.id}
+														onArchive={(item) =>
+															void patchPromoStatus(item, "archived")
+														}
+														onMarkUsed={(item) =>
+															void patchPromoStatus(item, "used")
+														}
+														promo={promo}
+													/>
 												))}
 											</ul>
+										) : isLoading ? (
+											<EmptyPanel
+												body="Loading saved promo codes from this space."
+												title="Loading promos"
+											/>
 										) : (
 											<EmptyPanel
 												body={`Saved promo codes for ${spaceName} will appear here after review.`}
@@ -359,19 +713,19 @@ export const SpaceBenefitsPage = () => {
 										<div className="flex items-baseline justify-between gap-3">
 											<dt className="text-muted-foreground">Receipts</dt>
 											<dd className="font-semibold tabular-nums text-foreground">
-												0
+												{sourceCounts.receipts}
 											</dd>
 										</div>
 										<div className="flex items-baseline justify-between gap-3">
 											<dt className="text-muted-foreground">Manual</dt>
 											<dd className="font-semibold tabular-nums text-foreground">
-												0
+												{sourceCounts.manual}
 											</dd>
 										</div>
 										<div className="flex items-baseline justify-between gap-3">
 											<dt className="text-muted-foreground">Messages</dt>
 											<dd className="font-semibold tabular-nums text-foreground">
-												0
+												{sourceCounts.messages}
 											</dd>
 										</div>
 									</dl>

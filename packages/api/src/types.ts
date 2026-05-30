@@ -201,6 +201,88 @@ export type SpaceInviteSuggestionsResponse = {
 	pending_invites_for_space: PendingInviteBrief[];
 };
 
+export type PromoCodeStatus =
+	| "draft"
+	| "active"
+	| "used"
+	| "ignored"
+	| "expired"
+	| "archived";
+
+export type PromoDiscountType =
+	| "percent"
+	| "fixed_amount"
+	| "cashback"
+	| "free_shipping"
+	| "gift"
+	| "unknown";
+
+export type PromoCode = {
+	id: number;
+	tenant_id: number;
+	space_id?: number | null;
+	created_by_user_id: number;
+	source_type: string;
+	source_document_id?: number | null;
+	source_merchant_name?: string;
+	redeem_merchant_name?: string;
+	redeem_platform?: string;
+	promo_code?: string;
+	title: string;
+	description?: string;
+	discount_type: PromoDiscountType | string;
+	discount_value?: number | null;
+	minimum_order_amount?: number | null;
+	currency?: string;
+	valid_from?: string | null;
+	valid_until?: string | null;
+	conditions_text?: string;
+	source_text?: string;
+	confidence?: number;
+	status: PromoCodeStatus | string;
+	reminder_at?: string | null;
+	used_at?: string | null;
+	created_at?: string;
+	updated_at?: string;
+};
+
+export type PromoBenefitsSummary = {
+	candidate_count: number;
+};
+
+export type SpacePromoListResponse = {
+	promos: PromoCode[];
+	summary: PromoBenefitsSummary;
+};
+
+export type CreatePromoCodeRequest = {
+	title?: string;
+	promo_code?: string;
+	description?: string;
+	source_type?: string;
+	source_merchant_name?: string;
+	redeem_merchant_name?: string;
+	redeem_platform?: string;
+	discount_type?: PromoDiscountType | string;
+	discount_value?: number;
+	minimum_order_amount?: number;
+	currency?: string;
+	valid_from?: string;
+	valid_until?: string;
+	conditions_text?: string;
+	source_text?: string;
+	status?: PromoCodeStatus | string;
+	reminder_at?: string;
+};
+
+export type PatchPromoCodeRequest = {
+	title?: string;
+	description?: string;
+	status?: PromoCodeStatus | string;
+	reminder_at?: string;
+	used_at?: string;
+};
+
 /** Invites addressed to your account email (`GET /invites/pending-for-me`). */
 export type MyPendingInviteRow = {
 	id: number;
