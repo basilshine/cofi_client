@@ -1393,7 +1393,7 @@ export const ChatLogPage = () => {
 							onCancelRecording={cancelRecording}
 							onComposerSubmit={(p) => void handleComposerSubmit(p)}
 							onStartExpenseRecording={() => void beginRecording(false)}
-							onStopRecording={() => void handleToggleRecording()}
+							onStopRecording={handleToggleRecording}
 							spaceId={selectedSpaceId}
 						/>
 					}

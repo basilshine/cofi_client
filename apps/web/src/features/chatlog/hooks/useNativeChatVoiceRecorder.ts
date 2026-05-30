@@ -16,12 +16,15 @@ export const useNativeChatVoiceRecorder = ({
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const mediaChunksRef = useRef<BlobPart[]>([]);
 	const recordingForMessageRef = useRef(false);
+	const isCancelingRef = useRef(false);
 
 	const cancelRecording = useCallback(() => {
 		const rec = mediaRecorderRef.current;
+		isCancelingRef.current = true;
 		if (rec && rec.state === "recording") {
 			rec.stop();
 		}
+		mediaRecorderRef.current = null;
 		mediaChunksRef.current = [];
 		setIsRecording(false);
 		recordingForMessageRef.current = false;
@@ -33,6 +36,7 @@ export const useNativeChatVoiceRecorder = ({
 			recordingForMessageRef.current = forMessage;
 			onError(null);
 			try {
+				isCancelingRef.current = false;
 				const stream = await navigator.mediaDevices.getUserMedia({
 					audio: true,
 				});
@@ -40,6 +44,7 @@ export const useNativeChatVoiceRecorder = ({
 				mediaRecorderRef.current = rec;
 				mediaChunksRef.current = [];
 				rec.addEventListener("dataavailable", (e) => {
+					if (isCancelingRef.current) return;
 					if (e.data && e.data.size > 0) mediaChunksRef.current.push(e.data);
 				});
 				rec.addEventListener("stop", () => {
@@ -68,6 +73,7 @@ export const useNativeChatVoiceRecorder = ({
 
 			const forMessage = recordingForMessageRef.current;
 			recordingForMessageRef.current = false;
+			isCancelingRef.current = false;
 			setIsRecording(false);
 
 			const stopPromise = new Promise<void>((resolve) => {
@@ -79,6 +85,7 @@ export const useNativeChatVoiceRecorder = ({
 			const blob = new Blob(mediaChunksRef.current, {
 				type: rec.mimeType || "audio/webm",
 			});
+			mediaRecorderRef.current = null;
 			mediaChunksRef.current = [];
 			return { blob, forMessage };
 		}, []);

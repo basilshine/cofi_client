@@ -93,7 +93,7 @@ type Props = {
 	isRecording: boolean;
 	onComposerSubmit: (payload: ComposerPayload) => void;
 	onStartExpenseRecording: () => void;
-	onStopRecording: () => void;
+	onStopRecording: () => void | Promise<void>;
 	onCancelRecording?: () => void;
 	surface?: "chat" | "dock";
 };
@@ -396,11 +396,11 @@ export const SmartTextareaComposer = forwardRef<
 			}
 		};
 
-		const handleVoiceToggle = () => {
+		const handleVoiceToggle = async () => {
 			if (!isRecording) {
 				onStartExpenseRecording();
 			} else {
-				onStopRecording();
+				await onStopRecording();
 				cancelToIdle();
 			}
 		};
@@ -559,7 +559,7 @@ export const SmartTextareaComposer = forwardRef<
 								aria-label="Stop voice recording"
 								className="rounded-full border border-red-300/70 bg-red-50 px-5 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:bg-red-950/40 dark:hover:bg-red-950/60"
 								disabled={disabled}
-								onClick={handleVoiceToggle}
+								onClick={() => void handleVoiceToggle()}
 								tabIndex={0}
 								type="button"
 							>
@@ -572,7 +572,7 @@ export const SmartTextareaComposer = forwardRef<
 								aria-label="Start voice recording"
 								className="flex items-center gap-2 rounded-full border border-[rgba(120,100,80,0.38)] bg-[rgba(255,248,235,0.92)] px-5 py-2 text-xs font-semibold text-[hsl(220_40%_22%)] transition-all hover:border-[rgba(120,100,80,0.58)] hover:bg-[rgba(215,185,135,0.28)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:bg-[rgba(255,248,235,0.07)] dark:text-foreground dark:hover:bg-[rgba(215,185,135,0.12)]"
 								disabled={disabled}
-								onClick={handleVoiceToggle}
+								onClick={() => void handleVoiceToggle()}
 								tabIndex={0}
 								type="button"
 							>
