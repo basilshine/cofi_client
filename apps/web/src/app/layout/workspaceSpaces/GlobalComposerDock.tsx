@@ -116,17 +116,29 @@ const CandidateBundlePanel = ({
 	expensesHref,
 	benefitsHref,
 	splitsHref,
+	reviewHref,
 }: {
 	bundle: GlobalComposerCandidateBundle;
 	expensesHref: string;
 	benefitsHref: string;
 	splitsHref: string;
+	reviewHref: string;
 }) => {
 	if (!bundle.candidates.length && !bundle.capabilityNotice) return null;
 
 	const hasExpense = bundleHasAny(bundle, ["expense", "expense_item"]);
 	const hasBenefits = bundleHasAny(bundle, ["promo", "loyalty"]);
 	const hasSplits = bundleHasAny(bundle, ["split", "participant"]);
+	const hasReviewFlowSignals = bundleHasAny(bundle, [
+		"payment_proof",
+		"privacy",
+		"merge",
+		"supporting_document",
+		"space_suggestion",
+		"recurring",
+		"membership",
+		"reminder",
+	]);
 	const visibleCandidates = bundle.candidates.slice(0, 5);
 	const hiddenCount = bundle.candidates.length - visibleCandidates.length;
 
@@ -190,6 +202,11 @@ const CandidateBundlePanel = ({
 					{hasSplits ? (
 						<Link className={reviewActionClass} to={splitsHref}>
 							Review splits
+						</Link>
+					) : null}
+					{hasReviewFlowSignals ? (
+						<Link className={reviewActionClass} to={reviewHref}>
+							Review flow
 						</Link>
 					) : null}
 				</div>
@@ -286,6 +303,10 @@ export const GlobalComposerDock = ({
 		activeSpaceId == null
 			? "/console/settings/spaces"
 			: `/console/chat/expenses?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
+	const activeSpaceReviewHref =
+		activeSpaceId == null
+			? "/console/review"
+			: `/console/review?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
 
 	const disabled = busy || isLoading || !hasSpaceContext;
 	const composerNotice =
@@ -788,6 +809,7 @@ export const GlobalComposerDock = ({
 						benefitsHref={activeSpaceBenefitsHref}
 						bundle={composerFlow.bundle}
 						expensesHref={activeSpaceExpensesHref}
+						reviewHref={activeSpaceReviewHref}
 						splitsHref={activeSpaceSplitsHref}
 					/>
 				) : null}
