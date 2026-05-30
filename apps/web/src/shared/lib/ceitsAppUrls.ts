@@ -23,22 +23,6 @@ export const getCeitsAppBaseUrl = (): string | null => {
 	}
 };
 
-export const ceitsSpaceExpensesListUrl = (
-	spaceId: string | number,
-): string | null => {
-	const base = getCeitsAppBaseUrl();
-	if (!base) return null;
-	return `${base}/spaces/${encodeURIComponent(String(spaceId))}/expenses`;
-};
-
-export const ceitsSpaceExpenseAddUrl = (
-	spaceId: string | number,
-): string | null => {
-	const base = getCeitsAppBaseUrl();
-	if (!base) return null;
-	return `${base}/spaces/${encodeURIComponent(String(spaceId))}/expenses/add`;
-};
-
 /** Join landing page with a space/tenant invite token (share this from invite emails). */
 export const ceitsInviteJoinUrl = (token: string): string | null => {
 	const base = getCeitsAppBaseUrl();

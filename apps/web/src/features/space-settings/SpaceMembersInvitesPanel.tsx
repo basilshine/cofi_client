@@ -7,10 +7,6 @@ import { InviteParticipantIcon } from "@cofi/ceits-icons";
 import { useCallback, useEffect, useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
 import {
-	ceitsSpaceExpenseAddUrl,
-	ceitsSpaceExpensesListUrl,
-} from "../../shared/lib/ceitsAppUrls";
-import {
 	InviteLinkSharePanel,
 	MyIncomingInvitesBlock,
 	SpaceInviteCombobox,
@@ -136,11 +132,6 @@ export const SpaceMembersInvitesPanel = ({
 		}
 	}, [canManageMemberRoles, inviteEmail, selectedSpace, selectedSpaceId]);
 
-	const ceitsListUrl =
-		selectedSpaceId != null ? ceitsSpaceExpensesListUrl(selectedSpaceId) : null;
-	const ceitsAddUrl =
-		selectedSpaceId != null ? ceitsSpaceExpenseAddUrl(selectedSpaceId) : null;
-
 	const openMemberDetails = useCallback(
 		(m: SpaceMember) => {
 			clearMemberRoleError();
@@ -165,35 +156,6 @@ export const SpaceMembersInvitesPanel = ({
 					<span className="font-medium text-foreground">
 						{selectedSpace.name}
 					</span>
-				</div>
-			) : null}
-
-			{ceitsListUrl && ceitsAddUrl ? (
-				<div className="rounded-lg border border-border/80 bg-muted/25 p-3">
-					<div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-						Ceits app
-					</div>
-					<p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-						Full expense editor and space vendors (opens in a new tab).
-					</p>
-					<div className="mt-2 flex flex-col gap-1.5">
-						<a
-							className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-							href={ceitsListUrl}
-							rel="noopener noreferrer"
-							target="_blank"
-						>
-							All expenses in this space
-						</a>
-						<a
-							className="text-xs font-medium text-primary underline-offset-2 hover:underline"
-							href={ceitsAddUrl}
-							rel="noopener noreferrer"
-							target="_blank"
-						>
-							Add expense
-						</a>
-					</div>
 				</div>
 			) : null}
 
