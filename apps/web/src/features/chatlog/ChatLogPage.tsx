@@ -21,12 +21,6 @@ import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient, writeActiveOrgTenantId } from "../../shared/lib/apiClient";
 import { readCeitsFirstChat } from "../../shared/lib/ceitsUserPrefs";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
-import { httpClient } from "../../shared/lib/httpClient";
-import {
-	parseCapturePhoto,
-	parseCaptureText,
-	parseCaptureVoice,
-} from "../../shared/lib/quickCaptureTransactions";
 import {
 	sortSpacesByLastActivity,
 	touchRecentSpaceId,
@@ -46,14 +40,12 @@ import { NativeChatMessageList } from "./components/NativeChatMessageList";
 import { NativeChatSpaceSurface } from "./components/NativeChatSpaceSurface";
 import { NativeChatWorkspace } from "./components/NativeChatWorkspace";
 import {
-	type ComposerPayload,
 	SmartTextareaComposer,
 	type SmartTextareaComposerHandle,
 } from "./components/SmartTextareaComposer";
 import { SpaceExpensesWorkspace } from "./components/SpaceExpensesWorkspace";
 import type { ThreadDeepLink } from "./components/ThreadDiscussionRichText";
-import type { BuilderItem } from "./components/transactionBuilderTypes";
-import { parseTags, toNumber } from "./components/transactionBuilderTypes";
+import { useNativeChatComposerActions } from "./hooks/useNativeChatComposerActions";
 import { useNativeChatVoiceRecorder } from "./hooks/useNativeChatVoiceRecorder";
 import { useSpaceExpensesWorkspaceState } from "./hooks/useSpaceExpensesWorkspaceState";
 import {
@@ -206,6 +198,19 @@ export const ChatLogPage = () => {
 		onOpenInspector: openExpenseInspectorPanel,
 		selectedSpaceId,
 	});
+
+	const { handleComposerSubmit, parseVoiceBlob, sendVoiceBlobAsChatMessage } =
+		useNativeChatComposerActions({
+			loadSpaceTransactions,
+			patchSpaces,
+			selectedSpaceId,
+			setComposerMode,
+			setErrorMessage,
+			setIsLoading,
+			setMessages,
+			setOldestMessageId,
+			setStickToLatest,
+		});
 
 	useEffect(() => {
 		workspaceScopeRef.current = workspaceScope;
@@ -817,274 +822,14 @@ export const ChatLogPage = () => {
 		}
 	};
 
-	/** Send arbitrary text as a chat message (used by SmartTextareaComposer message + ask flows). */
-	const handleSendChatText = async (text: string) => {
-		if (selectedSpaceId === null) return;
-		const t = text.trim();
-		if (!t) return;
-		setIsLoading(true);
-		setErrorMessage(null);
-		try {
-			const created = await wsClient.rpc<ChatMessage>("chat.send", {
-				spaceId: selectedSpaceId,
-				text: t,
-			});
-			setStickToLatest(true);
-			setMessages((prev) => [...(prev ?? []), created]);
-			setOldestMessageId((prev) => prev ?? created.id);
-			const nowIso = new Date().toISOString();
-			patchSpaces((prev) => {
-				if (!prev) return prev;
-				return prev.map((s) =>
-					String(s.id) === String(selectedSpaceId)
-						? { ...s, last_activity_at: nowIso }
-						: s,
-				);
-			});
-		} catch (err) {
-			setErrorMessage(
-				err instanceof Error ? err.message : "Failed to send message",
-			);
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	/** After parse (text/photo/voice), persist draft + chat message immediately so the user sees the draft card in the thread. */
-	const finalizeParsedDraft = useCallback(
-		async (description: string, builderItems: BuilderItem[]) => {
-			if (!selectedSpaceId) return;
-			const payloadItems = builderItems
-				.map((it) => {
-					const lineNotes = (it.notes ?? "").trim();
-					return {
-						name: it.name.trim(),
-						amount: toNumber(it.amount),
-						tags: parseTags(it.tags),
-						...(lineNotes ? { notes: lineNotes } : {}),
-					};
-				})
-				.filter((it) => it.name && it.amount !== 0);
-			if (!payloadItems.length) {
-				setErrorMessage(
-					"Nothing to save — parsed lines need a name and amount.",
-				);
-				return;
-			}
-
-			const res = await httpClient.post<{
-				expense?: { id: string | number };
-				message?: ChatMessage;
-			}>("/api/v1/capture", {
-				input_kind: "manual",
-				space_id: Number(selectedSpaceId),
-				description: description.trim(),
-				items: payloadItems,
-			});
-
-			const msg = res.data?.message;
-			if (msg) {
-				setMessages((prev) => {
-					const list = prev ?? [];
-					if (list.some((m) => String(m.id) === String(msg.id))) {
-						return list;
-					}
-					return [...list, msg];
-				});
-			}
-
-			setComposerMode("message");
-			setStickToLatest(true);
-			const bumpIso = new Date().toISOString();
-			patchSpaces((prev) => {
-				if (!prev) return prev;
-				return prev.map((s) =>
-					String(s.id) === String(selectedSpaceId)
-						? { ...s, last_activity_at: bumpIso }
-						: s,
-				);
-			});
-			void loadSpaceTransactions();
-		},
-		[selectedSpaceId, loadSpaceTransactions],
-	);
-
-	/** Unified payload handler for SmartTextareaComposer. Routes to existing logic. */
-	const handleComposerSubmit = useCallback(
-		async (payload: ComposerPayload) => {
-			if (selectedSpaceId === null) return;
-
-			if (payload.composer_mode === "expense") {
-				if (payload.expense_input_type === "text") {
-					const text = payload.content.trim();
-					if (!text) return;
-					setIsLoading(true);
-					setErrorMessage(null);
-					try {
-						const res = await parseCaptureText(text, {
-							spaceId: selectedSpaceId,
-						});
-						const parsed = res.items ?? [];
-						const builderItems = parsed
-							.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
-							.map((p) => ({
-								id: crypto.randomUUID(),
-								name: p.name.trim(),
-								amount: String(p.amount),
-								tags: (p.tags ?? []).join(", "),
-								notes: p.notes?.trim() ?? "",
-							}));
-						if (!builderItems.length) {
-							setErrorMessage(
-								"Nothing parsed — try clearer amounts and item names.",
-							);
-							return;
-						}
-						await finalizeParsedDraft(text, builderItems);
-					} catch (err) {
-						setErrorMessage(
-							err instanceof Error ? err.message : "Failed to parse text",
-						);
-					} finally {
-						setIsLoading(false);
-					}
-				} else if (payload.expense_input_type === "photo") {
-					await handleParsePhotoFile(payload.file);
-				}
-				// voice: handled via onStartExpenseRecording / onStopRecording directly
-			} else if (payload.composer_mode === "ask") {
-				let text = "";
-				if (payload.ask_type === "period_expenses") {
-					text = payload.content
-						? `How much did I spend on ${payload.content} ${payload.period.toLowerCase()}?`
-						: `How much did I spend ${payload.period.toLowerCase()}?`;
-				} else if (payload.ask_type === "find_expense") {
-					text = `Find expense: ${payload.content}`;
-				} else if (payload.ask_type === "next_payment") {
-					text = `What's my next payment? (${payload.period})`;
-				} else if (payload.ask_type === "split_balance") {
-					text = payload.content
-						? `Who owes whom? ${payload.content}`
-						: "Who owes whom in this space?";
-				} else if (payload.ask_type === "custom") {
-					text = payload.content;
-				}
-				if (text.trim()) await handleSendChatText(text);
-			} else if (payload.composer_mode === "message") {
-				await handleSendChatText(payload.content);
-			}
-		},
-		[selectedSpaceId, finalizeParsedDraft, handleSendChatText],
-	);
-
-	const handleParsePhotoFile = async (file: File) => {
-		if (!selectedSpaceId) return;
-		setIsLoading(true);
-		setErrorMessage(null);
-		try {
-			const res = await parseCapturePhoto(file, { spaceId: selectedSpaceId });
-			const parsed = res.items ?? [];
-			const builderItems = parsed
-				.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
-				.map((p) => ({
-					id: crypto.randomUUID(),
-					name: p.name.trim(),
-					amount: String(p.amount),
-					tags: (p.tags ?? []).join(", "),
-					notes: p.notes?.trim() ?? "",
-				}));
-			if (!builderItems.length) {
-				setErrorMessage("Nothing parsed from this image — try another photo.");
-				return;
-			}
-			const description = `Photo: ${file.name}`;
-			await finalizeParsedDraft(description, builderItems);
-		} catch (e) {
-			setErrorMessage(e instanceof Error ? e.message : "Failed to parse photo");
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	const handleParseVoiceBlob = async (blob: Blob) => {
-		if (!selectedSpaceId) return;
-		setIsLoading(true);
-		setErrorMessage(null);
-		try {
-			const res = await parseCaptureVoice(blob, blob.type || "audio/webm", {
-				spaceId: selectedSpaceId,
-			});
-			const parsed = res.items ?? [];
-			const builderItems = parsed
-				.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
-				.map((p) => ({
-					id: crypto.randomUUID(),
-					name: p.name.trim(),
-					amount: String(p.amount),
-					tags: (p.tags ?? []).join(", "),
-					notes: p.notes?.trim() ?? "",
-				}));
-			if (!builderItems.length) {
-				setErrorMessage(
-					"Nothing parsed from voice — try speaking amounts clearly.",
-				);
-				return;
-			}
-			const description = res.transcription?.trim() || "Voice expense";
-			await finalizeParsedDraft(description, builderItems);
-		} catch (e) {
-			setErrorMessage(e instanceof Error ? e.message : "Failed to parse voice");
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
-	const handleSendVoiceBlobAsChatMessage = async (blob: Blob) => {
-		if (!selectedSpaceId) return;
-		setIsLoading(true);
-		setErrorMessage(null);
-		try {
-			const res = await parseCaptureVoice(blob, blob.type || "audio/webm", {
-				spaceId: selectedSpaceId,
-			});
-			const text = res.transcription?.trim();
-			if (!text) {
-				setErrorMessage("Nothing transcribed — try again.");
-				return;
-			}
-			const created = await wsClient.rpc<ChatMessage>("chat.send", {
-				spaceId: selectedSpaceId,
-				text,
-			});
-			setStickToLatest(true);
-			setMessages((prev) => [...(prev ?? []), created]);
-			setOldestMessageId((prev) => prev ?? created.id);
-			const nowIso = new Date().toISOString();
-			patchSpaces((prev) => {
-				if (!prev) return prev;
-				return prev.map((s) =>
-					String(s.id) === String(selectedSpaceId)
-						? { ...s, last_activity_at: nowIso }
-						: s,
-				);
-			});
-		} catch (e) {
-			setErrorMessage(
-				e instanceof Error ? e.message : "Failed to send voice message",
-			);
-		} finally {
-			setIsLoading(false);
-		}
-	};
-
 	const handleToggleRecording = async () => {
 		if (isRecording) {
 			const result = await stopRecording();
 			if (!result) return;
 			if (result.forMessage) {
-				await handleSendVoiceBlobAsChatMessage(result.blob);
+				await sendVoiceBlobAsChatMessage(result.blob);
 			} else {
-				await handleParseVoiceBlob(result.blob);
+				await parseVoiceBlob(result.blob);
 			}
 			return;
 		}
