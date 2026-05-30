@@ -14,6 +14,17 @@ const composerCollapsedStorageKey = "ceits.globalComposer.v2.collapsed";
 const settingsLikeRoutePattern =
 	/^\/console\/(?:settings|account|organization|quota)(?:\/|$)/;
 const spaceSettingsRoutePattern = /^\/console\/spaces\/[^/]+\/settings(?:\/|$)/;
+const nativeComposerRoutePattern = /^\/console\/chat(?:\/|$)/;
+
+const hasNativeComposer = (pathname: string) =>
+	nativeComposerRoutePattern.test(pathname);
+
+const isSettingsLikeWorkspaceRoute = (pathname: string) =>
+	settingsLikeRoutePattern.test(pathname) ||
+	spaceSettingsRoutePattern.test(pathname);
+
+const shouldShowGlobalComposer = (pathname: string) =>
+	!hasNativeComposer(pathname) && !isSettingsLikeWorkspaceRoute(pathname);
 
 const getInitialComposerCollapsed = () => {
 	if (typeof window === "undefined") return false;
@@ -51,11 +62,7 @@ const ConsoleWorkspaceSplitInner = () => {
 	const isSpaceScopedRoute =
 		/^\/console\/spaces\/[^/]+(\/|$)/.test(location.pathname) ||
 		/^\/console\/dashboard(\/|$)/.test(location.pathname);
-	const hasNativeComposer = location.pathname.startsWith("/console/chat");
-	const isSettingsLikeRoute =
-		settingsLikeRoutePattern.test(location.pathname) ||
-		spaceSettingsRoutePattern.test(location.pathname);
-	const showGlobalComposer = !hasNativeComposer && !isSettingsLikeRoute;
+	const showGlobalComposer = shouldShowGlobalComposer(location.pathname);
 
 	useEffect(() => {
 		window.localStorage.setItem(
