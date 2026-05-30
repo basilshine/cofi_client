@@ -61,11 +61,15 @@ test("shows the global composer on workspace pages but not native chat composer 
 		waitUntil: "domcontentloaded",
 	});
 	await expect(dock).toBeVisible();
+	await expect(page.getByTestId("settings-action-dock")).toBeVisible();
+	await expect(dock).not.toContainText("What would you like to do?");
 
 	await page.goto("/console/settings/spaces/11", {
 		waitUntil: "domcontentloaded",
 	});
 	await expect(dock).toBeVisible();
+	await expect(page.getByTestId("settings-action-dock")).toBeVisible();
+	await expect(dock).toContainText("Space settings");
 
 	expect(pageErrors).toEqual([]);
 });

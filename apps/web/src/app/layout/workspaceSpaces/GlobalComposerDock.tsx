@@ -16,7 +16,10 @@ import {
 } from "../../../shared/lib/quickCaptureTransactions";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 import { readGlobalComposerIntent } from "./globalComposerIntent";
-import { hasNativeChatComposer } from "./globalComposerRoutePolicy";
+import {
+	hasNativeChatComposer,
+	hasSettingsActionDock,
+} from "./globalComposerRoutePolicy";
 
 const toDraftItems = (
 	items:
@@ -36,7 +39,9 @@ const toDraftItems = (
 		}));
 
 const spaceIdFromPath = (pathname: string): string | null => {
-	const match = pathname.match(/^\/console\/spaces\/([^/]+)/);
+	const match = pathname.match(
+		/^\/console\/(?:spaces|settings\/spaces)\/([^/]+)/,
+	);
 	return match?.[1] ? decodeURIComponent(match[1]) : null;
 };
 
@@ -78,7 +83,8 @@ export const GlobalComposerDock = ({
 	const location = useLocation();
 	const navigate = useNavigate();
 	const { user } = useAuth();
-	const { selectedSpaceId, spaces, isLoading } = useWorkspaceSpaces();
+	const { selectedSpaceId, spaces, isLoading, setCreateSpaceDialogOpen } =
+		useWorkspaceSpaces();
 	const composerRef = useRef<SmartTextareaComposerHandle | null>(null);
 	const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 	const mediaChunksRef = useRef<BlobPart[]>([]);
@@ -91,6 +97,7 @@ export const GlobalComposerDock = ({
 	const [errorText, setErrorText] = useState<string | null>(null);
 
 	const hasNativeComposer = hasNativeChatComposer(location.pathname);
+	const settingsActionDock = hasSettingsActionDock(location.pathname);
 	const routeSpaceId = spaceIdFromPath(location.pathname);
 	const querySpaceId = spaceIdFromSearch(location.search);
 	const activeSpaceId = routeSpaceId ?? querySpaceId ?? selectedSpaceId;
@@ -121,6 +128,14 @@ export const GlobalComposerDock = ({
 		activeSpaceId == null
 			? "/console/settings/spaces"
 			: `/console/settings/spaces/${encodeURIComponent(String(activeSpaceId))}`;
+	const activeSpaceOverviewHref =
+		activeSpaceId == null
+			? "/console/settings/spaces"
+			: `/console/spaces/${encodeURIComponent(String(activeSpaceId))}/overview`;
+	const activeSpaceChatHref =
+		activeSpaceId == null
+			? "/console/settings/spaces"
+			: `/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
 
 	const disabled = busy || isLoading || !hasSpaceContext;
 	const composerNotice =
@@ -355,6 +370,76 @@ export const GlobalComposerDock = ({
 		"inline-flex h-8 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card/90 px-3 text-xs font-semibold text-foreground/85 transition-[background-color,border-color,transform] hover:border-[rgba(120,100,80,0.34)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]";
 	const userLinkClass =
 		"inline-flex h-8 min-w-0 shrink-0 items-center gap-2 rounded-full border border-border/70 bg-background px-2.5 text-xs font-semibold text-foreground/85 shadow-sm transition-[background-color,transform] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]";
+	const settingsActionClass =
+		"inline-flex h-9 shrink-0 items-center rounded-full border border-[rgba(120,100,80,0.22)] bg-card/90 px-3.5 text-xs font-semibold text-foreground/85 transition-[background-color,border-color,transform] hover:border-[rgba(120,100,80,0.34)] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]";
+
+	if (settingsActionDock) {
+		return (
+			<div
+				className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center border-t border-border/55 bg-background/80 px-3 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.45)] backdrop-blur-xl sm:px-5"
+				data-testid="global-composer-dock"
+			>
+				<div
+					className="pointer-events-auto flex w-full max-w-5xl flex-col gap-2 rounded-2xl border border-border/70 bg-background/94 p-2.5 shadow-[0_18px_52px_-34px_rgba(44,32,18,0.5)] ring-1 ring-white/55 sm:flex-row sm:items-center sm:justify-between"
+					data-testid="settings-action-dock"
+				>
+					<div className="min-w-0 px-1">
+						<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+							Settings surface
+						</p>
+						<p className="mt-0.5 truncate text-sm font-semibold text-foreground">
+							{activeSpaceId == null
+								? "Account and workspace settings"
+								: `${activeSpaceName} settings`}
+						</p>
+					</div>
+					<div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
+						<Link
+							className={settingsActionClass}
+							to="/console/settings/account"
+						>
+							Account
+						</Link>
+						<Link className={settingsActionClass} to="/console/settings/spaces">
+							All spaces
+						</Link>
+						{hasSpaceContext ? (
+							<>
+								<Link className={settingsActionClass} to={spaceSettingsHref}>
+									Space settings
+								</Link>
+								<Link
+									className={settingsActionClass}
+									to={activeSpaceOverviewHref}
+								>
+									Open space
+								</Link>
+								<Link className={settingsActionClass} to={activeSpaceChatHref}>
+									Open chat
+								</Link>
+							</>
+						) : (
+							<button
+								className={settingsActionClass}
+								onClick={() => setCreateSpaceDialogOpen(true)}
+								type="button"
+							>
+								New space
+							</button>
+						)}
+						<Link className={userLinkClass} to="/console/settings/account">
+							<span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold uppercase text-secondary-foreground">
+								{userInitial}
+							</span>
+							<span className="hidden max-w-[8rem] truncate sm:inline">
+								{userDisplay}
+							</span>
+						</Link>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div
