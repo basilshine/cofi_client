@@ -18,6 +18,7 @@ import {
 	themeRegistry,
 	useTheme,
 } from "../../shared/theme/theme";
+import { SubscriptionTestPlanPanel } from "./SubscriptionTestPlanPanel";
 
 const NOTIFICATION_CHANNEL_LABELS: Record<NotificationChannelKey, string> = {
 	in_app: "In-app",
@@ -1027,23 +1028,10 @@ export const SettingsHubPage = ({
 									<div className={sectionHeading}>
 										<div>
 											<p className={sectionEyebrow}>Billing</p>
-											<h2 className={sectionTitle}>Plan and invoices</h2>
+											<h2 className={sectionTitle}>Plan and capabilities</h2>
 										</div>
 									</div>
-									<div className="space-y-3 p-6">
-										<div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-4">
-											<p className="text-sm font-semibold text-foreground">
-												Coming soon
-											</p>
-											<p className="mt-1 text-sm text-muted-foreground">
-												Billing management will include plan details, payment
-												method, invoice history, and usage summaries.
-											</p>
-										</div>
-										<button className={buttonBase} disabled type="button">
-											Request billing access
-										</button>
-									</div>
+									<SubscriptionTestPlanPanel />
 								</section>
 							) : null}
 						</div>

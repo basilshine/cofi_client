@@ -927,6 +927,22 @@ export const createApiClient = (config: ApiClientConfig) => {
 					headers: quotaHeaders({ tenantId: opts?.tenantId }),
 				});
 			},
+			setTestPlan: (
+				body: { plan: "basic" | "medium" | "premium" },
+				opts?: {
+					spaceId?: string | number;
+					tenantId?: string | number | null;
+				},
+			) => {
+				const qs = new URLSearchParams();
+				if (opts?.spaceId != null) qs.set("space_id", String(opts.spaceId));
+				const q = qs.size ? `?${qs.toString()}` : "";
+				return fetchJson<QuotaStatus>(withBase(`/api/v1/quota/test-plan${q}`), {
+					method: "PATCH",
+					headers: quotaHeaders({ tenantId: opts?.tenantId }),
+					body,
+				});
+			},
 		},
 
 		/** Finances — `/api/v1/finances/*`. */

@@ -600,6 +600,30 @@ export type QuotaStatus = {
 	export_enabled: boolean;
 	audit_enabled: boolean;
 	ai_parse_monthly_limit: number;
+	capabilities?: CapabilitySummary;
+};
+
+export type ParserProfileCapability = {
+	profile: "basic" | "smart" | "deep" | (string & {});
+	cost_class: "low" | "medium" | "high" | (string & {});
+	quota_units: number;
+};
+
+export type ParserCapabilities = {
+	max_profile: "basic" | "smart" | "deep" | (string & {});
+	deep_allowed: boolean;
+	text: ParserProfileCapability;
+	image: ParserProfileCapability;
+	voice: ParserProfileCapability;
+	deep_request: ParserProfileCapability;
+	deep_request_downgraded_to?: string;
+	deep_request_reason?: string;
+};
+
+export type CapabilitySummary = {
+	plan: "basic" | "medium" | "premium" | (string & {});
+	parser: ParserCapabilities;
+	features: Record<string, boolean>;
 };
 
 /** Outcome of `POST /api/v1/invites/:token/accept` (and WS `invites.accept`). */
