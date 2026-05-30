@@ -4945,6 +4945,13 @@ export interface components {
             transcription?: string;
             /** Format: int64 */
             media_id?: number;
+            /**
+             * Format: int64
+             * @description Persisted source document id for this parse preview when document intelligence recording succeeded.
+             */
+            source_document_id?: number;
+            /** @description Lightweight draft candidates created from this parse preview for later review. */
+            candidates?: components["schemas"]["CaptureParseCandidate"][];
             complexity?: string;
             confidence?: number;
             requires_review?: boolean;
@@ -4967,6 +4974,19 @@ export interface components {
             space_suggestion?: {
                 [key: string]: unknown;
             };
+        };
+        /** @description Lightweight document intelligence candidate summary created during capture parse. */
+        CaptureParseCandidate: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            source_document_id?: number;
+            /** @enum {string} */
+            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate";
+            title?: string;
+            confidence?: number;
+            /** @enum {string} */
+            status?: "draft" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
         };
         /** @description Saved promo code found by the user or projected from document intelligence. */
         PromoCode: {

@@ -7,6 +7,27 @@ export type ParsedApiItem = {
 	notes?: string;
 };
 
+export type CaptureParseCandidate = {
+	id?: number;
+	source_document_id?: number;
+	candidate_type?:
+		| "expense_candidate"
+		| "expense_item_candidate"
+		| "promo_code_candidate"
+		| "loyalty_event_candidate"
+		| "payment_proof_candidate"
+		| "privacy_signal_candidate"
+		| "recurring_candidate"
+		| "membership_candidate"
+		| "reminder_candidate"
+		| "merge_candidate"
+		| "space_suggestion_candidate"
+		| "supporting_document_candidate";
+	title?: string;
+	confidence?: number;
+	status?: string;
+};
+
 export type CaptureParsePreview = {
 	items?: ParsedApiItem[];
 	transcription?: string;
@@ -18,6 +39,7 @@ export type CaptureParsePreview = {
 	requires_deep_parse?: boolean;
 	clarification_message?: string;
 	source_document_id?: number;
+	candidates?: CaptureParseCandidate[];
 	model_policy?: {
 		profile?: string;
 		max_profile?: string;

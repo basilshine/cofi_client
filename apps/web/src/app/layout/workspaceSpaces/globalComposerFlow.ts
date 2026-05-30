@@ -1,4 +1,7 @@
-import type { CaptureParsePreview } from "../../../shared/lib/quickCaptureTransactions";
+import type {
+	CaptureParseCandidate,
+	CaptureParsePreview,
+} from "../../../shared/lib/quickCaptureTransactions";
 
 export type GlobalComposerInputKind =
 	| "text"
@@ -25,6 +28,7 @@ export type GlobalComposerCandidateKind =
 	| "privacy"
 	| "recurring"
 	| "membership"
+	| "reminder"
 	| "split"
 	| "participant"
 	| "space_suggestion"
@@ -136,6 +140,31 @@ export const summarizeCapturePreview = (
 	},
 ): GlobalComposerCandidateBundle => {
 	const data = objectRecord(preview.data);
+	const candidates =
+		preview.candidates && preview.candidates.length > 0
+			? summarizeServerCandidates(preview.candidates)
+			: summarizePreviewShape(preview, data);
+
+	return {
+		inputKind: input.inputKind,
+		intent: preview.intent?.trim() || input.fallbackIntent || "unknown",
+		spaceId: input.spaceId,
+		sourceDocumentId: preview.source_document_id,
+		candidates,
+		requiresReview:
+			preview.requires_review === true ||
+			preview.clarification_message != null ||
+			candidates.length > 1,
+		requiresDeepParse: preview.requires_deep_parse === true,
+		clarificationMessage: preview.clarification_message,
+		modelProfile: preview.model_policy?.profile,
+	};
+};
+
+const summarizePreviewShape = (
+	preview: CaptureParsePreview,
+	data: Record<string, unknown>,
+) => {
 	const candidates: GlobalComposerCandidateSummary[] = [];
 	const itemCount = (preview.items ?? []).filter(
 		(item) =>
@@ -215,21 +244,54 @@ export const summarizeCapturePreview = (
 			label: "supporting document",
 		});
 	}
+	return candidates;
+};
 
-	return {
-		inputKind: input.inputKind,
-		intent: preview.intent?.trim() || input.fallbackIntent || "unknown",
-		spaceId: input.spaceId,
-		sourceDocumentId: preview.source_document_id,
-		candidates,
-		requiresReview:
-			preview.requires_review === true ||
-			preview.clarification_message != null ||
-			candidates.length > 1,
-		requiresDeepParse: preview.requires_deep_parse === true,
-		clarificationMessage: preview.clarification_message,
-		modelProfile: preview.model_policy?.profile,
-	};
+const summarizeServerCandidates = (
+	candidates: CaptureParseCandidate[],
+): GlobalComposerCandidateSummary[] => {
+	const counts = new Map<GlobalComposerCandidateKind, number>();
+	for (const candidate of candidates) {
+		const kind = candidateKindFromServer(candidate.candidate_type);
+		if (!kind) continue;
+		counts.set(kind, (counts.get(kind) ?? 0) + 1);
+	}
+	return Array.from(counts.entries()).map(([kind, count]) => ({
+		kind,
+		count,
+		label: candidateLabel(kind, count),
+	}));
+};
+
+const candidateKindFromServer = (
+	candidateType: CaptureParseCandidate["candidate_type"] | undefined,
+): GlobalComposerCandidateKind | null => {
+	if (candidateType === "expense_candidate") return "expense";
+	if (candidateType === "expense_item_candidate") return "expense_item";
+	if (candidateType === "promo_code_candidate") return "promo";
+	if (candidateType === "loyalty_event_candidate") return "loyalty";
+	if (candidateType === "payment_proof_candidate") return "payment_proof";
+	if (candidateType === "privacy_signal_candidate") return "privacy";
+	if (candidateType === "recurring_candidate") return "recurring";
+	if (candidateType === "membership_candidate") return "membership";
+	if (candidateType === "reminder_candidate") return "reminder";
+	if (candidateType === "merge_candidate") return "merge";
+	if (candidateType === "space_suggestion_candidate") return "space_suggestion";
+	if (candidateType === "supporting_document_candidate") {
+		return "supporting_document";
+	}
+	return null;
+};
+
+const candidateLabel = (
+	kind: GlobalComposerCandidateKind,
+	count: number,
+): string => {
+	if (kind === "expense_item") return count === 1 ? "item" : "items";
+	if (kind === "payment_proof") return "payment proof";
+	if (kind === "space_suggestion") return "space suggestion";
+	if (kind === "supporting_document") return "supporting document";
+	return kind.replace(/_/g, " ");
 };
 
 export const candidateBundleNotice = (
