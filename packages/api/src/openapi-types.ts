@@ -5222,6 +5222,11 @@ export interface components {
             input_kind: "text" | "manual";
             /** @description Required explicit space context until autonomous capture routing is implemented. */
             space_id: number;
+            /**
+             * Format: int64
+             * @description Optional source document id from a prior parse preview. When provided for manual drafts, the server links the parsed expense candidate to the created draft expense for later review/projection flows.
+             */
+            source_document_id?: number;
             /** @description Required when input_kind is text. */
             text?: string;
             /** @description Manual draft description. */
@@ -5594,6 +5599,11 @@ export interface components {
             transcription?: string;
             /** Format: int64 */
             media_id?: number;
+            /**
+             * Format: int64
+             * @description Source document linked to the created draft expense when the request came from a prior parse preview.
+             */
+            source_document_id?: number;
         };
         SpaceChatMessage: {
             /** Format: int64 */

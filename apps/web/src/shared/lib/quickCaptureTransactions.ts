@@ -232,10 +232,12 @@ export const createManualDraftInSpace = async (
 	spaceId: string | number,
 	description: string,
 	items: { name: string; amount: number; tags?: string[] }[],
+	options?: { sourceDocumentId?: number },
 ) =>
 	httpClient.post("/api/v1/capture", {
 		input_kind: "manual",
 		space_id: Number(spaceId),
+		source_document_id: options?.sourceDocumentId,
 		description: description.trim(),
 		items,
 	});

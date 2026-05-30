@@ -456,12 +456,15 @@ export const GlobalComposerDock = ({
 						tags?: string[];
 				  }[]
 				| undefined,
+			sourceDocumentId?: number,
 		) => {
 			const draftItems = toDraftItems(items);
 			if (!draftItems.length) {
 				return false;
 			}
-			await createManualDraftInSpace(spaceId, description, draftItems);
+			await createManualDraftInSpace(spaceId, description, draftItems, {
+				sourceDocumentId,
+			});
 			return true;
 		},
 		[],
@@ -495,6 +498,7 @@ export const GlobalComposerDock = ({
 							activeSpaceId,
 							text,
 							parsed.items,
+							parsed.source_document_id,
 						);
 						showTransientStatus(
 							savedDraft
@@ -516,6 +520,7 @@ export const GlobalComposerDock = ({
 							activeSpaceId,
 							payload.file.name || "Receipt photo",
 							parsed.items,
+							parsed.source_document_id,
 						);
 						showTransientStatus(
 							savedDraft
@@ -654,6 +659,7 @@ export const GlobalComposerDock = ({
 				activeSpaceId,
 				parsed.transcription?.trim() || "Voice expense",
 				parsed.items,
+				parsed.source_document_id,
 			);
 			showTransientStatus(
 				savedDraft
