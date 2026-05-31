@@ -1,18 +1,15 @@
 import type { SearchEntityType, SearchResult } from "@cofi/api";
-import {
-	ArrowRight,
-	ListChecks,
-	ReceiptText,
-	Search,
-	Sparkles,
-} from "lucide-react";
+import { ListChecks, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { apiClient } from "../../shared/lib/apiClient";
 import {
-	type EntityVisualKey,
-	entityVisuals,
-} from "../../shared/lib/entityVisual";
+	EntityIcon,
+	EntityListItem,
+	EntityMini,
+	type EntityViewModel,
+} from "../../shared/lib/entityPresentation";
+import type { EntityVisualKey } from "../../shared/lib/entityVisual";
 
 type SearchFilter = "all" | SearchEntityType;
 
@@ -128,9 +125,6 @@ const formatAmount = (amount?: number, currency?: string): string | null => {
 	}
 };
 
-const resultShellClass =
-	"group flex min-w-0 items-start gap-3 rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.76)] p-3.5 shadow-sm transition hover:border-[rgba(120,100,80,0.28)] hover:bg-white";
-
 const escapeRegExp = (value: string): string =>
 	value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -192,66 +186,41 @@ const SearchResultRow = ({
 	query: string;
 	result: SearchResult;
 }) => {
-	const visual = entityVisuals[visualForResult(result.type)];
-	const Icon = visual.icon;
 	const amount = formatAmount(result.amount, result.currency);
 	const when = formatDate(result.occurred_at ?? result.created_at);
-	const meta = [
-		result.status,
-		amount,
-		when,
-		...(result.matched_fields ?? []).slice(0, 2),
-	].filter(Boolean);
+	const entity: EntityViewModel = {
+		id: result.id,
+		visualKey: visualForResult(result.type),
+		label: sectionLabel[result.type],
+		title: (
+			<HighlightedText
+				className="truncate text-sm font-semibold text-foreground"
+				query={query}
+				text={result.title}
+			/>
+		),
+		subtitle: (
+			<HighlightedText
+				className="mt-1 block truncate text-sm text-foreground/72"
+				query={query}
+				text={result.subtitle || result.space_name || "Ceits"}
+			/>
+		),
+		detail: result.detail ? (
+			<HighlightedText
+				className="mt-1 block truncate text-xs text-muted-foreground"
+				query={query}
+				text={result.detail}
+			/>
+		) : undefined,
+		href: result.href,
+		status: result.status || undefined,
+		meta: [amount, when, ...(result.matched_fields ?? []).slice(0, 2)].filter(
+			Boolean,
+		),
+	};
 
-	return (
-		<Link className={resultShellClass} to={result.href}>
-			<span
-				className={[
-					"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border",
-					visual.toneClass,
-				].join(" ")}
-			>
-				<Icon className="h-5 w-5" size={20} />
-			</span>
-			<span className="min-w-0 flex-1">
-				<span className="flex min-w-0 flex-wrap items-center gap-2">
-					<HighlightedText
-						className="truncate text-sm font-semibold text-foreground"
-						query={query}
-						text={result.title}
-					/>
-					<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-						{sectionLabel[result.type]}
-					</span>
-				</span>
-				<HighlightedText
-					className="mt-1 block truncate text-sm text-foreground/72"
-					query={query}
-					text={result.subtitle || result.space_name || "Ceits"}
-				/>
-				{result.detail ? (
-					<HighlightedText
-						className="mt-1 block truncate text-xs text-muted-foreground"
-						query={query}
-						text={result.detail}
-					/>
-				) : null}
-				{meta.length ? (
-					<span className="mt-2 flex flex-wrap gap-1.5">
-						{meta.slice(0, 4).map((item) => (
-							<span
-								className="rounded-full border border-[rgba(120,100,80,0.14)] bg-white/60 px-2 py-0.5 text-[11px] font-medium text-foreground/70"
-								key={item}
-							>
-								{item}
-							</span>
-						))}
-					</span>
-				) : null}
-			</span>
-			<ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-		</Link>
-	);
+	return <EntityListItem entity={entity} />;
 };
 
 const isSearchFilter = (value: string | null): value is SearchFilter =>
@@ -392,9 +361,7 @@ export const GlobalSearchPage = () => {
 						</label>
 						<div className="mt-3 flex flex-wrap gap-2">
 							{entityFilters.map((filter) => {
-								const visual = entityVisuals[filter.visualKey];
 								const active = entityFilter === filter.key;
-								const Icon = filter.key === "all" ? Sparkles : visual.icon;
 								return (
 									<button
 										className={[
@@ -407,7 +374,11 @@ export const GlobalSearchPage = () => {
 										onClick={() => updateSearch({ type: filter.key })}
 										type="button"
 									>
-										<Icon className="h-3.5 w-3.5" size={14} />
+										<EntityIcon
+											className={active ? "border-background/20" : ""}
+											size="xs"
+											visualKey={filter.visualKey}
+										/>
 										<span>{filter.label}</span>
 										<span className="tabular-nums opacity-70">
 											{filter.key === "all"
@@ -515,23 +486,22 @@ export const GlobalSearchPage = () => {
 							<p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
 								Promo matches
 							</p>
-							<ReceiptText className="h-4 w-4 text-muted-foreground" />
+							<EntityIcon size="xs" visualKey="benefit" />
 						</div>
 						<div className="mt-3 space-y-2">
 							{promoResults.length ? (
 								promoResults.map((result) => (
-									<Link
-										className="block rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/64 px-3 py-2 text-sm shadow-sm transition hover:bg-white"
+									<EntityMini
+										entity={{
+											id: result.id,
+											visualKey: "benefit",
+											label: "Promos",
+											title: result.title,
+											subtitle: result.subtitle || result.space_name || "Promo",
+											href: result.href,
+										}}
 										key={result.id}
-										to={result.href}
-									>
-										<p className="truncate font-mono font-bold tracking-[0.06em] text-foreground">
-											{result.title}
-										</p>
-										<p className="mt-0.5 truncate text-xs text-muted-foreground">
-											{result.subtitle || result.space_name || "Promo"}
-										</p>
-									</Link>
+									/>
 								))
 							) : (
 								<p className="rounded-xl border border-dashed border-[rgba(120,100,80,0.16)] p-3 text-sm text-muted-foreground">
