@@ -2874,6 +2874,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Ceits entities
+         * @description Membership-scoped read-only search across spaces, expenses, expense items, promo codes, participants, recurring rules, and source documents. `spaceId` narrows results to a single space; otherwise the endpoint searches the user's accessible spaces, optionally narrowed by verified tenant context.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Text to search. Empty query returns recent matching records up to the requested limit. */
+                    q?: string;
+                    /** @description Reserved client hint for search scope. Server scope is currently derived from `spaceId` and verified tenant context. */
+                    scope?: "all" | "space" | "tenant";
+                    /** @description Optional space id to restrict results. */
+                    spaceId?: number;
+                    /** @description Comma-separated result types. Supported aliases include spaces, expenses, items, promos, people, recurring, and documents. */
+                    types?: string;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Search results */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SearchResponse"];
+                    };
+                };
+                /** @description Invalid query parameters */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden search scope */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/feedback": {
         parameters: {
             query?: never;
@@ -4998,6 +5068,39 @@ export interface components {
             token?: string;
             refreshToken?: string;
             user?: components["schemas"]["User"];
+        };
+        /** @enum {string} */
+        SearchEntityType: "space" | "expense" | "expense_item" | "promo_code" | "participant" | "recurring" | "source_document";
+        SearchResult: {
+            /** @description Stable typed result id, formatted as `{type}:{entity_id}`. */
+            id: string;
+            type: components["schemas"]["SearchEntityType"];
+            /** Format: int64 */
+            entity_id: number;
+            /** Format: int64 */
+            space_id?: number;
+            space_name?: string;
+            title: string;
+            subtitle?: string;
+            detail?: string;
+            /** @description Web workspace href for opening the result. */
+            href: string;
+            matched_fields?: string[];
+            status?: string;
+            amount?: number;
+            currency?: string;
+            /** Format: date-time */
+            occurred_at?: string;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        SearchResponse: {
+            query: string;
+            /** @enum {string} */
+            scope: "space" | "tenant" | "all_accessible";
+            types: components["schemas"]["SearchEntityType"][];
+            total: number;
+            results: components["schemas"]["SearchResult"][];
         };
         User: {
             /** Format: int64 */

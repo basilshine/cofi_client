@@ -28,6 +28,8 @@ import {
 	type QuotaStatus,
 	type RecurringExpense,
 	type SaveBenefitCandidatePromoResponse,
+	type SearchEntityType,
+	type SearchResponse,
 	type Space,
 	type SpaceActivityListResponse,
 	type SpaceActivitySummary,
@@ -140,6 +142,41 @@ export const createApiClient = (config: ApiClientConfig) => {
 				return fetchJson<DashboardResponse>(withBase(`/api/v1/dashboard${q}`), {
 					method: "GET",
 					headers: quotaHeaders({ tenantId: params?.tenant_id }),
+				});
+			},
+		},
+
+		search: {
+			get: (params?: {
+				q?: string;
+				scope?: "all" | "space" | "tenant" | string;
+				spaceId?: string | number | null;
+				types?: Array<SearchEntityType | string> | string;
+				limit?: number;
+			}) => {
+				const qs = new URLSearchParams();
+				if (params?.q != null && params.q.trim() !== "") {
+					qs.set("q", params.q.trim());
+				}
+				if (params?.scope != null && params.scope.trim() !== "") {
+					qs.set("scope", params.scope.trim());
+				}
+				if (params?.spaceId != null) {
+					qs.set("spaceId", String(params.spaceId));
+				}
+				if (params?.types != null) {
+					const types = Array.isArray(params.types)
+						? params.types.join(",")
+						: params.types;
+					if (types.trim() !== "") qs.set("types", types.trim());
+				}
+				if (params?.limit != null && params.limit > 0) {
+					qs.set("limit", String(params.limit));
+				}
+				const q = qs.size ? `?${qs.toString()}` : "";
+				return fetchJson<SearchResponse>(withBase(`/api/v1/search${q}`), {
+					method: "GET",
+					headers: quotaHeaders(),
 				});
 			},
 		},

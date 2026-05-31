@@ -1,4 +1,4 @@
-import type { PromoCode, Space, Transaction } from "@cofi/api";
+import type { SearchEntityType, SearchResult } from "@cofi/api";
 import {
 	ArrowRight,
 	ListChecks,
@@ -8,79 +8,105 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
-import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
-import {
-	type PromoBenefit,
-	PromoBenefitMini,
-	toPromoBenefit,
-} from "../../shared/lib/benefitPresentation";
 import {
 	type EntityVisualKey,
 	entityVisuals,
 } from "../../shared/lib/entityVisual";
-import { sortSpacesByLastActivity } from "../../shared/lib/recentSpaceIds";
 
-type SearchEntityType = "all" | "spaces" | "expenses" | "items" | "promos";
-
-type IndexedExpense = {
-	space: Space;
-	transaction: Transaction;
-};
-
-type IndexedPromo = {
-	space: Space;
-	promo: PromoBenefit;
-};
-
-type SearchResult = {
-	id: string;
-	type: Exclude<SearchEntityType, "all">;
-	visualKey: EntityVisualKey;
-	title: string;
-	subtitle: string;
-	detail: string;
-	href: string;
-	searchText: string;
-	meta: string[];
-};
+type SearchFilter = "all" | SearchEntityType;
 
 const entityFilters: Array<{
-	key: SearchEntityType;
+	key: SearchFilter;
 	label: string;
 	visualKey: EntityVisualKey;
+	serverType?: SearchEntityType;
 }> = [
 	{ key: "all", label: "Everything", visualKey: "unknown" },
-	{ key: "expenses", label: "Expenses", visualKey: "expense" },
-	{ key: "items", label: "Items", visualKey: "expenseItem" },
-	{ key: "promos", label: "Promos", visualKey: "benefit" },
-	{ key: "spaces", label: "Spaces", visualKey: "people" },
+	{
+		key: "expense",
+		label: "Expenses",
+		visualKey: "expense",
+		serverType: "expense",
+	},
+	{
+		key: "expense_item",
+		label: "Items",
+		visualKey: "expenseItem",
+		serverType: "expense_item",
+	},
+	{
+		key: "promo_code",
+		label: "Promos",
+		visualKey: "benefit",
+		serverType: "promo_code",
+	},
+	{
+		key: "participant",
+		label: "People",
+		visualKey: "people",
+		serverType: "participant",
+	},
+	{
+		key: "recurring",
+		label: "Recurring",
+		visualKey: "future",
+		serverType: "recurring",
+	},
+	{
+		key: "source_document",
+		label: "Documents",
+		visualKey: "document",
+		serverType: "source_document",
+	},
+	{ key: "space", label: "Spaces", visualKey: "people", serverType: "space" },
 ];
 
-const sectionOrder: Array<Exclude<SearchEntityType, "all">> = [
-	"promos",
-	"expenses",
-	"items",
-	"spaces",
+const sectionOrder: SearchEntityType[] = [
+	"promo_code",
+	"expense",
+	"expense_item",
+	"participant",
+	"recurring",
+	"source_document",
+	"space",
 ];
 
-const sectionLabel: Record<Exclude<SearchEntityType, "all">, string> = {
-	promos: "Promos",
-	expenses: "Expenses",
-	items: "Purchased items",
-	spaces: "Spaces",
+const sectionLabel: Record<SearchEntityType, string> = {
+	promo_code: "Promos",
+	expense: "Expenses",
+	expense_item: "Purchased items",
+	participant: "People",
+	recurring: "Recurring",
+	source_document: "Source documents",
+	space: "Spaces",
 };
 
-const normalizeText = (value: string): string => value.trim().toLowerCase();
+const visualForResult = (type: SearchEntityType): EntityVisualKey => {
+	switch (type) {
+		case "expense":
+			return "expense";
+		case "expense_item":
+			return "expenseItem";
+		case "promo_code":
+			return "benefit";
+		case "participant":
+			return "people";
+		case "recurring":
+			return "future";
+		case "source_document":
+			return "document";
+		case "space":
+			return "people";
+		default:
+			return "unknown";
+	}
+};
 
-const tokensFor = (query: string): string[] =>
-	normalizeText(query).split(/\s+/).filter(Boolean);
-
-const compactDate = (iso?: string | null): string => {
-	if (!iso) return "No date";
-	const ts = Date.parse(iso.length === 10 ? `${iso}T12:00:00` : iso);
-	if (!Number.isFinite(ts)) return iso;
+const formatDate = (iso?: string): string | null => {
+	if (!iso) return null;
+	const ts = Date.parse(iso);
+	if (!Number.isFinite(ts)) return null;
 	return new Intl.DateTimeFormat(undefined, {
 		month: "short",
 		day: "numeric",
@@ -88,65 +114,35 @@ const compactDate = (iso?: string | null): string => {
 	}).format(new Date(ts));
 };
 
-const expenseTitle = (tx: Transaction): string => {
-	const title = tx.title?.trim();
-	if (title && title.toLowerCase() !== "expense") return title;
-	const item = tx.items?.map((it) => it.name?.trim()).find(Boolean);
-	if (item) return item;
-	const description = tx.description?.trim();
-	if (description) return description.split(/\r?\n/)[0]?.trim() || "Expense";
-	return `Expense #${String(tx.id)}`;
+const formatAmount = (amount?: number, currency?: string): string | null => {
+	if (amount == null || !Number.isFinite(amount)) return null;
+	const code = currency?.trim().toUpperCase() || "RUB";
+	try {
+		return new Intl.NumberFormat(undefined, {
+			style: "currency",
+			currency: code,
+			maximumFractionDigits: 0,
+		}).format(amount);
+	} catch {
+		return `${amount.toLocaleString()} ${code}`;
+	}
 };
-
-const expenseSearchText = (tx: Transaction, space: Space): string =>
-	[
-		expenseTitle(tx),
-		tx.description,
-		tx.payee_text,
-		tx.vendor_name,
-		tx.status,
-		tx.currency,
-		space.name,
-		...(tx.items ?? []).flatMap((item) => [
-			item.name,
-			item.notes,
-			...(item.tags ?? []),
-		]),
-	]
-		.filter(Boolean)
-		.join(" ")
-		.toLowerCase();
-
-const promoSearchText = (promo: PromoBenefit, space: Space): string =>
-	[
-		promo.title,
-		promo.code,
-		promo.merchant,
-		promo.redeemAt,
-		promo.discountLabel,
-		promo.validUntil,
-		promo.source,
-		space.name,
-		promo.raw.description,
-		promo.raw.conditions_text,
-		promo.raw.source_text,
-		promo.raw.redeem_merchant_name,
-		promo.raw.redeem_platform,
-		promo.raw.source_merchant_name,
-	]
-		.filter(Boolean)
-		.join(" ")
-		.toLowerCase();
-
-const matchesTokens = (searchText: string, tokens: string[]): boolean =>
-	tokens.length === 0 || tokens.every((token) => searchText.includes(token));
 
 const resultShellClass =
 	"group flex min-w-0 items-start gap-3 rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.76)] p-3.5 shadow-sm transition hover:border-[rgba(120,100,80,0.28)] hover:bg-white";
 
 const SearchResultRow = ({ result }: { result: SearchResult }) => {
-	const visual = entityVisuals[result.visualKey];
+	const visual = entityVisuals[visualForResult(result.type)];
 	const Icon = visual.icon;
+	const amount = formatAmount(result.amount, result.currency);
+	const when = formatDate(result.occurred_at ?? result.created_at);
+	const meta = [
+		result.status,
+		amount,
+		when,
+		...(result.matched_fields ?? []).slice(0, 2),
+	].filter(Boolean);
+
 	return (
 		<Link className={resultShellClass} to={result.href}>
 			<span
@@ -167,14 +163,16 @@ const SearchResultRow = ({ result }: { result: SearchResult }) => {
 					</span>
 				</span>
 				<span className="mt-1 block truncate text-sm text-foreground/72">
-					{result.subtitle}
+					{result.subtitle || result.space_name || "Ceits"}
 				</span>
-				<span className="mt-1 block truncate text-xs text-muted-foreground">
-					{result.detail}
-				</span>
-				{result.meta.length ? (
+				{result.detail ? (
+					<span className="mt-1 block truncate text-xs text-muted-foreground">
+						{result.detail}
+					</span>
+				) : null}
+				{meta.length ? (
 					<span className="mt-2 flex flex-wrap gap-1.5">
-						{result.meta.slice(0, 3).map((item) => (
+						{meta.slice(0, 4).map((item) => (
 							<span
 								className="rounded-full border border-[rgba(120,100,80,0.14)] bg-white/60 px-2 py-0.5 text-[11px] font-medium text-foreground/70"
 								key={item}
@@ -190,250 +188,109 @@ const SearchResultRow = ({ result }: { result: SearchResult }) => {
 	);
 };
 
+const isSearchFilter = (value: string | null): value is SearchFilter =>
+	value === "all" ||
+	value === "space" ||
+	value === "expense" ||
+	value === "expense_item" ||
+	value === "promo_code" ||
+	value === "participant" ||
+	value === "recurring" ||
+	value === "source_document";
+
 export const GlobalSearchPage = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
-	const { spaces } = useWorkspaceSpaces();
-	const { formatMoney } = useUserFormat();
 	const [query, setQuery] = useState(searchParams.get("q") ?? "");
-	const [entityFilter, setEntityFilter] = useState<SearchEntityType>(
-		(searchParams.get("type") as SearchEntityType | null) ?? "all",
-	);
-	const [indexedExpenses, setIndexedExpenses] = useState<IndexedExpense[]>([]);
-	const [indexedPromos, setIndexedPromos] = useState<IndexedPromo[]>([]);
+	const [results, setResults] = useState<SearchResult[]>([]);
+	const [scope, setScope] = useState("all_accessible");
+	const [total, setTotal] = useState(0);
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 
-	const indexedSpaces = useMemo(
-		() => sortSpacesByLastActivity(spaces ?? []).slice(0, 8),
-		[spaces],
-	);
+	const entityFilter = useMemo<SearchFilter>(() => {
+		const raw = searchParams.get("types");
+		return isSearchFilter(raw) ? raw : "all";
+	}, [searchParams]);
+
+	const spaceId = searchParams.get("spaceId") ?? searchParams.get("space_id");
 
 	useEffect(() => {
-		const nextQuery = searchParams.get("q") ?? "";
-		const nextType = searchParams.get("type") as SearchEntityType | null;
-		setQuery(nextQuery);
-		setEntityFilter(
-			nextType &&
-				["all", "spaces", "expenses", "items", "promos"].includes(nextType)
-				? nextType
-				: "all",
-		);
+		setQuery(searchParams.get("q") ?? "");
 	}, [searchParams]);
 
 	useEffect(() => {
-		if (indexedSpaces.length === 0) {
-			setIndexedExpenses([]);
-			setIndexedPromos([]);
-			return;
-		}
-
 		let cancelled = false;
 		setIsLoading(true);
 		setLoadError(null);
-		void (async () => {
-			try {
-				const rows = await Promise.all(
-					indexedSpaces.map(async (space) => {
-						const [transactionsRes, promosRes] = await Promise.allSettled([
-							apiClient.spaces.listTransactions(space.id, { limit: 80 }),
-							apiClient.spaces.listPromos(space.id),
-						]);
-						return {
-							space,
-							transactions:
-								transactionsRes.status === "fulfilled"
-									? transactionsRes.value
-									: [],
-							promos:
-								promosRes.status === "fulfilled" ? promosRes.value.promos : [],
-						};
-					}),
-				);
+		void apiClient.search
+			.get({
+				q: searchParams.get("q") ?? "",
+				spaceId,
+				types: entityFilter === "all" ? undefined : [entityFilter],
+				limit: 80,
+			})
+			.then((response) => {
 				if (cancelled) return;
-				setIndexedExpenses(
-					rows.flatMap((row) =>
-						row.transactions.map((transaction) => ({
-							space: row.space,
-							transaction,
-						})),
-					),
+				setResults(response.results ?? []);
+				setScope(response.scope);
+				setTotal(response.total);
+			})
+			.catch((error) => {
+				if (cancelled) return;
+				setLoadError(
+					error instanceof Error ? error.message : "Failed to search Ceits",
 				);
-				setIndexedPromos(
-					rows.flatMap((row) =>
-						row.promos.map((promo: PromoCode) => ({
-							space: row.space,
-							promo: toPromoBenefit(promo),
-						})),
-					),
-				);
-			} catch (error) {
-				if (!cancelled) {
-					setLoadError(
-						error instanceof Error
-							? error.message
-							: "Failed to build search index",
-					);
-				}
-			} finally {
+				setResults([]);
+				setTotal(0);
+			})
+			.finally(() => {
 				if (!cancelled) setIsLoading(false);
-			}
-		})();
+			});
 
 		return () => {
 			cancelled = true;
 		};
-	}, [indexedSpaces]);
-
-	const allResults = useMemo(() => {
-		const spaceResults: SearchResult[] = indexedSpaces.map((space) => {
-			const searchText = [space.name, space.description, space.tenant_name]
-				.filter(Boolean)
-				.join(" ")
-				.toLowerCase();
-			return {
-				id: `space-${String(space.id)}`,
-				type: "spaces",
-				visualKey: "people",
-				title: space.name,
-				subtitle: space.description?.trim() || "Shared space",
-				detail: space.tenant_name?.trim() || "Ceits space",
-				href: `/console/spaces/${encodeURIComponent(String(space.id))}/overview`,
-				searchText,
-				meta: [
-					space.last_activity_at
-						? `Active ${compactDate(space.last_activity_at)}`
-						: "Space",
-				],
-			};
-		});
-
-		const expenseResults: SearchResult[] = indexedExpenses.map(
-			({ space, transaction }) => {
-				const title = expenseTitle(transaction);
-				const amount = formatMoney(transaction.total ?? 0);
-				return {
-					id: `expense-${String(space.id)}-${String(transaction.id)}`,
-					type: "expenses",
-					visualKey: "expense",
-					title,
-					subtitle: `${amount} in ${space.name}`,
-					detail: [
-						transaction.vendor_name || transaction.payee_text || "Expense",
-						compactDate(transaction.txn_date ?? transaction.created_at),
-					].join(" · "),
-					href: `/console/chat/thread?spaceId=${encodeURIComponent(String(space.id))}&expenseId=${encodeURIComponent(String(transaction.id))}`,
-					searchText: expenseSearchText(transaction, space),
-					meta: [
-						transaction.status || "expense",
-						transaction.items?.length
-							? `${transaction.items.length} item${transaction.items.length === 1 ? "" : "s"}`
-							: "No items",
-					],
-				};
-			},
-		);
-
-		const itemResults: SearchResult[] = indexedExpenses.flatMap(
-			({ space, transaction }) =>
-				(transaction.items ?? []).map((item, index) => {
-					const itemText = [
-						item.name,
-						item.notes,
-						...(item.tags ?? []),
-						expenseTitle(transaction),
-						transaction.vendor_name,
-						transaction.payee_text,
-						space.name,
-					]
-						.filter(Boolean)
-						.join(" ")
-						.toLowerCase();
-					return {
-						id: `item-${String(space.id)}-${String(transaction.id)}-${index}`,
-						type: "items",
-						visualKey: "expenseItem",
-						title: item.name || "Expense item",
-						subtitle: `${formatMoney(item.amount ?? 0)} in ${space.name}`,
-						detail: expenseTitle(transaction),
-						href: `/console/chat/thread?spaceId=${encodeURIComponent(String(space.id))}&expenseId=${encodeURIComponent(String(transaction.id))}&line=${encodeURIComponent(String(index))}`,
-						searchText: itemText,
-						meta: item.tags?.slice(0, 3) ?? [],
-					};
-				}),
-		);
-
-		const promoResults: SearchResult[] = indexedPromos.map(
-			({ space, promo }) => ({
-				id: `promo-${String(space.id)}-${String(promo.id)}`,
-				type: "promos",
-				visualKey: "benefit",
-				title: promo.code,
-				subtitle: `${promo.discountLabel} · ${promo.merchant}`,
-				detail: `${space.name} · ${promo.validUntil}`,
-				href: `/console/spaces/${encodeURIComponent(String(space.id))}/benefits`,
-				searchText: promoSearchText(promo, space),
-				meta: [promo.status.replace(/_/g, " "), promo.source],
-			}),
-		);
-
-		return [
-			...promoResults,
-			...expenseResults,
-			...itemResults,
-			...spaceResults,
-		];
-	}, [formatMoney, indexedExpenses, indexedPromos, indexedSpaces]);
-
-	const tokens = useMemo(() => tokensFor(query), [query]);
-	const filteredResults = useMemo(() => {
-		return allResults.filter((result) => {
-			if (entityFilter !== "all" && result.type !== entityFilter) return false;
-			return matchesTokens(result.searchText, tokens);
-		});
-	}, [allResults, entityFilter, tokens]);
+	}, [entityFilter, searchParams, spaceId]);
 
 	const resultCounts = useMemo(() => {
-		const counts: Record<SearchEntityType, number> = {
-			all: 0,
-			spaces: 0,
-			expenses: 0,
-			items: 0,
-			promos: 0,
+		const counts: Record<SearchFilter, number> = {
+			all: results.length,
+			space: 0,
+			expense: 0,
+			expense_item: 0,
+			promo_code: 0,
+			participant: 0,
+			recurring: 0,
+			source_document: 0,
 		};
-		for (const result of allResults) {
-			if (matchesTokens(result.searchText, tokens)) {
-				counts.all += 1;
-				counts[result.type] += 1;
-			}
+		for (const result of results) {
+			counts[result.type] += 1;
 		}
 		return counts;
-	}, [allResults, tokens]);
+	}, [results]);
 
 	const groupedResults = useMemo(() => {
 		return sectionOrder
 			.map((type) => ({
 				type,
-				items: filteredResults.filter((result) => result.type === type),
+				items: results.filter((result) => result.type === type),
 			}))
 			.filter((section) => section.items.length > 0);
-	}, [filteredResults]);
+	}, [results]);
 
-	const updateSearch = (next: { q?: string; type?: SearchEntityType }) => {
+	const updateSearch = (next: { q?: string; type?: SearchFilter }) => {
 		const params = new URLSearchParams(searchParams);
 		const nextQuery = next.q ?? query;
 		const nextType = next.type ?? entityFilter;
 		if (nextQuery.trim()) params.set("q", nextQuery);
 		else params.delete("q");
-		if (nextType !== "all") params.set("type", nextType);
-		else params.delete("type");
+		if (nextType !== "all") params.set("types", nextType);
+		else params.delete("types");
 		setSearchParams(params, { replace: true });
 	};
 
-	const topPromos = indexedPromos
-		.filter(
-			({ promo }) =>
-				promo.status === "active" || promo.status === "expires_soon",
-		)
+	const promoResults = results
+		.filter((result) => result.type === "promo_code")
 		.slice(0, 3);
 
 	return (
@@ -447,9 +304,9 @@ export const GlobalSearchPage = () => {
 								Find expenses, items, promos, and spaces
 							</h1>
 							<p className="max-w-prose text-sm text-muted-foreground">
-								Search across the active spaces already loaded into Ceits. This
-								is the first local search shell before the dedicated backend
-								index.
+								Search across the spaces and records you can access. Results use
+								the server search contract, so this page can grow without each
+								section inventing its own filters.
 							</p>
 						</div>
 					</header>
@@ -487,7 +344,9 @@ export const GlobalSearchPage = () => {
 										<Icon className="h-3.5 w-3.5" size={14} />
 										<span>{filter.label}</span>
 										<span className="tabular-nums opacity-70">
-											{resultCounts[filter.key]}
+											{filter.key === "all"
+												? total
+												: (resultCounts[filter.key] ?? 0)}
 										</span>
 									</button>
 								);
@@ -506,13 +365,11 @@ export const GlobalSearchPage = () => {
 							<div>
 								<p className="text-sm font-semibold text-foreground">
 									{isLoading
-										? "Building search index..."
-										: `${filteredResults.length} result${filteredResults.length === 1 ? "" : "s"}`}
+										? "Searching..."
+										: `${total} result${total === 1 ? "" : "s"}`}
 								</p>
 								<p className="text-xs text-muted-foreground">
-									Indexed {indexedSpaces.length} spaces,{" "}
-									{indexedExpenses.length} expenses, {indexedPromos.length}{" "}
-									promos.
+									Scope: {scope.replace(/_/g, " ")}
 								</p>
 							</div>
 							{query || entityFilter !== "all" ? (
@@ -536,7 +393,7 @@ export const GlobalSearchPage = () => {
 										<span className="h-px flex-1 bg-[rgba(120,100,80,0.12)]" />
 									</div>
 									<div className="grid gap-2">
-										{section.items.slice(0, 24).map((result) => (
+										{section.items.map((result) => (
 											<SearchResultRow key={result.id} result={result} />
 										))}
 									</div>
@@ -546,7 +403,9 @@ export const GlobalSearchPage = () => {
 							<div className="rounded-2xl border border-dashed border-[rgba(120,100,80,0.2)] bg-white/58 p-8 text-center">
 								<ListChecks className="mx-auto h-8 w-8 text-muted-foreground" />
 								<h2 className="mt-3 text-base font-semibold text-foreground">
-									No matching records yet
+									{isLoading
+										? "Looking through Ceits"
+										: "No matching records yet"}
 								</h2>
 								<p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
 									Try a different merchant, item name, promo code, tag, or
@@ -565,20 +424,18 @@ export const GlobalSearchPage = () => {
 				<div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-8">
 					<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4 shadow-sm">
 						<p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-							Coverage
+							Result shape
 						</p>
 						<div className="mt-3 grid grid-cols-2 gap-2">
 							<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,252,246,0.72)] p-3">
-								<p className="text-2xl font-bold tabular-nums">
-									{indexedSpaces.length}
-								</p>
-								<p className="text-xs text-muted-foreground">spaces</p>
+								<p className="text-2xl font-bold tabular-nums">{total}</p>
+								<p className="text-xs text-muted-foreground">results</p>
 							</div>
 							<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,252,246,0.72)] p-3">
 								<p className="text-2xl font-bold tabular-nums">
-									{indexedExpenses.length}
+									{groupedResults.length}
 								</p>
-								<p className="text-xs text-muted-foreground">expenses</p>
+								<p className="text-xs text-muted-foreground">groups</p>
 							</div>
 						</div>
 					</section>
@@ -586,21 +443,29 @@ export const GlobalSearchPage = () => {
 					<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4 shadow-sm">
 						<div className="flex items-center justify-between gap-3">
 							<p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
-								Promos to remember
+								Promo matches
 							</p>
 							<ReceiptText className="h-4 w-4 text-muted-foreground" />
 						</div>
 						<div className="mt-3 space-y-2">
-							{topPromos.length ? (
-								topPromos.map(({ promo, space }) => (
-									<PromoBenefitMini
-										key={`${String(space.id)}-${String(promo.id)}`}
-										promo={promo}
-									/>
+							{promoResults.length ? (
+								promoResults.map((result) => (
+									<Link
+										className="block rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/64 px-3 py-2 text-sm shadow-sm transition hover:bg-white"
+										key={result.id}
+										to={result.href}
+									>
+										<p className="truncate font-mono font-bold tracking-[0.06em] text-foreground">
+											{result.title}
+										</p>
+										<p className="mt-0.5 truncate text-xs text-muted-foreground">
+											{result.subtitle || result.space_name || "Promo"}
+										</p>
+									</Link>
 								))
 							) : (
 								<p className="rounded-xl border border-dashed border-[rgba(120,100,80,0.16)] p-3 text-sm text-muted-foreground">
-									Saved promos will appear here after they are parsed or added.
+									Promo matches will appear here when search finds them.
 								</p>
 							)}
 						</div>

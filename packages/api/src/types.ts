@@ -255,6 +255,41 @@ export type SpacePromoListResponse = {
 	summary: PromoBenefitsSummary;
 };
 
+export type SearchEntityType =
+	| "space"
+	| "expense"
+	| "expense_item"
+	| "promo_code"
+	| "participant"
+	| "recurring"
+	| "source_document";
+
+export type SearchResult = {
+	id: string;
+	type: SearchEntityType;
+	entity_id: number;
+	space_id?: number;
+	space_name?: string;
+	title: string;
+	subtitle?: string;
+	detail?: string;
+	href: string;
+	matched_fields?: string[];
+	status?: string;
+	amount?: number;
+	currency?: string;
+	occurred_at?: string;
+	created_at?: string;
+};
+
+export type SearchResponse = {
+	query: string;
+	scope: "space" | "tenant" | "all_accessible" | string;
+	types: SearchEntityType[];
+	total: number;
+	results: SearchResult[];
+};
+
 export type BenefitCandidateType =
 	| "promo_code_candidate"
 	| "loyalty_event_candidate";
