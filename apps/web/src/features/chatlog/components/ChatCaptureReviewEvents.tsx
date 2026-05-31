@@ -74,7 +74,7 @@ const aggregatePacketCounts = (
 	);
 
 const packetCountLabel = (count: number): string =>
-	`${count} ${count === 1 ? "packet" : "packets"}`;
+	`${count} ${count === 1 ? "capture" : "captures"}`;
 
 const packetHref = (
 	spaceId: string | number,
@@ -109,7 +109,6 @@ export const ChatCaptureReviewEvents = ({
 	spaceName,
 	refreshKey,
 }: ChatCaptureReviewEventsProps) => {
-	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [candidates, setCandidates] = useState<ReviewCandidate[]>([]);
 
@@ -117,7 +116,6 @@ export const ChatCaptureReviewEvents = ({
 		let cancelled = false;
 		const numericSpaceId = Number(spaceId);
 		if (!Number.isFinite(numericSpaceId) || numericSpaceId <= 0) return;
-		setLoading(true);
 		setError(null);
 		void (async () => {
 			try {
@@ -144,8 +142,6 @@ export const ChatCaptureReviewEvents = ({
 							: "Failed to load parsed capture review events",
 					);
 				}
-			} finally {
-				if (!cancelled) setLoading(false);
 			}
 		})();
 		return () => {
@@ -172,12 +168,18 @@ export const ChatCaptureReviewEvents = ({
 		(total, item) => total + item.count,
 		0,
 	);
+	const reviewHref = packets[0]
+		? packetHref(spaceId, packets[0].sourceDocumentId)
+		: `/console/review?spaceId=${encodeURIComponent(String(spaceId))}`;
+	const primaryActionLabel =
+		packets.length > 1 ? "Review first" : "Open review";
 
-	if (packets.length === 0 && !loading && !error) return null;
+	if (packets.length === 0 && !error) return null;
 
 	return (
 		<section
 			aria-label="Parsed capture review events"
+			aria-live="polite"
 			className="group mx-auto mb-[-1px] w-full max-w-[min(780px,95%)] rounded-t-2xl border border-b-0 border-[rgba(181,131,52,0.22)] bg-[rgba(255,247,229,0.96)] shadow-[0_-10px_26px_-24px_rgba(44,32,18,0.42)] transition focus-within:shadow-[0_-14px_34px_-24px_rgba(44,32,18,0.5)] hover:shadow-[0_-14px_34px_-24px_rgba(44,32,18,0.5)]"
 		>
 			<div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
@@ -186,12 +188,14 @@ export const ChatCaptureReviewEvents = ({
 						Needs review
 					</p>
 					<h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">
-						{loading && packets.length === 0
-							? "Checking parsed captures..."
-							: `${packetCountLabel(packets.length)} from Ceits capture`}
+						{error && packets.length === 0
+							? "Capture review unavailable"
+							: `${packetCountLabel(packets.length)} need decisions`}
 					</h3>
 					<p className="mt-0.5 truncate text-xs text-muted-foreground">
-						Review before these change {spaceName ?? "this space"}.
+						{totalCandidateCount > 0
+							? `Ceits found ${totalCandidateCount} candidates in ${spaceName ?? "this space"}.`
+							: `Review before these change ${spaceName ?? "this space"}.`}
 					</p>
 				</div>
 				{visibleEntityCounts.length > 0 ? (
@@ -219,9 +223,9 @@ export const ChatCaptureReviewEvents = ({
 				) : null}
 				<Link
 					className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-bold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(50,43,32,0.96)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					to={`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`}
+					to={reviewHref}
 				>
-					Open review
+					{primaryActionLabel}
 				</Link>
 			</div>
 			<div className="grid max-h-0 overflow-hidden border-t border-transparent opacity-0 transition-[max-height,opacity,border-color] duration-200 group-focus-within:max-h-80 group-focus-within:border-[rgba(181,131,52,0.18)] group-focus-within:opacity-100 group-hover:max-h-80 group-hover:border-[rgba(181,131,52,0.18)] group-hover:opacity-100">
@@ -241,17 +245,13 @@ export const ChatCaptureReviewEvents = ({
 						</div>
 					</div>
 					<p className="text-xs leading-5 text-muted-foreground">
-						This is system work from captures, not a chat message. Open review
-						to confirm expenses, promos, people, splits, or document signals.
+						This is system work from captures, not a message from a person. Open
+						review to confirm expenses, promos, people, splits, or document
+						signals.
 					</p>
 					{error ? (
 						<p className="rounded-lg border border-destructive/25 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
 							{error}
-						</p>
-					) : null}
-					{loading && packets.length === 0 ? (
-						<p className="text-xs text-muted-foreground">
-							Checking parsed captures...
 						</p>
 					) : null}
 					{packets.length > 0 ? (
