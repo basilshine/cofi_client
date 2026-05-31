@@ -171,6 +171,8 @@ export const ChatLogPage = () => {
 	);
 	/** Dedupe processing the same `?invite=` token from the URL in one session. */
 	const lastUrlInviteTokenProcessedRef = useRef<string | null>(null);
+	/** Dedupe opening the same expense detail deep link from the Expenses URL. */
+	const lastExpenseDetailLinkProcessedRef = useRef<string | null>(null);
 	/** When true, auto-run accept invite once workspace + WS are ready (from invite link). */
 	const autoAcceptInviteFromUrlRef = useRef(false);
 	const workspaceScopeRef = useRef<ChatWorkspaceScope | null>(null);
@@ -655,6 +657,57 @@ export const ChatLogPage = () => {
 		location.search,
 		location.state,
 		navigate,
+		openExpenseThread,
+	]);
+
+	useEffect(() => {
+		if (!isExpensesRoute) {
+			lastExpenseDetailLinkProcessedRef.current = null;
+			return;
+		}
+		if (!scopeResolutionDone || !workspaceScope) return;
+
+		const expenseId = searchParams.get("expenseId")?.trim();
+		if (!expenseId) {
+			lastExpenseDetailLinkProcessedRef.current = null;
+			return;
+		}
+
+		const rawSpaceId = searchParams.get("spaceId")?.trim();
+		const targetSpaceId = rawSpaceId || selectedSpaceId;
+		if (targetSpaceId == null) return;
+
+		const rawLine = searchParams.get("line")?.trim();
+		const parsedLine = rawLine ? Number.parseInt(rawLine, 10) : Number.NaN;
+		const draftLine =
+			Number.isFinite(parsedLine) && parsedLine >= 1 ? parsedLine : undefined;
+		const linkKey = `${String(targetSpaceId)}:${expenseId}:${draftLine ?? ""}`;
+		if (
+			lastExpenseDetailLinkProcessedRef.current === linkKey &&
+			sidebarThreadExpenseId != null &&
+			String(sidebarThreadExpenseId) === String(expenseId)
+		) {
+			return;
+		}
+		lastExpenseDetailLinkProcessedRef.current = linkKey;
+
+		if (rawSpaceId && String(selectedSpaceId) !== String(rawSpaceId)) {
+			void handleSelectSpace(rawSpaceId, {
+				openThreadExpenseId: expenseId,
+				...(draftLine != null ? { openThreadDraftLine: draftLine } : {}),
+			});
+			return;
+		}
+
+		setComposerMode("message");
+		openExpenseThread(expenseId, { draftLine: draftLine ?? null });
+	}, [
+		isExpensesRoute,
+		scopeResolutionDone,
+		workspaceScope,
+		searchParams,
+		selectedSpaceId,
+		sidebarThreadExpenseId,
 		openExpenseThread,
 	]);
 
