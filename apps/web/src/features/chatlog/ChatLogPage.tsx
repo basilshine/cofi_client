@@ -140,12 +140,18 @@ export const ChatLogPage = () => {
 	const [composerMode, setComposerMode] = useState<ChatComposerMode>("message");
 	const [composerPurpose, setComposerPurpose] =
 		useState<ChatComposerPurpose>("message");
-	const handleComposerPurposeChange = useCallback(
-		(purpose: ComposerPurpose) => {
+	const setNativeComposerPurpose = useCallback(
+		(purpose: ChatComposerPurpose) => {
 			setComposerPurpose(purpose);
 			setComposerMode(purpose === "message" ? "message" : "capture");
 		},
 		[],
+	);
+	const handleComposerPurposeChange = useCallback(
+		(purpose: ComposerPurpose) => {
+			setNativeComposerPurpose(purpose);
+		},
+		[setNativeComposerPurpose],
 	);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
@@ -221,7 +227,7 @@ export const ChatLogPage = () => {
 			loadSpaceTransactions,
 			patchSpaces,
 			selectedSpaceId,
-			setComposerMode,
+			setComposerPurpose: setNativeComposerPurpose,
 			setErrorMessage,
 			setIsLoading,
 			setMessages,
@@ -378,6 +384,10 @@ export const ChatLogPage = () => {
 
 	/** Full composer (Chat + Capture): show whenever the space has members, including solo (notes, story, invite later). */
 	const multiUserSpace = useMemo(() => Boolean(members?.length), [members]);
+	const hasMultipleMembers = useMemo(
+		() => (members?.length ?? 0) > 1,
+		[members],
+	);
 
 	const isSpaceOwner = useMemo(() => {
 		if (currentUserId == null || !members?.length) return false;
@@ -526,8 +536,7 @@ export const ChatLogPage = () => {
 			]);
 			setMembers(m.members);
 			setCanManageMemberRoles(m.can_manage_member_roles);
-			setComposerMode("message");
-			setComposerPurpose("message");
+			setNativeComposerPurpose("message");
 			const msgAsc = asChronological(msgDesc);
 			setMessages(msgAsc);
 			setOldestMessageId(msgAsc[0]?.id ?? null);
@@ -550,8 +559,7 @@ export const ChatLogPage = () => {
 			}
 
 			if (opts?.openThreadExpenseId != null) {
-				setComposerMode("message");
-				setComposerPurpose("message");
+				setNativeComposerPurpose("message");
 				openExpenseThread(opts.openThreadExpenseId, {
 					draftLine:
 						opts.openThreadDraftLine != null && opts.openThreadDraftLine >= 1
@@ -627,11 +635,10 @@ export const ChatLogPage = () => {
 
 	const openExpenseInSidebar = useCallback(
 		(expenseId: string | number) => {
-			setComposerMode("message");
-			setComposerPurpose("message");
+			setNativeComposerPurpose("message");
 			openExpenseThread(expenseId);
 		},
-		[openExpenseThread],
+		[openExpenseThread, setNativeComposerPurpose],
 	);
 
 	const handleDraftLineScrollConsumed = useCallback(() => {
@@ -666,8 +673,7 @@ export const ChatLogPage = () => {
 			});
 			return;
 		}
-		setComposerMode("message");
-		setComposerPurpose("message");
+		setNativeComposerPurpose("message");
 		openExpenseThread(eid, { draftLine: draftLine ?? null });
 	}, [
 		location.hash,
@@ -676,6 +682,7 @@ export const ChatLogPage = () => {
 		location.state,
 		navigate,
 		openExpenseThread,
+		setNativeComposerPurpose,
 	]);
 
 	useEffect(() => {
@@ -717,8 +724,7 @@ export const ChatLogPage = () => {
 			return;
 		}
 
-		setComposerMode("message");
-		setComposerPurpose("message");
+		setNativeComposerPurpose("message");
 		openExpenseThread(expenseId, { draftLine: draftLine ?? null });
 	}, [
 		isExpensesRoute,
@@ -728,6 +734,7 @@ export const ChatLogPage = () => {
 		selectedSpaceId,
 		sidebarThreadExpenseId,
 		openExpenseThread,
+		setNativeComposerPurpose,
 	]);
 
 	useEffect(() => {
@@ -772,8 +779,7 @@ export const ChatLogPage = () => {
 				state: scope ? { chatWorkspace: scope } : {},
 			},
 		);
-		setComposerMode("message");
-		setComposerPurpose("message");
+		setNativeComposerPurpose("message");
 		smartComposerRef.current?.composeText("message_text", draftText);
 	}, [
 		location.hash,
@@ -782,6 +788,7 @@ export const ChatLogPage = () => {
 		location.state,
 		navigate,
 		selectedSpaceId,
+		setNativeComposerPurpose,
 	]);
 
 	const handleCreateSpace = useCallback(async () => {
@@ -1018,13 +1025,11 @@ export const ChatLogPage = () => {
 
 	useEffect(() => {
 		if (!multiUserSpace) {
-			setComposerMode("capture");
-			setComposerPurpose("capture");
+			setNativeComposerPurpose("capture");
 		} else {
-			setComposerMode("message");
-			setComposerPurpose("message");
+			setNativeComposerPurpose("message");
 		}
-	}, [multiUserSpace]);
+	}, [multiUserSpace, setNativeComposerPurpose]);
 
 	useEffect(() => {
 		if (!scopeResolutionDone || !workspaceScope) return;
@@ -1324,11 +1329,10 @@ export const ChatLogPage = () => {
 				});
 				return;
 			}
-			setComposerMode("message");
-			setComposerPurpose("message");
+			setNativeComposerPurpose("message");
 			openExpenseThread(link.expenseId, { draftLine: draftLine ?? null });
 		},
-		[selectedSpaceId, openExpenseThread],
+		[selectedSpaceId, openExpenseThread, setNativeComposerPurpose],
 	);
 
 	useEffect(() => {
@@ -1503,6 +1507,7 @@ export const ChatLogPage = () => {
 							<ChatComposerOrientation
 								composerPurpose={composerPurpose}
 								disabled={isLoading || !selectedSpaceId}
+								isSharedSpace={hasMultipleMembers}
 								onAskClick={() => {
 									handleComposerPurposeChange("ask");
 									smartComposerRef.current?.navigateTo("ask_topic_select");

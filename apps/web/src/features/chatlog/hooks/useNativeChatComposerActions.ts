@@ -7,7 +7,7 @@ import {
 	parseCaptureVoice,
 } from "../../../shared/lib/quickCaptureTransactions";
 import { wsClient } from "../../../shared/lib/wsClient";
-import type { ChatComposerMode } from "../components/ChatComposerDock";
+import type { ChatComposerPurpose } from "../components/ChatComposerOrientation";
 import type { ComposerPayload } from "../components/SmartTextareaComposer";
 import type { BuilderItem } from "../components/transactionBuilderTypes";
 import { parseTags, toNumber } from "../components/transactionBuilderTypes";
@@ -16,7 +16,7 @@ type UseNativeChatComposerActionsArgs = {
 	loadSpaceTransactions: () => Promise<void>;
 	patchSpaces: (updater: (prev: Space[] | null) => Space[] | null) => void;
 	selectedSpaceId: string | number | null;
-	setComposerMode: (mode: ChatComposerMode) => void;
+	setComposerPurpose: (purpose: ChatComposerPurpose) => void;
 	setErrorMessage: (message: string | null) => void;
 	setIsLoading: (loading: boolean) => void;
 	setMessages: (
@@ -50,7 +50,7 @@ export const useNativeChatComposerActions = ({
 	loadSpaceTransactions,
 	patchSpaces,
 	selectedSpaceId,
-	setComposerMode,
+	setComposerPurpose,
 	setErrorMessage,
 	setIsLoading,
 	setMessages,
@@ -147,7 +147,7 @@ export const useNativeChatComposerActions = ({
 				});
 			}
 
-			setComposerMode("message");
+			setComposerPurpose("message");
 			setStickToLatest(true);
 			bumpSelectedSpaceActivity();
 			void loadSpaceTransactions();
@@ -156,7 +156,7 @@ export const useNativeChatComposerActions = ({
 			bumpSelectedSpaceActivity,
 			loadSpaceTransactions,
 			selectedSpaceId,
-			setComposerMode,
+			setComposerPurpose,
 			setErrorMessage,
 			setMessages,
 			setStickToLatest,

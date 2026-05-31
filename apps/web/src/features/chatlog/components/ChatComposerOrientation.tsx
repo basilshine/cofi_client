@@ -10,32 +10,35 @@ export type ChatComposerPurpose = "message" | "capture" | "ask";
 type ChatComposerOrientationProps = {
 	composerPurpose: ChatComposerPurpose;
 	disabled?: boolean;
+	isSharedSpace?: boolean;
 	onAskClick: () => void;
 	onCaptureClick: () => void;
 	onMessageClick: () => void;
 	spaceName: string | null;
 };
 
-const PURPOSE_OPTIONS: Array<{
+type PurposeOption = {
 	helper: string;
 	Icon: LucideIcon;
 	label: string;
 	purpose: ChatComposerPurpose;
-}> = [
+};
+
+const buildPurposeOptions = (isSharedSpace: boolean): PurposeOption[] => [
 	{
-		helper: "Shared chat",
+		helper: isSharedSpace ? "Shared chat" : "Space note",
 		Icon: MessageSquareText,
 		label: "Message",
 		purpose: "message",
 	},
 	{
-		helper: "Review work",
+		helper: "Review packet",
 		Icon: ScanSearch,
 		label: "Capture",
 		purpose: "capture",
 	},
 	{
-		helper: "Ceits answer",
+		helper: "Ask Ceits",
 		Icon: Search,
 		label: "Ask",
 		purpose: "ask",
@@ -53,12 +56,14 @@ const modeButtonClass = (selected: boolean) =>
 export const ChatComposerOrientation = ({
 	composerPurpose,
 	disabled = false,
+	isSharedSpace = false,
 	onAskClick,
 	onCaptureClick,
 	onMessageClick,
 	spaceName,
 }: ChatComposerOrientationProps) => {
 	const contextLabel = spaceName?.trim() || "this space";
+	const purposeOptions = buildPurposeOptions(isSharedSpace);
 	const onClickByPurpose: Record<ChatComposerPurpose, () => void> = {
 		ask: onAskClick,
 		capture: onCaptureClick,
@@ -83,7 +88,7 @@ export const ChatComposerOrientation = ({
 					className="grid min-w-0 grid-cols-3 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/58 p-1 shadow-[inset_0_1px_2px_rgba(44,32,18,0.04)] sm:w-[min(100%,31rem)] sm:shrink-0"
 					role="group"
 				>
-					{PURPOSE_OPTIONS.map(({ helper, Icon, label, purpose }) => (
+					{purposeOptions.map(({ helper, Icon, label, purpose }) => (
 						<button
 							aria-label={`${label}: ${helper}`}
 							aria-pressed={composerPurpose === purpose}
