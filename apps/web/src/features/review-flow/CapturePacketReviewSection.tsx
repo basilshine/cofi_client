@@ -1,5 +1,4 @@
-import type { LucideIcon } from "lucide-react";
-import { FileText, Inbox, Plus, ReceiptText, Split } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -8,6 +7,7 @@ import {
 	type EntityViewModel,
 } from "../../shared/lib/entityPresentation";
 import {
+	type EntityVisualKey,
 	captureCandidateTypeVisual,
 	capturePacketEntityVisual,
 } from "../../shared/lib/entityVisual";
@@ -352,15 +352,7 @@ export const CapturePacketReviewSection = ({
 					type="button"
 				>
 					<span className="flex items-center gap-2">
-						<span
-							className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-								selectedSectionKey === "all"
-									? "bg-white/16 text-[#fffaf0]"
-									: "bg-[rgba(248,245,238,0.92)] text-muted-foreground"
-							}`}
-						>
-							<Inbox className="h-4 w-4" size={16} />
-						</span>
+						<EntityIcon size="sm" visualKey="reviewPacket" />
 						<span className="min-w-0">
 							<span className="block text-xs font-bold">All review</span>
 							<span
@@ -379,7 +371,6 @@ export const CapturePacketReviewSection = ({
 					const count = entityCounts[section.key];
 					const selected = selectedSectionKey === section.key;
 					const visual = capturePacketEntityVisual(section.key);
-					const Icon = visual.icon;
 					return (
 						<button
 							aria-pressed={selected}
@@ -394,15 +385,7 @@ export const CapturePacketReviewSection = ({
 							type="button"
 						>
 							<span className="flex items-center gap-2">
-								<span
-									className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
-										selected
-											? "border-white/16 bg-white/14 text-[#fffaf0]"
-											: visual.toneClass
-									}`}
-								>
-									<Icon className="h-4 w-4" size={16} />
-								</span>
+								<EntityIcon size="sm" visualKey={visual.key} />
 								<span className="min-w-0">
 									<span className="block truncate text-xs font-bold">
 										{section.shortTitle}
@@ -701,27 +684,27 @@ const PacketWorkspaceMap = ({
 			<div className="grid gap-2 md:grid-cols-4">
 				<PacketWorkspaceStep
 					detail={packet.meta}
-					icon={Inbox}
 					label="Source saved"
 					title="Capture"
+					visualKey="document"
 				/>
 				<PacketWorkspaceStep
 					detail={packet.summary}
-					icon={ReceiptText}
 					label={`${packet.candidates.length} found`}
 					title="Structure"
+					visualKey="reviewPacket"
 				/>
 				<PacketWorkspaceStep
 					detail={reviewScope}
-					icon={Split}
 					label={actionCount > 0 ? `${actionCount} actions` : "Read only"}
 					title="Review"
+					visualKey="reviewPacket"
 				/>
 				<PacketWorkspaceStep
 					detail="Confirm, save, apply, or ignore"
-					icon={FileText}
 					label="Pending"
 					title="Save"
+					visualKey="expense"
 				/>
 			</div>
 			{visibleSectionDefinitions.length > 0 ? (
@@ -769,20 +752,18 @@ type PacketWorkspaceStepProps = {
 	title: string;
 	label: string;
 	detail: string;
-	icon: LucideIcon;
+	visualKey: EntityVisualKey;
 };
 
 const PacketWorkspaceStep = ({
 	title,
 	label,
 	detail,
-	icon: Icon,
+	visualKey,
 }: PacketWorkspaceStepProps) => (
 	<div className="min-w-0 rounded-xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,252,246,0.58)] px-3 py-2">
 		<div className="flex items-start gap-2">
-			<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/75 text-[#5f5442] shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08)]">
-				<Icon className="h-4 w-4" size={16} />
-			</span>
+			<EntityIcon size="sm" visualKey={visualKey} />
 			<span className="min-w-0">
 				<span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 					{title}
