@@ -2,6 +2,12 @@ import type { ExpenseDetail, Transaction } from "@cofi/api";
 import { useEffect, useRef, useState } from "react";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
+import { EntityDetailHeader } from "../../../shared/lib/entityPresentation";
+import {
+	expenseStatusClass,
+	expenseStatusLabel,
+	toTransactionExpenseEntity,
+} from "../../../shared/lib/expensePresentation";
 import { TransactionInlineActions } from "../../transactions/components/RecurringScheduleInlineActions";
 import { parseTags } from "./transactionBuilderTypes";
 
@@ -201,6 +207,13 @@ export const SpaceTransactionDetailDialog = ({
 		recurring_id: expense?.recurring_id ?? transaction.recurring_id,
 		recurring_paused: expense?.recurring_paused ?? transaction.recurring_paused,
 	};
+	const entityStatus = expense?.status ?? transaction.status;
+	const expenseEntity = toTransactionExpenseEntity(
+		{ ...transaction, status: entityStatus },
+		{
+			amountLabel: formatMoney(displayTotal),
+		},
+	);
 
 	return (
 		<dialog
@@ -210,9 +223,25 @@ export const SpaceTransactionDetailDialog = ({
 			ref={dialogRef}
 		>
 			<div className="border-b border-border px-4 py-3">
-				<h2 className="text-base font-semibold" id={titleId}>
-					Transaction #{String(transaction.id)}
-				</h2>
+				<EntityDetailHeader
+					entity={{
+						...expenseEntity,
+						status: expenseStatusLabel(entityStatus),
+						statusClassName: expenseStatusClass(entityStatus),
+					}}
+					size="md"
+					titleId={titleId}
+					trailing={
+						<div className="rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/70 px-3 py-2 text-right shadow-sm">
+							<div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+								Amount
+							</div>
+							<div className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+								{formatMoney(displayTotal)}
+							</div>
+						</div>
+					}
+				/>
 				<p className="mt-1 text-xs text-muted-foreground">
 					{isEditing
 						? "Edit description and line items, then save."
@@ -228,14 +257,6 @@ export const SpaceTransactionDetailDialog = ({
 
 				{!isEditing && expense ? (
 					<>
-						<div className="flex flex-wrap justify-between gap-2 text-sm">
-							<span className="text-muted-foreground">Status</span>
-							<span className="font-medium">{expense.status ?? "—"}</span>
-						</div>
-						<div className="flex flex-wrap justify-between gap-2 text-sm">
-							<span className="text-muted-foreground">Total</span>
-							<span className="font-semibold">{formatMoney(displayTotal)}</span>
-						</div>
 						{transaction.created_at ? (
 							<div className="text-xs text-muted-foreground">
 								{formatDateTime(transaction.created_at)}

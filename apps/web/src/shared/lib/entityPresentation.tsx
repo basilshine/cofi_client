@@ -283,13 +283,20 @@ export const EntityCard = ({
 
 export const EntityDetailHeader = ({
 	entity,
+	size = "lg",
+	titleId,
 	trailing,
 }: {
 	entity: EntityViewModel;
+	size?: "md" | "lg";
+	titleId?: string;
 	trailing?: ReactNode;
 }) => (
 	<header className="flex min-w-0 items-start gap-3">
-		<EntityIcon size="lg" visualKey={entity.visualKey} />
+		<EntityIcon
+			size={size === "md" ? "md" : "lg"}
+			visualKey={entity.visualKey}
+		/>
 		<div className="min-w-0 flex-1">
 			<div className="flex flex-wrap items-center gap-2">
 				<EntityMicro
@@ -308,7 +315,15 @@ export const EntityDetailHeader = ({
 					</span>
 				) : null}
 			</div>
-			<h1 className="mt-2 truncate font-display text-2xl font-bold tracking-tight text-foreground">
+			<h1
+				className={[
+					"mt-2 truncate font-bold text-foreground",
+					size === "md"
+						? "text-lg tracking-tight"
+						: "font-display text-2xl tracking-tight",
+				].join(" ")}
+				id={titleId}
+			>
 				{entity.title}
 			</h1>
 			{entity.subtitle ? (
