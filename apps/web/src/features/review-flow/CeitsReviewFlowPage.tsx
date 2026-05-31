@@ -64,6 +64,7 @@ type CandidateReviewItem = {
 	confidenceLabel: string;
 	canMarkReviewed: boolean;
 	canCreateParticipant: boolean;
+	canCreateRecurring: boolean;
 	canOpenSplitReview: boolean;
 	canSavePromo: boolean;
 	isSelfParticipant: boolean;
@@ -206,6 +207,9 @@ const canCreateParticipantFromCandidate = (type: string): boolean =>
 
 const canOpenSplitReviewFromCandidate = (type: string): boolean =>
 	type === "split_candidate";
+
+const canCreateRecurringFromCandidate = (type: string): boolean =>
+	type === "recurring_candidate";
 
 const isSelfParticipantCandidate = (candidate: DocumentCandidate): boolean => {
 	if (candidate.candidate_type !== "participant_placeholder_candidate") {
@@ -522,6 +526,9 @@ const toCandidateReviewItem = (
 			source === "document" &&
 			canCreateParticipantFromCandidate(candidate.candidate_type) &&
 			!isSelfParticipant,
+		canCreateRecurring:
+			source === "document" &&
+			canCreateRecurringFromCandidate(candidate.candidate_type),
 		canOpenSplitReview:
 			source === "document" &&
 			canOpenSplitReviewFromCandidate(candidate.candidate_type),
@@ -1128,6 +1135,29 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 
+	const handleCreateRecurringCandidate = async (
+		candidate: DocumentCandidate,
+	) => {
+		if (spaceId == null) return;
+		setDocumentCandidateActingId(candidate.id);
+		setDocumentCandidateError(null);
+		try {
+			await apiClient.spaces.createRecurringFromCandidate(
+				spaceId,
+				candidate.id,
+			);
+			setDocumentCandidates((prev) =>
+				prev.filter((item) => item.id !== candidate.id),
+			);
+		} catch (e) {
+			setDocumentCandidateError(
+				e instanceof Error ? e.message : "Failed to create recurring schedule",
+			);
+		} finally {
+			setDocumentCandidateActingId(null);
+		}
+	};
+
 	const handleSavePromoCandidate = async (candidate: BenefitCandidate) => {
 		if (spaceId == null) return;
 		setBenefitCandidateActingId(candidate.id);
@@ -1366,6 +1396,20 @@ export const CeitsReviewFlowPage = () => {
 															type="button"
 														>
 															{isActing ? "Creating" : "Add person"}
+														</button>
+													) : null}
+													{candidate.canCreateRecurring ? (
+														<button
+															className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
+															disabled={isActing}
+															onClick={() =>
+																void handleCreateRecurringCandidate(
+																	candidate.raw as DocumentCandidate,
+																)
+															}
+															type="button"
+														>
+															{isActing ? "Creating" : "Create recurring"}
 														</button>
 													) : null}
 													{candidate.canOpenSplitReview ? (

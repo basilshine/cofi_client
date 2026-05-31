@@ -1474,6 +1474,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/create-recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a recurring expense from a recurring candidate
+         * @description Projects a draft `recurring_candidate` into a space-scoped `recurring_expenses` row, records a resolution/projection, and marks the candidate as projected. Membership and reminder candidates are intentionally not projected by this endpoint.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Document candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Recurring expense created from the candidate. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreateRecurringCandidateResponse"];
+                    };
+                };
+                /** @description Candidate cannot be projected into a recurring expense */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/apply-split": {
         parameters: {
             query?: never;
@@ -5630,6 +5695,10 @@ export interface components {
         };
         CreateParticipantCandidateResponse: {
             participant?: components["schemas"]["SpaceParticipant"];
+            candidate?: components["schemas"]["DocumentCandidateState"];
+        };
+        CreateRecurringCandidateResponse: {
+            recurring?: components["schemas"]["RecurringExpense"];
             candidate?: components["schemas"]["DocumentCandidateState"];
         };
         ApplySplitCandidateRequest: {

@@ -336,6 +336,11 @@ export type CreateParticipantCandidateResponse = {
 	candidate: DocumentCandidateState;
 };
 
+export type CreateRecurringCandidateResponse = {
+	recurring: RecurringExpense;
+	candidate: DocumentCandidateState;
+};
+
 export type ApplySplitCandidateResponse = {
 	expense_id: number;
 	split_count: number;

@@ -5,6 +5,7 @@ import {
 	type ChatMessage,
 	type CreateParticipantCandidateResponse,
 	type CreatePromoCodeRequest,
+	type CreateRecurringCandidateResponse,
 	type DocumentCandidateListResponse,
 	type DocumentCandidateState,
 	type Draft,
@@ -575,6 +576,16 @@ export const createApiClient = (config: ApiClientConfig) => {
 				fetchJson<CreateParticipantCandidateResponse>(
 					withBase(
 						`/api/v1/spaces/${spaceId}/document-candidates/${encodeURIComponent(String(candidateId))}/create-participant`,
+					),
+					{ method: "POST", headers: authHeaders() },
+				),
+			createRecurringFromCandidate: (
+				spaceId: string | number,
+				candidateId: string | number,
+			) =>
+				fetchJson<CreateRecurringCandidateResponse>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/document-candidates/${encodeURIComponent(String(candidateId))}/create-recurring`,
 					),
 					{ method: "POST", headers: authHeaders() },
 				),
