@@ -1,4 +1,9 @@
-import type { BenefitCandidate, PromoCode, Space } from "@cofi/api";
+import type {
+	BenefitCandidate,
+	PatchPromoCodeRequest,
+	PromoCode,
+	Space,
+} from "@cofi/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
@@ -11,6 +16,7 @@ import {
 	LoyaltyBenefitCard,
 	type PromoBenefit,
 	PromoBenefitCard,
+	PromoBenefitDetailHeader,
 	PromoBenefitMini,
 	formatBenefitSourceLabel,
 	loyaltyBenefits,
@@ -39,6 +45,13 @@ type PromoStatusFilter =
 
 type PromoSourceFilter = "all" | "receipts" | "manual" | "messages" | "other";
 
+type PromoEditDraft = {
+	title: string;
+	description: string;
+	reminderAt: string;
+	status: string;
+};
+
 const promoStatusOptions: { value: PromoStatusFilter; label: string }[] = [
 	{ value: "all", label: "All statuses" },
 	{ value: "active", label: "Active" },
@@ -55,6 +68,18 @@ const promoSourceOptions: { value: PromoSourceFilter; label: string }[] = [
 	{ value: "messages", label: "Messages" },
 	{ value: "other", label: "Other" },
 ];
+
+const promoEditDraftFrom = (promo: PromoBenefit): PromoEditDraft => ({
+	title: promo.raw.title ?? "",
+	description: promo.raw.description ?? "",
+	reminderAt: promo.raw.reminder_at?.slice(0, 16) ?? "",
+	status: String(promo.raw.status ?? "active"),
+});
+
+const nullableText = (value: string): string | undefined => {
+	const trimmed = value.trim();
+	return trimmed ? trimmed : undefined;
+};
 
 const toNumericId = (value: string | number | undefined): number | null => {
 	if (value == null) return null;
@@ -277,6 +302,13 @@ export const SpaceBenefitsPage = () => {
 		useState<PromoStatusFilter>("all");
 	const [promoSourceFilter, setPromoSourceFilter] =
 		useState<PromoSourceFilter>("all");
+	const [selectedPromoId, setSelectedPromoId] = useState<number | null>(null);
+	const [editingPromoId, setEditingPromoId] = useState<number | null>(null);
+	const [promoEditDraft, setPromoEditDraft] = useState<PromoEditDraft | null>(
+		null,
+	);
+	const [promoEditBusyId, setPromoEditBusyId] = useState<number | null>(null);
+	const [promoEditError, setPromoEditError] = useState<string | null>(null);
 
 	const numericSpaceId = useMemo(() => toNumericId(spaceId), [spaceId]);
 	const space = useMemo(() => {
@@ -330,6 +362,8 @@ export const SpaceBenefitsPage = () => {
 		() => promos.map((promo): PromoBenefit => toPromoBenefit(promo)),
 		[promos],
 	);
+	const selectedPromo =
+		promoBenefits.find((promo) => promo.id === selectedPromoId) ?? null;
 	const candidateViews = useMemo(
 		() => candidates.map((candidate) => toCandidateView(candidate)),
 		[candidates],
@@ -403,6 +437,66 @@ export const SpaceBenefitsPage = () => {
 		}
 	};
 
+	const openPromoDetail = (promo: PromoBenefit) => {
+		setSelectedPromoId(promo.id);
+		setEditingPromoId(null);
+		setPromoEditDraft(promoEditDraftFrom(promo));
+		setPromoEditError(null);
+	};
+
+	const startPromoEdit = (promo: PromoBenefit) => {
+		setSelectedPromoId(promo.id);
+		setEditingPromoId(promo.id);
+		setPromoEditDraft(promoEditDraftFrom(promo));
+		setPromoEditError(null);
+	};
+
+	const cancelPromoEdit = () => {
+		if (selectedPromo) {
+			setPromoEditDraft(promoEditDraftFrom(selectedPromo));
+		}
+		setEditingPromoId(null);
+		setPromoEditError(null);
+	};
+
+	const savePromoEdit = async () => {
+		if (
+			numericSpaceId == null ||
+			selectedPromo == null ||
+			promoEditDraft == null
+		) {
+			return;
+		}
+		const body: PatchPromoCodeRequest = {
+			title: nullableText(promoEditDraft.title),
+			description: nullableText(promoEditDraft.description),
+			status: nullableText(promoEditDraft.status),
+			reminder_at: nullableText(promoEditDraft.reminderAt),
+		};
+		setPromoEditBusyId(selectedPromo.id);
+		setPromoEditError(null);
+		try {
+			const updated = await apiClient.spaces.patchPromo(
+				numericSpaceId,
+				selectedPromo.id,
+				body,
+			);
+			setPromos((current) =>
+				current.map((item) =>
+					Number(item.id) === selectedPromo.id ? updated : item,
+				),
+			);
+			setPromoEditDraft(promoEditDraftFrom(toPromoBenefit(updated)));
+			setEditingPromoId(null);
+		} catch (error) {
+			setPromoEditError(
+				error instanceof Error ? error.message : "Failed to update promo",
+			);
+		} finally {
+			setPromoEditBusyId(null);
+		}
+	};
+
 	const submitManualPromo = async () => {
 		if (numericSpaceId == null) return;
 		const title = manualTitle.trim();
@@ -428,6 +522,8 @@ export const SpaceBenefitsPage = () => {
 			setManualRedeemAt("");
 			setManualValidUntil("");
 			setManualOpen(false);
+			setSelectedPromoId(Number(created.id));
+			setPromoEditDraft(promoEditDraftFrom(toPromoBenefit(created)));
 		} catch (error) {
 			setManualError(
 				error instanceof Error ? error.message : "Failed to save promo",
@@ -454,6 +550,8 @@ export const SpaceBenefitsPage = () => {
 				candidate.id,
 			);
 			setPromos((current) => [result.promo, ...current]);
+			setSelectedPromoId(Number(result.promo.id));
+			setPromoEditDraft(promoEditDraftFrom(toPromoBenefit(result.promo)));
 			removeCandidate(candidate.id);
 		} catch (error) {
 			setLoadError(
@@ -801,6 +899,7 @@ export const SpaceBenefitsPage = () => {
 											{filteredPromoBenefits.map((promo) => (
 												<PromoBenefitCard
 													busy={savingPromoId === promo.id}
+													isSelected={selectedPromoId === promo.id}
 													key={promo.id}
 													onArchive={(item) =>
 														void patchPromoStatus(item, "archived")
@@ -808,6 +907,7 @@ export const SpaceBenefitsPage = () => {
 													onMarkUsed={(item) =>
 														void patchPromoStatus(item, "used")
 													}
+													onOpen={openPromoDetail}
 													promo={promo}
 												/>
 											))}
@@ -866,6 +966,185 @@ export const SpaceBenefitsPage = () => {
 				</div>
 
 				<aside className="space-y-4">
+					<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
+						<div className="flex items-start justify-between gap-3">
+							<div>
+								<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+									Selected promo
+								</p>
+								<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
+									Detail and edit
+								</h2>
+							</div>
+							{selectedPromo ? (
+								<button
+									className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground"
+									onClick={() => startPromoEdit(selectedPromo)}
+									type="button"
+								>
+									Edit
+								</button>
+							) : null}
+						</div>
+
+						{selectedPromo ? (
+							<div className="mt-4 space-y-4">
+								<PromoBenefitDetailHeader promo={selectedPromo} />
+								{editingPromoId === selectedPromo.id && promoEditDraft ? (
+									<div className="space-y-3 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/66 p-3">
+										<label className="block space-y-1 text-sm">
+											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+												Title
+											</span>
+											<input
+												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												onChange={(event) =>
+													setPromoEditDraft((current) =>
+														current
+															? { ...current, title: event.target.value }
+															: current,
+													)
+												}
+												value={promoEditDraft.title}
+											/>
+										</label>
+										<label className="block space-y-1 text-sm">
+											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+												Description
+											</span>
+											<textarea
+												className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												onChange={(event) =>
+													setPromoEditDraft((current) =>
+														current
+															? { ...current, description: event.target.value }
+															: current,
+													)
+												}
+												value={promoEditDraft.description}
+											/>
+										</label>
+										<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+											<label className="block space-y-1 text-sm">
+												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+													Status
+												</span>
+												<select
+													className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+													onChange={(event) =>
+														setPromoEditDraft((current) =>
+															current
+																? { ...current, status: event.target.value }
+																: current,
+														)
+													}
+													value={promoEditDraft.status}
+												>
+													<option value="active">Active</option>
+													<option value="draft">Draft</option>
+													<option value="used">Used</option>
+													<option value="expired">Expired</option>
+													<option value="archived">Archived</option>
+													<option value="ignored">Ignored</option>
+												</select>
+											</label>
+											<label className="block space-y-1 text-sm">
+												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+													Reminder
+												</span>
+												<input
+													className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+													onChange={(event) =>
+														setPromoEditDraft((current) =>
+															current
+																? {
+																		...current,
+																		reminderAt: event.target.value,
+																	}
+																: current,
+														)
+													}
+													type="datetime-local"
+													value={promoEditDraft.reminderAt}
+												/>
+											</label>
+										</div>
+										{promoEditError ? (
+											<p className="text-sm text-red-700">{promoEditError}</p>
+										) : null}
+										<div className="flex flex-wrap justify-end gap-2">
+											<button
+												className="inline-flex h-9 items-center rounded-lg border border-border/70 bg-white px-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+												onClick={cancelPromoEdit}
+												type="button"
+											>
+												Cancel
+											</button>
+											<button
+												className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
+												disabled={promoEditBusyId === selectedPromo.id}
+												onClick={() => void savePromoEdit()}
+												type="button"
+											>
+												{promoEditBusyId === selectedPromo.id
+													? "Saving..."
+													: "Save changes"}
+											</button>
+										</div>
+									</div>
+								) : (
+									<div className="space-y-3 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 p-3 text-sm">
+										<div>
+											<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+												Offer
+											</p>
+											<p className="mt-1 font-medium text-foreground">
+												{selectedPromo.discountLabel}
+											</p>
+										</div>
+										<div>
+											<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+												Conditions
+											</p>
+											<p className="mt-1 leading-relaxed text-muted-foreground">
+												{selectedPromo.raw.conditions_text?.trim() ||
+													selectedPromo.raw.description?.trim() ||
+													"No conditions saved yet."}
+											</p>
+										</div>
+										<div className="grid grid-cols-2 gap-3">
+											<div>
+												<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+													Valid until
+												</p>
+												<p className="mt-1 text-foreground">
+													{selectedPromo.validUntil}
+												</p>
+											</div>
+											<div>
+												<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+													Source
+												</p>
+												<p className="mt-1 text-foreground">
+													{selectedPromo.source}
+												</p>
+											</div>
+										</div>
+										<p className="text-xs leading-relaxed text-muted-foreground">
+											Code, platform, and conditions are read-only until the
+											promo edit API supports those fields.
+										</p>
+									</div>
+								)}
+							</div>
+						) : (
+							<p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+								Select a saved promo to inspect its source, conditions, status,
+								and reminder.
+							</p>
+						)}
+					</section>
+
 					<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
 						<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 							Decision queue

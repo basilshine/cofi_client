@@ -262,15 +262,26 @@ export const PromoBenefitDetailHeader = ({
 export const PromoBenefitCard = ({
 	promo,
 	busy,
+	isSelected = false,
 	onArchive,
 	onMarkUsed,
+	onOpen,
 }: {
 	promo: PromoBenefit;
 	busy: boolean;
+	isSelected?: boolean;
 	onArchive: (promo: PromoBenefit) => void;
 	onMarkUsed: (promo: PromoBenefit) => void;
+	onOpen?: (promo: PromoBenefit) => void;
 }) => (
-	<li className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.78)] p-4 shadow-sm transition hover:border-[rgba(140,115,85,0.28)] hover:bg-[rgba(255,252,246,0.94)]">
+	<li
+		className={[
+			"rounded-2xl border bg-[rgba(255,252,246,0.78)] p-4 shadow-sm transition hover:border-[rgba(140,115,85,0.28)] hover:bg-[rgba(255,252,246,0.94)]",
+			isSelected
+				? "border-[rgba(76,105,78,0.42)] ring-2 ring-[rgba(124,152,124,0.18)]"
+				: "border-[rgba(120,100,80,0.14)]",
+		].join(" ")}
+	>
 		<div className="flex flex-wrap items-start justify-between gap-3">
 			<div className="min-w-0">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -309,6 +320,16 @@ export const PromoBenefitCard = ({
 		<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
 			<p className="text-xs text-muted-foreground">Source: {promo.source}</p>
 			<div className="flex flex-wrap gap-2">
+				{onOpen ? (
+					<button
+						className="inline-flex h-8 items-center rounded-lg border border-[rgba(95,125,102,0.22)] bg-[rgba(237,247,239,0.78)] px-3 text-xs font-semibold text-[#37543b] transition hover:bg-[rgba(237,247,239,0.94)] disabled:opacity-50"
+						disabled={busy}
+						onClick={() => onOpen(promo)}
+						type="button"
+					>
+						Details
+					</button>
+				) : null}
 				<button
 					className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-foreground/82 transition hover:bg-white disabled:opacity-50"
 					disabled={busy || promo.raw.status === "used"}

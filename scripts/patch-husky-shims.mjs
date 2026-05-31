@@ -13,6 +13,7 @@ d=\${0%/*}
 s=\${d%/*}/$n`;
 const pathShRunner = 'sh -e "$s" "$@"';
 const shebangRunner = '"$s" "$@"';
+const sourceRunner = '. "$s"';
 
 const patchFile = async (filePath) => {
 	const stat = await fs.stat(filePath);
@@ -26,7 +27,8 @@ const patchFile = async (filePath) => {
 	}
 	nextContent = nextContent.replace(dirnameLoader, parameterExpansionLoader);
 	nextContent = nextContent.replace(dirnameHelper, parameterExpansionHelper);
-	nextContent = nextContent.replace(pathShRunner, shebangRunner);
+	nextContent = nextContent.replace(pathShRunner, sourceRunner);
+	nextContent = nextContent.replace(shebangRunner, sourceRunner);
 
 	if (nextContent === content) return false;
 
