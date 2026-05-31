@@ -7,6 +7,11 @@ import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
 import { isNotFoundHttpError } from "../../../shared/lib/apiErrors";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
+import { EntityMicro } from "../../../shared/lib/entityPresentation";
+import {
+	expenseStatusLabel,
+	expenseStatusPillClass,
+} from "../../../shared/lib/expensePresentation";
 import { httpClient } from "../../../shared/lib/httpClient";
 import { ExpenseItemRecurringControls } from "./ExpenseItemRecurringControls";
 import { ExpenseSplitDialog } from "./ExpenseSplitDialog";
@@ -450,10 +455,15 @@ export const DraftExpenseCard = ({
 				>
 					<div className="flex items-start justify-between gap-2">
 						<div className="min-w-0 flex-1">
-							<div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+							<div className="flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+								<EntityMicro
+									entity={{ label: "Expense", visualKey: "expense" }}
+								/>
 								<span>{sourceLabel}</span>
 								<span>·</span>
-								<span>{statusLabel}</span>
+								<span className={expenseStatusPillClass(expense.status)}>
+									{statusLabel}
+								</span>
 							</div>
 							<div className="mt-1 flex items-start justify-between gap-3">
 								<div className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
@@ -466,7 +476,6 @@ export const DraftExpenseCard = ({
 							<div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
 								<span>{itemCount} items</span>
 								{creatorLabel ? <span>· {creatorLabel}</span> : null}
-								<span>· {statusLabel}</span>
 								{!isDraft && isApproved ? (
 									<span>· Updated after confirmation</span>
 								) : null}
@@ -649,19 +658,13 @@ export const DraftExpenseCard = ({
 		<div className={cardClassName}>
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0">
-					<div className="text-xs font-semibold text-muted-foreground">
-						{isDraft ? (
-							"DRAFT"
-						) : (
-							<>
-								EXPENSE
-								{expense?.status ? (
-									<span className="ml-2 rounded bg-muted px-1.5 py-0.5 font-normal text-foreground">
-										{expense.status}
-									</span>
-								) : null}
-							</>
-						)}
+					<div className="flex flex-wrap items-center gap-1.5">
+						<EntityMicro entity={{ label: "Expense", visualKey: "expense" }} />
+						{expense?.status ? (
+							<span className={expenseStatusPillClass(expense.status)}>
+								{expenseStatusLabel(expense.status)}
+							</span>
+						) : null}
 					</div>
 					<div className="mt-1 truncate text-sm font-medium">
 						{expense?.description || "Draft transaction"}
