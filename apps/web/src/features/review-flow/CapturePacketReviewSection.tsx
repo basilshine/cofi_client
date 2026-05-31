@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type {
 	CandidateReviewItem,
@@ -43,6 +44,79 @@ const candidateBadgeClass = (tone: CandidateReviewTone): string => {
 	return "border-border/70 bg-white text-muted-foreground";
 };
 
+type PacketSectionKey =
+	| "expenses"
+	| "benefits"
+	| "people"
+	| "splits"
+	| "future"
+	| "documents";
+
+const packetSectionDefinitions: Array<{
+	key: PacketSectionKey;
+	title: string;
+	description: string;
+}> = [
+	{
+		key: "expenses",
+		title: "Expense draft",
+		description: "Amounts, items, merchant, category, and draft expense data.",
+	},
+	{
+		key: "benefits",
+		title: "Benefits",
+		description: "Promos and loyalty findings that can be saved separately.",
+	},
+	{
+		key: "people",
+		title: "People",
+		description: "Participants and placeholders detected from this capture.",
+	},
+	{
+		key: "splits",
+		title: "Splits",
+		description: "Split proposals that need people and target expense context.",
+	},
+	{
+		key: "future",
+		title: "Future actions",
+		description: "Recurring, membership, reminder, and renewal hints.",
+	},
+	{
+		key: "documents",
+		title: "Document signals",
+		description:
+			"Payment proof, privacy, merge, and supporting document signals.",
+	},
+];
+
+const packetSectionKey = (candidate: CandidateReviewItem): PacketSectionKey => {
+	if (
+		candidate.candidateType === "expense_candidate" ||
+		candidate.candidateType === "expense_item_candidate"
+	) {
+		return "expenses";
+	}
+	if (
+		candidate.candidateType === "promo_code_candidate" ||
+		candidate.candidateType === "loyalty_event_candidate"
+	) {
+		return "benefits";
+	}
+	if (candidate.candidateType === "participant_placeholder_candidate") {
+		return "people";
+	}
+	if (candidate.candidateType === "split_candidate") return "splits";
+	if (
+		candidate.candidateType === "recurring_candidate" ||
+		candidate.candidateType === "membership_candidate" ||
+		candidate.candidateType === "reminder_candidate"
+	) {
+		return "future";
+	}
+	return "documents";
+};
+
 export const CapturePacketReviewSection = ({
 	packets,
 	decisionCount,
@@ -60,66 +134,124 @@ export const CapturePacketReviewSection = ({
 	onCreateRecurringCandidate,
 	onApplySplitCandidate,
 	onIgnoreCandidate,
-}: CapturePacketReviewSectionProps) => (
-	<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.94)] p-4 shadow-sm">
-		<div className="flex flex-wrap items-start justify-between gap-3">
-			<div>
-				<p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-					Capture review
-				</p>
-				<h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
-					Capture packets waiting for review
-				</h2>
-				<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-					Each packet is one parsed text, voice note, receipt, or screenshot.
-					Review the packet, then decide which parts become expenses, promos,
-					people, splits, or document signals.
-				</p>
+}: CapturePacketReviewSectionProps) => {
+	const visiblePackets = useMemo(() => packets.slice(0, 6), [packets]);
+	const [selectedPacketId, setSelectedPacketId] = useState<number | null>(
+		() => visiblePackets[0]?.sourceDocumentId ?? null,
+	);
+	const selectedPacket = useMemo(
+		() =>
+			visiblePackets.find(
+				(packet) => packet.sourceDocumentId === selectedPacketId,
+			) ?? visiblePackets[0],
+		[visiblePackets, selectedPacketId],
+	);
+
+	useEffect(() => {
+		if (
+			selectedPacketId != null &&
+			visiblePackets.some(
+				(packet) => packet.sourceDocumentId === selectedPacketId,
+			)
+		) {
+			return;
+		}
+		setSelectedPacketId(visiblePackets[0]?.sourceDocumentId ?? null);
+	}, [visiblePackets, selectedPacketId]);
+
+	return (
+		<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.94)] p-4 shadow-sm">
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div>
+					<p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Capture review
+					</p>
+					<h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
+						Capture packets waiting for review
+					</h2>
+					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+						Each packet is one parsed text, voice note, receipt, or screenshot.
+						Review the packet, then decide which parts become expenses, promos,
+						people, splits, or document signals.
+					</p>
+				</div>
+				<div className="flex flex-wrap items-center gap-1.5">
+					<span className="rounded-full border border-[rgba(120,100,80,0.22)] bg-white px-2.5 py-1 text-xs font-semibold text-foreground/75">
+						{packets.length} packets
+					</span>
+					<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+						{decisionCount} decisions
+					</span>
+				</div>
 			</div>
-			<div className="flex flex-wrap items-center gap-1.5">
-				<span className="rounded-full border border-[rgba(120,100,80,0.22)] bg-white px-2.5 py-1 text-xs font-semibold text-foreground/75">
-					{packets.length} packets
-				</span>
-				<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-					{decisionCount} decisions
-				</span>
+			<div className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,0.36fr)_1fr]">
+				<div className="space-y-2">
+					<p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Packet queue
+					</p>
+					{visiblePackets.map((packet) => {
+						const selected =
+							selectedPacket?.sourceDocumentId === packet.sourceDocumentId;
+						return (
+							<button
+								aria-pressed={selected}
+								className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+									selected
+										? "border-[rgba(68,58,42,0.32)] bg-[rgba(68,58,42,0.08)] shadow-sm"
+										: "border-[rgba(120,100,80,0.14)] bg-white/58 hover:border-[rgba(120,100,80,0.28)] hover:bg-white/78"
+								}`}
+								key={packet.sourceDocumentId}
+								onClick={() => setSelectedPacketId(packet.sourceDocumentId)}
+								type="button"
+							>
+								<span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+									Packet #{packet.sourceDocumentId}
+								</span>
+								<span className="mt-1 block truncate text-sm font-semibold text-foreground">
+									{packet.title}
+								</span>
+								<span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">
+									{packet.summary}
+								</span>
+							</button>
+						);
+					})}
+					{packets.length > 6 ? (
+						<p className="px-1 text-xs text-muted-foreground">
+							Showing 6 newest capture packets. Resolve a few to clear the
+							queue.
+						</p>
+					) : null}
+				</div>
+				{selectedPacket ? (
+					<CapturePacketRow
+						benefitCandidateActingId={benefitCandidateActingId}
+						documentCandidateActingId={documentCandidateActingId}
+						onApplySplitCandidate={onApplySplitCandidate}
+						onConfirmDocumentCandidate={onConfirmDocumentCandidate}
+						onCreateParticipantCandidate={onCreateParticipantCandidate}
+						onCreateRecurringCandidate={onCreateRecurringCandidate}
+						onIgnoreCandidate={onIgnoreCandidate}
+						onSavePromoCandidate={onSavePromoCandidate}
+						onSplitTargetChange={onSplitTargetChange}
+						packet={selectedPacket}
+						pendingParticipantCountForSplitCandidate={
+							pendingParticipantCountForSplitCandidate
+						}
+						spaceId={spaceId}
+						splitTargetExpenseIdFor={splitTargetExpenseIdFor}
+						splitTargetOptions={splitTargetOptions}
+					/>
+				) : null}
 			</div>
-		</div>
-		<div className="mt-4 space-y-3">
-			{packets.slice(0, 6).map((packet) => (
-				<CapturePacketRow
-					benefitCandidateActingId={benefitCandidateActingId}
-					documentCandidateActingId={documentCandidateActingId}
-					key={packet.sourceDocumentId}
-					onApplySplitCandidate={onApplySplitCandidate}
-					onConfirmDocumentCandidate={onConfirmDocumentCandidate}
-					onCreateParticipantCandidate={onCreateParticipantCandidate}
-					onCreateRecurringCandidate={onCreateRecurringCandidate}
-					onIgnoreCandidate={onIgnoreCandidate}
-					onSavePromoCandidate={onSavePromoCandidate}
-					onSplitTargetChange={onSplitTargetChange}
-					packet={packet}
-					pendingParticipantCountForSplitCandidate={
-						pendingParticipantCountForSplitCandidate
-					}
-					spaceId={spaceId}
-					splitTargetExpenseIdFor={splitTargetExpenseIdFor}
-					splitTargetOptions={splitTargetOptions}
-				/>
-			))}
-		</div>
-		{documentCandidateError ? (
-			<p className="mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-				{documentCandidateError}
-			</p>
-		) : null}
-		{packets.length > 6 ? (
-			<p className="mt-3 text-xs text-muted-foreground">
-				Showing 6 newest capture packets. Resolve a few to clear the queue.
-			</p>
-		) : null}
-	</section>
-);
+			{documentCandidateError ? (
+				<p className="mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+					{documentCandidateError}
+				</p>
+			) : null}
+		</section>
+	);
+};
 
 type CapturePacketRowProps = Omit<
 	CapturePacketReviewSectionProps,
@@ -143,52 +275,85 @@ const CapturePacketRow = ({
 	onCreateRecurringCandidate,
 	onApplySplitCandidate,
 	onIgnoreCandidate,
-}: CapturePacketRowProps) => (
-	<article className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-white/72 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-		<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(120,100,80,0.12)] pb-3">
-			<div className="min-w-0">
-				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-					Packet #{packet.sourceDocumentId}
-				</p>
-				<h3 className="mt-1 truncate text-base font-semibold text-foreground">
-					{packet.title}
-				</h3>
-				<p className="mt-1 text-xs text-muted-foreground">{packet.meta}</p>
+}: CapturePacketRowProps) => {
+	const sections = packetSectionDefinitions
+		.map((section) => ({
+			...section,
+			candidates: packet.candidates.filter(
+				(candidate) => packetSectionKey(candidate) === section.key,
+			),
+		}))
+		.filter((section) => section.candidates.length > 0);
+
+	return (
+		<article className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-white/72 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+			<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(120,100,80,0.12)] pb-3">
+				<div className="min-w-0">
+					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Packet #{packet.sourceDocumentId}
+					</p>
+					<h3 className="mt-1 truncate text-base font-semibold text-foreground">
+						{packet.title}
+					</h3>
+					<p className="mt-1 text-xs text-muted-foreground">{packet.meta}</p>
+				</div>
+				<div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+					<span className="rounded-full border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.95)] px-2.5 py-1 text-xs font-semibold text-foreground/75">
+						{packet.summary}
+					</span>
+					<span className="rounded-full border border-[rgba(68,58,42,0.16)] bg-[rgba(68,58,42,0.08)] px-2.5 py-1 text-xs font-semibold text-[#4d4231]">
+						{packet.primaryActionLabel}
+					</span>
+				</div>
 			</div>
-			<div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-				<span className="rounded-full border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.95)] px-2.5 py-1 text-xs font-semibold text-foreground/75">
-					{packet.summary}
-				</span>
-				<span className="rounded-full border border-[rgba(68,58,42,0.16)] bg-[rgba(68,58,42,0.08)] px-2.5 py-1 text-xs font-semibold text-[#4d4231]">
-					{packet.primaryActionLabel}
-				</span>
+			<div className="mt-3 space-y-3">
+				{sections.map((section) => (
+					<section
+						className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,252,246,0.55)] p-3"
+						key={section.key}
+					>
+						<div className="flex flex-wrap items-start justify-between gap-2">
+							<div>
+								<h4 className="text-sm font-semibold text-foreground">
+									{section.title}
+								</h4>
+								<p className="mt-0.5 text-xs text-muted-foreground">
+									{section.description}
+								</p>
+							</div>
+							<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+								{section.candidates.length}
+							</span>
+						</div>
+						<div className="mt-2 divide-y divide-[rgba(120,100,80,0.1)]">
+							{section.candidates.map((candidate) => (
+								<CaptureCandidateRow
+									benefitCandidateActingId={benefitCandidateActingId}
+									candidate={candidate}
+									documentCandidateActingId={documentCandidateActingId}
+									key={`${candidate.source}-${candidate.id}`}
+									onApplySplitCandidate={onApplySplitCandidate}
+									onConfirmDocumentCandidate={onConfirmDocumentCandidate}
+									onCreateParticipantCandidate={onCreateParticipantCandidate}
+									onCreateRecurringCandidate={onCreateRecurringCandidate}
+									onIgnoreCandidate={onIgnoreCandidate}
+									onSavePromoCandidate={onSavePromoCandidate}
+									onSplitTargetChange={onSplitTargetChange}
+									pendingParticipantCountForSplitCandidate={
+										pendingParticipantCountForSplitCandidate
+									}
+									spaceId={spaceId}
+									splitTargetExpenseIdFor={splitTargetExpenseIdFor}
+									splitTargetOptions={splitTargetOptions}
+								/>
+							))}
+						</div>
+					</section>
+				))}
 			</div>
-		</div>
-		<div className="mt-2 divide-y divide-[rgba(120,100,80,0.1)]">
-			{packet.candidates.map((candidate) => (
-				<CaptureCandidateRow
-					benefitCandidateActingId={benefitCandidateActingId}
-					candidate={candidate}
-					documentCandidateActingId={documentCandidateActingId}
-					key={`${candidate.source}-${candidate.id}`}
-					onApplySplitCandidate={onApplySplitCandidate}
-					onConfirmDocumentCandidate={onConfirmDocumentCandidate}
-					onCreateParticipantCandidate={onCreateParticipantCandidate}
-					onCreateRecurringCandidate={onCreateRecurringCandidate}
-					onIgnoreCandidate={onIgnoreCandidate}
-					onSavePromoCandidate={onSavePromoCandidate}
-					onSplitTargetChange={onSplitTargetChange}
-					pendingParticipantCountForSplitCandidate={
-						pendingParticipantCountForSplitCandidate
-					}
-					spaceId={spaceId}
-					splitTargetExpenseIdFor={splitTargetExpenseIdFor}
-					splitTargetOptions={splitTargetOptions}
-				/>
-			))}
-		</div>
-	</article>
-);
+		</article>
+	);
+};
 
 type CaptureCandidateRowProps = Omit<CapturePacketRowProps, "packet"> & {
 	candidate: CandidateReviewItem;
