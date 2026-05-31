@@ -1,35 +1,117 @@
+import { type ReactNode, Suspense, lazy } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AuthEntryPage } from "../../features/auth/AuthEntryPage";
 import { LoginPage } from "../../features/auth/LoginPage";
 import { RegisterPage } from "../../features/auth/RegisterPage";
-import { DraftsPage } from "../../features/drafts/DraftsPage";
-import { ExpenseThreadPage } from "../../features/expense-thread/ExpenseThreadPage";
-import { GlobalHomePage } from "../../features/home/GlobalHomePage";
 import { InviteJoinPage } from "../../features/invite/InviteJoinPage";
 import { OnboardingPage } from "../../features/onboarding/OnboardingPage";
-import { QuotaPage } from "../../features/quota/QuotaPage";
-import { RecurringSchedulesPage } from "../../features/recurring/RecurringSchedulesPage";
-import { CeitsReviewFlowPage } from "../../features/review-flow/CeitsReviewFlowPage";
-import { GlobalSearchPage } from "../../features/search/GlobalSearchPage";
-import {
-	SettingsHubPage,
-	type SettingsSectionKey,
-} from "../../features/settings/SettingsHubPage";
-import { SettingsSpacesPage } from "../../features/settings/SettingsSpacesPage";
-import { SpaceBenefitsPage } from "../../features/space-benefits/SpaceBenefitsPage";
-import { SpaceOverviewPage } from "../../features/space-overview/SpaceOverviewPage";
-import { SpaceRecurringPage } from "../../features/space-recurring/SpaceRecurringPage";
-import { SpaceSettingsPage } from "../../features/space-settings/SpaceSettingsPage";
-import { SpaceSplitsWorkspacePage } from "../../features/space-splits/SpaceSplitsWorkspacePage";
-import { SpacesPage } from "../../features/spaces/SpacesPage";
-import { TransactionsPage } from "../../features/transactions/TransactionsPage";
-import { ChatPage } from "../../pages/chat/ChatPage";
+import type { SettingsSectionKey } from "../../features/settings/SettingsHubPage";
 import { AppShell } from "../layout/AppShell";
 import { ConsoleWorkspaceSplit } from "../layout/workspaceSpaces/ConsoleWorkspaceSplit";
 import { ConsoleIndexRedirect } from "./ConsoleIndexRedirect";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RequireOnboarded } from "./RequireOnboarded";
 import { WorkspaceRootRedirect } from "./WorkspaceRootRedirect";
+
+const ChatPage = lazy(() =>
+	import("../../pages/chat/ChatPage").then((module) => ({
+		default: module.ChatPage,
+	})),
+);
+const DraftsPage = lazy(() =>
+	import("../../features/drafts/DraftsPage").then((module) => ({
+		default: module.DraftsPage,
+	})),
+);
+const ExpenseThreadPage = lazy(() =>
+	import("../../features/expense-thread/ExpenseThreadPage").then((module) => ({
+		default: module.ExpenseThreadPage,
+	})),
+);
+const GlobalHomePage = lazy(() =>
+	import("../../features/home/GlobalHomePage").then((module) => ({
+		default: module.GlobalHomePage,
+	})),
+);
+const GlobalSearchPage = lazy(() =>
+	import("../../features/search/GlobalSearchPage").then((module) => ({
+		default: module.GlobalSearchPage,
+	})),
+);
+const QuotaPage = lazy(() =>
+	import("../../features/quota/QuotaPage").then((module) => ({
+		default: module.QuotaPage,
+	})),
+);
+const RecurringSchedulesPage = lazy(() =>
+	import("../../features/recurring/RecurringSchedulesPage").then((module) => ({
+		default: module.RecurringSchedulesPage,
+	})),
+);
+const CeitsReviewFlowPage = lazy(() =>
+	import("../../features/review-flow/CeitsReviewFlowPage").then((module) => ({
+		default: module.CeitsReviewFlowPage,
+	})),
+);
+const SettingsHubPage = lazy(() =>
+	import("../../features/settings/SettingsHubPage").then((module) => ({
+		default: module.SettingsHubPage,
+	})),
+);
+const SettingsSpacesPage = lazy(() =>
+	import("../../features/settings/SettingsSpacesPage").then((module) => ({
+		default: module.SettingsSpacesPage,
+	})),
+);
+const SpaceBenefitsPage = lazy(() =>
+	import("../../features/space-benefits/SpaceBenefitsPage").then((module) => ({
+		default: module.SpaceBenefitsPage,
+	})),
+);
+const SpaceOverviewPage = lazy(() =>
+	import("../../features/space-overview/SpaceOverviewPage").then((module) => ({
+		default: module.SpaceOverviewPage,
+	})),
+);
+const SpaceRecurringPage = lazy(() =>
+	import("../../features/space-recurring/SpaceRecurringPage").then(
+		(module) => ({
+			default: module.SpaceRecurringPage,
+		}),
+	),
+);
+const SpaceSettingsPage = lazy(() =>
+	import("../../features/space-settings/SpaceSettingsPage").then((module) => ({
+		default: module.SpaceSettingsPage,
+	})),
+);
+const SpaceSplitsWorkspacePage = lazy(() =>
+	import("../../features/space-splits/SpaceSplitsWorkspacePage").then(
+		(module) => ({
+			default: module.SpaceSplitsWorkspacePage,
+		}),
+	),
+);
+const SpacesPage = lazy(() =>
+	import("../../features/spaces/SpacesPage").then((module) => ({
+		default: module.SpacesPage,
+	})),
+);
+const TransactionsPage = lazy(() =>
+	import("../../features/transactions/TransactionsPage").then((module) => ({
+		default: module.TransactionsPage,
+	})),
+);
+
+const RouteLoading = () => (
+	<div className="flex min-h-[14rem] items-center justify-center px-4 py-10 text-sm text-muted-foreground">
+		Loading page...
+	</div>
+);
+
+const lazyRoute = (element: ReactNode) => (
+	<Suspense fallback={<RouteLoading />}>{element}</Suspense>
+);
 
 const ChatSectionLayout = () => <Outlet />;
 const SettingsSectionRoute = ({ section }: { section: SettingsSectionKey }) => (
@@ -51,7 +133,7 @@ export const AppRouter = () => {
 					<Route element={<AppShell />} path="/console">
 						<Route element={<ConsoleWorkspaceSplit />}>
 							<Route element={<ConsoleIndexRedirect />} index />
-							<Route element={<GlobalHomePage />} path="home" />
+							<Route element={lazyRoute(<GlobalHomePage />)} path="home" />
 							<Route
 								element={<Navigate replace to="/console/home" />}
 								path="dashboard"
@@ -64,66 +146,88 @@ export const AppRouter = () => {
 								element={<Navigate replace to="/console/home" />}
 								path="dashboard/business"
 							/>
-							<Route element={<SpacesPage />} path="spaces" />
-							<Route element={<SpaceOverviewPage />} path="spaces/:spaceId" />
+							<Route element={lazyRoute(<SpacesPage />)} path="spaces" />
 							<Route
-								element={<SpaceOverviewPage />}
+								element={lazyRoute(<SpaceOverviewPage />)}
+								path="spaces/:spaceId"
+							/>
+							<Route
+								element={lazyRoute(<SpaceOverviewPage />)}
 								path="spaces/:spaceId/overview"
 							/>
 							<Route
-								element={<SpaceSplitsWorkspacePage />}
+								element={lazyRoute(<SpaceSplitsWorkspacePage />)}
 								path="spaces/:spaceId/splits"
 							/>
 							<Route
-								element={<SpaceBenefitsPage />}
+								element={lazyRoute(<SpaceBenefitsPage />)}
 								path="spaces/:spaceId/benefits"
 							/>
 							<Route
-								element={<SpaceRecurringPage />}
+								element={lazyRoute(<SpaceRecurringPage />)}
 								path="spaces/:spaceId/recurring"
 							/>
 							<Route
-								element={<SpaceSettingsPage />}
+								element={lazyRoute(<SpaceSettingsPage />)}
 								path="spaces/:spaceId/settings"
 							/>
-							<Route element={<DraftsPage />} path="drafts" />
-							<Route element={<GlobalSearchPage />} path="search" />
-							<Route element={<CeitsReviewFlowPage />} path="review" />
-							<Route element={<TransactionsPage />} path="transactions" />
-							<Route element={<RecurringSchedulesPage />} path="recurring" />
+							<Route element={lazyRoute(<DraftsPage />)} path="drafts" />
+							<Route element={lazyRoute(<GlobalSearchPage />)} path="search" />
+							<Route
+								element={lazyRoute(<CeitsReviewFlowPage />)}
+								path="review"
+							/>
+							<Route
+								element={lazyRoute(<TransactionsPage />)}
+								path="transactions"
+							/>
+							<Route
+								element={lazyRoute(<RecurringSchedulesPage />)}
+								path="recurring"
+							/>
 							<Route element={<ChatSectionLayout />} path="chat">
-								<Route element={<ChatPage />} index />
-								<Route element={<ChatPage />} path="expenses" />
-								<Route element={<ExpenseThreadPage />} path="thread" />
+								<Route element={lazyRoute(<ChatPage />)} index />
+								<Route element={lazyRoute(<ChatPage />)} path="expenses" />
+								<Route
+									element={lazyRoute(<ExpenseThreadPage />)}
+									path="thread"
+								/>
 							</Route>
-							<Route element={<QuotaPage />} path="quota" />
+							<Route element={lazyRoute(<QuotaPage />)} path="quota" />
 							<Route
 								element={<Navigate replace to="/console/settings/account" />}
 								path="settings"
 							/>
 							<Route
-								element={<SettingsSectionRoute section="account" />}
+								element={lazyRoute(<SettingsSectionRoute section="account" />)}
 								path="settings/account"
 							/>
 							<Route
-								element={<SettingsSectionRoute section="appearance" />}
+								element={lazyRoute(
+									<SettingsSectionRoute section="appearance" />,
+								)}
 								path="settings/appearance"
 							/>
 							<Route
-								element={<SettingsSectionRoute section="notifications" />}
+								element={lazyRoute(
+									<SettingsSectionRoute section="notifications" />,
+								)}
 								path="settings/notifications"
 							/>
 							<Route
-								element={<SettingsSectionRoute section="security" />}
+								element={lazyRoute(<SettingsSectionRoute section="security" />)}
 								path="settings/security"
 							/>
 							<Route
-								element={<SettingsSectionRoute section="billing" />}
+								element={lazyRoute(<SettingsSectionRoute section="billing" />)}
 								path="settings/billing"
 							/>
-							<Route element={<SettingsSpacesPage />} path="settings/spaces" />
 							<Route
-								element={<SpaceSettingsPage surface="settings" />}
+								element={lazyRoute(<SettingsSpacesPage />)}
+								path="settings/spaces"
+							/>
+							<Route
+								element={lazyRoute(<SpaceSettingsPage surface="settings" />)}
 								path="settings/spaces/:spaceId"
 							/>
 							<Route
