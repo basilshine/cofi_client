@@ -3,7 +3,9 @@ import { FileText, Inbox, Plus, ReceiptText, Split } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+	EntityIcon,
 	EntityListItem,
+	EntityMicro,
 	type EntityViewModel,
 } from "../../shared/lib/entityPresentation";
 import {
@@ -569,17 +571,10 @@ const CapturePacketRow = ({
 					>
 						<div className="flex flex-wrap items-start justify-between gap-2">
 							<div className="flex min-w-0 items-start gap-2">
-								{(() => {
-									const visual = capturePacketEntityVisual(section.key);
-									const Icon = visual.icon;
-									return (
-										<span
-											className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${visual.toneClass}`}
-										>
-											<Icon className="h-4 w-4" size={16} />
-										</span>
-									);
-								})()}
+								<EntityIcon
+									size="sm"
+									visualKey={capturePacketEntityVisual(section.key).key}
+								/>
 								<div className="min-w-0">
 									<h4 className="text-sm font-semibold text-foreground">
 										{section.title}
@@ -728,7 +723,6 @@ const PacketWorkspaceMap = ({
 							const selected =
 								sectionFilter === "all" || sectionFilter === section.key;
 							const visual = capturePacketEntityVisual(section.key);
-							const Icon = visual.icon;
 							return (
 								<div
 									className={`flex min-h-14 items-center gap-2 rounded-xl border px-3 py-2 ${
@@ -738,9 +732,7 @@ const PacketWorkspaceMap = ({
 									}`}
 									key={section.key}
 								>
-									<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/62 shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08)]">
-										<Icon className="h-4 w-4" size={16} />
-									</span>
+									<EntityIcon size="sm" visualKey={visual.key} />
 									<span className="min-w-0">
 										<span className="block truncate text-xs font-bold">
 											{section.shortTitle}
@@ -990,11 +982,13 @@ const CaptureCandidateRow = ({
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-1.5">
-						<span
-							className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${captureCandidateTypeVisual(candidate.candidateType).toneClass}`}
-						>
-							{candidate.label}
-						</span>
+						<EntityMicro
+							entity={{
+								label: candidate.label,
+								visualKey: captureCandidateTypeVisual(candidate.candidateType)
+									.key,
+							}}
+						/>
 						<span className="rounded-full border border-border/60 bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
 							{candidate.confidenceLabel}
 						</span>
