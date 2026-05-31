@@ -5,6 +5,12 @@ import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
 import { isNotFoundHttpError } from "../../../shared/lib/apiErrors";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
+import { EntityMicro } from "../../../shared/lib/entityPresentation";
+import {
+	expenseStatusLabel,
+	expenseStatusPillClass,
+	toTransactionExpenseEntity,
+} from "../../../shared/lib/expensePresentation";
 import { TransactionInlineActions } from "../../transactions/components/RecurringScheduleInlineActions";
 
 type Props = {
@@ -128,6 +134,12 @@ export const ExpenseMessageCard = ({
 		);
 	}
 
+	const statusRaw = tx.status?.trim() || "approved";
+	const statusLabel = expenseStatusLabel(statusRaw);
+	const expenseEntity = toTransactionExpenseEntity(tx, {
+		amountLabel: formatMoney(tx.total),
+	});
+
 	if (compact && onOpenExpenseThread && spaceId != null) {
 		const handleOpen = () => {
 			onOpenExpenseThread(tx.id);
@@ -139,10 +151,6 @@ export const ExpenseMessageCard = ({
 		const chatToolbarBtn =
 			"inline-flex h-7 items-center justify-center rounded-md border px-2.5 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-8";
 
-		const heading =
-			tx.title?.trim() ||
-			tx.description?.trim() ||
-			`Confirmed expense #${String(tx.id)}`;
 		const updateRows =
 			updates.length > 0
 				? updates
@@ -164,22 +172,33 @@ export const ExpenseMessageCard = ({
 				>
 					<div className="flex items-start justify-between gap-2">
 						<div className="min-w-0 flex-1">
-							<div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+							<div className="flex flex-wrap items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
+								<EntityMicro
+									entity={{
+										label: expenseEntity.label,
+										visualKey: expenseEntity.visualKey,
+									}}
+								/>
 								<span>Ceits saved this</span>
-								<span>·</span>
-								<span>Approved</span>
+								<span className={expenseStatusPillClass(statusRaw)}>
+									{statusLabel}
+								</span>
 							</div>
 							<div className="mt-1 flex items-start justify-between gap-3">
 								<div className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
-									{heading}
+									{expenseEntity.title}
 								</div>
 								<div className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
 									{formatMoney(tx.total)}
 								</div>
 							</div>
+							{expenseEntity.subtitle ? (
+								<div className="mt-0.5 line-clamp-1 text-[11px] text-muted-foreground">
+									{expenseEntity.subtitle}
+								</div>
+							) : null}
 							<div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
 								<span>{tx.items.length} items</span>
-								<span>· Approved</span>
 								{tx.created_at ? (
 									<span>· Saved {formatDateTime(tx.created_at)}</span>
 								) : null}
@@ -262,8 +281,19 @@ export const ExpenseMessageCard = ({
 		<div className="rounded-md border border-border bg-muted p-3">
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0">
-					<div className="truncate text-xs font-semibold text-muted-foreground">
-						Confirmed expense · tx #{String(tx.id)}
+					<div className="flex min-w-0 flex-wrap items-center gap-1.5">
+						<EntityMicro
+							entity={{
+								label: expenseEntity.label,
+								visualKey: expenseEntity.visualKey,
+							}}
+						/>
+						<span className={expenseStatusPillClass(statusRaw)}>
+							{statusLabel}
+						</span>
+						<span className="text-xs font-semibold text-muted-foreground">
+							tx #{String(tx.id)}
+						</span>
 					</div>
 					<div className="mt-0.5 text-sm font-semibold">
 						{formatMoney(tx.total)}
