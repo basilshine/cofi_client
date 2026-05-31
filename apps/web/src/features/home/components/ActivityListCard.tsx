@@ -1,3 +1,11 @@
+import {
+	ArrowDownToLine,
+	Check,
+	ListChecks,
+	type LucideIcon,
+	PencilLine,
+	ScanLine,
+} from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -315,6 +323,13 @@ const buildReceiptProcessSteps = (
 	{ id: "draft", label: "Draft created", strong: true },
 ];
 
+const receiptProcessStepIcons: Record<ReceiptProcessStep["id"], LucideIcon> = {
+	imported: ArrowDownToLine,
+	scanned: ScanLine,
+	detected: ListChecks,
+	draft: PencilLine,
+};
+
 export const ActivityListCard = ({
 	title,
 	eyebrow = "Recent",
@@ -415,6 +430,7 @@ export const ActivityListCard = ({
 							<ul className="inline-flex min-w-max items-center gap-1">
 								{processSteps.map((step, index) => {
 									const isCurrent = needsReview && step.id === "draft";
+									const StepIcon = receiptProcessStepIcons[step.id];
 									const shortLabel =
 										step.id === "detected" && itemCount != null
 											? `${itemCount} items`
@@ -433,67 +449,10 @@ export const ActivityListCard = ({
 														: "border-border/55 bg-background/90 text-foreground/60"
 												}`}
 											>
-												{step.id === "imported" ? (
-													<svg
-														aria-hidden
-														className="h-[0.4rem] w-[0.4rem]"
-														fill="none"
-														stroke="currentColor"
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth="1.8"
-														viewBox="0 0 24 24"
-													>
-														<title>Imported</title>
-														<path d="M12 4v10" />
-														<path d="M8 10l4 4 4-4" />
-													</svg>
-												) : null}
-												{step.id === "scanned" ? (
-													<svg
-														aria-hidden
-														className="h-[0.4rem] w-[0.4rem]"
-														fill="none"
-														stroke="currentColor"
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth="1.8"
-														viewBox="0 0 24 24"
-													>
-														<title>Scanned</title>
-														<path d="M4 7V4h3M20 7V4h-3M4 17v3h3M20 17v3h-3" />
-													</svg>
-												) : null}
-												{step.id === "detected" ? (
-													<svg
-														aria-hidden
-														className="h-[0.4rem] w-[0.4rem]"
-														fill="none"
-														stroke="currentColor"
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth="1.8"
-														viewBox="0 0 24 24"
-													>
-														<title>Detected</title>
-														<path d="M6 12h12M6 8h12M6 16h8" />
-													</svg>
-												) : null}
-												{step.id === "draft" ? (
-													<svg
-														aria-hidden
-														className="h-[0.4rem] w-[0.4rem]"
-														fill="none"
-														stroke="currentColor"
-														strokeLinecap="round"
-														strokeLinejoin="round"
-														strokeWidth="1.8"
-														viewBox="0 0 24 24"
-													>
-														<title>Draft created</title>
-														<path d="M5 19l4.5-1L18 9.5 14.5 6 6 14.5 5 19z" />
-													</svg>
-												) : null}
+												<StepIcon
+													aria-hidden
+													className="h-[0.4rem] w-[0.4rem]"
+												/>
 											</span>
 											<span
 												className={`text-[12px] ${
@@ -851,19 +810,10 @@ export const ActivityListCard = ({
 																	className={`inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-all duration-150 ${timelineDotClass}`}
 																>
 																	{showCheckDot ? (
-																		<svg
+																		<Check
 																			aria-hidden
 																			className="h-3.5 w-3.5"
-																			fill="none"
-																			stroke="currentColor"
-																			strokeLinecap="round"
-																			strokeLinejoin="round"
-																			strokeWidth="1.9"
-																			viewBox="0 0 24 24"
-																		>
-																			<title>Confirmed</title>
-																			<path d="M20 7l-8 10-5-5" />
-																		</svg>
+																		/>
 																	) : (
 																		<span
 																			aria-hidden
