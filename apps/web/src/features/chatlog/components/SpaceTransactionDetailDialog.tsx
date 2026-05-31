@@ -2,7 +2,14 @@ import type { ExpenseDetail, Transaction } from "@cofi/api";
 import { useEffect, useRef, useState } from "react";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
-import { EntityDetailHeader } from "../../../shared/lib/entityPresentation";
+import {
+	EntityDetailHeader,
+	EntityListItem,
+} from "../../../shared/lib/entityPresentation";
+import {
+	expenseItemTagNames,
+	toExpenseItemEntity,
+} from "../../../shared/lib/expenseItemPresentation";
 import {
 	expenseStatusClass,
 	expenseStatusLabel,
@@ -31,7 +38,7 @@ type EditRow = {
 
 const tagNamesFromItem = (
 	tags: Array<{ name?: string }> | undefined,
-): string[] => (tags ?? []).map((t) => (t.name ?? "").trim()).filter(Boolean);
+): string[] => expenseItemTagNames({ tags });
 
 const expenseToEditRows = (exp: ExpenseDetail | null): EditRow[] => {
 	const items = exp?.items ?? [];
@@ -263,24 +270,21 @@ export const SpaceTransactionDetailDialog = ({
 							</div>
 						) : null}
 						<ul className="space-y-2 border-t border-border pt-3">
-							{(expense.items ?? []).map((it, idx) => (
-								<li
-									className="rounded-md border border-border bg-background px-3 py-2 text-sm"
-									key={`${String(transaction.id)}-${idx}-${it.name}`}
-								>
-									<div className="flex justify-between gap-2">
-										<span className="font-medium">{it.name}</span>
-										<span className="text-muted-foreground">
-											{formatMoney(it.amount)}
-										</span>
-									</div>
-									{tagNamesFromItem(it.tags).length ? (
-										<div className="mt-1 text-[11px] text-muted-foreground">
-											{tagNamesFromItem(it.tags).join(", ")}
-										</div>
-									) : null}
-								</li>
-							))}
+							{(expense.items ?? []).map((it, idx) => {
+								const itemEntity = toExpenseItemEntity(it, { index: idx });
+								return (
+									<li key={`${String(transaction.id)}-${idx}-${it.name}`}>
+										<EntityListItem
+											entity={itemEntity}
+											trailing={
+												<span className="rounded-xl border border-[rgba(110,104,92,0.14)] bg-white/70 px-3 py-2 text-sm font-semibold tabular-nums text-foreground shadow-sm">
+													{formatMoney(it.amount)}
+												</span>
+											}
+										/>
+									</li>
+								);
+							})}
 						</ul>
 					</>
 				) : null}
