@@ -7,15 +7,23 @@ export type ExpenseItemLike = {
 	emotion?: string | null;
 	notes?: string | null;
 	expense_date?: string | null;
-	tags?: Array<string | { name?: string | null }>;
+	tags?: string | Array<string | { name?: string | null }> | null;
 };
 
-export const expenseItemTagNames = (item: ExpenseItemLike): string[] =>
-	(item.tags ?? [])
+export const expenseItemTagNames = (item: ExpenseItemLike): string[] => {
+	if (typeof item.tags === "string") {
+		return item.tags
+			.split(",")
+			.map((tag) => tag.trim())
+			.filter(Boolean);
+	}
+
+	return (item.tags ?? [])
 		.map((tag) =>
 			typeof tag === "string" ? tag.trim() : (tag.name ?? "").trim(),
 		)
 		.filter(Boolean);
+};
 
 export const expenseItemTitle = (
 	item: ExpenseItemLike,

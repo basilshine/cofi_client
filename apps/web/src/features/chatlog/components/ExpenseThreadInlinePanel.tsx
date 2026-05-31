@@ -17,6 +17,8 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
+import { EntityMini } from "../../../shared/lib/entityPresentation";
+import { toExpenseItemEntity } from "../../../shared/lib/expenseItemPresentation";
 import type { ExpenseThreadController } from "../hooks/useExpenseThreadState";
 import { splitRowKey } from "../hooks/useExpenseThreadState";
 import { ChatComposerDock, type ChatComposerMode } from "./ChatComposerDock";
@@ -159,19 +161,33 @@ const ProposalCaptureBubble = ({
 							) : null}
 						</div>
 					) : null}
-					<ul className="mt-1 list-inside list-disc text-[11px] text-foreground/90">
-						{p.items.map((it, idx) => (
-							<li key={`${p.id}-${idx}-${it.name}`}>
-								<span>
-									{it.name} · {formatMoney(Number(it.amount))}
-								</span>
-								{it.notes?.trim() ? (
-									<span className="mt-0.5 block text-[10px] text-muted-foreground">
-										{it.notes.trim()}
-									</span>
-								) : null}
-							</li>
-						))}
+					<ul className="mt-2 space-y-1.5">
+						{p.items.map((it, idx) => {
+							const itemEntity = toExpenseItemEntity(
+								{
+									amount: it.amount,
+									id: `${p.id}-${idx}`,
+									name: it.name,
+									notes: it.notes,
+								},
+								{ index: idx },
+							);
+							return (
+								<li key={`${p.id}-${idx}-${it.name}`}>
+									<EntityMini
+										entity={{
+											...itemEntity,
+											subtitle: itemEntity.detail,
+										}}
+										trailing={
+											<span className="text-xs font-semibold tabular-nums text-foreground">
+												{formatMoney(Number(it.amount))}
+											</span>
+										}
+									/>
+								</li>
+							);
+						})}
 					</ul>
 				</div>
 				<div className="flex shrink-0 flex-col gap-1">
@@ -1390,23 +1406,27 @@ export const ExpenseThreadInlinePanel = ({
 										<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 											Line items
 										</h3>
-										<ul className="mt-2 space-y-2 text-sm">
+										<ul className="mt-2 space-y-2">
 											{(inspectShowAllLines
 												? draftItems
 												: draftItems.slice(0, 2)
-											).map((it, idx) => (
-												<li
-													className="flex justify-between gap-2 border-b border-border/40 pb-2 last:border-0 last:pb-0"
-													key={`insp-${String(it.name)}-${idx}`}
-												>
-													<span className="min-w-0 truncate text-foreground/90">
-														{it.name}
-													</span>
-													<span className="shrink-0 tabular-nums text-muted-foreground">
-														{formatMoney(Number(it.amount))}
-													</span>
-												</li>
-											))}
+											).map((it, idx) => {
+												const itemEntity = toExpenseItemEntity(it, {
+													index: idx,
+												});
+												return (
+													<li key={`insp-${String(it.name)}-${idx}`}>
+														<EntityMini
+															entity={itemEntity}
+															trailing={
+																<span className="text-sm font-semibold tabular-nums text-foreground">
+																	{formatMoney(Number(it.amount))}
+																</span>
+															}
+														/>
+													</li>
+												);
+											})}
 										</ul>
 										{draftItems.length > 2 && !inspectShowAllLines ? (
 											<button
