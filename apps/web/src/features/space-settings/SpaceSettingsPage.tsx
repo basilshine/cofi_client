@@ -7,6 +7,7 @@ import {
 	useLocation,
 	useNavigate,
 	useParams,
+	useSearchParams,
 } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
@@ -42,6 +43,7 @@ export const SpaceSettingsPage = ({
 	const { spaceId } = useParams<{ spaceId: string }>();
 	const navigate = useNavigate();
 	const location = useLocation();
+	const [searchParams] = useSearchParams();
 	const { user } = useAuth();
 	const {
 		spaces,
@@ -55,6 +57,8 @@ export const SpaceSettingsPage = ({
 		const n = Number(spaceId);
 		return Number.isFinite(n) ? n : null;
 	}, [spaceId]);
+	const selectedParticipantId =
+		searchParams.get("participantId")?.trim() || null;
 
 	const space: Space | null = useMemo(() => {
 		if (!spaces || spaceId == null) return null;
@@ -340,6 +344,7 @@ export const SpaceSettingsPage = ({
 								<SpaceParticipantsPanel
 									onParticipantSaved={handleParticipantSaved}
 									participants={participants}
+									selectedParticipantId={selectedParticipantId}
 									showTopBorder={false}
 									spaceId={numericSpaceId}
 								/>

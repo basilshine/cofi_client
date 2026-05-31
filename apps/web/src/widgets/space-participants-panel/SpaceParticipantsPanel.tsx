@@ -1,6 +1,6 @@
 import type { SpaceParticipant } from "@cofi/api";
 import { Check, MailPlus, Pencil, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
 import { InviteLinkSharePanel } from "../space-invite-management";
 
@@ -17,6 +17,7 @@ type SpaceParticipantsPanelProps = {
 	spaceId: string | number;
 	participants: SpaceParticipant[] | null;
 	onParticipantSaved: (participant: SpaceParticipant) => void;
+	selectedParticipantId?: string | number | null;
 	showTopBorder?: boolean;
 };
 
@@ -79,6 +80,7 @@ export const SpaceParticipantsPanel = ({
 	spaceId,
 	participants,
 	onParticipantSaved,
+	selectedParticipantId = null,
 	showTopBorder = true,
 }: SpaceParticipantsPanelProps) => {
 	const [editingId, setEditingId] = useState<number | null>(null);
@@ -100,6 +102,28 @@ export const SpaceParticipantsPanel = ({
 			return a.display_name.localeCompare(b.display_name);
 		});
 	}, [participants]);
+
+	const displayedParticipants = useMemo(() => {
+		const first = visibleParticipants.slice(0, 8);
+		if (selectedParticipantId == null) return first;
+		const hasSelected = first.some(
+			(participant) => String(participant.id) === String(selectedParticipantId),
+		);
+		if (hasSelected) return first;
+		const selected = visibleParticipants.find(
+			(participant) => String(participant.id) === String(selectedParticipantId),
+		);
+		return selected ? [...first, selected] : first;
+	}, [selectedParticipantId, visibleParticipants]);
+
+	useEffect(() => {
+		if (selectedParticipantId == null) return;
+		window.requestAnimationFrame(() => {
+			document
+				.getElementById(`space-participant-${String(selectedParticipantId)}`)
+				?.scrollIntoView({ behavior: "smooth", block: "center" });
+		});
+	}, [selectedParticipantId, visibleParticipants.length]);
 
 	const startEditing = (participant: SpaceParticipant) => {
 		setEditingId(participant.id);
@@ -228,10 +252,13 @@ export const SpaceParticipantsPanel = ({
 						No split participants yet.
 					</li>
 				) : null}
-				{visibleParticipants.slice(0, 8).map((participant) => {
+				{displayedParticipants.map((participant) => {
 					const isEditing = editingId === participant.id;
 					const isSaving = savingId === participant.id;
 					const isInviting = invitingId === participant.id;
+					const isSelected =
+						selectedParticipantId != null &&
+						String(selectedParticipantId) === String(participant.id);
 					const isRegistered =
 						participant.participant_type === "registered_member" ||
 						participant.status === "active" ||
@@ -263,7 +290,13 @@ export const SpaceParticipantsPanel = ({
 
 					return (
 						<li
-							className="rounded-xl border border-[rgba(95,105,125,0.12)] bg-white/55 p-3 shadow-[0_8px_18px_-18px_rgba(45,48,58,0.25)]"
+							className={[
+								"rounded-xl border p-3 shadow-[0_8px_18px_-18px_rgba(45,48,58,0.25)] transition-[border-color,background-color,box-shadow]",
+								isSelected
+									? "border-[rgba(160,120,70,0.45)] bg-[rgba(255,249,235,0.9)] shadow-[0_14px_28px_-18px_rgba(120,75,28,0.32)] ring-2 ring-[rgba(200,155,95,0.2)]"
+									: "border-[rgba(95,105,125,0.12)] bg-white/55",
+							].join(" ")}
+							id={`space-participant-${String(participant.id)}`}
 							key={participant.id}
 						>
 							{isEditing && draft ? (
@@ -401,6 +434,11 @@ export const SpaceParticipantsPanel = ({
 											<span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
 												{participantStatusLabel(participant.status)}
 											</span>
+											{isSelected ? (
+												<span className="rounded-full border border-[rgba(160,120,70,0.28)] bg-[rgba(255,236,200,0.58)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#68400e]">
+													Selected
+												</span>
+											) : null}
 										</div>
 										<p className="mt-1 truncate text-xs text-muted-foreground">
 											{participantTypeLabel(participant.participant_type)}
