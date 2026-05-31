@@ -117,6 +117,16 @@ const packetSectionKey = (candidate: CandidateReviewItem): PacketSectionKey => {
 	return "documents";
 };
 
+const actionableCount = (packet: CapturePacket): number =>
+	packet.candidates.filter(
+		(candidate) =>
+			candidate.canSavePromo ||
+			candidate.canCreateParticipant ||
+			candidate.canOpenSplitReview ||
+			candidate.canCreateRecurring ||
+			candidate.canMarkReviewed,
+	).length;
+
 export const CapturePacketReviewSection = ({
 	packets,
 	decisionCount,
@@ -284,6 +294,7 @@ const CapturePacketRow = ({
 			),
 		}))
 		.filter((section) => section.candidates.length > 0);
+	const actionCount = actionableCount(packet);
 
 	return (
 		<article className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-white/72 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
@@ -306,6 +317,20 @@ const CapturePacketRow = ({
 					</span>
 				</div>
 			</div>
+			<PacketActionBar
+				benefitCandidateActingId={benefitCandidateActingId}
+				documentCandidateActingId={documentCandidateActingId}
+				onApplySplitCandidate={onApplySplitCandidate}
+				onConfirmDocumentCandidate={onConfirmDocumentCandidate}
+				onCreateParticipantCandidate={onCreateParticipantCandidate}
+				onCreateRecurringCandidate={onCreateRecurringCandidate}
+				onSavePromoCandidate={onSavePromoCandidate}
+				packet={packet}
+				pendingParticipantCountForSplitCandidate={
+					pendingParticipantCountForSplitCandidate
+				}
+				splitTargetExpenseIdFor={splitTargetExpenseIdFor}
+			/>
 			<div className="mt-3 space-y-3">
 				{sections.map((section) => (
 					<section
@@ -351,7 +376,164 @@ const CapturePacketRow = ({
 					</section>
 				))}
 			</div>
+			{actionCount === 0 ? (
+				<p className="mt-3 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 px-3 py-2 text-xs text-muted-foreground">
+					No direct action is available for this packet yet. Review the signals
+					below or ignore individual items.
+				</p>
+			) : null}
 		</article>
+	);
+};
+
+type PacketActionBarProps = {
+	packet: CapturePacket;
+	benefitCandidateActingId: number | null;
+	documentCandidateActingId: number | null;
+	splitTargetExpenseIdFor: (candidate: CandidateReviewItem) => number | null;
+	pendingParticipantCountForSplitCandidate: (
+		candidate: CandidateReviewItem,
+	) => number;
+	onSavePromoCandidate: (candidate: CandidateReviewItem) => void;
+	onConfirmDocumentCandidate: (candidate: CandidateReviewItem) => void;
+	onCreateParticipantCandidate: (candidate: CandidateReviewItem) => void;
+	onCreateRecurringCandidate: (candidate: CandidateReviewItem) => void;
+	onApplySplitCandidate: (
+		candidate: CandidateReviewItem,
+		targetExpenseId: number | null,
+	) => void;
+};
+
+const PacketActionBar = ({
+	packet,
+	benefitCandidateActingId,
+	documentCandidateActingId,
+	splitTargetExpenseIdFor,
+	pendingParticipantCountForSplitCandidate,
+	onSavePromoCandidate,
+	onConfirmDocumentCandidate,
+	onCreateParticipantCandidate,
+	onCreateRecurringCandidate,
+	onApplySplitCandidate,
+}: PacketActionBarProps) => {
+	const promoCandidate = packet.candidates.find(
+		(candidate) => candidate.canSavePromo,
+	);
+	const participantCandidate = packet.candidates.find(
+		(candidate) => candidate.canCreateParticipant,
+	);
+	const recurringCandidate = packet.candidates.find(
+		(candidate) => candidate.canCreateRecurring,
+	);
+	const reviewCandidate = packet.candidates.find(
+		(candidate) => candidate.canMarkReviewed,
+	);
+	const splitCandidate = packet.candidates.find(
+		(candidate) => candidate.canOpenSplitReview,
+	);
+	const splitTargetExpenseId = splitCandidate
+		? splitTargetExpenseIdFor(splitCandidate)
+		: null;
+	const splitBlocked =
+		splitCandidate != null &&
+		pendingParticipantCountForSplitCandidate(splitCandidate) > 0;
+	const isBenefitActing = (candidate: CandidateReviewItem | undefined) =>
+		candidate != null &&
+		candidate.source === "benefit" &&
+		benefitCandidateActingId === candidate.id;
+	const isDocumentActing = (candidate: CandidateReviewItem | undefined) =>
+		candidate != null &&
+		candidate.source === "document" &&
+		documentCandidateActingId === candidate.id;
+	const hasActions =
+		promoCandidate ||
+		participantCandidate ||
+		recurringCandidate ||
+		reviewCandidate ||
+		splitCandidate;
+
+	if (!hasActions) return null;
+
+	return (
+		<div className="mt-3 rounded-xl border border-[rgba(68,58,42,0.14)] bg-[rgba(68,58,42,0.055)] px-3 py-2">
+			<div className="flex flex-wrap items-center justify-between gap-2">
+				<div>
+					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Next actions
+					</p>
+					<p className="mt-0.5 text-xs text-muted-foreground">
+						Start with the highest-signal decisions, then finish details inside
+						sections.
+					</p>
+				</div>
+				<div className="flex flex-wrap items-center justify-end gap-1.5">
+					{promoCandidate ? (
+						<button
+							className="min-h-9 rounded-full border border-[rgba(91,116,87,0.34)] bg-[rgba(237,247,239,0.96)] px-3 text-xs font-semibold text-[#355238] transition hover:border-[rgba(91,116,87,0.5)] hover:bg-[rgba(218,238,222,0.98)] disabled:opacity-50"
+							disabled={isBenefitActing(promoCandidate)}
+							onClick={() => onSavePromoCandidate(promoCandidate)}
+							type="button"
+						>
+							{isBenefitActing(promoCandidate) ? "Saving" : "Save promo"}
+						</button>
+					) : null}
+					{participantCandidate ? (
+						<button
+							className="min-h-9 rounded-full border border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.9)] px-3 text-xs font-semibold text-[#405574] transition hover:border-[rgba(83,103,139,0.45)] hover:bg-[rgba(222,232,249,0.96)] disabled:opacity-50"
+							disabled={isDocumentActing(participantCandidate)}
+							onClick={() => onCreateParticipantCandidate(participantCandidate)}
+							type="button"
+						>
+							{isDocumentActing(participantCandidate)
+								? "Creating"
+								: "Add person"}
+						</button>
+					) : null}
+					{splitCandidate ? (
+						<button
+							className="min-h-9 rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.82)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.94)] disabled:opacity-50"
+							disabled={
+								splitBlocked ||
+								splitTargetExpenseId == null ||
+								isDocumentActing(splitCandidate)
+							}
+							onClick={() =>
+								onApplySplitCandidate(splitCandidate, splitTargetExpenseId)
+							}
+							type="button"
+						>
+							{splitBlocked
+								? "Add people first"
+								: isDocumentActing(splitCandidate)
+									? "Applying"
+									: "Apply split"}
+						</button>
+					) : null}
+					{recurringCandidate ? (
+						<button
+							className="min-h-9 rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.82)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.94)] disabled:opacity-50"
+							disabled={isDocumentActing(recurringCandidate)}
+							onClick={() => onCreateRecurringCandidate(recurringCandidate)}
+							type="button"
+						>
+							{isDocumentActing(recurringCandidate)
+								? "Creating"
+								: "Create recurring"}
+						</button>
+					) : null}
+					{reviewCandidate ? (
+						<button
+							className="min-h-9 rounded-full border border-[rgba(78,92,72,0.26)] bg-white/88 px-3 text-xs font-semibold text-[#495944] transition hover:border-[rgba(78,92,72,0.42)] hover:bg-[rgba(232,239,225,0.96)] disabled:opacity-50"
+							disabled={isDocumentActing(reviewCandidate)}
+							onClick={() => onConfirmDocumentCandidate(reviewCandidate)}
+							type="button"
+						>
+							{isDocumentActing(reviewCandidate) ? "Saving" : "Mark reviewed"}
+						</button>
+					) : null}
+				</div>
+			</div>
+		</div>
 	);
 };
 
