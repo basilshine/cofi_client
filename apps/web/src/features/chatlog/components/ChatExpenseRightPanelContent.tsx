@@ -3,45 +3,14 @@ import { useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { openGlobalComposerIntent } from "../../../app/layout/workspaceSpaces/globalComposerIntent";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
+import { EntityMicro } from "../../../shared/lib/entityPresentation";
+import {
+	expenseStatusTone,
+	toTransactionExpenseEntity,
+} from "../../../shared/lib/expensePresentation";
 import type { ExpenseThreadController } from "../hooks/useExpenseThreadState";
 import { ExpenseThreadInlinePanel } from "./ExpenseThreadInlinePanel";
 import type { ParseTestSnippet } from "./ParseExpenseComposer";
-
-const listHeading = (tx: Transaction): string => {
-	const t = (tx.title ?? "").trim();
-	const generic = !t || t.toLowerCase() === "expense";
-	const firstLineName = (tx.items ?? [])
-		.map((it) => (it.name ?? "").trim())
-		.find((n) => n.length > 0);
-	if (!generic) return t;
-	if (firstLineName) {
-		return firstLineName.length > 72
-			? `${firstLineName.slice(0, 69)}…`
-			: firstLineName;
-	}
-	const d = (tx.description ?? "").trim();
-	if (d) {
-		const line = d.split(/\r?\n/).find((l) => l.trim().length > 0) ?? d;
-		const one = line.trim();
-		return one.length > 72 ? `${one.slice(0, 69)}…` : one;
-	}
-	return `Expense #${String(tx.id)}`;
-};
-
-const statusTone = (raw?: string): string => {
-	const s = (raw ?? "").toLowerCase();
-	if (s === "draft") return "draft";
-	if (s === "approved") return "approved";
-	if (s === "cancelled" || s === "canceled") return "cancelled";
-	if (
-		s.includes("review") ||
-		s.includes("question") ||
-		(s.includes("pending") && !s.includes("draft"))
-	) {
-		return "needs_review";
-	}
-	return "other";
-};
 
 type Props = {
 	spaceId: string | number;
@@ -102,13 +71,13 @@ export const ChatExpenseRightPanelContent = ({
 		let needsReview = 0;
 		let approved = 0;
 		for (const tx of list) {
-			const tone = statusTone(tx.status);
+			const tone = expenseStatusTone(tx.status);
 			if (tone === "draft") draft += 1;
 			else if (tone === "needs_review") needsReview += 1;
 			else if (tone === "approved") approved += 1;
 		}
 		const approvedRecent = list
-			.filter((tx) => statusTone(tx.status) === "approved")
+			.filter((tx) => expenseStatusTone(tx.status) === "approved")
 			.slice()
 			.sort((a, b) => {
 				const ta = a.created_at ? Date.parse(a.created_at) : 0;
@@ -227,22 +196,40 @@ export const ChatExpenseRightPanelContent = ({
 									Recently approved
 								</h4>
 								<ul className="mt-2 space-y-2">
-									{stats.approvedRecent.map((tx) => (
-										<li key={`ap-${String(tx.id)}`}>
-											<button
-												className="flex w-full items-center justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left text-sm transition hover:border-[rgba(120,100,80,0.15)] hover:bg-white/80"
-												onClick={() => onSelectExpense(tx.id)}
-												type="button"
-											>
-												<span className="min-w-0 truncate font-medium text-foreground">
-													{listHeading(tx)}
-												</span>
-												<span className="shrink-0 tabular-nums text-muted-foreground">
-													{formatMoney(tx.total)}
-												</span>
-											</button>
-										</li>
-									))}
+									{stats.approvedRecent.map((tx) => {
+										const entity = toTransactionExpenseEntity(tx, {
+											amountLabel: formatMoney(tx.total),
+										});
+										return (
+											<li key={`ap-${String(tx.id)}`}>
+												<button
+													className="flex w-full items-start justify-between gap-2 rounded-lg border border-transparent px-2 py-1.5 text-left text-sm transition hover:border-[rgba(120,100,80,0.15)] hover:bg-white/80"
+													onClick={() => onSelectExpense(tx.id)}
+													type="button"
+												>
+													<span className="min-w-0">
+														<EntityMicro
+															entity={{
+																label: entity.label,
+																visualKey: entity.visualKey,
+															}}
+														/>
+														<span className="mt-1 block truncate font-medium text-foreground">
+															{entity.title}
+														</span>
+														{entity.subtitle ? (
+															<span className="mt-0.5 block truncate text-xs text-muted-foreground">
+																{entity.subtitle}
+															</span>
+														) : null}
+													</span>
+													<span className="shrink-0 pt-1 tabular-nums text-muted-foreground">
+														{formatMoney(tx.total)}
+													</span>
+												</button>
+											</li>
+										);
+									})}
 								</ul>
 							</div>
 						) : null}
