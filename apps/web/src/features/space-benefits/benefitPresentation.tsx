@@ -1,4 +1,6 @@
 import type { PromoCode } from "@cofi/api";
+import { Gift, Tag } from "lucide-react";
+import type { ReactNode } from "react";
 
 export type BenefitStatus =
 	| "active"
@@ -156,6 +158,106 @@ export const toPromoBenefit = (promo: PromoCode): PromoBenefit => {
 		raw: promo,
 	};
 };
+
+export const PromoBenefitMini = ({ promo }: { promo: PromoBenefit }) => (
+	<div className="flex min-w-0 items-center gap-3 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/64 px-3 py-2 shadow-sm">
+		<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(237,247,239,0.9)] text-[#405f44] shadow-[inset_0_0_0_1px_rgba(91,116,87,0.12)]">
+			<Gift className="h-4 w-4" size={16} />
+		</span>
+		<div className="min-w-0 flex-1">
+			<div className="flex min-w-0 items-center gap-2">
+				<p className="truncate font-mono text-sm font-bold tracking-[0.06em] text-foreground">
+					{promo.code}
+				</p>
+				<span
+					className={[
+						"shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+						statusClass(promo.status),
+					].join(" ")}
+				>
+					{statusLabel(promo.status)}
+				</span>
+			</div>
+			<p className="mt-0.5 truncate text-xs text-muted-foreground">
+				{promo.merchant} · {promo.validUntil}
+			</p>
+		</div>
+	</div>
+);
+
+export const PromoBenefitListItem = ({
+	promo,
+	trailing,
+}: {
+	promo: PromoBenefit;
+	trailing?: ReactNode;
+}) => (
+	<li className="flex min-w-0 items-center gap-3 rounded-xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.74)] px-3 py-3 shadow-sm transition hover:border-[rgba(140,115,85,0.28)] hover:bg-[rgba(255,252,246,0.94)]">
+		<span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(237,247,239,0.9)] text-[#405f44] shadow-[inset_0_0_0_1px_rgba(91,116,87,0.12)]">
+			<Tag className="h-5 w-5" size={20} />
+		</span>
+		<div className="min-w-0 flex-1">
+			<div className="flex min-w-0 flex-wrap items-center gap-2">
+				<h3 className="truncate text-sm font-semibold text-foreground">
+					{promo.title}
+				</h3>
+				<span
+					className={[
+						"shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+						statusClass(promo.status),
+					].join(" ")}
+				>
+					{statusLabel(promo.status)}
+				</span>
+			</div>
+			<p className="mt-1 truncate text-xs text-muted-foreground">
+				{promo.code} · {promo.discountLabel} · {promo.validUntil}
+			</p>
+		</div>
+		{trailing ? <div className="shrink-0">{trailing}</div> : null}
+	</li>
+);
+
+export const PromoBenefitDetailHeader = ({
+	promo,
+}: {
+	promo: PromoBenefit;
+}) => (
+	<div className="flex flex-wrap items-start gap-4 rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.8)] p-4 shadow-sm">
+		<span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(237,247,239,0.94)] text-[#405f44] shadow-[inset_0_0_0_1px_rgba(91,116,87,0.14)]">
+			<Gift className="h-6 w-6" size={24} />
+		</span>
+		<div className="min-w-0 flex-1">
+			<div className="flex flex-wrap items-center gap-2">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+					Promo
+				</p>
+				<span
+					className={[
+						"rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+						statusClass(promo.status),
+					].join(" ")}
+				>
+					{statusLabel(promo.status)}
+				</span>
+			</div>
+			<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
+				{promo.title}
+			</h2>
+			<p className="mt-1 text-sm text-muted-foreground">
+				{promo.merchant} · redeem at {promo.redeemAt}
+			</p>
+		</div>
+		<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/72 px-3 py-2 text-right">
+			<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+				Code
+			</p>
+			<p className="mt-1 font-mono text-lg font-bold tracking-[0.08em] text-foreground">
+				{promo.code}
+			</p>
+		</div>
+	</div>
+);
 
 export const PromoBenefitCard = ({
 	promo,

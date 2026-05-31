@@ -11,6 +11,7 @@ import {
 	LoyaltyBenefitCard,
 	type PromoBenefit,
 	PromoBenefitCard,
+	PromoBenefitMini,
 	formatBenefitSourceLabel,
 	loyaltyBenefits,
 	toPromoBenefit,
@@ -444,6 +445,28 @@ export const SpaceBenefitsPage = () => {
 					</div>
 				</dl>
 			</section>
+			{expiringPromos.length ? (
+				<section className="rounded-2xl border border-[rgba(200,160,95,0.22)] bg-[rgba(255,248,235,0.72)] p-5 shadow-sm">
+					<div className="flex items-start justify-between gap-3">
+						<div>
+							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
+								Expiring soon
+							</p>
+							<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
+								Use these first
+							</h2>
+						</div>
+						<span className="rounded-full border border-[rgba(200,130,55,0.28)] bg-[rgba(255,236,200,0.56)] px-2 py-1 text-xs font-semibold text-[#6b4510]">
+							{expiringPromos.length}
+						</span>
+					</div>
+					<div className="mt-4 space-y-2">
+						{expiringPromos.slice(0, 3).map((promo) => (
+							<PromoBenefitMini key={promo.id} promo={promo} />
+						))}
+					</div>
+				</section>
+			) : null}
 		</div>
 	);
 
