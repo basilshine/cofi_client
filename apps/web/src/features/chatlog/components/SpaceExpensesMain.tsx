@@ -3,36 +3,18 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
+import { EntityMicro } from "../../../shared/lib/entityPresentation";
 import { buildExpenseDetailHref } from "../../../shared/lib/expenseLinks";
-
-const listHeading = (tx: Transaction): string => {
-	const t = (tx.title ?? "").trim();
-	const generic = !t || t.toLowerCase() === "expense";
-	const firstLineName = (tx.items ?? [])
-		.map((it) => (it.name ?? "").trim())
-		.find((n) => n.length > 0);
-	if (!generic) return t;
-	if (firstLineName) {
-		return firstLineName.length > 72
-			? `${firstLineName.slice(0, 69)}…`
-			: firstLineName;
-	}
-	const d = (tx.description ?? "").trim();
-	if (d) {
-		const line = d.split(/\r?\n/).find((l) => l.trim().length > 0) ?? d;
-		const one = line.trim();
-		return one.length > 72 ? `${one.slice(0, 69)}…` : one;
-	}
-	return `Expense #${String(tx.id)}`;
-};
-
-const displayMerchant = (tx: Transaction): string => {
-	const v = tx.vendor_name?.trim();
-	if (v) return v;
-	const p = tx.payee_text?.trim();
-	if (p) return p;
-	return listHeading(tx);
-};
+import {
+	type ExpenseSourceKind,
+	expenseListHeading,
+	expenseSourceKind,
+	expenseSourceLabel,
+	expenseStatusLabel,
+	expenseStatusPillClass,
+	expenseStatusTone,
+	toTransactionExpenseEntity,
+} from "../../../shared/lib/expensePresentation";
 
 const normalize = (s: string) => s.trim().toLowerCase();
 
@@ -49,76 +31,6 @@ const collectItemTags = (tx: Transaction): string[] => {
 
 const expenseTagPillClass =
 	"inline-flex max-w-[9rem] truncate rounded-full border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.9)] px-2.5 py-0.5 text-xs font-medium text-foreground/80";
-
-type StatusTone = "draft" | "approved" | "cancelled" | "needs_review" | "other";
-
-const statusTone = (raw?: string): StatusTone => {
-	const s = (raw ?? "").toLowerCase();
-	if (s === "approved") return "approved";
-	if (s === "cancelled" || s === "canceled") return "cancelled";
-	if (s === "draft") return "draft";
-	if (
-		s.includes("review") ||
-		s.includes("question") ||
-		(s.includes("pending") && !s.includes("draft"))
-	) {
-		return "needs_review";
-	}
-	return "other";
-};
-
-const expenseStatusPillClass = (statusRaw?: string) => {
-	const tone = statusTone(statusRaw);
-	if (tone === "approved") {
-		return "inline-flex items-center rounded-full border border-[rgba(95,130,102,0.35)] bg-[rgba(120,154,124,0.14)] px-2.5 py-1 text-xs font-semibold text-[#2d4a32]";
-	}
-	if (tone === "draft") {
-		return "inline-flex items-center rounded-full border border-[rgba(200,155,80,0.4)] bg-[rgba(255,236,200,0.55)] px-2.5 py-1 text-xs font-semibold text-[#6b4510]";
-	}
-	if (tone === "cancelled") {
-		return "inline-flex items-center rounded-full border border-[rgba(160,90,90,0.28)] bg-[rgba(180,100,100,0.1)] px-2.5 py-1 text-xs font-semibold text-[rgba(110,55,55,0.95)]";
-	}
-	if (tone === "needs_review") {
-		return "inline-flex items-center rounded-full border border-[rgba(210,120,45,0.55)] bg-[rgba(255,210,150,0.45)] px-2.5 py-1 text-xs font-bold text-[#5a3000]";
-	}
-	return "inline-flex items-center rounded-full border border-border/60 bg-muted/50 px-2.5 py-1 text-xs font-semibold text-muted-foreground";
-};
-
-const statusLabelPretty = (raw?: string): string => {
-	const s = (raw ?? "").trim();
-	if (!s) return "Unknown";
-	return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-};
-
-type SourceKind = "receipt" | "manual" | "recurring" | "voice";
-
-const sourceKind = (tx: Transaction): SourceKind => {
-	if (tx.recurring_id != null && tx.recurring_id > 0) return "recurring";
-	const blob = `${tx.title ?? ""} ${tx.description ?? ""}`.toLowerCase();
-	if (
-		blob.includes("voice") ||
-		blob.includes("transcript") ||
-		blob.includes("audio")
-	) {
-		return "voice";
-	}
-	if (
-		blob.includes("receipt") ||
-		blob.includes("parsed") ||
-		blob.includes("scan")
-	) {
-		return "receipt";
-	}
-	return "manual";
-};
-
-const sourceContextLine = (tx: Transaction): string => {
-	const kind = sourceKind(tx);
-	if (kind === "recurring") return "Recurring";
-	if (kind === "voice") return "Voice capture";
-	if (kind === "receipt") return "Receipt";
-	return "Manual";
-};
 
 const IconReceiptMini = ({ className }: { className?: string }) => (
 	<svg
@@ -224,7 +136,7 @@ const IconMoreMini = ({ className }: { className?: string }) => (
 const SourceIcon = ({
 	kind,
 	className,
-}: { kind: SourceKind; className?: string }) => {
+}: { kind: ExpenseSourceKind; className?: string }) => {
 	const c = className ?? "h-4 w-4";
 	if (kind === "recurring") return <IconRepeatMini className={c} />;
 	if (kind === "voice") return <IconMicMini className={c} />;
@@ -351,7 +263,7 @@ export const SpaceExpensesMain = ({
 		let cancelled = 0;
 		let needsReview = 0;
 		for (const tx of list) {
-			const tone = statusTone(tx.status);
+			const tone = expenseStatusTone(tx.status);
 			if (tone === "draft") draft += 1;
 			else if (tone === "approved") approved += 1;
 			else if (tone === "cancelled") cancelled += 1;
@@ -380,7 +292,7 @@ export const SpaceExpensesMain = ({
 				if (c !== currencyFilter) return false;
 			}
 			if (statusFilter !== "all") {
-				const tone = statusTone(tx.status);
+				const tone = expenseStatusTone(tx.status);
 				if (statusFilter === "other") {
 					if (tone !== "other") return false;
 				} else if (tone !== statusFilter) {
@@ -407,7 +319,7 @@ export const SpaceExpensesMain = ({
 			}
 			if (qTokens.length) {
 				const hay = [
-					listHeading(tx),
+					expenseListHeading(tx),
 					tx.description ?? "",
 					tx.payee_text ?? "",
 					tx.vendor_name ?? "",
@@ -479,7 +391,7 @@ export const SpaceExpensesMain = ({
 	const handleDeleteExpense = async (tx: Transaction) => {
 		const id = tx.id;
 		if (id == null) return;
-		const heading = listHeading(tx);
+		const heading = expenseListHeading(tx);
 		if (!window.confirm(`Delete "${heading}"? This cannot be undone.`)) {
 			return;
 		}
@@ -800,8 +712,7 @@ export const SpaceExpensesMain = ({
 
 					<ul className="space-y-3">
 						{filteredSorted.map((tx) => {
-							const heading = listHeading(tx);
-							const merchant = displayMerchant(tx);
+							const heading = expenseListHeading(tx);
 							const isSelected =
 								selectedExpenseId != null &&
 								String(selectedExpenseId) === String(tx.id);
@@ -819,14 +730,20 @@ export const SpaceExpensesMain = ({
 								0,
 								itemRows.length - visibleItems.length,
 							);
-							const isDraft = statusTone(tx.status) === "draft";
-							const needsReview = statusTone(tx.status) === "needs_review";
-							const kind = sourceKind(tx);
+							const isDraft = expenseStatusTone(tx.status) === "draft";
+							const needsReview =
+								expenseStatusTone(tx.status) === "needs_review";
+							const kind = expenseSourceKind(tx);
 							const menuOpen = openMenuExpenseId === tx.id;
 							const threadHref =
 								spaceId != null && tx.id != null
 									? buildExpenseDetailHref(spaceId, tx.id)
 									: null;
+							const entity = toTransactionExpenseEntity(tx, {
+								amountLabel: formatMoney(tx.total),
+								href: threadHref ?? undefined,
+								selected: isSelected,
+							});
 
 							return (
 								<li key={`exp-${String(tx.id)}`}>
@@ -865,12 +782,18 @@ export const SpaceExpensesMain = ({
 											<div className="min-w-0 flex-1">
 												<div className="flex flex-wrap items-start justify-between gap-2 gap-y-1">
 													<div className="min-w-0">
+														<EntityMicro
+															entity={{
+																label: entity.label,
+																visualKey: entity.visualKey,
+															}}
+														/>
 														<p className="line-clamp-2 text-base font-semibold leading-snug tracking-tight text-foreground">
-															{merchant}
+															{entity.title}
 														</p>
-														{merchant !== heading ? (
+														{entity.subtitle ? (
 															<p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
-																{heading}
+																{entity.subtitle}
 															</p>
 														) : null}
 														<div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
@@ -881,8 +804,8 @@ export const SpaceExpensesMain = ({
 																</span>
 															) : null}
 															<span className="text-foreground/70">
-																{sourceContextLine(tx)} ·{" "}
-																{statusLabelPretty(tx.status)}
+																{expenseSourceLabel(tx)} ·{" "}
+																{expenseStatusLabel(tx.status)}
 															</span>
 														</div>
 													</div>
@@ -894,7 +817,7 @@ export const SpaceExpensesMain = ({
 															<span
 																className={expenseStatusPillClass(tx.status)}
 															>
-																{statusLabelPretty(tx.status)}
+																{entity.status}
 															</span>
 														) : null}
 													</div>
