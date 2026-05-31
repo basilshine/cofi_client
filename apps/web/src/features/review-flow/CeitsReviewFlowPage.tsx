@@ -1,6 +1,7 @@
 import type {
 	BenefitCandidate,
 	DashboardExpenseThreadApprovalItem,
+	DashboardPendingDraft,
 	DashboardReviewQueueItem,
 	DocumentCandidate,
 	ExpenseDetail,
@@ -62,6 +63,9 @@ type ReviewItem = {
 	splits: ExpenseSplitRow[];
 	splitMethod: "equal" | "custom" | "manual";
 	isDraftLike: boolean;
+	detailsLoaded: boolean;
+	detailsLoading?: boolean;
+	detailError?: string | null;
 };
 
 const documentCandidateLabel = (type: string): string => {
@@ -614,6 +618,13 @@ const splitMethodFromRows = (
 		: "custom";
 };
 
+const tagName = (tag: { name?: string } | string): string | null => {
+	if (typeof tag === "string") return tag.trim() || null;
+	return tag.name?.trim() || null;
+};
+
+const isString = (value: string | null): value is string => Boolean(value);
+
 const packetSectionFromParam = (
 	value: string | null,
 ): PacketSectionFilterKey | null => {
@@ -714,10 +725,11 @@ export const CeitsReviewFlowPage = () => {
 						.map((t) => [Number(t.id), t])
 						.filter((e): e is [number, Transaction] => Number.isFinite(e[0])),
 				);
-				const draftIds = (dash.pending_drafts ?? [])
+				const draftItems = (dash.pending_drafts ?? [])
 					.filter((d) => Number(d.space_id) === Number(spaceId))
-					.map((d) => Number(d.id))
-					.filter(Number.isFinite);
+					.filter((d): d is DashboardPendingDraft =>
+						Number.isFinite(Number(d.id)),
+					);
 				const approvalItems = (dash.review_queue?.items ?? [])
 					.filter(isThreadApproval)
 					.filter((i) => Number(i.space_id) === Number(spaceId));
@@ -733,60 +745,26 @@ export const CeitsReviewFlowPage = () => {
 					.map((t) => Number(t.id))
 					.filter(Number.isFinite);
 
-				const expenseIds = Array.from(
-					new Set([
-						...draftIds,
-						...approvalItems.map((i) => Number(i.expense_id)),
-						...needsConfirmationIds,
-					]),
-				);
-
-				const [detailSettled, splitSettled] = await Promise.all([
-					Promise.allSettled(
-						expenseIds.map(async (id) => ({
-							id,
-							detail: await apiClient.finances.expenses.get(id),
-						})),
-					),
-					Promise.allSettled(
-						expenseIds.map(async (id) => ({
-							id,
-							splits:
-								(await apiClient.finances.expenses.listSplits(id)).splits ?? [],
-						})),
-					),
-				]);
-
-				const detailMap: Record<number, ExpenseDetail> = {};
-				const splitMap: Record<number, ExpenseSplitRow[]> = {};
-				for (const r of detailSettled)
-					if (r.status === "fulfilled") detailMap[r.value.id] = r.value.detail;
-				for (const r of splitSettled)
-					if (r.status === "fulfilled") splitMap[r.value.id] = r.value.splits;
-
 				const built: ReviewItem[] = [];
 
-				for (const id of draftIds) {
-					const exp = detailMap[id];
+				for (const draft of draftItems) {
+					const id = Number(draft.id);
 					const tr = txById.get(id);
-					if (!exp && !tr) continue;
-					const source = sourceFromExpense(exp, tr);
-					const linePreview = (exp?.items ?? tr?.items ?? [])
-						.slice(0, 3)
-						.map((it) => ({
-							name: it.name,
-							amount: Number(it.amount) || 0,
-						}));
+					const source = sourceFromExpense(undefined, tr);
+					const linePreview = (tr?.items ?? []).slice(0, 3).map((it) => ({
+						name: it.name,
+						amount: Number(it.amount) || 0,
+					}));
 					built.push({
 						id: `draft-${id}`,
 						kind: "draft",
 						expenseId: id,
 						spaceId: Number(spaceId),
-						spaceName: activeSpace?.name ?? "Space",
-						title: humanTitle(exp, tr, "Draft expense"),
-						amount: Number(exp?.amount ?? tr?.total ?? 0),
-						status: (exp?.status ?? tr?.status ?? "draft").toString(),
-						dateLabel: exp?.txn_date ?? tr?.txn_date ?? "—",
+						spaceName: draft.space_name || activeSpace?.name || "Space",
+						title: humanTitle(undefined, tr, draft.label || "Draft expense"),
+						amount: Number(tr?.total ?? draft.total ?? 0),
+						status: (tr?.status ?? "draft").toString(),
+						dateLabel: tr?.txn_date ?? draft.updated_at ?? "—",
 						source,
 						confidenceLabel: source === "manual" ? "Medium" : "High",
 						confidenceReason:
@@ -796,22 +774,22 @@ export const CeitsReviewFlowPage = () => {
 						summaryReason:
 							"Approving records this draft and applies split logic.",
 						whoAffected: `People in ${activeSpace?.name ?? "this space"}.`,
-						tags: (exp?.items ?? [])
-							.flatMap((it) => (it.tags ?? []).map((t) => t.name))
-							.filter(Boolean)
+						tags: (tr?.items ?? [])
+							.flatMap((it) => (it.tags ?? []).map(tagName))
+							.filter(isString)
 							.slice(0, 5),
 						linePreview,
-						splits: splitMap[id] ?? [],
-						splitMethod: splitMethodFromRows(splitMap[id] ?? []),
+						splits: [],
+						splitMethod: "manual",
 						isDraftLike: true,
+						detailsLoaded: false,
 					});
 				}
 
 				for (const item of approvalItems) {
 					const id = Number(item.expense_id);
-					const exp = detailMap[id];
 					const tr = txById.get(id);
-					const source = sourceFromExpense(exp, tr);
+					const source = sourceFromExpense(undefined, tr);
 					built.push({
 						id: `approval-${item.thread_id}-${id}`,
 						kind: "split_approval",
@@ -819,67 +797,64 @@ export const CeitsReviewFlowPage = () => {
 						threadId: Number(item.thread_id),
 						spaceId: Number(spaceId),
 						spaceName: item.space_name || activeSpace?.name || "Space",
-						title: humanTitle(exp, tr, item.label || "Split approval"),
-						amount: Number(exp?.amount ?? tr?.total ?? item.total ?? 0),
-						status: exp?.status ?? "pending approval",
-						dateLabel: exp?.txn_date ?? tr?.txn_date ?? "—",
+						title: humanTitle(undefined, tr, item.label || "Split approval"),
+						amount: Number(tr?.total ?? item.total ?? 0),
+						status: tr?.status ?? "pending approval",
+						dateLabel: tr?.txn_date ?? "—",
 						source,
 						confidenceLabel: "High",
 						confidenceReason:
 							"Split participants and amounts are already mapped.",
 						summaryReason: `Confirming this updates balances in ${item.space_name || activeSpace?.name || "this space"}.`,
 						whoAffected: "All split participants in this expense.",
-						tags: (exp?.items ?? [])
-							.flatMap((it) => (it.tags ?? []).map((t) => t.name))
-							.filter(Boolean)
+						tags: (tr?.items ?? [])
+							.flatMap((it) => (it.tags ?? []).map(tagName))
+							.filter(isString)
 							.slice(0, 5),
-						linePreview: (exp?.items ?? tr?.items ?? [])
-							.slice(0, 3)
-							.map((it) => ({
-								name: it.name,
-								amount: Number(it.amount) || 0,
-							})),
-						splits: splitMap[id] ?? [],
-						splitMethod: splitMethodFromRows(splitMap[id] ?? []),
+						linePreview: (tr?.items ?? []).slice(0, 3).map((it) => ({
+							name: it.name,
+							amount: Number(it.amount) || 0,
+						})),
+						splits: [],
+						splitMethod: "manual",
 						isDraftLike: false,
+						detailsLoaded: false,
 					});
 				}
 
 				for (const id of needsConfirmationIds) {
 					if (built.some((b) => b.expenseId === id)) continue;
-					const exp = detailMap[id];
 					const tr = txById.get(id);
-					if (!exp && !tr) continue;
-					const source = sourceFromExpense(exp, tr);
+					if (!tr) continue;
+					const source = sourceFromExpense(undefined, tr);
 					built.push({
 						id: `needs-${id}`,
 						kind: "needs_confirmation",
 						expenseId: id,
 						spaceId: Number(spaceId),
 						spaceName: activeSpace?.name ?? "Space",
-						title: humanTitle(exp, tr, "Needs confirmation"),
-						amount: Number(exp?.amount ?? tr?.total ?? 0),
-						status: exp?.status ?? tr?.status ?? "needs confirmation",
-						dateLabel: exp?.txn_date ?? tr?.txn_date ?? "—",
+						title: humanTitle(undefined, tr, "Needs confirmation"),
+						amount: Number(tr.total ?? 0),
+						status: tr.status ?? "needs confirmation",
+						dateLabel: tr.txn_date ?? "—",
 						source,
 						confidenceLabel: "Medium",
 						confidenceReason: "This item has unresolved confirmation signals.",
 						summaryReason:
 							"Confirming finalizes this decision and clears queue pressure.",
 						whoAffected: `People sharing ${activeSpace?.name ?? "this space"}.`,
-						tags: (exp?.items ?? [])
-							.flatMap((it) => (it.tags ?? []).map((t) => t.name))
-							.filter(Boolean)
+						tags: (tr.items ?? [])
+							.flatMap((it) => (it.tags ?? []).map(tagName))
+							.filter(isString)
 							.slice(0, 5),
-						linePreview: (exp?.items ?? tr?.items ?? [])
-							.slice(0, 3)
-							.map((it) => ({
-								name: it.name,
-								amount: Number(it.amount) || 0,
-							})),
-						splits: splitMap[id] ?? [],
-						splitMethod: splitMethodFromRows(splitMap[id] ?? []),
+						linePreview: (tr.items ?? []).slice(0, 3).map((it) => ({
+							name: it.name,
+							amount: Number(it.amount) || 0,
+						})),
+						splits: [],
+						splitMethod: "manual",
 						isDraftLike: false,
+						detailsLoaded: false,
 					});
 				}
 
@@ -956,6 +931,89 @@ export const CeitsReviewFlowPage = () => {
 			filteredQueue.find((q) => q.id === currentId) ?? filteredQueue[0] ?? null,
 		[filteredQueue, currentId],
 	);
+
+	useEffect(() => {
+		if (!current || current.detailsLoaded || current.detailsLoading) return;
+		let cancelled = false;
+		const currentItemId = current.id;
+		const expenseId = current.expenseId;
+		setQueue((prev) =>
+			prev.map((item) =>
+				item.id === currentItemId
+					? { ...item, detailsLoading: true, detailError: null }
+					: item,
+			),
+		);
+		void (async () => {
+			try {
+				const [detail, splitRes] = await Promise.all([
+					apiClient.finances.expenses.get(expenseId).catch(() => null),
+					apiClient.finances.expenses.listSplits(expenseId).catch(() => null),
+				]);
+				if (cancelled) return;
+				const rows = splitRes?.splits ?? [];
+				setQueue((prev) =>
+					prev.map((item) => {
+						if (item.id !== currentItemId) return item;
+						const detailSource =
+							detail != null ? sourceFromExpense(detail, undefined) : null;
+						const source =
+							detailSource != null && detailSource !== "manual"
+								? detailSource
+								: item.source;
+						const linePreview = (detail?.items ?? item.linePreview)
+							.slice(0, 3)
+							.map((it) => ({
+								name: it.name,
+								amount: Number(it.amount) || 0,
+							}));
+						return {
+							...item,
+							title: humanTitle(detail ?? undefined, undefined, item.title),
+							amount: Number(detail?.amount ?? item.amount),
+							status: (detail?.status ?? item.status).toString(),
+							dateLabel: detail?.txn_date ?? item.dateLabel,
+							source,
+							tags: (detail?.items ?? [])
+								.flatMap((it) => (it.tags ?? []).map(tagName))
+								.filter(isString)
+								.slice(0, 5),
+							linePreview,
+							splits: rows,
+							splitMethod: splitMethodFromRows(rows),
+							detailsLoaded: true,
+							detailsLoading: false,
+							detailError:
+								detail == null || splitRes == null
+									? "Some expense details could not be loaded."
+									: null,
+						};
+					}),
+				);
+			} catch (e) {
+				if (cancelled) return;
+				setQueue((prev) =>
+					prev.map((item) =>
+						item.id === currentItemId
+							? {
+									...item,
+									detailsLoaded: true,
+									detailsLoading: false,
+									detailError:
+										e instanceof Error
+											? e.message
+											: "Failed to load expense details",
+								}
+							: item,
+					),
+				);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [current]);
+
 	const captureCandidates = useMemo(
 		() =>
 			[
@@ -1083,15 +1141,18 @@ export const CeitsReviewFlowPage = () => {
 		return `${Math.round((amount / total) * 100)}%`;
 	};
 	const heroStatusLabel = (item: ReviewItem): string => {
+		if (item.detailsLoading) return "Loading";
 		if (item.isDraftLike) return "Draft";
 		return item.splits.length > 0 ? "Pending" : "Confirmed";
 	};
 	const heroStatusClass = (item: ReviewItem): string =>
-		item.isDraftLike
-			? "border-[rgba(150,128,86,0.35)] bg-[rgba(214,188,142,0.16)] text-[rgba(110,82,40,0.95)]"
-			: item.splits.length > 0
-				? "border-amber-500/35 bg-amber-500/10 text-amber-900"
-				: "border-emerald-500/35 bg-emerald-500/10 text-emerald-800";
+		item.detailsLoading
+			? "border-slate-400/35 bg-slate-400/10 text-slate-700"
+			: item.isDraftLike
+				? "border-[rgba(150,128,86,0.35)] bg-[rgba(214,188,142,0.16)] text-[rgba(110,82,40,0.95)]"
+				: item.splits.length > 0
+					? "border-amber-500/35 bg-amber-500/10 text-amber-900"
+					: "border-emerald-500/35 bg-emerald-500/10 text-emerald-800";
 
 	const moveNext = () => {
 		if (!current) return;
@@ -1198,6 +1259,8 @@ export const CeitsReviewFlowPage = () => {
 									...item,
 									splits: updatedSplits,
 									splitMethod: splitMethodFromRows(updatedSplits),
+									detailsLoaded: true,
+									detailsLoading: false,
 								}
 							: item,
 					),
@@ -1341,6 +1404,8 @@ export const CeitsReviewFlowPage = () => {
 								...q,
 								splits: rows,
 								splitMethod: splitMethodFromRows(rows),
+								detailsLoaded: true,
+								detailsLoading: false,
 							}
 						: q,
 				),
@@ -1497,6 +1562,16 @@ export const CeitsReviewFlowPage = () => {
 												Ceits is confident in this
 											</span>
 										</div>
+										{current.detailsLoading ? (
+											<p className="mt-2 rounded-lg border border-border/60 bg-background/70 px-2.5 py-2 text-xs text-muted-foreground">
+												Loading line items and split details...
+											</p>
+										) : null}
+										{current.detailError ? (
+											<p className="mt-2 rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive">
+												{current.detailError}
+											</p>
+										) : null}
 										<div className="mt-3 rounded-xl border border-[rgba(120,100,80,0.14)] bg-[linear-gradient(180deg,#fffdf9_0%,#fbf8f2_100%)] p-3">
 											<div className="flex items-center justify-between border-b border-dashed border-[rgba(120,100,80,0.18)] pb-2 text-sm">
 												<span className="font-medium text-foreground/80">
@@ -1594,15 +1669,19 @@ export const CeitsReviewFlowPage = () => {
 												) : (
 													<div className="rounded-xl border border-dashed border-border/60 bg-background/65 px-3 py-3">
 														<p className="text-sm text-foreground/85">
-															No split defined yet
+															{current.detailsLoading
+																? "Loading split details"
+																: "No split defined yet"}
 														</p>
 														<p className="mt-1 text-xs text-muted-foreground">
-															Let’s decide how to split this.
+															{current.detailsLoading
+																? "Ceits is checking whether this expense already has participants."
+																: "Let’s decide how to split this."}
 														</p>
 														<div className="mt-3 flex flex-wrap gap-2">
 															<button
 																className="inline-flex h-8 items-center rounded-lg border border-border bg-white px-3 text-xs font-medium hover:bg-accent disabled:opacity-50"
-																disabled={acting}
+																disabled={acting || current.detailsLoading}
 																onClick={() => void handleSplitEqually()}
 																type="button"
 															>
