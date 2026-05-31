@@ -1,3 +1,22 @@
+import {
+	CheckCircle2,
+	Clock3,
+	FileText,
+	Gift,
+	Image,
+	ListChecks,
+	type LucideIcon,
+	MessageSquareText,
+	Mic,
+	ReceiptText,
+	Repeat,
+	ScanSearch,
+	Shield,
+	Sparkles,
+	Split,
+	UserPlus,
+	WalletCards,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
@@ -117,6 +136,245 @@ const candidateOnlyStatus = (
 	return "Ceits parsed the input, but needs clearer expense details before creating a draft.";
 };
 
+type ComposerFlowStatus = "done" | "current" | "pending" | "blocked";
+
+type ComposerFlowItem = {
+	key: string;
+	title: string;
+	detail: string;
+	status: ComposerFlowStatus;
+	icon: LucideIcon;
+};
+
+const composerStatusClass = (status: ComposerFlowStatus): string => {
+	if (status === "done") {
+		return "border-[rgba(72,112,76,0.22)] bg-[rgba(236,247,238,0.86)] text-[#355a3c]";
+	}
+	if (status === "current") {
+		return "border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.78)] text-[#73501b]";
+	}
+	if (status === "blocked") {
+		return "border-[rgba(160,70,58,0.28)] bg-[rgba(255,232,228,0.78)] text-[#7a3026]";
+	}
+	return "border-[rgba(120,100,80,0.16)] bg-white/64 text-muted-foreground";
+};
+
+const inputKindLabel = (bundle: GlobalComposerCandidateBundle): string => {
+	if (bundle.inputKind === "voice") return "Voice captured";
+	if (bundle.inputKind === "photo") return "Image uploaded";
+	if (bundle.inputKind === "ask") return "Question captured";
+	if (bundle.inputKind === "message") return "Message captured";
+	return "Text captured";
+};
+
+const inputKindIcon = (bundle: GlobalComposerCandidateBundle): LucideIcon => {
+	if (bundle.inputKind === "voice") return Mic;
+	if (bundle.inputKind === "photo") return Image;
+	return MessageSquareText;
+};
+
+const candidateSummaryText = (
+	bundle: GlobalComposerCandidateBundle,
+): string => {
+	if (!bundle.candidates.length) {
+		return bundle.capabilityNotice ? "Plan gated" : "Needs details";
+	}
+	return bundle.candidates
+		.slice(0, 3)
+		.map((candidate) =>
+			candidate.count > 1
+				? `${candidate.count} ${candidate.label}`
+				: candidate.label,
+		)
+		.join(", ");
+};
+
+const buildComposerFlowItems = (
+	bundle: GlobalComposerCandidateBundle,
+): ComposerFlowItem[] => [
+	{
+		key: "capture",
+		title: "Capture",
+		detail: inputKindLabel(bundle),
+		status: "done",
+		icon: inputKindIcon(bundle),
+	},
+	{
+		key: "parse",
+		title: "Parse",
+		detail: bundle.modelProfile
+			? `${bundle.modelProfile} model`
+			: "Structure detected",
+		status: "done",
+		icon: ScanSearch,
+	},
+	{
+		key: "candidates",
+		title: "Candidates",
+		detail: candidateSummaryText(bundle),
+		status:
+			bundle.candidates.length || bundle.capabilityNotice ? "done" : "blocked",
+		icon: ListChecks,
+	},
+	{
+		key: "review",
+		title: "Review",
+		detail: bundle.requiresReview ? "Needs decision" : "Ready to save",
+		status: bundle.requiresReview ? "current" : "done",
+		icon: Clock3,
+	},
+	{
+		key: "finish",
+		title: "Save",
+		detail: "After review",
+		status: bundle.requiresReview ? "pending" : "current",
+		icon: CheckCircle2,
+	},
+];
+
+const candidateIcon = (
+	kind: GlobalComposerCandidateBundle["candidates"][number]["kind"],
+): LucideIcon => {
+	if (kind === "expense") return ReceiptText;
+	if (kind === "expense_item") return ListChecks;
+	if (kind === "promo") return Gift;
+	if (kind === "loyalty") return WalletCards;
+	if (kind === "split") return Split;
+	if (kind === "participant") return UserPlus;
+	if (kind === "recurring" || kind === "membership" || kind === "reminder") {
+		return Repeat;
+	}
+	if (kind === "privacy") return Shield;
+	if (kind === "payment_proof") return ReceiptText;
+	if (kind === "merge" || kind === "supporting_document") return FileText;
+	return Sparkles;
+};
+
+const candidateActionText = (
+	kind: GlobalComposerCandidateBundle["candidates"][number]["kind"],
+	count: number,
+	label: string,
+): string => {
+	const prefix = count > 1 ? `${count} ${label}` : label;
+	if (kind === "expense") return "Expense draft candidate created";
+	if (kind === "expense_item") return `${prefix} extracted from the capture`;
+	if (kind === "promo") return "Promo candidate separated from the expense";
+	if (kind === "loyalty") return "Loyalty or bonus signal detected";
+	if (kind === "split") return "Split proposal prepared for review";
+	if (kind === "participant")
+		return "Participant placeholder candidate created";
+	if (kind === "recurring") return "Recurring rule candidate prepared";
+	if (kind === "membership") return "Membership period candidate detected";
+	if (kind === "reminder") return "Reminder candidate detected";
+	if (kind === "payment_proof")
+		return "Payment proof detected as a document signal";
+	if (kind === "privacy") return "Privacy signal detected";
+	if (kind === "merge") return "Possible duplicate or merge signal detected";
+	if (kind === "supporting_document")
+		return "Supporting document signal detected";
+	if (kind === "space_suggestion") return "Target space suggestion detected";
+	return `${prefix} detected`;
+};
+
+const ComposerFlowInfographic = ({
+	bundle,
+	reviewHref,
+}: {
+	bundle: GlobalComposerCandidateBundle;
+	reviewHref: string;
+}) => {
+	const flowItems = buildComposerFlowItems(bundle);
+	const actionItems = [
+		{
+			key: "source",
+			label: bundle.sourceDocumentId
+				? `Source document #${bundle.sourceDocumentId} saved`
+				: "Capture source received",
+			icon: FileText,
+		},
+		{
+			key: "intent",
+			label: `Intent: ${bundle.intent.replace(/_/g, " ")}`,
+			icon: Sparkles,
+		},
+		...bundle.candidates.map((candidate) => ({
+			key: candidate.kind,
+			label: candidateActionText(
+				candidate.kind,
+				candidate.count,
+				candidate.label,
+			),
+			icon: candidateIcon(candidate.kind),
+		})),
+	];
+
+	return (
+		<div className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.72)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+			<div className="grid gap-2 sm:grid-cols-5">
+				{flowItems.map((item, index) => {
+					const Icon = item.icon;
+					return (
+						<div className="relative min-w-0" key={item.key}>
+							{index > 0 ? (
+								<span className="absolute -left-1.5 top-5 hidden h-px w-3 bg-[rgba(120,100,80,0.16)] sm:block" />
+							) : null}
+							<div
+								className={[
+									"min-h-[5.4rem] rounded-xl border px-2.5 py-2",
+									composerStatusClass(item.status),
+								].join(" ")}
+							>
+								<div className="flex items-center justify-between gap-2">
+									<Icon className="h-4 w-4 shrink-0" size={16} />
+									<span className="rounded-full bg-white/62 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
+										{index + 1}
+									</span>
+								</div>
+								<p className="mt-2 truncate text-xs font-bold">{item.title}</p>
+								<p className="mt-0.5 line-clamp-2 text-[11px] leading-4 opacity-78">
+									{item.detail}
+								</p>
+							</div>
+						</div>
+					);
+				})}
+			</div>
+			<div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+				<div className="min-w-0">
+					<p className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+						Action history
+					</p>
+					<div className="mt-1 flex min-w-0 gap-1.5 overflow-x-auto pb-1">
+						{actionItems.slice(0, 8).map((item) => {
+							const Icon = item.icon;
+							return (
+								<span
+									className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full bg-white/72 px-2.5 text-[11px] font-semibold text-foreground/76 shadow-[0_0_0_1px_rgba(87,70,49,0.08)]"
+									key={item.key}
+								>
+									<Icon className="h-3.5 w-3.5 shrink-0" size={14} />
+									{item.label}
+								</span>
+							);
+						})}
+						{actionItems.length > 8 ? (
+							<span className="inline-flex min-h-8 shrink-0 items-center rounded-full border border-dashed border-border bg-transparent px-2.5 text-[11px] font-semibold text-muted-foreground">
+								+{actionItems.length - 8} more
+							</span>
+						) : null}
+					</div>
+				</div>
+				<Link
+					className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[rgba(68,58,42,0.94)] px-4 text-xs font-bold text-[#fffaf0] shadow-[0_12px_26px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.98)] hover:shadow-[0_14px_30px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					to={reviewHref}
+				>
+					Review parsed result
+				</Link>
+			</div>
+		</div>
+	);
+};
+
 const CandidateBundlePanel = ({
 	bundle,
 	expensesHref,
@@ -156,7 +414,7 @@ const CandidateBundlePanel = ({
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div className="min-w-0">
 					<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-						Parsed result
+						Parsed result status
 					</p>
 					{visibleCandidates.length ? (
 						<div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
@@ -195,27 +453,36 @@ const CandidateBundlePanel = ({
 					) : null}
 				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+					<Link
+						className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-semibold text-[#fffaf0] shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						to={reviewHref}
+					>
+						Review parsed result
+					</Link>
 					{hasExpense ? (
 						<Link className={reviewActionClass} to={expensesHref}>
-							Review expenses
+							Expenses
 						</Link>
 					) : null}
 					{hasBenefits ? (
 						<Link className={reviewActionClass} to={benefitsHref}>
-							Review benefits
+							Benefits
 						</Link>
 					) : null}
 					{hasSplits ? (
 						<Link className={reviewActionClass} to={splitsHref}>
-							Review splits
+							Splits
 						</Link>
 					) : null}
 					{hasReviewFlowSignals ? (
 						<Link className={reviewActionClass} to={reviewHref}>
-							Review flow
+							Signals
 						</Link>
 					) : null}
 				</div>
+			</div>
+			<div className="mt-2">
+				<ComposerFlowInfographic bundle={bundle} reviewHref={reviewHref} />
 			</div>
 		</div>
 	);
