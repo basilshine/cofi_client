@@ -1,2 +1,6 @@
 #!/bin/sh
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/precommit-client.ps1
+if command -v pwsh.exe >/dev/null 2>&1; then
+  pwsh.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/precommit-client.ps1
+else
+  powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File ./scripts/precommit-client.ps1
+fi
