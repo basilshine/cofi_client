@@ -13,7 +13,10 @@ import {
 	EntityListItem,
 	type EntityViewModel,
 } from "../../../shared/lib/entityPresentation";
-import { capturePacketEntityVisual } from "../../../shared/lib/entityVisual";
+import {
+	type EntityVisualKey,
+	capturePacketEntityVisual,
+} from "../../../shared/lib/entityVisual";
 
 type ChatCaptureReviewEventsProps = {
 	spaceId: string | number;
@@ -81,6 +84,38 @@ const packetHref = (
 	sourceDocumentId: number,
 ): string =>
 	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`;
+
+const reviewProcessSteps = (
+	totalCandidateCount: number,
+): Array<{
+	detail: string;
+	label: string;
+	visualKey: EntityVisualKey;
+}> => [
+	{
+		detail: "Input received",
+		label: "Submitted",
+		visualKey: "document",
+	},
+	{
+		detail: "Source understood",
+		label: "Parsed",
+		visualKey: "reviewPacket",
+	},
+	{
+		detail:
+			totalCandidateCount > 0
+				? `${totalCandidateCount} found`
+				: "Grouped for review",
+		label: "Candidates",
+		visualKey: "benefit",
+	},
+	{
+		detail: "You decide",
+		label: "Review",
+		visualKey: "expense",
+	},
+];
 
 const packetEntity = (
 	packet: CapturePacketSummary<ReviewCandidate>,
@@ -173,6 +208,7 @@ export const ChatCaptureReviewEvents = ({
 		: `/console/review?spaceId=${encodeURIComponent(String(spaceId))}`;
 	const primaryActionLabel =
 		packets.length > 1 ? "Review first" : "Open review";
+	const processSteps = reviewProcessSteps(totalCandidateCount);
 
 	if (packets.length === 0 && !error) return null;
 
@@ -230,20 +266,27 @@ export const ChatCaptureReviewEvents = ({
 			</div>
 			<div className="grid max-h-0 overflow-hidden border-t border-transparent opacity-0 transition-[max-height,opacity,border-color] duration-200 group-focus-within:max-h-80 group-focus-within:border-[rgba(181,131,52,0.18)] group-focus-within:opacity-100 group-hover:max-h-80 group-hover:border-[rgba(181,131,52,0.18)] group-hover:opacity-100">
 				<div className="space-y-2 px-3 pb-3 pt-2">
-					<div className="grid gap-2 rounded-xl border border-[rgba(172,124,35,0.14)] bg-white/56 p-2 text-xs text-muted-foreground sm:grid-cols-3">
-						<div className="flex items-center gap-2">
-							<EntityIcon size="xs" visualKey="document" />
-							<span>Parsed source</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<EntityIcon size="xs" visualKey="reviewPacket" />
-							<span>{totalCandidateCount} candidates found</span>
-						</div>
-						<div className="flex items-center gap-2">
-							<EntityIcon size="xs" visualKey="expense" />
-							<span>Review decides what is saved</span>
-						</div>
-					</div>
+					<ol className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+						{processSteps.map((step, index) => (
+							<li
+								className="relative flex items-center gap-2 rounded-xl border border-[rgba(172,124,35,0.12)] bg-white/48 px-2 py-1.5"
+								key={step.label}
+							>
+								<EntityIcon size="xs" visualKey={step.visualKey} />
+								<span className="min-w-0">
+									<span className="block truncate font-bold text-foreground">
+										{step.label}
+									</span>
+									<span className="block truncate text-[11px]">
+										{step.detail}
+									</span>
+								</span>
+								<span className="ml-auto hidden text-[10px] font-bold tabular-nums text-[#8b651f] lg:inline">
+									{index + 1}
+								</span>
+							</li>
+						))}
+					</ol>
 					<p className="text-xs leading-5 text-muted-foreground">
 						This is system work from captures, not a message from a person. Open
 						review to confirm expenses, promos, people, splits, or document
