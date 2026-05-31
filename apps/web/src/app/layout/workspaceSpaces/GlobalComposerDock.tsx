@@ -2,21 +2,14 @@ import {
 	CheckCircle2,
 	Clock3,
 	FileText,
-	Gift,
 	Image,
 	ListChecks,
 	type LucideIcon,
 	MessageSquareText,
 	Mic,
 	Plus,
-	ReceiptText,
-	Repeat,
 	ScanSearch,
-	Shield,
 	Sparkles,
-	Split,
-	UserPlus,
-	WalletCards,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -27,6 +20,7 @@ import {
 	SmartTextareaComposer,
 	type SmartTextareaComposerHandle,
 } from "../../../features/chatlog/components/SmartTextareaComposer";
+import { composerCandidateVisual } from "../../../shared/lib/entityVisual";
 import {
 	createManualDraftInSpace,
 	parseCaptureIntentText,
@@ -253,21 +247,7 @@ const buildComposerFlowItems = (
 
 const candidateIcon = (
 	kind: GlobalComposerCandidateBundle["candidates"][number]["kind"],
-): LucideIcon => {
-	if (kind === "expense") return ReceiptText;
-	if (kind === "expense_item") return ListChecks;
-	if (kind === "promo") return Gift;
-	if (kind === "loyalty") return WalletCards;
-	if (kind === "split") return Split;
-	if (kind === "participant") return UserPlus;
-	if (kind === "recurring" || kind === "membership" || kind === "reminder") {
-		return Repeat;
-	}
-	if (kind === "privacy") return Shield;
-	if (kind === "payment_proof") return ReceiptText;
-	if (kind === "merge" || kind === "supporting_document") return FileText;
-	return Sparkles;
-};
+): LucideIcon => composerCandidateVisual(kind).icon;
 
 const candidateActionText = (
 	kind: GlobalComposerCandidateBundle["candidates"][number]["kind"],
@@ -403,7 +383,6 @@ type DockReviewSection = {
 	kinds: GlobalComposerCandidateBundle["candidates"][number]["kind"][];
 	href: string;
 	reviewSection: string;
-	icon: LucideIcon;
 };
 
 const candidateCountFor = (
@@ -437,7 +416,6 @@ const DockReviewDrawer = ({
 			kinds: ["expense"],
 			href: expensesHref,
 			reviewSection: "expenses",
-			icon: ReceiptText,
 		},
 		{
 			key: "items",
@@ -448,7 +426,6 @@ const DockReviewDrawer = ({
 			kinds: ["expense_item"],
 			href: expensesHref,
 			reviewSection: "expenses",
-			icon: ListChecks,
 		},
 		{
 			key: "people",
@@ -459,7 +436,6 @@ const DockReviewDrawer = ({
 			kinds: ["participant"],
 			href: reviewHref,
 			reviewSection: "people",
-			icon: UserPlus,
 		},
 		{
 			key: "splits",
@@ -470,7 +446,6 @@ const DockReviewDrawer = ({
 			kinds: ["split"],
 			href: splitsHref,
 			reviewSection: "splits",
-			icon: Split,
 		},
 		{
 			key: "benefits",
@@ -481,7 +456,6 @@ const DockReviewDrawer = ({
 			kinds: ["promo", "loyalty"],
 			href: benefitsHref,
 			reviewSection: "benefits",
-			icon: Gift,
 		},
 		{
 			key: "future",
@@ -492,7 +466,6 @@ const DockReviewDrawer = ({
 			kinds: ["recurring", "membership", "reminder"],
 			href: reviewHref,
 			reviewSection: "future",
-			icon: Repeat,
 		},
 		{
 			key: "documents",
@@ -503,7 +476,6 @@ const DockReviewDrawer = ({
 			kinds: ["payment_proof", "privacy", "merge", "supporting_document"],
 			href: reviewHref,
 			reviewSection: "documents",
-			icon: FileText,
 		},
 	];
 
@@ -536,7 +508,8 @@ const DockReviewDrawer = ({
 				{sections.map((section) => {
 					const count = candidateCountFor(bundle, section.kinds);
 					const hasCandidate = count > 0;
-					const Icon = section.icon;
+					const visual = composerCandidateVisual(section.kinds[0]);
+					const Icon = visual.icon;
 					const sectionHref = hasCandidate
 						? withReviewParams(reviewHref, {
 								section: section.reviewSection,
@@ -558,7 +531,7 @@ const DockReviewDrawer = ({
 									className={[
 										"inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08)]",
 										hasCandidate
-											? "bg-[rgba(218,238,222,0.9)] text-[#355a3c]"
+											? visual.softToneClass
 											: "bg-[rgba(248,245,238,0.9)] text-muted-foreground",
 									].join(" ")}
 								>

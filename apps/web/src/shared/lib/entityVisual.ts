@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
 	FileText,
 	Gift,
+	ListChecks,
 	ReceiptText,
 	Repeat,
 	Shield,
@@ -14,6 +15,7 @@ import type { CapturePacketEntityKey } from "./capturePacketSummary";
 
 export type EntityVisualKey =
 	| "expense"
+	| "expenseItem"
 	| "benefit"
 	| "people"
 	| "split"
@@ -36,6 +38,14 @@ export const entityVisuals: Record<EntityVisualKey, EntityVisual> = {
 		key: "expense",
 		label: "Expenses",
 		icon: ReceiptText,
+		toneClass:
+			"border-[rgba(125,99,58,0.18)] bg-[rgba(255,250,240,0.92)] text-[#6d5331]",
+		softToneClass: "bg-[rgba(255,250,240,0.9)] text-[#6d5331]",
+	},
+	expenseItem: {
+		key: "expenseItem",
+		label: "Items",
+		icon: ListChecks,
 		toneClass:
 			"border-[rgba(125,99,58,0.18)] bg-[rgba(255,250,240,0.92)] text-[#6d5331]",
 		softToneClass: "bg-[rgba(255,250,240,0.9)] text-[#6d5331]",
@@ -142,5 +152,28 @@ export const captureCandidateTypeVisual = (
 	if (candidateType === "privacy_signal_candidate")
 		return entityVisuals.privacy;
 	if (candidateType) return entityVisuals.document;
+	return entityVisuals.unknown;
+};
+
+export const composerCandidateVisual = (
+	kind: string | null | undefined,
+): EntityVisual => {
+	if (kind === "expense") return entityVisuals.expense;
+	if (kind === "expense_item") return entityVisuals.expenseItem;
+	if (kind === "promo") return entityVisuals.benefit;
+	if (kind === "loyalty") return entityVisuals.loyalty;
+	if (kind === "split") return entityVisuals.split;
+	if (kind === "participant") return entityVisuals.people;
+	if (kind === "recurring" || kind === "membership" || kind === "reminder") {
+		return entityVisuals.future;
+	}
+	if (kind === "privacy") return entityVisuals.privacy;
+	if (
+		kind === "payment_proof" ||
+		kind === "merge" ||
+		kind === "supporting_document"
+	) {
+		return entityVisuals.document;
+	}
 	return entityVisuals.unknown;
 };
