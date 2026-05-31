@@ -1,4 +1,5 @@
 import type { Transaction } from "@cofi/api";
+import { Calendar, MoreVertical } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
@@ -37,41 +38,6 @@ const collectItemTags = (tx: Transaction): string[] => {
 
 const expenseTagPillClass =
 	"inline-flex max-w-[9rem] truncate rounded-full border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.9)] px-2.5 py-0.5 text-xs font-medium text-foreground/80";
-
-const IconCalendarMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-	>
-		<title>Date</title>
-		<rect height="16" rx="2" width="18" x="3" y="5" />
-		<path d="M16 3v4M8 3v4M3 10h18" />
-	</svg>
-);
-
-const IconMoreMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="2"
-		viewBox="0 0 24 24"
-	>
-		<title>More</title>
-		<circle cx="12" cy="5" r="1" />
-		<circle cx="12" cy="12" r="1" />
-		<circle cx="12" cy="19" r="1" />
-	</svg>
-);
 
 const sourceVisualKey = (kind: ExpenseSourceKind): EntityVisualKey => {
 	if (kind === "recurring") return "future";
@@ -725,7 +691,10 @@ export const SpaceExpensesMain = ({
 														<div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
 															{tx.txn_date ? (
 																<span className="inline-flex items-center gap-1.5">
-																	<IconCalendarMini className="h-3.5 w-3.5 shrink-0 opacity-80" />
+																	<Calendar
+																		aria-hidden
+																		className="h-3.5 w-3.5 shrink-0 opacity-80"
+																	/>
 																	{tx.txn_date}
 																</span>
 															) : null}
@@ -844,7 +813,7 @@ export const SpaceExpensesMain = ({
 													}}
 													type="button"
 												>
-													<IconMoreMini className="h-4 w-4" />
+													<MoreVertical aria-hidden className="h-4 w-4" />
 												</button>
 												{menuOpen ? (
 													<div
