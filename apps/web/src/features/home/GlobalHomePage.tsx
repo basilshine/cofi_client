@@ -6,9 +6,14 @@ import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSp
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
+import { toPromoBenefit } from "../../shared/lib/benefitPresentation";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
 import { OverviewRightRail } from "../../widgets/overview-right-rail";
 import { ActivityListCard } from "./components/ActivityListCard";
+import {
+	HomePromoModule,
+	type HomePromoPreviewItem,
+} from "./components/HomePromoModule";
 import { InsightMetricCard } from "./components/InsightMetricCard";
 import { OverviewHeroCard } from "./components/OverviewHeroCard";
 
@@ -162,7 +167,7 @@ const getHeroChipTone = (tag: string): HeroChipTone => {
 export const GlobalHomePage = () => {
 	const { user } = useAuth();
 	const { formatMoney } = useUserFormat();
-	const { workspaceScope } = useWorkspaceSpaces();
+	const { spaces, workspaceScope } = useWorkspaceSpaces();
 	useConsoleHeaderTitle("Home", null);
 
 	const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(
@@ -170,6 +175,10 @@ export const GlobalHomePage = () => {
 	);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
+	const [promoPreviewItems, setPromoPreviewItems] = useState<
+		HomePromoPreviewItem[]
+	>([]);
+	const [isPromoPreviewLoading, setIsPromoPreviewLoading] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -345,6 +354,91 @@ export const GlobalHomePage = () => {
 		)[0];
 		return typeof latest?.space_id === "number" ? latest.space_id : null;
 	}, [recentTx]);
+
+	const promoPreviewSpaces = useMemo(() => {
+		const byId = new Map<number, string>();
+		const add = (
+			spaceId: number | null | undefined,
+			spaceName?: string | null,
+		) => {
+			if (typeof spaceId !== "number" || !Number.isFinite(spaceId)) return;
+			if (byId.has(spaceId)) return;
+			const fallback = spaces?.find(
+				(space) => Number(space.id) === spaceId,
+			)?.name;
+			byId.set(
+				spaceId,
+				normalizeSpaceName(spaceName ?? fallback ?? "", byId.size),
+			);
+		};
+
+		for (const space of reviewTopSpaces) add(space.id, space.name);
+		for (const space of transactionTopSpaces) add(space.id, space.name);
+		if (recentActiveSpaceId != null) add(recentActiveSpaceId);
+		for (const space of spaces ?? []) {
+			add(Number(space.id), space.name);
+			if (byId.size >= 3) break;
+		}
+
+		return [...byId.entries()].slice(0, 3).map(([id, name]) => ({ id, name }));
+	}, [reviewTopSpaces, transactionTopSpaces, recentActiveSpaceId, spaces]);
+
+	useEffect(() => {
+		let cancelled = false;
+		if (promoPreviewSpaces.length === 0) {
+			setPromoPreviewItems([]);
+			setIsPromoPreviewLoading(false);
+			return;
+		}
+
+		setIsPromoPreviewLoading(true);
+		void (async () => {
+			try {
+				const settled = await Promise.allSettled(
+					promoPreviewSpaces.map(async (space) => {
+						const response = await apiClient.spaces.listPromos(space.id);
+						return {
+							space,
+							promos: response.promos ?? [],
+						};
+					}),
+				);
+				if (cancelled) return;
+				const items = settled.flatMap((result): HomePromoPreviewItem[] => {
+					if (result.status !== "fulfilled") return [];
+					return result.value.promos
+						.map((promo) => toPromoBenefit(promo))
+						.filter(
+							(promo) =>
+								promo.status === "active" || promo.status === "expires_soon",
+						)
+						.map((promo) => ({
+							promo,
+							spaceId: result.value.space.id,
+							spaceName: result.value.space.name,
+						}));
+				});
+				items.sort((a, b) => {
+					if (a.promo.status !== b.promo.status) {
+						if (a.promo.status === "expires_soon") return -1;
+						if (b.promo.status === "expires_soon") return 1;
+					}
+					const aTs = Date.parse(a.promo.raw.valid_until ?? "");
+					const bTs = Date.parse(b.promo.raw.valid_until ?? "");
+					const safeA = Number.isFinite(aTs) ? aTs : Number.MAX_SAFE_INTEGER;
+					const safeB = Number.isFinite(bTs) ? bTs : Number.MAX_SAFE_INTEGER;
+					return safeA - safeB;
+				});
+				setPromoPreviewItems(items.slice(0, 3));
+			} finally {
+				if (!cancelled) setIsPromoPreviewLoading(false);
+			}
+		})();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [promoPreviewSpaces]);
 
 	const recentActivityItems = useMemo(() => {
 		const txItems = recentTx.map((t) => ({
@@ -585,6 +679,11 @@ export const GlobalHomePage = () => {
 							/>
 						</div>
 					</section>
+
+					<HomePromoModule
+						isLoading={isPromoPreviewLoading}
+						items={promoPreviewItems}
+					/>
 
 					<ActivityListCard
 						ctaLabel="View history"

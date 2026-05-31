@@ -15,7 +15,7 @@ import {
 	formatBenefitSourceLabel,
 	loyaltyBenefits,
 	toPromoBenefit,
-} from "./benefitPresentation";
+} from "../../shared/lib/benefitPresentation";
 
 type CandidateView = {
 	id: number;
