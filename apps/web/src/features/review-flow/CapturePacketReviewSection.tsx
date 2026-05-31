@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
 	EntityIcon,
@@ -214,6 +214,29 @@ const candidateActionButtonClass = (tone: CandidateActionTone): string => {
 	};
 	return `${base} ${toneClass[tone]}`;
 };
+
+type CandidateActionButtonProps = {
+	children: ReactNode;
+	disabled?: boolean;
+	onClick: () => void;
+	tone: CandidateActionTone;
+};
+
+const CandidateActionButton = ({
+	children,
+	disabled = false,
+	onClick,
+	tone,
+}: CandidateActionButtonProps) => (
+	<button
+		className={candidateActionButtonClass(tone)}
+		disabled={disabled}
+		onClick={onClick}
+		type="button"
+	>
+		{children}
+	</button>
+);
 
 const addHrefForSection = (
 	sectionKey: PacketSectionKey,
@@ -892,30 +915,27 @@ const PacketActionBar = ({
 				</div>
 				<div className="flex flex-wrap items-center justify-end gap-1.5">
 					{promoCandidate ? (
-						<button
-							className={candidateActionButtonClass("benefit")}
+						<CandidateActionButton
 							disabled={isBenefitActing(promoCandidate)}
 							onClick={() => onSavePromoCandidate(promoCandidate)}
-							type="button"
+							tone="benefit"
 						>
 							{isBenefitActing(promoCandidate) ? "Saving" : "Save promo"}
-						</button>
+						</CandidateActionButton>
 					) : null}
 					{participantCandidate ? (
-						<button
-							className={candidateActionButtonClass("people")}
+						<CandidateActionButton
 							disabled={isDocumentActing(participantCandidate)}
 							onClick={() => onCreateParticipantCandidate(participantCandidate)}
-							type="button"
+							tone="people"
 						>
 							{isDocumentActing(participantCandidate)
 								? "Creating"
 								: "Add person"}
-						</button>
+						</CandidateActionButton>
 					) : null}
 					{splitCandidate ? (
-						<button
-							className={candidateActionButtonClass("attention")}
+						<CandidateActionButton
 							disabled={
 								splitBlocked ||
 								splitTargetExpenseId == null ||
@@ -924,36 +944,34 @@ const PacketActionBar = ({
 							onClick={() =>
 								onApplySplitCandidate(splitCandidate, splitTargetExpenseId)
 							}
-							type="button"
+							tone="attention"
 						>
 							{splitBlocked
 								? "Add people first"
 								: isDocumentActing(splitCandidate)
 									? "Applying"
 									: "Apply split"}
-						</button>
+						</CandidateActionButton>
 					) : null}
 					{recurringCandidate ? (
-						<button
-							className={candidateActionButtonClass("attention")}
+						<CandidateActionButton
 							disabled={isDocumentActing(recurringCandidate)}
 							onClick={() => onCreateRecurringCandidate(recurringCandidate)}
-							type="button"
+							tone="attention"
 						>
 							{isDocumentActing(recurringCandidate)
 								? "Creating"
 								: "Create recurring"}
-						</button>
+						</CandidateActionButton>
 					) : null}
 					{reviewCandidate ? (
-						<button
-							className={candidateActionButtonClass("review")}
+						<CandidateActionButton
 							disabled={isDocumentActing(reviewCandidate)}
 							onClick={() => onConfirmDocumentCandidate(reviewCandidate)}
-							type="button"
+							tone="review"
 						>
 							{isDocumentActing(reviewCandidate) ? "Saving" : "Mark reviewed"}
-						</button>
+						</CandidateActionButton>
 					) : null}
 				</div>
 			</div>
@@ -1107,59 +1125,54 @@ const CaptureCandidateActions = ({
 }: CaptureCandidateActionsProps) => (
 	<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
 		{candidate.canSavePromo ? (
-			<button
-				className={candidateActionButtonClass("benefit")}
+			<CandidateActionButton
 				disabled={isActing}
 				onClick={() => onSavePromoCandidate(candidate)}
-				type="button"
+				tone="benefit"
 			>
 				{isActing ? "Saving" : "Save promo"}
-			</button>
+			</CandidateActionButton>
 		) : null}
 		{candidate.canMarkReviewed ? (
-			<button
-				className={candidateActionButtonClass("review")}
+			<CandidateActionButton
 				disabled={isActing}
 				onClick={() => onConfirmDocumentCandidate(candidate)}
-				type="button"
+				tone="review"
 			>
 				{isActing ? "Saving" : "Reviewed"}
-			</button>
+			</CandidateActionButton>
 		) : null}
 		{candidate.canCreateParticipant ? (
-			<button
-				className={candidateActionButtonClass("people")}
+			<CandidateActionButton
 				disabled={isActing}
 				onClick={() => onCreateParticipantCandidate(candidate)}
-				type="button"
+				tone="people"
 			>
 				{isActing ? "Creating" : "Add person"}
-			</button>
+			</CandidateActionButton>
 		) : null}
 		{candidate.canCreateRecurring ? (
-			<button
-				className={candidateActionButtonClass("attention")}
+			<CandidateActionButton
 				disabled={isActing}
 				onClick={() => onCreateRecurringCandidate(candidate)}
-				type="button"
+				tone="attention"
 			>
 				{isActing ? "Creating" : "Create recurring"}
-			</button>
+			</CandidateActionButton>
 		) : null}
 		{candidate.canOpenSplitReview ? (
 			splitTargetExpenseId != null ? (
-				<button
-					className={candidateActionButtonClass("attention")}
+				<CandidateActionButton
 					disabled={isActing || splitApplyBlocked}
 					onClick={() => onApplySplitCandidate(candidate, splitTargetExpenseId)}
-					type="button"
+					tone="attention"
 				>
 					{splitApplyBlocked
 						? "Add people first"
 						: isActing
 							? "Applying"
 							: "Apply split"}
-				</button>
+				</CandidateActionButton>
 			) : (
 				<Link
 					className={`inline-flex items-center ${candidateActionButtonClass("attention")}`}
@@ -1169,13 +1182,12 @@ const CaptureCandidateActions = ({
 				</Link>
 			)
 		) : null}
-		<button
-			className={candidateActionButtonClass("neutral")}
+		<CandidateActionButton
 			disabled={isActing}
 			onClick={() => onIgnoreCandidate(candidate)}
-			type="button"
+			tone="neutral"
 		>
 			{isActing ? "Working" : "Ignore"}
-		</button>
+		</CandidateActionButton>
 	</div>
 );
