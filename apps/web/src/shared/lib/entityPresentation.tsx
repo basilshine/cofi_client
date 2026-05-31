@@ -66,16 +66,30 @@ export const EntityMicro = ({
 	entity,
 }: {
 	entity: Pick<EntityViewModel, "label" | "visualKey">;
-}) => (
-	<span className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.14)] bg-white/68 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-		<EntityIcon size="xs" visualKey={entity.visualKey} />
-		<span className="truncate">{entity.label}</span>
-	</span>
-);
+}) => {
+	const visual = entityVisuals[entity.visualKey] ?? entityVisuals.unknown;
+	return (
+		<span
+			className={[
+				"inline-flex min-w-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+				visual.chipClass,
+			].join(" ")}
+		>
+			<EntityIcon size="xs" visualKey={entity.visualKey} />
+			<span className="truncate">{entity.label}</span>
+		</span>
+	);
+};
 
 export const EntityMini = ({ entity }: { entity: EntityViewModel }) => {
+	const visual = entityVisuals[entity.visualKey] ?? entityVisuals.unknown;
 	const body = (
-		<span className="flex min-w-0 items-center gap-2 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/64 px-3 py-2 text-sm shadow-sm transition hover:bg-white">
+		<span
+			className={[
+				"flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm shadow-sm transition-[background-color,border-color,box-shadow,transform]",
+				visual.surfaceClass,
+			].join(" ")}
+		>
 			<EntityIcon size="sm" visualKey={entity.visualKey} />
 			<span className="min-w-0 flex-1">
 				<span className="flex min-w-0 items-center gap-2">
@@ -83,7 +97,12 @@ export const EntityMini = ({ entity }: { entity: EntityViewModel }) => {
 						{entity.title}
 					</span>
 					{entity.status ? (
-						<span className="shrink-0 rounded-full border border-[rgba(120,100,80,0.14)] bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold text-foreground/70">
+						<span
+							className={[
+								"shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+								visual.chipClass,
+							].join(" ")}
+						>
 							{entity.status}
 						</span>
 					) : null}
@@ -110,14 +129,13 @@ export const EntityMini = ({ entity }: { entity: EntityViewModel }) => {
 };
 
 export const EntityListItem = ({ entity }: { entity: EntityViewModel }) => {
+	const visual = entityVisuals[entity.visualKey] ?? entityVisuals.unknown;
 	const meta = asRenderableMeta(entity.meta);
 	const body = (
 		<span
 			className={[
-				"group flex min-w-0 items-start gap-3 rounded-2xl border p-3.5 shadow-sm transition",
-				entity.selected
-					? "border-[rgba(160,120,70,0.45)] bg-[rgba(255,249,235,0.92)] ring-2 ring-[rgba(200,155,95,0.2)]"
-					: "border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.76)] hover:border-[rgba(120,100,80,0.28)] hover:bg-white",
+				"group flex min-w-0 items-start gap-3 rounded-2xl border p-3.5 shadow-sm transition-[background-color,border-color,box-shadow,transform]",
+				entity.selected ? visual.selectedSurfaceClass : visual.surfaceClass,
 			].join(" ")}
 		>
 			<EntityIcon visualKey={entity.visualKey} />
@@ -130,7 +148,12 @@ export const EntityListItem = ({ entity }: { entity: EntityViewModel }) => {
 						entity={{ label: entity.label, visualKey: entity.visualKey }}
 					/>
 					{entity.status ? (
-						<span className="rounded-full border border-[rgba(120,100,80,0.14)] bg-white/60 px-2 py-0.5 text-[11px] font-semibold text-foreground/70">
+						<span
+							className={[
+								"rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+								visual.chipClass,
+							].join(" ")}
+						>
 							{entity.status}
 						</span>
 					) : null}
@@ -149,7 +172,10 @@ export const EntityListItem = ({ entity }: { entity: EntityViewModel }) => {
 					<span className="mt-2 flex flex-wrap gap-1.5">
 						{meta.slice(0, 4).map((item, index) => (
 							<span
-								className="rounded-full border border-[rgba(120,100,80,0.14)] bg-white/60 px-2 py-0.5 text-[11px] font-medium text-foreground/70"
+								className={[
+									"rounded-full border px-2 py-0.5 text-[11px] font-medium",
+									visual.chipClass,
+								].join(" ")}
 								key={`${String(item)}-${index}`}
 							>
 								{item}
@@ -174,9 +200,15 @@ export const EntityListItem = ({ entity }: { entity: EntityViewModel }) => {
 };
 
 export const EntityCard = ({ entity }: { entity: EntityViewModel }) => {
+	const visual = entityVisuals[entity.visualKey] ?? entityVisuals.unknown;
 	const meta = asRenderableMeta(entity.meta);
 	return (
-		<div className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.76)] p-4 shadow-sm">
+		<div
+			className={[
+				"rounded-2xl border p-4 shadow-sm transition-[background-color,border-color,box-shadow]",
+				entity.selected ? visual.selectedSurfaceClass : visual.surfaceClass,
+			].join(" ")}
+		>
 			<div className="flex items-start gap-3">
 				<EntityIcon size="lg" visualKey={entity.visualKey} />
 				<div className="min-w-0 flex-1">
@@ -202,7 +234,10 @@ export const EntityCard = ({ entity }: { entity: EntityViewModel }) => {
 				<div className="mt-3 flex flex-wrap gap-1.5">
 					{meta.map((item, index) => (
 						<span
-							className="rounded-full border border-[rgba(120,100,80,0.14)] bg-white/60 px-2 py-0.5 text-[11px] font-medium text-foreground/70"
+							className={[
+								"rounded-full border px-2 py-0.5 text-[11px] font-medium",
+								visual.chipClass,
+							].join(" ")}
 							key={`${String(item)}-${index}`}
 						>
 							{item}

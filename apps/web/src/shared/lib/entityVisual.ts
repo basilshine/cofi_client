@@ -31,6 +31,9 @@ export type EntityVisual = {
 	icon: LucideIcon;
 	toneClass: string;
 	softToneClass: string;
+	surfaceClass: string;
+	selectedSurfaceClass: string;
+	chipClass: string;
 };
 
 export const entityVisuals: Record<EntityVisualKey, EntityVisual> = {
@@ -39,80 +42,140 @@ export const entityVisuals: Record<EntityVisualKey, EntityVisual> = {
 		label: "Expenses",
 		icon: ReceiptText,
 		toneClass:
-			"border-[rgba(125,99,58,0.18)] bg-[rgba(255,250,240,0.92)] text-[#6d5331]",
-		softToneClass: "bg-[rgba(255,250,240,0.9)] text-[#6d5331]",
+			"border-[rgba(72,62,48,0.22)] bg-[rgba(247,243,235,0.96)] text-[#3f382e]",
+		softToneClass: "bg-[rgba(247,243,235,0.9)] text-[#3f382e]",
+		surfaceClass:
+			"border-[rgba(72,62,48,0.14)] bg-[linear-gradient(180deg,rgba(255,253,249,0.92),rgba(246,241,232,0.86))] hover:border-[rgba(72,62,48,0.24)] hover:bg-[rgba(255,253,249,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(72,62,48,0.42)] bg-[rgba(247,243,235,0.96)] ring-2 ring-[rgba(72,62,48,0.14)]",
+		chipClass:
+			"border-[rgba(72,62,48,0.14)] bg-[rgba(255,253,249,0.72)] text-[#514638]",
 	},
 	expenseItem: {
 		key: "expenseItem",
 		label: "Items",
 		icon: ListChecks,
 		toneClass:
-			"border-[rgba(125,99,58,0.18)] bg-[rgba(255,250,240,0.92)] text-[#6d5331]",
-		softToneClass: "bg-[rgba(255,250,240,0.9)] text-[#6d5331]",
+			"border-[rgba(110,104,92,0.2)] bg-[rgba(244,241,235,0.94)] text-[#5b5448]",
+		softToneClass: "bg-[rgba(244,241,235,0.9)] text-[#5b5448]",
+		surfaceClass:
+			"border-[rgba(110,104,92,0.14)] bg-[rgba(250,248,244,0.82)] hover:border-[rgba(110,104,92,0.25)] hover:bg-[rgba(255,253,249,0.96)]",
+		selectedSurfaceClass:
+			"border-[rgba(110,104,92,0.4)] bg-[rgba(244,241,235,0.96)] ring-2 ring-[rgba(110,104,92,0.14)]",
+		chipClass:
+			"border-[rgba(110,104,92,0.14)] bg-[rgba(255,253,249,0.72)] text-[#5b5448]",
 	},
 	benefit: {
 		key: "benefit",
 		label: "Benefits",
 		icon: Gift,
 		toneClass:
-			"border-[rgba(91,116,87,0.2)] bg-[rgba(237,247,239,0.92)] text-[#405f44]",
-		softToneClass: "bg-[rgba(237,247,239,0.9)] text-[#405f44]",
+			"border-[rgba(172,124,35,0.24)] bg-[rgba(255,242,204,0.92)] text-[#7a5514]",
+		softToneClass: "bg-[rgba(255,242,204,0.9)] text-[#7a5514]",
+		surfaceClass:
+			"border-[rgba(172,124,35,0.18)] bg-[linear-gradient(180deg,rgba(255,251,239,0.96),rgba(255,241,202,0.72))] hover:border-[rgba(172,124,35,0.3)] hover:bg-[rgba(255,249,232,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(172,124,35,0.46)] bg-[rgba(255,241,202,0.9)] ring-2 ring-[rgba(209,159,61,0.2)]",
+		chipClass:
+			"border-[rgba(172,124,35,0.18)] bg-[rgba(255,250,236,0.76)] text-[#7a5514]",
 	},
 	people: {
 		key: "people",
 		label: "People",
 		icon: UsersRound,
 		toneClass:
-			"border-[rgba(83,103,139,0.2)] bg-[rgba(235,241,252,0.92)] text-[#405574]",
-		softToneClass: "bg-[rgba(235,241,252,0.9)] text-[#405574]",
+			"border-[rgba(72,107,82,0.22)] bg-[rgba(235,247,238,0.92)] text-[#365f42]",
+		softToneClass: "bg-[rgba(235,247,238,0.9)] text-[#365f42]",
+		surfaceClass:
+			"border-[rgba(72,107,82,0.16)] bg-[rgba(244,250,245,0.84)] hover:border-[rgba(72,107,82,0.28)] hover:bg-[rgba(248,253,249,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(72,107,82,0.42)] bg-[rgba(235,247,238,0.94)] ring-2 ring-[rgba(72,107,82,0.16)]",
+		chipClass:
+			"border-[rgba(72,107,82,0.16)] bg-[rgba(247,252,248,0.76)] text-[#365f42]",
 	},
 	split: {
 		key: "split",
 		label: "Splits",
 		icon: Split,
 		toneClass:
-			"border-[rgba(181,131,52,0.22)] bg-[rgba(255,240,208,0.86)] text-[#73501b]",
-		softToneClass: "bg-[rgba(255,240,208,0.86)] text-[#73501b]",
+			"border-[rgba(76,111,87,0.22)] bg-[rgba(235,247,240,0.92)] text-[#2f6043]",
+		softToneClass: "bg-[rgba(235,247,240,0.9)] text-[#2f6043]",
+		surfaceClass:
+			"border-[rgba(76,111,87,0.16)] bg-[linear-gradient(180deg,rgba(248,253,249,0.94),rgba(235,247,240,0.76))] hover:border-[rgba(76,111,87,0.3)] hover:bg-[rgba(249,253,250,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(76,111,87,0.46)] bg-[rgba(235,247,240,0.94)] ring-2 ring-[rgba(76,111,87,0.18)]",
+		chipClass:
+			"border-[rgba(76,111,87,0.16)] bg-[rgba(248,253,249,0.78)] text-[#2f6043]",
 	},
 	future: {
 		key: "future",
 		label: "Future",
 		icon: Repeat,
 		toneClass:
-			"border-[rgba(117,91,142,0.18)] bg-[rgba(245,240,250,0.9)] text-[#5c4a72]",
-		softToneClass: "bg-[rgba(245,240,250,0.9)] text-[#5c4a72]",
+			"border-[rgba(66,89,135,0.22)] bg-[rgba(236,242,253,0.92)] text-[#334f82]",
+		softToneClass: "bg-[rgba(236,242,253,0.9)] text-[#334f82]",
+		surfaceClass:
+			"border-[rgba(66,89,135,0.16)] bg-[linear-gradient(180deg,rgba(248,251,255,0.94),rgba(236,242,253,0.76))] hover:border-[rgba(66,89,135,0.3)] hover:bg-[rgba(249,252,255,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(66,89,135,0.44)] bg-[rgba(236,242,253,0.94)] ring-2 ring-[rgba(66,89,135,0.16)]",
+		chipClass:
+			"border-[rgba(66,89,135,0.16)] bg-[rgba(248,251,255,0.78)] text-[#334f82]",
 	},
 	document: {
 		key: "document",
 		label: "Documents",
 		icon: FileText,
 		toneClass:
-			"border-[rgba(90,101,105,0.18)] bg-[rgba(241,245,246,0.9)] text-[#4d5b5e]",
-		softToneClass: "bg-[rgba(241,245,246,0.9)] text-[#4d5b5e]",
+			"border-[rgba(64,91,118,0.22)] bg-[rgba(236,244,249,0.92)] text-[#34556f]",
+		softToneClass: "bg-[rgba(236,244,249,0.9)] text-[#34556f]",
+		surfaceClass:
+			"border-[rgba(64,91,118,0.16)] bg-[rgba(246,251,253,0.86)] hover:border-[rgba(64,91,118,0.3)] hover:bg-[rgba(250,253,255,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(64,91,118,0.44)] bg-[rgba(236,244,249,0.94)] ring-2 ring-[rgba(64,91,118,0.16)]",
+		chipClass:
+			"border-[rgba(64,91,118,0.16)] bg-[rgba(249,253,255,0.78)] text-[#34556f]",
 	},
 	loyalty: {
 		key: "loyalty",
 		label: "Loyalty",
 		icon: WalletCards,
 		toneClass:
-			"border-[rgba(91,116,87,0.2)] bg-[rgba(237,247,239,0.92)] text-[#405f44]",
-		softToneClass: "bg-[rgba(237,247,239,0.9)] text-[#405f44]",
+			"border-[rgba(82,121,86,0.22)] bg-[rgba(236,248,236,0.92)] text-[#38633b]",
+		softToneClass: "bg-[rgba(236,248,236,0.9)] text-[#38633b]",
+		surfaceClass:
+			"border-[rgba(82,121,86,0.16)] bg-[linear-gradient(180deg,rgba(247,253,247,0.94),rgba(236,248,236,0.76))] hover:border-[rgba(82,121,86,0.3)] hover:bg-[rgba(249,253,249,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(82,121,86,0.44)] bg-[rgba(236,248,236,0.94)] ring-2 ring-[rgba(82,121,86,0.16)]",
+		chipClass:
+			"border-[rgba(82,121,86,0.16)] bg-[rgba(249,253,249,0.78)] text-[#38633b]",
 	},
 	privacy: {
 		key: "privacy",
 		label: "Privacy",
 		icon: Shield,
 		toneClass:
-			"border-[rgba(90,101,105,0.18)] bg-[rgba(241,245,246,0.9)] text-[#4d5b5e]",
-		softToneClass: "bg-[rgba(241,245,246,0.9)] text-[#4d5b5e]",
+			"border-[rgba(145,78,56,0.22)] bg-[rgba(253,239,232,0.92)] text-[#7b3f2e]",
+		softToneClass: "bg-[rgba(253,239,232,0.9)] text-[#7b3f2e]",
+		surfaceClass:
+			"border-[rgba(145,78,56,0.16)] bg-[rgba(255,247,242,0.86)] hover:border-[rgba(145,78,56,0.3)] hover:bg-[rgba(255,250,247,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(145,78,56,0.44)] bg-[rgba(253,239,232,0.94)] ring-2 ring-[rgba(145,78,56,0.16)]",
+		chipClass:
+			"border-[rgba(145,78,56,0.16)] bg-[rgba(255,250,247,0.78)] text-[#7b3f2e]",
 	},
 	unknown: {
 		key: "unknown",
 		label: "Signal",
 		icon: Sparkles,
 		toneClass:
-			"border-[rgba(120,100,80,0.16)] bg-white/70 text-muted-foreground",
-		softToneClass: "bg-white/70 text-muted-foreground",
+			"border-[rgba(112,87,133,0.18)] bg-[rgba(247,241,250,0.9)] text-[#60496f]",
+		softToneClass: "bg-[rgba(247,241,250,0.9)] text-[#60496f]",
+		surfaceClass:
+			"border-[rgba(112,87,133,0.12)] bg-[rgba(252,248,253,0.82)] hover:border-[rgba(112,87,133,0.24)] hover:bg-[rgba(254,251,255,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(112,87,133,0.38)] bg-[rgba(247,241,250,0.94)] ring-2 ring-[rgba(112,87,133,0.14)]",
+		chipClass:
+			"border-[rgba(112,87,133,0.14)] bg-[rgba(254,251,255,0.78)] text-[#60496f]",
 	},
 };
 
