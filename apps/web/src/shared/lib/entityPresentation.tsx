@@ -137,9 +137,11 @@ export const EntityMini = ({
 };
 
 export const EntityListItem = ({
+	density = "regular",
 	entity,
 	trailing,
 }: {
+	density?: "regular" | "compact";
 	entity: EntityViewModel;
 	trailing?: ReactNode;
 }) => {
@@ -148,11 +150,17 @@ export const EntityListItem = ({
 	const body = (
 		<span
 			className={[
-				"group flex min-w-0 items-start gap-3 rounded-2xl border p-3.5 shadow-sm transition-[background-color,border-color,box-shadow,transform]",
+				"group flex min-w-0 items-start border transition-[background-color,border-color,box-shadow,transform]",
+				density === "compact"
+					? "gap-2 rounded-xl p-2 shadow-none"
+					: "gap-3 rounded-2xl p-3.5 shadow-sm",
 				entity.selected ? visual.selectedSurfaceClass : visual.surfaceClass,
 			].join(" ")}
 		>
-			<EntityIcon visualKey={entity.visualKey} />
+			<EntityIcon
+				size={density === "compact" ? "sm" : "md"}
+				visualKey={entity.visualKey}
+			/>
 			<span className="min-w-0 flex-1">
 				<span className="flex min-w-0 flex-wrap items-center gap-2">
 					<span className="truncate text-sm font-semibold text-foreground">

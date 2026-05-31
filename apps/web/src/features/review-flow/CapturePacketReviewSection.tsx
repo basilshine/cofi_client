@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 import {
 	EntityIcon,
 	EntityListItem,
-	EntityMicro,
 	type EntityViewModel,
 } from "../../shared/lib/entityPresentation";
 import {
@@ -177,6 +176,19 @@ const packetEntity = (
 		selected,
 	};
 };
+
+const candidateEntity = (candidate: CandidateReviewItem): EntityViewModel => ({
+	id: `${candidate.source}-${candidate.id}`,
+	visualKey: captureCandidateTypeVisual(candidate.candidateType).key,
+	label: candidate.label,
+	title: candidate.title,
+	subtitle: candidate.detail,
+	detail: candidate.meta,
+	meta: candidate.fields
+		.slice(0, 3)
+		.map((field) => `${field.label}: ${field.value}`),
+	status: candidate.confidenceLabel,
+});
 
 const addHrefForSection = (
 	sectionKey: PacketSectionKey,
@@ -979,56 +991,25 @@ const CaptureCandidateRow = ({
 
 	return (
 		<div className="py-2.5 first:pt-0 last:pb-0">
-			<div className="flex flex-wrap items-start justify-between gap-3">
-				<div className="min-w-0 flex-1">
-					<div className="flex flex-wrap items-center gap-1.5">
-						<EntityMicro
-							entity={{
-								label: candidate.label,
-								visualKey: captureCandidateTypeVisual(candidate.candidateType)
-									.key,
-							}}
-						/>
-						<span className="rounded-full border border-border/60 bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-							{candidate.confidenceLabel}
-						</span>
-					</div>
-					<h4 className="mt-1 truncate text-sm font-semibold text-foreground">
-						{candidate.title}
-					</h4>
-					<p className="mt-0.5 text-xs font-medium text-foreground/78">
-						{candidate.detail}
-					</p>
-					{candidate.fields.length > 0 ? (
-						<div className="mt-2 flex flex-wrap gap-1.5">
-							{candidate.fields.slice(0, 3).map((field) => (
-								<span
-									className="max-w-full rounded-md border border-[rgba(120,100,80,0.12)] bg-white/72 px-2 py-1 text-[11px] text-muted-foreground"
-									key={`${candidate.source}-${candidate.id}-${field.label}`}
-								>
-									<span className="font-semibold uppercase tracking-wide">
-										{field.label}:{" "}
-									</span>
-									<span className="text-foreground/78">{field.value}</span>
-								</span>
-							))}
-						</div>
-					) : null}
-				</div>
-				<CaptureCandidateActions
-					candidate={candidate}
-					isActing={isActing}
-					onApplySplitCandidate={onApplySplitCandidate}
-					onConfirmDocumentCandidate={onConfirmDocumentCandidate}
-					onCreateParticipantCandidate={onCreateParticipantCandidate}
-					onCreateRecurringCandidate={onCreateRecurringCandidate}
-					onIgnoreCandidate={onIgnoreCandidate}
-					onSavePromoCandidate={onSavePromoCandidate}
-					spaceId={spaceId}
-					splitApplyBlocked={splitApplyBlocked}
-					splitTargetExpenseId={splitTargetExpenseId}
-				/>
-			</div>
+			<EntityListItem
+				density="compact"
+				entity={candidateEntity(candidate)}
+				trailing={
+					<CaptureCandidateActions
+						candidate={candidate}
+						isActing={isActing}
+						onApplySplitCandidate={onApplySplitCandidate}
+						onConfirmDocumentCandidate={onConfirmDocumentCandidate}
+						onCreateParticipantCandidate={onCreateParticipantCandidate}
+						onCreateRecurringCandidate={onCreateRecurringCandidate}
+						onIgnoreCandidate={onIgnoreCandidate}
+						onSavePromoCandidate={onSavePromoCandidate}
+						spaceId={spaceId}
+						splitApplyBlocked={splitApplyBlocked}
+						splitTargetExpenseId={splitTargetExpenseId}
+					/>
+				}
+			/>
 			{candidate.isSelfParticipant ? (
 				<p className="mt-2 rounded-lg border border-[rgba(83,103,139,0.18)] bg-white/58 px-2.5 py-1.5 text-xs text-[#405574]">
 					Already covered by your space member. Mark it reviewed or ignore it.
@@ -1076,9 +1057,6 @@ const CaptureCandidateRow = ({
 					) : null}
 				</div>
 			) : null}
-			<p className="mt-2 line-clamp-1 text-xs text-muted-foreground">
-				{candidate.meta}
-			</p>
 		</div>
 	);
 };
