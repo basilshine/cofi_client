@@ -354,6 +354,120 @@ const candidateSummary = (
 			fields,
 		};
 	}
+	if (type === "recurring_candidate") {
+		const recurring = nestedCandidateData(data, [
+			"recurring",
+			"recurring_candidate",
+			"renewal_candidate",
+		]);
+		const service = firstCandidateText(recurring, [
+			"service_name",
+			"service",
+			"merchant_name",
+			"vendor_name",
+		]);
+		const nextDue = firstCandidateText(recurring, [
+			"next_due",
+			"renewal_date",
+			"due_date",
+		]);
+		const interval = firstCandidateText(recurring, ["interval", "frequency"]);
+		appendField(fields, "Next due", nextDue);
+		appendField(fields, "Interval", interval);
+		appendField(fields, "Amount", firstCandidateText(recurring, ["amount"]));
+		appendField(
+			fields,
+			"Currency",
+			firstCandidateText(recurring, ["currency"]),
+		);
+		return {
+			detail:
+				[service, interval, nextDue ? `next ${nextDue}` : null]
+					.filter(Boolean)
+					.join(" • ") || "Recurring payment hint needs review",
+			fields,
+		};
+	}
+	if (type === "membership_candidate") {
+		const membership = nestedCandidateData(data, [
+			"membership",
+			"membership_candidate",
+		]);
+		const service = firstCandidateText(membership, [
+			"service_name",
+			"service",
+			"title",
+			"merchant_name",
+			"vendor_name",
+		]);
+		const periodEnd = firstCandidateText(membership, [
+			"period_end",
+			"end_date",
+			"renewal_date",
+		]);
+		const duration = firstCandidateText(membership, [
+			"duration",
+			"service_period",
+			"membership_period",
+		]);
+		appendField(
+			fields,
+			"Merchant",
+			firstCandidateText(membership, [
+				"merchant_name",
+				"vendor_name",
+				"merchant",
+				"payee",
+			]),
+		);
+		appendField(
+			fields,
+			"Start",
+			firstCandidateText(membership, ["period_start", "start_date"]),
+		);
+		appendField(fields, "End", periodEnd);
+		appendField(
+			fields,
+			"Renewal",
+			firstCandidateText(membership, ["renewal_date", "next_due"]),
+		);
+		appendField(fields, "Amount", firstCandidateText(membership, ["amount"]));
+		return {
+			detail:
+				[service, duration, periodEnd ? `ends ${periodEnd}` : null]
+					.filter(Boolean)
+					.join(" • ") || "Membership period hint needs review",
+			fields,
+		};
+	}
+	if (type === "reminder_candidate") {
+		const reminder = nestedCandidateData(data, [
+			"reminder",
+			"reminder_candidate",
+		]);
+		const title = firstCandidateText(reminder, [
+			"title",
+			"service_name",
+			"merchant_name",
+			"reason",
+		]);
+		const due = firstCandidateText(reminder, [
+			"reminder_at",
+			"due_at",
+			"due_date",
+			"next_due",
+			"renewal_date",
+		]);
+		appendField(fields, "Due", due);
+		appendField(fields, "Action", firstCandidateText(reminder, ["action"]));
+		appendField(fields, "Reason", firstCandidateText(reminder, ["reason"]));
+		return {
+			detail:
+				[title, due ? `due ${due}` : null].filter(Boolean).join(" • ") ||
+				"Reminder hint needs review",
+			fields,
+		};
+	}
 	if (type === "merge_candidate") {
 		appendField(fields, "Action", firstCandidateText(data, ["action"]));
 		return { detail: "Attach to an existing record", fields };
