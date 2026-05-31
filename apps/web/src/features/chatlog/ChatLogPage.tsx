@@ -1516,6 +1516,7 @@ export const ChatLogPage = () => {
 							<SmartTextareaComposer
 								ref={smartComposerRef}
 								disabled={isLoading || !selectedSpaceId}
+								homeState="message_text"
 								isRecording={isRecording}
 								onCancelRecording={cancelRecording}
 								onComposerSubmit={(p) => void handleComposerSubmit(p)}

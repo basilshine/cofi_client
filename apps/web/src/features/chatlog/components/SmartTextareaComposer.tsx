@@ -93,6 +93,7 @@ export type SmartTextareaComposerHandle = {
 type Props = {
 	spaceId: string | number;
 	disabled?: boolean;
+	homeState?: ComposerState;
 	isRecording: boolean;
 	onComposerSubmit: (payload: ComposerPayload) => void;
 	onPurposeChange?: (purpose: ComposerPurpose) => void;
@@ -190,6 +191,7 @@ export const SmartTextareaComposer = forwardRef<
 		{
 			spaceId,
 			disabled = false,
+			homeState = "idle",
 			isRecording,
 			onComposerSubmit,
 			onPurposeChange,
@@ -202,7 +204,7 @@ export const SmartTextareaComposer = forwardRef<
 	) => {
 		const reduceMotion = useReducedMotion();
 
-		const [state, setState] = useState<ComposerState>("idle");
+		const [state, setState] = useState<ComposerState>(homeState);
 		const [navStack, setNavStack] = useState<ComposerState[]>([]);
 		const [textInput, setTextInput] = useState("");
 		const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
@@ -239,7 +241,14 @@ export const SmartTextareaComposer = forwardRef<
 
 		const goBack = useCallback(() => {
 			const prev = navStack[navStack.length - 1];
-			if (!prev) return;
+			if (!prev) {
+				if (state !== homeState) {
+					setState(homeState);
+					onPurposeChange?.(composerPurposeForState(homeState));
+					resetDraft();
+				}
+				return;
+			}
 			if (state === "expense_voice" && isRecording) {
 				onCancelRecording?.();
 			}
@@ -250,6 +259,7 @@ export const SmartTextareaComposer = forwardRef<
 		}, [
 			navStack,
 			state,
+			homeState,
 			isRecording,
 			onCancelRecording,
 			onPurposeChange,
@@ -260,23 +270,31 @@ export const SmartTextareaComposer = forwardRef<
 			if (state === "expense_voice" && isRecording) {
 				onCancelRecording?.();
 			}
-			setState("idle");
+			setState(homeState);
 			setNavStack([]);
+			onPurposeChange?.(composerPurposeForState(homeState));
 			resetDraft();
-		}, [state, isRecording, onCancelRecording, resetDraft]);
+		}, [
+			state,
+			homeState,
+			isRecording,
+			onCancelRecording,
+			onPurposeChange,
+			resetDraft,
+		]);
 
 		// ── Imperative handle ────────────────────────────────────────────────
 
 		useImperativeHandle(ref, () => ({
 			navigateTo: (target: ComposerState) => {
 				setState(target);
-				setNavStack([]);
+				setNavStack(target === homeState ? [] : [homeState]);
 				onPurposeChange?.(composerPurposeForState(target));
 				resetDraft();
 			},
 			composeText: (target: ComposerState, text: string) => {
 				setState(target);
-				setNavStack([]);
+				setNavStack(target === homeState ? [] : [homeState]);
 				onPurposeChange?.(composerPurposeForState(target));
 				setTextInput(text);
 				setSelectedPeriod(null);
@@ -796,7 +814,7 @@ export const SmartTextareaComposer = forwardRef<
 
 		const renderMessageText = () => (
 			<div>
-				{renderNav()}
+				{state === homeState && navStack.length === 0 ? null : renderNav()}
 				{renderStateTitle("Message this space")}
 				{renderTextarea("Write a message…", handleMessageSubmit)}
 				{renderSubmitButton(
