@@ -29,11 +29,70 @@ type CandidateView = {
 	raw: BenefitCandidate;
 };
 
+type PromoStatusFilter =
+	| "all"
+	| "active"
+	| "expires_soon"
+	| "used"
+	| "archived"
+	| "expired";
+
+type PromoSourceFilter = "all" | "receipts" | "manual" | "messages" | "other";
+
+const promoStatusOptions: { value: PromoStatusFilter; label: string }[] = [
+	{ value: "all", label: "All statuses" },
+	{ value: "active", label: "Active" },
+	{ value: "expires_soon", label: "Expiring soon" },
+	{ value: "used", label: "Used" },
+	{ value: "archived", label: "Archived" },
+	{ value: "expired", label: "Expired" },
+];
+
+const promoSourceOptions: { value: PromoSourceFilter; label: string }[] = [
+	{ value: "all", label: "All sources" },
+	{ value: "receipts", label: "Receipts" },
+	{ value: "manual", label: "Manual" },
+	{ value: "messages", label: "Messages" },
+	{ value: "other", label: "Other" },
+];
+
 const toNumericId = (value: string | number | undefined): number | null => {
 	if (value == null) return null;
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? parsed : null;
 };
+
+const promoSourceGroup = (sourceType?: string | null): PromoSourceFilter => {
+	const source = String(sourceType ?? "").toLowerCase();
+	if (source === "receipt" || source === "image" || source === "photo") {
+		return "receipts";
+	}
+	if (source === "manual" || source === "manual_text") return "manual";
+	if (["email", "telegram", "sms", "message"].includes(source)) {
+		return "messages";
+	}
+	return "other";
+};
+
+const promoSearchText = (promo: PromoBenefit): string =>
+	[
+		promo.title,
+		promo.code,
+		promo.merchant,
+		promo.redeemAt,
+		promo.discountLabel,
+		promo.validUntil,
+		promo.source,
+		promo.raw.description,
+		promo.raw.conditions_text,
+		promo.raw.source_text,
+		promo.raw.redeem_merchant_name,
+		promo.raw.redeem_platform,
+		promo.raw.source_merchant_name,
+	]
+		.filter(Boolean)
+		.join(" ")
+		.toLowerCase();
 
 const toRecord = (value: unknown): Record<string, unknown> => {
 	if (value && typeof value === "object" && !Array.isArray(value)) {
@@ -213,6 +272,11 @@ export const SpaceBenefitsPage = () => {
 	const [manualCode, setManualCode] = useState("");
 	const [manualRedeemAt, setManualRedeemAt] = useState("");
 	const [manualValidUntil, setManualValidUntil] = useState("");
+	const [promoQuery, setPromoQuery] = useState("");
+	const [promoStatusFilter, setPromoStatusFilter] =
+		useState<PromoStatusFilter>("all");
+	const [promoSourceFilter, setPromoSourceFilter] =
+		useState<PromoSourceFilter>("all");
 
 	const numericSpaceId = useMemo(() => toNumericId(spaceId), [spaceId]);
 	const space = useMemo(() => {
@@ -273,6 +337,29 @@ export const SpaceBenefitsPage = () => {
 	const activePromos = promoBenefits.filter((item) => item.status === "active");
 	const expiringPromos = promoBenefits.filter(
 		(item) => item.status === "expires_soon",
+	);
+	const filteredPromoBenefits = useMemo(() => {
+		const query = promoQuery.trim().toLowerCase();
+		return promoBenefits.filter((promo) => {
+			if (promoStatusFilter !== "all" && promo.status !== promoStatusFilter) {
+				return false;
+			}
+			if (
+				promoSourceFilter !== "all" &&
+				promoSourceGroup(promo.raw.source_type) !== promoSourceFilter
+			) {
+				return false;
+			}
+			if (query && !promoSearchText(promo).includes(query)) {
+				return false;
+			}
+			return true;
+		});
+	}, [promoBenefits, promoQuery, promoSourceFilter, promoStatusFilter]);
+	const promoFiltersActive = Boolean(
+		promoQuery.trim() ||
+			promoStatusFilter !== "all" ||
+			promoSourceFilter !== "all",
 	);
 	const totalLoyaltyBalance = loyaltyBenefits.length;
 	const sourceCounts = useMemo(() => {
@@ -634,19 +721,104 @@ export const SpaceBenefitsPage = () => {
 							) : null}
 
 							{promoBenefits.length ? (
-								<ul className="space-y-3">
-									{promoBenefits.map((promo) => (
-										<PromoBenefitCard
-											busy={savingPromoId === promo.id}
-											key={promo.id}
-											onArchive={(item) =>
-												void patchPromoStatus(item, "archived")
-											}
-											onMarkUsed={(item) => void patchPromoStatus(item, "used")}
-											promo={promo}
+								<>
+									<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/58 p-3">
+										<div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-end">
+											<label className="space-y-1 text-sm">
+												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+													Search
+												</span>
+												<input
+													className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+													onChange={(event) =>
+														setPromoQuery(event.target.value)
+													}
+													placeholder="Code, merchant, condition..."
+													value={promoQuery}
+												/>
+											</label>
+											<label className="space-y-1 text-sm">
+												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+													Status
+												</span>
+												<select
+													className="h-10 min-w-36 rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+													onChange={(event) =>
+														setPromoStatusFilter(
+															event.target.value as PromoStatusFilter,
+														)
+													}
+													value={promoStatusFilter}
+												>
+													{promoStatusOptions.map((option) => (
+														<option key={option.value} value={option.value}>
+															{option.label}
+														</option>
+													))}
+												</select>
+											</label>
+											<label className="space-y-1 text-sm">
+												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+													Source
+												</span>
+												<select
+													className="h-10 min-w-32 rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+													onChange={(event) =>
+														setPromoSourceFilter(
+															event.target.value as PromoSourceFilter,
+														)
+													}
+													value={promoSourceFilter}
+												>
+													{promoSourceOptions.map((option) => (
+														<option key={option.value} value={option.value}>
+															{option.label}
+														</option>
+													))}
+												</select>
+											</label>
+											<button
+												className="inline-flex h-10 items-center justify-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
+												disabled={!promoFiltersActive}
+												onClick={() => {
+													setPromoQuery("");
+													setPromoStatusFilter("all");
+													setPromoSourceFilter("all");
+												}}
+												type="button"
+											>
+												Clear
+											</button>
+										</div>
+										<p className="mt-2 text-xs text-muted-foreground">
+											{filteredPromoBenefits.length} of {promoBenefits.length}{" "}
+											promo{promoBenefits.length === 1 ? "" : "s"} shown
+										</p>
+									</div>
+
+									{filteredPromoBenefits.length ? (
+										<ul className="space-y-3">
+											{filteredPromoBenefits.map((promo) => (
+												<PromoBenefitCard
+													busy={savingPromoId === promo.id}
+													key={promo.id}
+													onArchive={(item) =>
+														void patchPromoStatus(item, "archived")
+													}
+													onMarkUsed={(item) =>
+														void patchPromoStatus(item, "used")
+													}
+													promo={promo}
+												/>
+											))}
+										</ul>
+									) : (
+										<EmptyPanel
+											body="Try another code, merchant, status, or source."
+											title="No promos match filters"
 										/>
-									))}
-								</ul>
+									)}
+								</>
 							) : isLoading ? (
 								<EmptyPanel
 									body="Loading saved promo codes from this space."
