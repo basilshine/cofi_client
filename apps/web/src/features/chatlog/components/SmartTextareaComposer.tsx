@@ -1,4 +1,5 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { Camera, Mic, Square, Upload, X } from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -209,6 +210,7 @@ export const SmartTextareaComposer = forwardRef<
 		const [textInput, setTextInput] = useState("");
 		const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
 		const [selectedChip, setSelectedChip] = useState<string | null>(null);
+		const [isStoppingVoice, setIsStoppingVoice] = useState(false);
 
 		const textareaRef = useRef<HTMLTextAreaElement>(null);
 		const photoInputRef = useRef<HTMLInputElement>(null);
@@ -449,8 +451,13 @@ export const SmartTextareaComposer = forwardRef<
 			if (!isRecording) {
 				onStartExpenseRecording();
 			} else {
-				await onStopRecording();
-				cancelToIdle();
+				setIsStoppingVoice(true);
+				try {
+					await onStopRecording();
+					cancelToIdle();
+				} finally {
+					setIsStoppingVoice(false);
+				}
 			}
 		};
 
@@ -592,44 +599,113 @@ export const SmartTextareaComposer = forwardRef<
 			<div>
 				{renderNav()}
 				{renderStateTitle("Add expense by voice")}
-				<div className="flex flex-col items-center gap-2.5 py-2">
-					{isRecording ? (
+				<div className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,250,240,0.58)] p-3">
+					{isRecording || isStoppingVoice ? (
 						<>
-							<div className="flex items-center gap-2">
-								<span
-									aria-label="Recording in progress"
-									className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-red-500"
-								/>
-								<span className="text-xs font-medium text-[hsl(220_40%_35%)] dark:text-[hsl(220_40%_65%)]">
-									Recording…
-								</span>
+							<div className="flex items-center justify-between gap-3">
+								<div className="min-w-0">
+									<div className="flex items-center gap-2">
+										<span
+											aria-label={
+												isStoppingVoice
+													? "Voice capture is processing"
+													: "Recording in progress"
+											}
+											className={[
+												"inline-flex h-8 w-8 items-center justify-center rounded-full border",
+												isStoppingVoice
+													? "border-[rgba(64,91,118,0.24)] bg-[rgba(236,244,249,0.92)] text-[#34556f]"
+													: "border-[rgba(145,78,56,0.24)] bg-[rgba(253,239,232,0.92)] text-[#7b3f2e]",
+											].join(" ")}
+										>
+											<Mic className="h-4 w-4" />
+										</span>
+										<div className="min-w-0">
+											<p className="text-xs font-semibold text-foreground">
+												{isStoppingVoice
+													? "Preparing voice capture"
+													: "Recording voice"}
+											</p>
+											<p className="text-[11px] text-muted-foreground">
+												{isStoppingVoice
+													? "Ceits is turning the recording into review work."
+													: "Speak naturally. Stop when you are done."}
+											</p>
+										</div>
+									</div>
+								</div>
+								<div aria-hidden className="flex shrink-0 items-end gap-1">
+									{[0, 1, 2, 3].map((i) => (
+										<motion.span
+											animate={
+												reduceMotion || isStoppingVoice
+													? { scaleY: 0.48 }
+													: { scaleY: [0.38, 1, 0.38] }
+											}
+											className="h-7 w-1.5 origin-bottom rounded-full bg-[rgba(145,78,56,0.62)]"
+											key={i}
+											transition={
+												reduceMotion || isStoppingVoice
+													? {}
+													: {
+															delay: i * 0.08,
+															duration: 0.58,
+															ease: "easeInOut",
+															repeat: Number.POSITIVE_INFINITY,
+														}
+											}
+										/>
+									))}
+								</div>
 							</div>
-							<button
-								aria-label="Stop voice recording"
-								className="min-h-10 rounded-full bg-red-50 px-5 text-xs font-semibold text-red-600 shadow-[0_0_0_1px_rgba(248,113,113,0.34),0_10px_22px_-16px_rgba(127,29,29,0.55)] transition-[background-color,box-shadow,transform] hover:bg-red-100 active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:bg-red-950/40 dark:hover:bg-red-950/60"
-								disabled={disabled}
-								onClick={() => void handleVoiceToggle()}
-								tabIndex={0}
-								type="button"
-							>
-								■ Stop
-							</button>
+							<div className="mt-3 flex flex-wrap justify-end gap-2">
+								<button
+									aria-label="Discard voice recording"
+									className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-3.5 text-xs font-semibold text-muted-foreground shadow-sm transition-[background-color,box-shadow,transform] hover:bg-white hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									disabled={disabled || isStoppingVoice}
+									onClick={cancelToIdle}
+									tabIndex={0}
+									type="button"
+								>
+									<X className="h-3.5 w-3.5" />
+									Discard
+								</button>
+								<button
+									aria-label="Stop voice recording"
+									className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[rgba(145,78,56,0.12)] px-4 text-xs font-semibold text-[#7b3f2e] shadow-[0_0_0_1px_rgba(145,78,56,0.22),0_10px_22px_-16px_rgba(127,29,29,0.45)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(145,78,56,0.16)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									disabled={disabled || isStoppingVoice}
+									onClick={() => void handleVoiceToggle()}
+									tabIndex={0}
+									type="button"
+								>
+									<Square className="h-3.5 w-3.5 fill-current" />
+									{isStoppingVoice ? "Processing" : "Stop and parse"}
+								</button>
+							</div>
 						</>
 					) : (
 						<>
-							<button
-								aria-label="Start voice recording"
-								className="flex min-h-10 items-center gap-2 rounded-full bg-[rgba(255,248,235,0.92)] px-5 text-xs font-semibold text-[hsl(220_40%_22%)] shadow-[0_0_0_1px_rgba(120,100,80,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(255,252,248,0.96)] hover:shadow-[0_0_0_1px_rgba(120,100,80,0.22),0_12px_24px_-16px_rgba(44,32,18,0.54)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:bg-[rgba(255,248,235,0.07)] dark:text-foreground dark:hover:bg-[rgba(215,185,135,0.12)]"
-								disabled={disabled}
-								onClick={() => void handleVoiceToggle()}
-								tabIndex={0}
-								type="button"
-							>
-								🎙 Start recording
-							</button>
-							<span className="text-[11px] text-muted-foreground">
-								Press and speak
-							</span>
+							<div className="flex items-center justify-between gap-3">
+								<div className="min-w-0">
+									<p className="text-xs font-semibold text-foreground">
+										Capture by voice
+									</p>
+									<p className="text-[11px] text-muted-foreground">
+										Say the expense, receipt context, people, or split details.
+									</p>
+								</div>
+								<button
+									aria-label="Start voice recording"
+									className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									disabled={disabled}
+									onClick={() => void handleVoiceToggle()}
+									tabIndex={0}
+									type="button"
+								>
+									<Mic className="h-3.5 w-3.5" />
+									Record
+								</button>
+							</div>
 						</>
 					)}
 				</div>
@@ -640,16 +716,30 @@ export const SmartTextareaComposer = forwardRef<
 			<div>
 				{renderNav()}
 				{renderStateTitle("Add receipt photo")}
-				<div className="flex flex-col items-center gap-2 py-2">
+				<div className="rounded-2xl border border-[rgba(64,91,118,0.16)] bg-[rgba(246,251,253,0.72)] p-3">
+					<div className="mb-3 flex items-start gap-2">
+						<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(64,91,118,0.22)] bg-[rgba(236,244,249,0.92)] text-[#34556f]">
+							<Camera className="h-4 w-4" />
+						</span>
+						<div className="min-w-0">
+							<p className="text-xs font-semibold text-foreground">
+								Receipt or document image
+							</p>
+							<p className="text-[11px] text-muted-foreground">
+								Ceits will parse it into reviewable candidates before saving.
+							</p>
+						</div>
+					</div>
 					<button
 						aria-label="Upload receipt photo"
-						className="flex min-h-10 items-center gap-2 rounded-full bg-[rgba(255,248,235,0.92)] px-5 text-xs font-semibold text-[hsl(220_40%_22%)] shadow-[0_0_0_1px_rgba(120,100,80,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(255,252,248,0.96)] hover:shadow-[0_0_0_1px_rgba(120,100,80,0.22),0_12px_24px_-16px_rgba(44,32,18,0.54)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:bg-[rgba(255,248,235,0.07)] dark:text-foreground dark:hover:bg-[rgba(215,185,135,0.12)]"
+						className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
 						disabled={disabled}
 						onClick={() => photoInputRef.current?.click()}
 						tabIndex={0}
 						type="button"
 					>
-						📷 Upload receipt photo
+						<Upload className="h-3.5 w-3.5" />
+						Choose image
 					</button>
 				</div>
 				<input
