@@ -26,6 +26,7 @@ import {
 	touchRecentSpaceId,
 } from "../../shared/lib/recentSpaceIds";
 import { wsClient } from "../../shared/lib/wsClient";
+import { ChatCaptureReviewEvents } from "./components/ChatCaptureReviewEvents";
 import type { ChatComposerMode } from "./components/ChatComposerDock";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
@@ -1464,6 +1465,11 @@ export const ChatLogPage = () => {
 						}}
 						selectedSpaceId={selectedSpaceId}
 						sidebarThreadExpenseId={sidebarThreadExpenseId}
+					/>
+					<ChatCaptureReviewEvents
+						refreshKey={messages?.length ?? 0}
+						spaceId={selectedSpaceId}
+						spaceName={selectedSpace?.name ?? null}
 					/>
 				</NativeChatSpaceSurface>
 			) : (
