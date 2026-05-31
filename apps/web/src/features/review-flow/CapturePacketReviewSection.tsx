@@ -238,6 +238,40 @@ const CandidateActionButton = ({
 	</button>
 );
 
+type PacketPillTone = "default" | "muted" | "strong";
+type PacketPillSize = "regular" | "compact";
+
+type PacketPillProps = {
+	children: ReactNode;
+	size?: PacketPillSize;
+	tone?: PacketPillTone;
+};
+
+const packetPillClass = (
+	tone: PacketPillTone,
+	size: PacketPillSize,
+): string => {
+	const base =
+		size === "compact"
+			? "rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+			: "rounded-full border px-2.5 py-1 text-xs font-semibold";
+	const toneClass: Record<PacketPillTone, string> = {
+		default: "border-[rgba(120,100,80,0.22)] bg-white text-foreground/75",
+		muted: "border-[rgba(120,100,80,0.16)] bg-white/70 text-muted-foreground",
+		strong:
+			"border-[rgba(68,58,42,0.16)] bg-[rgba(68,58,42,0.08)] text-[#4d4231]",
+	};
+	return `${base} ${toneClass[tone]}`;
+};
+
+const PacketPill = ({
+	children,
+	size = "regular",
+	tone = "default",
+}: PacketPillProps) => (
+	<span className={packetPillClass(tone, size)}>{children}</span>
+);
+
 const addHrefForSection = (
 	sectionKey: PacketSectionKey,
 	spaceId: number,
@@ -424,12 +458,8 @@ export const CapturePacketReviewSection = ({
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-1.5">
-					<span className="rounded-full border border-[rgba(120,100,80,0.22)] bg-white px-2.5 py-1 text-xs font-semibold text-foreground/75">
-						{packets.length} packets
-					</span>
-					<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
-						{decisionCount} decisions
-					</span>
+					<PacketPill>{packets.length} packets</PacketPill>
+					<PacketPill tone="muted">{decisionCount} decisions</PacketPill>
 				</div>
 			</div>
 			<div className="mt-4 grid gap-2 rounded-2xl border border-[rgba(120,100,80,0.12)] bg-white/54 p-2 sm:grid-cols-2 xl:grid-cols-4">
@@ -585,14 +615,12 @@ const CapturePacketRow = ({
 					<p className="mt-1 text-xs text-muted-foreground">{packet.meta}</p>
 				</div>
 				<div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-					<span className="rounded-full border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.95)] px-2.5 py-1 text-xs font-semibold text-foreground/75">
+					<PacketPill>
 						{sectionFilter === "all"
 							? packet.summary
 							: `${sections[0]?.title ?? "Entity"} only`}
-					</span>
-					<span className="rounded-full border border-[rgba(68,58,42,0.16)] bg-[rgba(68,58,42,0.08)] px-2.5 py-1 text-xs font-semibold text-[#4d4231]">
-						{packet.primaryActionLabel}
-					</span>
+					</PacketPill>
+					<PacketPill tone="strong">{packet.primaryActionLabel}</PacketPill>
 				</div>
 			</div>
 			<PacketWorkspaceMap
@@ -635,11 +663,11 @@ const CapturePacketRow = ({
 									</p>
 								</div>
 							</div>
-							<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+							<PacketPill size="compact" tone="muted">
 								{section.candidates.length > 0
 									? section.candidates.length
 									: "Not found"}
-							</span>
+							</PacketPill>
 						</div>
 						{section.candidates.length > 0 ? (
 							<div className="mt-2 divide-y divide-[rgba(120,100,80,0.1)]">
