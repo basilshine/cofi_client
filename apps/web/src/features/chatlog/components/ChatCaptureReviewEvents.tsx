@@ -146,6 +146,7 @@ export const ChatCaptureReviewEvents = ({
 }: ChatCaptureReviewEventsProps) => {
 	const [error, setError] = useState<string | null>(null);
 	const [candidates, setCandidates] = useState<ReviewCandidate[]>([]);
+	const [detailsOpen, setDetailsOpen] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -209,6 +210,7 @@ export const ChatCaptureReviewEvents = ({
 	const primaryActionLabel =
 		packets.length > 1 ? "Review first" : "Open review";
 	const processSteps = reviewProcessSteps(totalCandidateCount);
+	const detailsRegionId = `capture-review-details-${String(spaceId)}`;
 
 	if (packets.length === 0 && !error) return null;
 
@@ -257,14 +259,33 @@ export const ChatCaptureReviewEvents = ({
 						})}
 					</div>
 				) : null}
-				<Link
-					className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-bold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(50,43,32,0.96)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					to={reviewHref}
-				>
-					{primaryActionLabel}
-				</Link>
+				<div className="flex shrink-0 items-center gap-1.5">
+					<button
+						aria-controls={detailsRegionId}
+						aria-expanded={detailsOpen}
+						className="inline-flex min-h-8 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-white/72 px-3 text-[11px] font-bold text-muted-foreground shadow-sm transition hover:bg-white hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onClick={() => setDetailsOpen((open) => !open)}
+						type="button"
+					>
+						{detailsOpen ? "Hide" : "Details"}
+					</button>
+					<Link
+						className="inline-flex min-h-8 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-bold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(50,43,32,0.96)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						to={reviewHref}
+					>
+						{primaryActionLabel}
+					</Link>
+				</div>
 			</div>
-			<div className="grid max-h-0 overflow-hidden border-t border-transparent opacity-0 transition-[max-height,opacity,border-color] duration-200 group-focus-within:max-h-80 group-focus-within:border-[rgba(181,131,52,0.18)] group-focus-within:opacity-100 group-hover:max-h-80 group-hover:border-[rgba(181,131,52,0.18)] group-hover:opacity-100">
+			<div
+				className={[
+					"grid overflow-hidden border-t transition-[max-height,opacity,border-color] duration-200",
+					detailsOpen
+						? "max-h-80 border-[rgba(181,131,52,0.18)] opacity-100"
+						: "max-h-0 border-transparent opacity-0 group-focus-within:max-h-80 group-focus-within:border-[rgba(181,131,52,0.18)] group-focus-within:opacity-100 group-hover:max-h-80 group-hover:border-[rgba(181,131,52,0.18)] group-hover:opacity-100",
+				].join(" ")}
+				id={detailsRegionId}
+			>
 				<div className="space-y-2 px-3 pb-3 pt-2">
 					<ol className="grid gap-2 text-xs text-muted-foreground sm:grid-cols-4">
 						{processSteps.map((step, index) => (
