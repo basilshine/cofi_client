@@ -1,6 +1,7 @@
 import type { ChatMessage } from "@cofi/api";
 import { useMemo } from "react";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
+import { EntityMicro } from "../../../shared/lib/entityPresentation";
 import { userMessageAccent } from "../lib/userMessageAccent";
 import {
 	isDraftExpenseSystemMessage,
@@ -343,9 +344,9 @@ export const NativeChatMessageList = ({
 								</div>
 							) : isRecurringExpenseChatMessage(m) ? (
 								<div className="space-y-1">
-									<p className="text-[11px] font-semibold uppercase tracking-wide text-primary/90">
-										Recurring schedule
-									</p>
+									<EntityMicro
+										entity={{ label: "Recurring", visualKey: "future" }}
+									/>
 									<div className="whitespace-pre-wrap text-sm text-foreground">
 										<ThreadDiscussionRichText
 											body={m.text ?? ""}
