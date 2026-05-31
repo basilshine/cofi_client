@@ -3,6 +3,10 @@ import { FileText, Inbox, Plus, ReceiptText, Split } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+	EntityListItem,
+	type EntityViewModel,
+} from "../../shared/lib/entityPresentation";
+import {
 	captureCandidateTypeVisual,
 	capturePacketEntityVisual,
 } from "../../shared/lib/entityVisual";
@@ -142,6 +146,35 @@ const sectionCount = (
 ): number =>
 	candidates.filter((candidate) => packetSectionKey(candidate) === sectionKey)
 		.length;
+
+const packetEntity = (
+	packet: CapturePacket,
+	selected: boolean,
+	selectedSectionKey: PacketSectionFilterKey,
+): EntityViewModel => {
+	const scopedSections = packetSectionDefinitions
+		.filter(
+			(section) =>
+				selectedSectionKey === "all" || selectedSectionKey === section.key,
+		)
+		.map((section) => ({
+			label: section.shortTitle,
+			count: sectionCount(packet.candidates, section.key),
+		}))
+		.filter((section) => section.count > 0);
+
+	return {
+		id: String(packet.sourceDocumentId),
+		visualKey: "reviewPacket",
+		label: "Review packet",
+		title: packet.title,
+		subtitle: `Packet #${packet.sourceDocumentId} - ${packet.meta}`,
+		detail: packet.summary,
+		meta: scopedSections.map((section) => `${section.label} ${section.count}`),
+		status: packet.primaryActionLabel,
+		selected,
+	};
+};
 
 const addHrefForSection = (
 	sectionKey: PacketSectionKey,
@@ -389,47 +422,14 @@ export const CapturePacketReviewSection = ({
 							return (
 								<button
 									aria-pressed={selected}
-									className={`w-full rounded-xl border px-3 py-2 text-left transition ${
-										selected
-											? "border-[rgba(68,58,42,0.32)] bg-[rgba(68,58,42,0.08)] shadow-sm"
-											: "border-[rgba(120,100,80,0.14)] bg-white/58 hover:border-[rgba(120,100,80,0.28)] hover:bg-white/78"
-									}`}
+									className="block w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 									key={packet.sourceDocumentId}
 									onClick={() => setSelectedPacketId(packet.sourceDocumentId)}
 									type="button"
 								>
-									<span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-										Packet #{packet.sourceDocumentId}
-									</span>
-									<span className="mt-1 block truncate text-sm font-semibold text-foreground">
-										{packet.title}
-									</span>
-									<span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">
-										{packet.summary}
-									</span>
-									<span className="mt-2 flex flex-wrap gap-1">
-										{packetSectionDefinitions
-											.filter(
-												(section) =>
-													selectedSectionKey === "all" ||
-													selectedSectionKey === section.key,
-											)
-											.map((section) => {
-												const count = sectionCount(
-													packet.candidates,
-													section.key,
-												);
-												if (count === 0) return null;
-												return (
-													<span
-														className="rounded-full border border-[rgba(120,100,80,0.12)] bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
-														key={section.key}
-													>
-														{section.shortTitle} {count}
-													</span>
-												);
-											})}
-									</span>
+									<EntityListItem
+										entity={packetEntity(packet, selected, selectedSectionKey)}
+									/>
 								</button>
 							);
 						})
