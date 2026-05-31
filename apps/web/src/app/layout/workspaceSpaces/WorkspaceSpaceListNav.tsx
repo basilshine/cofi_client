@@ -109,6 +109,23 @@ const IconHome = ({ className }: { className?: string }) => (
 	</svg>
 );
 
+const IconSearch = ({ className }: { className?: string }) => (
+	<svg
+		aria-hidden
+		className={className}
+		fill="none"
+		height="18"
+		stroke="currentColor"
+		strokeWidth="1.8"
+		viewBox="0 0 24 24"
+		width="18"
+	>
+		<title>Search</title>
+		<circle cx="11" cy="11" r="7" />
+		<path d="M16 16l4 4" strokeLinecap="round" />
+	</svg>
+);
+
 const IconShield = ({ className }: { className?: string }) => (
 	<svg
 		aria-hidden
@@ -294,6 +311,7 @@ export const WorkspaceSpaceListNav = ({
 	const isHomeActive =
 		location.pathname.startsWith("/console/home") ||
 		location.pathname.startsWith("/console/dashboard");
+	const isSearchActive = location.pathname.startsWith("/console/search");
 	const inSpaceShell = /^\/console\/spaces\/[^/]+/.test(location.pathname);
 	const inChatShell = location.pathname.startsWith("/console/chat");
 	const inSettingsShell = location.pathname.startsWith("/console/settings");
@@ -396,6 +414,20 @@ export const WorkspaceSpaceListNav = ({
 				to="/console/home"
 			>
 				<IconHome className="h-4 w-4" />
+			</Link>
+
+			<Link
+				aria-current={isSearchActive ? "page" : undefined}
+				aria-label="Search — find expenses, promos, items, and spaces"
+				className={[
+					"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+					isSearchActive
+						? "border-foreground/20 bg-foreground text-background"
+						: "border-border/80 bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
+				].join(" ")}
+				to="/console/search"
+			>
+				<IconSearch className="h-4 w-4" />
 			</Link>
 
 			<div className="h-px w-8 shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -560,6 +592,15 @@ export const WorkspaceSpaceListNav = ({
 				>
 					<IconHome className="h-4 w-4 shrink-0" />
 					<span>Dashboard</span>
+				</Link>
+
+				<Link
+					aria-current={isSearchActive ? "page" : undefined}
+					className={navLinkClass(isSearchActive)}
+					to="/console/search"
+				>
+					<IconSearch className="h-4 w-4 shrink-0" />
+					<span>Search</span>
 				</Link>
 
 				{loadError ? (

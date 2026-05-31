@@ -10,6 +10,7 @@ import { OnboardingPage } from "../../features/onboarding/OnboardingPage";
 import { QuotaPage } from "../../features/quota/QuotaPage";
 import { RecurringSchedulesPage } from "../../features/recurring/RecurringSchedulesPage";
 import { CeitsReviewFlowPage } from "../../features/review-flow/CeitsReviewFlowPage";
+import { GlobalSearchPage } from "../../features/search/GlobalSearchPage";
 import {
 	SettingsHubPage,
 	type SettingsSectionKey,
@@ -86,6 +87,7 @@ export const AppRouter = () => {
 								path="spaces/:spaceId/settings"
 							/>
 							<Route element={<DraftsPage />} path="drafts" />
+							<Route element={<GlobalSearchPage />} path="search" />
 							<Route element={<CeitsReviewFlowPage />} path="review" />
 							<Route element={<TransactionsPage />} path="transactions" />
 							<Route element={<RecurringSchedulesPage />} path="recurring" />
