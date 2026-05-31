@@ -882,6 +882,10 @@ export const GlobalComposerDock = ({
 		activeSpaceId == null
 			? "/console/review"
 			: `/console/review?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
+	const activeSpaceActivityHref =
+		activeSpaceId == null
+			? "/console/home"
+			: `/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}&view=activity`;
 
 	const disabled = busy || isLoading || !hasSpaceContext;
 	const composerNotice =
@@ -1227,9 +1231,9 @@ export const GlobalComposerDock = ({
 	if (hasNativeComposer) return null;
 
 	const actionButtonClass =
-		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.46)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
+		"inline-flex min-h-9 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3.5 text-xs font-semibold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_12px_28px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
 	const dockLinkClass =
-		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.46)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+		"inline-flex min-h-8 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-[background-color,color,transform] hover:bg-background/78 hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	const userLinkClass =
 		"inline-flex min-h-10 min-w-0 shrink-0 items-center gap-2 rounded-full bg-background px-3 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	const settingsActionClass =
@@ -1312,7 +1316,7 @@ export const GlobalComposerDock = ({
 		>
 			<div className="pointer-events-auto w-full max-w-5xl overflow-hidden rounded-[1.35rem] bg-background/96 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65">
 				{isCollapsed ? (
-					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(11rem,15rem)_minmax(0,1fr)_auto_auto] xl:items-center">
+					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(11rem,15rem)_minmax(18rem,1fr)_auto] xl:items-center">
 						<div className="min-w-0 rounded-[0.85rem] bg-muted/35 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(87,70,49,0.06)]">
 							<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/88">
 								Context
@@ -1328,54 +1332,67 @@ export const GlobalComposerDock = ({
 						</div>
 						<button
 							aria-label="Expand global composer"
-							className="flex min-h-12 min-w-0 items-center rounded-[0.95rem] bg-card/88 px-4 text-left text-sm text-muted-foreground shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08),inset_0_1px_2px_rgba(44,32,18,0.04)] transition-[background-color,box-shadow] hover:bg-background hover:shadow-[inset_0_0_0_1px_rgba(87,70,49,0.14),inset_0_1px_2px_rgba(44,32,18,0.05)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+							className="flex min-h-14 min-w-0 items-center justify-between gap-3 rounded-[1rem] bg-card/95 px-4 text-left shadow-[inset_0_0_0_1px_rgba(87,70,49,0.12),0_12px_28px_-24px_rgba(44,32,18,0.56)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[inset_0_0_0_1px_rgba(87,70,49,0.2),0_14px_32px_-24px_rgba(44,32,18,0.62)] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
 							disabled={disabled}
 							onClick={() => expandTo("message_text")}
 							type="button"
 						>
-							<span className="truncate">What would you like to do?</span>
+							<span className="min-w-0">
+								<span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b651f]">
+									Tell Ceits
+								</span>
+								<span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
+									What happened? Add a receipt, expense, promo, or question.
+								</span>
+							</span>
+							<span className="hidden rounded-full bg-[rgba(68,58,42,0.08)] px-2.5 py-1 text-[11px] font-semibold text-muted-foreground sm:inline">
+								Start here
+							</span>
 						</button>
-						<div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
-							<button
-								className={actionButtonClass}
-								disabled={disabled}
-								onClick={() => expandTo("expense_method_select")}
-								type="button"
-							>
-								Add expense
-							</button>
-							<button
-								className={actionButtonClass}
-								disabled={disabled}
-								onClick={() => expandTo("ask_topic_select")}
-								type="button"
-							>
-								Ask Ceits
-							</button>
-							<Link className={dockLinkClass} to={spaceSettingsHref}>
-								Space settings
-							</Link>
-							{hasSpaceContext ? (
-								<Link
-									className={dockLinkClass}
-									to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
+						<div className="flex min-w-0 flex-col gap-2 lg:items-end">
+							<div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+								<button
+									className={actionButtonClass}
+									disabled={disabled}
+									onClick={() => expandTo("expense_method_select")}
+									type="button"
 								>
-									Open chat
+									Add expense
+								</button>
+								<button
+									className={actionButtonClass}
+									disabled={disabled}
+									onClick={() => expandTo("ask_topic_select")}
+									type="button"
+								>
+									Ask Ceits
+								</button>
+								{hasSpaceContext ? (
+									<Link
+										className={actionButtonClass}
+										to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
+									>
+										Message
+									</Link>
+								) : null}
+							</div>
+							<div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-full bg-muted/30 px-1.5 py-1 lg:justify-end">
+								<Link className={dockLinkClass} to={activeSpaceActivityHref}>
+									Activity
 								</Link>
-							) : (
-								<Link className={dockLinkClass} to="/console/settings/spaces">
-									Choose space
+								<Link className={dockLinkClass} to={spaceSettingsHref}>
+									Manage
 								</Link>
-							)}
+								<Link className={dockLinkClass} to="/console/settings/account">
+									Account
+								</Link>
+								<Link className={userLinkClass} to="/console/settings/account">
+									<span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold uppercase text-secondary-foreground">
+										{userInitial}
+									</span>
+								</Link>
+							</div>
 						</div>
-						<Link className={userLinkClass} to="/console/settings/account">
-							<span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold uppercase text-secondary-foreground">
-								{userInitial}
-							</span>
-							<span className="hidden max-w-[8rem] truncate sm:inline">
-								{userDisplay}
-							</span>
-						</Link>
 					</div>
 				) : (
 					<>
@@ -1399,7 +1416,7 @@ export const GlobalComposerDock = ({
 								</button>
 								{hasSpaceContext ? (
 									<Link className={dockHeaderLinkClass} to={spaceSettingsHref}>
-										Space settings
+										Manage
 									</Link>
 								) : (
 									<Link
@@ -1414,6 +1431,12 @@ export const GlobalComposerDock = ({
 									to="/console/settings/account"
 								>
 									Account
+								</Link>
+								<Link
+									className={dockHeaderLinkClass}
+									to={activeSpaceActivityHref}
+								>
+									Activity
 								</Link>
 								{hasSpaceContext ? (
 									<Link

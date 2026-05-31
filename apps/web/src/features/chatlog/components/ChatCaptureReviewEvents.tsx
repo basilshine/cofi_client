@@ -148,19 +148,20 @@ export const ChatCaptureReviewEvents = ({
 	return (
 		<section
 			aria-label="Parsed capture review events"
-			className="mx-auto w-full max-w-[min(780px,95%)] rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.92)] px-3 py-3 shadow-sm"
+			className="group mx-auto mb-[-1px] w-full max-w-[min(780px,95%)] rounded-t-2xl border border-b-0 border-[rgba(181,131,52,0.22)] bg-[rgba(255,247,229,0.96)] shadow-[0_-10px_26px_-24px_rgba(44,32,18,0.42)] transition focus-within:shadow-[0_-14px_34px_-24px_rgba(44,32,18,0.5)] hover:shadow-[0_-14px_34px_-24px_rgba(44,32,18,0.5)]"
 		>
-			<div className="flex flex-wrap items-start justify-between gap-2">
+			<div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
 				<div className="min-w-0">
-					<p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-						Capture review
+					<p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b651f]">
+						Review shelf
 					</p>
-					<h3 className="mt-0.5 text-sm font-semibold text-foreground">
-						Parsed captures waiting in {spaceName ?? "this space"}
+					<h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">
+						{loading && packets.length === 0
+							? "Checking parsed captures..."
+							: `${packets.length} parsed ${packets.length === 1 ? "capture" : "captures"} need review`}
 					</h3>
-					<p className="mt-0.5 text-xs leading-5 text-muted-foreground">
-						Ceits found structured candidates. Open Review to decide what
-						becomes expenses, promos, people, splits, or document signals.
+					<p className="mt-0.5 truncate text-xs text-muted-foreground">
+						{spaceName ?? "This space"} has parser work waiting below the chat.
 					</p>
 				</div>
 				<Link
@@ -170,31 +171,39 @@ export const ChatCaptureReviewEvents = ({
 					Open review
 				</Link>
 			</div>
-			{error ? (
-				<p className="mt-2 rounded-lg border border-destructive/25 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
-					{error}
-				</p>
-			) : null}
-			{loading && packets.length === 0 ? (
-				<p className="mt-2 text-xs text-muted-foreground">
-					Checking parsed captures...
-				</p>
-			) : null}
-			{packets.length > 0 ? (
-				<div className="mt-3 space-y-2">
-					{packets.map((packet) => (
-						<EntityListItem
-							entity={packetEntity(packet, spaceId)}
-							key={packet.sourceDocumentId}
-							trailing={
-								<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-									Packet #{packet.sourceDocumentId}
-								</span>
-							}
-						/>
-					))}
+			<div className="grid max-h-0 overflow-hidden border-t border-transparent opacity-0 transition-[max-height,opacity,border-color] duration-200 group-focus-within:max-h-80 group-focus-within:border-[rgba(181,131,52,0.18)] group-focus-within:opacity-100 group-hover:max-h-80 group-hover:border-[rgba(181,131,52,0.18)] group-hover:opacity-100">
+				<div className="space-y-2 px-3 pb-3 pt-2">
+					<p className="text-xs leading-5 text-muted-foreground">
+						Ceits found structured candidates. Review decides what becomes
+						expenses, promos, people, splits, or document signals.
+					</p>
+					{error ? (
+						<p className="rounded-lg border border-destructive/25 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
+							{error}
+						</p>
+					) : null}
+					{loading && packets.length === 0 ? (
+						<p className="text-xs text-muted-foreground">
+							Checking parsed captures...
+						</p>
+					) : null}
+					{packets.length > 0 ? (
+						<div className="space-y-2">
+							{packets.map((packet) => (
+								<EntityListItem
+									entity={packetEntity(packet, spaceId)}
+									key={packet.sourceDocumentId}
+									trailing={
+										<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+											Packet #{packet.sourceDocumentId}
+										</span>
+									}
+								/>
+							))}
+						</div>
+					) : null}
 				</div>
-			) : null}
+			</div>
 		</section>
 	);
 };

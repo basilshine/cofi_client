@@ -1467,16 +1467,23 @@ export const ChatLogPage = () => {
 			{selectedSpaceId ? (
 				<NativeChatSpaceSurface
 					composerSlot={
-						<SmartTextareaComposer
-							ref={smartComposerRef}
-							disabled={isLoading || !selectedSpaceId}
-							isRecording={isRecording}
-							onCancelRecording={cancelRecording}
-							onComposerSubmit={(p) => void handleComposerSubmit(p)}
-							onStartExpenseRecording={() => void beginRecording(false)}
-							onStopRecording={handleToggleRecording}
-							spaceId={selectedSpaceId}
-						/>
+						<>
+							<ChatCaptureReviewEvents
+								refreshKey={messages?.length ?? 0}
+								spaceId={selectedSpaceId}
+								spaceName={selectedSpace?.name ?? null}
+							/>
+							<SmartTextareaComposer
+								ref={smartComposerRef}
+								disabled={isLoading || !selectedSpaceId}
+								isRecording={isRecording}
+								onCancelRecording={cancelRecording}
+								onComposerSubmit={(p) => void handleComposerSubmit(p)}
+								onStartExpenseRecording={() => void beginRecording(false)}
+								onStopRecording={handleToggleRecording}
+								spaceId={selectedSpaceId}
+							/>
+						</>
 					}
 					hasMore={hasMore}
 					loadOlderDisabled={isLoading || !selectedSpaceId || !oldestMessageId}
@@ -1518,11 +1525,6 @@ export const ChatLogPage = () => {
 						}}
 						selectedSpaceId={selectedSpaceId}
 						sidebarThreadExpenseId={sidebarThreadExpenseId}
-					/>
-					<ChatCaptureReviewEvents
-						refreshKey={messages?.length ?? 0}
-						spaceId={selectedSpaceId}
-						spaceName={selectedSpace?.name ?? null}
 					/>
 				</NativeChatSpaceSurface>
 			) : (
