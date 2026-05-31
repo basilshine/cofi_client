@@ -4,9 +4,14 @@ import { Link } from "react-router-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
 import {
 	type CapturePacketCounts,
+	type CapturePacketSummary,
 	buildCapturePacketSummaries,
 	capturePacketSummaryLine,
 } from "../../../shared/lib/capturePacketSummary";
+import {
+	EntityListItem,
+	type EntityViewModel,
+} from "../../../shared/lib/entityPresentation";
 import { capturePacketEntityVisual } from "../../../shared/lib/entityVisual";
 
 type ChatCaptureReviewEventsProps = {
@@ -48,6 +53,34 @@ const packetIconKeys: Array<keyof CapturePacketCounts> = [
 	"future",
 	"documents",
 ];
+
+const packetHref = (
+	spaceId: string | number,
+	sourceDocumentId: number,
+): string =>
+	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`;
+
+const packetEntity = (
+	packet: CapturePacketSummary<ReviewCandidate>,
+	spaceId: string | number,
+): EntityViewModel => ({
+	id: String(packet.sourceDocumentId),
+	visualKey: "reviewPacket",
+	label: "Review packet",
+	title: packet.title,
+	subtitle: capturePacketSummaryLine(packet.counts),
+	detail: packet.meta,
+	href: packetHref(spaceId, packet.sourceDocumentId),
+	status: "Needs review",
+	meta: packetIconKeys
+		.map((key) => {
+			const count = packet.counts[key];
+			if (count <= 0) return null;
+			const visual = capturePacketEntityVisual(key);
+			return `${count} ${visual.label.toLowerCase()}`;
+		})
+		.filter((value): value is string => Boolean(value)),
+});
 
 export const ChatCaptureReviewEvents = ({
 	spaceId,
@@ -150,46 +183,15 @@ export const ChatCaptureReviewEvents = ({
 			{packets.length > 0 ? (
 				<div className="mt-3 space-y-2">
 					{packets.map((packet) => (
-						<Link
-							className="block rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/62 px-3 py-2 transition hover:border-[rgba(120,100,80,0.26)] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						<EntityListItem
+							entity={packetEntity(packet, spaceId)}
 							key={packet.sourceDocumentId}
-							to={`/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(packet.sourceDocumentId))}`}
-						>
-							<div className="flex flex-wrap items-start justify-between gap-2">
-								<div className="min-w-0">
-									<p className="truncate text-sm font-semibold text-foreground">
-										{packet.title}
-									</p>
-									<p className="mt-0.5 text-xs text-muted-foreground">
-										{capturePacketSummaryLine(packet.counts)}
-									</p>
-									<p className="mt-0.5 text-[11px] text-muted-foreground">
-										{packet.meta}
-									</p>
-								</div>
+							trailing={
 								<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
 									Packet #{packet.sourceDocumentId}
 								</span>
-							</div>
-							<div className="mt-2 flex flex-wrap gap-1.5">
-								{packetIconKeys.map((key) => {
-									const count = packet.counts[key];
-									if (count <= 0) return null;
-									const visual = capturePacketEntityVisual(key);
-									const Icon = visual.icon;
-									return (
-										<span
-											className={`inline-flex min-h-7 items-center gap-1.5 rounded-full px-2 text-[11px] font-semibold ${visual.softToneClass}`}
-											key={key}
-											title={visual.label}
-										>
-											<Icon className="h-3.5 w-3.5" size={14} />
-											{count}
-										</span>
-									);
-								})}
-							</div>
-						</Link>
+							}
+						/>
 					))}
 				</div>
 			) : null}

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
+	ClipboardList,
 	FileText,
 	Gift,
 	ListChecks,
@@ -25,6 +26,7 @@ export type EntityVisualKey =
 	| "document"
 	| "loyalty"
 	| "privacy"
+	| "reviewPacket"
 	| "unknown";
 
 export type EntityVisual = {
@@ -178,6 +180,20 @@ export const entityVisuals: Record<EntityVisualKey, EntityVisual> = {
 			"border-[rgba(145,78,56,0.44)] bg-[rgba(253,239,232,0.94)] ring-2 ring-[rgba(145,78,56,0.16)]",
 		chipClass:
 			"border-[rgba(145,78,56,0.16)] bg-[rgba(255,250,247,0.78)] text-[#7b3f2e]",
+	},
+	reviewPacket: {
+		key: "reviewPacket",
+		label: "Review packets",
+		icon: ClipboardList,
+		toneClass:
+			"border-[rgba(172,124,35,0.24)] bg-[rgba(255,247,223,0.94)] text-[#715016]",
+		softToneClass: "bg-[rgba(255,247,223,0.9)] text-[#715016]",
+		surfaceClass:
+			"border-[rgba(172,124,35,0.18)] bg-[linear-gradient(180deg,rgba(255,253,247,0.96),rgba(255,245,219,0.78))] hover:border-[rgba(172,124,35,0.32)] hover:bg-[rgba(255,251,239,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(172,124,35,0.48)] bg-[rgba(255,245,219,0.94)] ring-2 ring-[rgba(209,159,61,0.2)]",
+		chipClass:
+			"border-[rgba(172,124,35,0.18)] bg-[rgba(255,252,244,0.78)] text-[#715016]",
 	},
 	unknown: {
 		key: "unknown",
