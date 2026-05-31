@@ -51,40 +51,48 @@ type PacketSectionKey =
 	| "splits"
 	| "future"
 	| "documents";
+type PacketSectionFilterKey = PacketSectionKey | "all";
 
 const packetSectionDefinitions: Array<{
 	key: PacketSectionKey;
 	title: string;
 	description: string;
+	shortTitle: string;
 }> = [
 	{
 		key: "expenses",
 		title: "Expense draft",
+		shortTitle: "Expenses",
 		description: "Amounts, items, merchant, category, and draft expense data.",
 	},
 	{
 		key: "benefits",
 		title: "Benefits",
+		shortTitle: "Benefits",
 		description: "Promos and loyalty findings that can be saved separately.",
 	},
 	{
 		key: "people",
 		title: "People",
+		shortTitle: "People",
 		description: "Participants and placeholders detected from this capture.",
 	},
 	{
 		key: "splits",
 		title: "Splits",
+		shortTitle: "Splits",
 		description: "Split proposals that need people and target expense context.",
 	},
 	{
 		key: "future",
 		title: "Future actions",
+		shortTitle: "Future",
 		description: "Recurring, membership, reminder, and renewal hints.",
 	},
 	{
 		key: "documents",
 		title: "Document signals",
+		shortTitle: "Documents",
 		description:
 			"Payment proof, privacy, merge, and supporting document signals.",
 	},
@@ -117,8 +125,8 @@ const packetSectionKey = (candidate: CandidateReviewItem): PacketSectionKey => {
 	return "documents";
 };
 
-const actionableCount = (packet: CapturePacket): number =>
-	packet.candidates.filter(
+const actionableCount = (candidates: CandidateReviewItem[]): number =>
+	candidates.filter(
 		(candidate) =>
 			candidate.canSavePromo ||
 			candidate.canCreateParticipant ||
@@ -126,6 +134,13 @@ const actionableCount = (packet: CapturePacket): number =>
 			candidate.canCreateRecurring ||
 			candidate.canMarkReviewed,
 	).length;
+
+const sectionCount = (
+	candidates: CandidateReviewItem[],
+	sectionKey: PacketSectionKey,
+): number =>
+	candidates.filter((candidate) => packetSectionKey(candidate) === sectionKey)
+		.length;
 
 export const CapturePacketReviewSection = ({
 	packets,
@@ -145,7 +160,36 @@ export const CapturePacketReviewSection = ({
 	onApplySplitCandidate,
 	onIgnoreCandidate,
 }: CapturePacketReviewSectionProps) => {
-	const visiblePackets = useMemo(() => packets.slice(0, 6), [packets]);
+	const [selectedSectionKey, setSelectedSectionKey] =
+		useState<PacketSectionFilterKey>("all");
+	const entityCounts = useMemo(() => {
+		const counts: Record<PacketSectionKey, number> = {
+			expenses: 0,
+			benefits: 0,
+			people: 0,
+			splits: 0,
+			future: 0,
+			documents: 0,
+		};
+		for (const packet of packets) {
+			for (const candidate of packet.candidates) {
+				counts[packetSectionKey(candidate)] += 1;
+			}
+		}
+		return counts;
+	}, [packets]);
+	const filteredPackets = useMemo(() => {
+		if (selectedSectionKey === "all") return packets;
+		return packets.filter((packet) =>
+			packet.candidates.some(
+				(candidate) => packetSectionKey(candidate) === selectedSectionKey,
+			),
+		);
+	}, [packets, selectedSectionKey]);
+	const visiblePackets = useMemo(
+		() => filteredPackets.slice(0, 6),
+		[filteredPackets],
+	);
 	const [selectedPacketId, setSelectedPacketId] = useState<number | null>(
 		() => visiblePackets[0]?.sourceDocumentId ?? null,
 	);
@@ -194,39 +238,100 @@ export const CapturePacketReviewSection = ({
 					</span>
 				</div>
 			</div>
+			<div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-2xl border border-[rgba(120,100,80,0.12)] bg-white/54 p-1.5">
+				<button
+					aria-pressed={selectedSectionKey === "all"}
+					className={`min-h-9 rounded-full px-3 text-xs font-semibold transition ${
+						selectedSectionKey === "all"
+							? "bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
+							: "text-muted-foreground hover:bg-white/80 hover:text-foreground"
+					}`}
+					onClick={() => setSelectedSectionKey("all")}
+					type="button"
+				>
+					All {decisionCount}
+				</button>
+				{packetSectionDefinitions.map((section) => (
+					<button
+						aria-pressed={selectedSectionKey === section.key}
+						className={`min-h-9 rounded-full px-3 text-xs font-semibold transition ${
+							selectedSectionKey === section.key
+								? "bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
+								: "text-muted-foreground hover:bg-white/80 hover:text-foreground"
+						}`}
+						disabled={entityCounts[section.key] === 0}
+						key={section.key}
+						onClick={() => setSelectedSectionKey(section.key)}
+						type="button"
+					>
+						{section.shortTitle} {entityCounts[section.key]}
+					</button>
+				))}
+			</div>
 			<div className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,0.36fr)_1fr]">
 				<div className="space-y-2">
 					<p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-						Packet queue
+						{selectedSectionKey === "all"
+							? "Packet queue"
+							: `${packetSectionDefinitions.find((section) => section.key === selectedSectionKey)?.shortTitle ?? "Entity"} queue`}
 					</p>
-					{visiblePackets.map((packet) => {
-						const selected =
-							selectedPacket?.sourceDocumentId === packet.sourceDocumentId;
-						return (
-							<button
-								aria-pressed={selected}
-								className={`w-full rounded-xl border px-3 py-2 text-left transition ${
-									selected
-										? "border-[rgba(68,58,42,0.32)] bg-[rgba(68,58,42,0.08)] shadow-sm"
-										: "border-[rgba(120,100,80,0.14)] bg-white/58 hover:border-[rgba(120,100,80,0.28)] hover:bg-white/78"
-								}`}
-								key={packet.sourceDocumentId}
-								onClick={() => setSelectedPacketId(packet.sourceDocumentId)}
-								type="button"
-							>
-								<span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-									Packet #{packet.sourceDocumentId}
-								</span>
-								<span className="mt-1 block truncate text-sm font-semibold text-foreground">
-									{packet.title}
-								</span>
-								<span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">
-									{packet.summary}
-								</span>
-							</button>
-						);
-					})}
-					{packets.length > 6 ? (
+					{visiblePackets.length > 0 ? (
+						visiblePackets.map((packet) => {
+							const selected =
+								selectedPacket?.sourceDocumentId === packet.sourceDocumentId;
+							return (
+								<button
+									aria-pressed={selected}
+									className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+										selected
+											? "border-[rgba(68,58,42,0.32)] bg-[rgba(68,58,42,0.08)] shadow-sm"
+											: "border-[rgba(120,100,80,0.14)] bg-white/58 hover:border-[rgba(120,100,80,0.28)] hover:bg-white/78"
+									}`}
+									key={packet.sourceDocumentId}
+									onClick={() => setSelectedPacketId(packet.sourceDocumentId)}
+									type="button"
+								>
+									<span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+										Packet #{packet.sourceDocumentId}
+									</span>
+									<span className="mt-1 block truncate text-sm font-semibold text-foreground">
+										{packet.title}
+									</span>
+									<span className="mt-1 block line-clamp-2 text-xs text-muted-foreground">
+										{packet.summary}
+									</span>
+									<span className="mt-2 flex flex-wrap gap-1">
+										{packetSectionDefinitions
+											.filter(
+												(section) =>
+													selectedSectionKey === "all" ||
+													selectedSectionKey === section.key,
+											)
+											.map((section) => {
+												const count = sectionCount(
+													packet.candidates,
+													section.key,
+												);
+												if (count === 0) return null;
+												return (
+													<span
+														className="rounded-full border border-[rgba(120,100,80,0.12)] bg-white/70 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground"
+														key={section.key}
+													>
+														{section.shortTitle} {count}
+													</span>
+												);
+											})}
+									</span>
+								</button>
+							);
+						})
+					) : (
+						<p className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 px-3 py-3 text-xs text-muted-foreground">
+							No capture packets have this entity type yet.
+						</p>
+					)}
+					{filteredPackets.length > 6 ? (
 						<p className="px-1 text-xs text-muted-foreground">
 							Showing 6 newest capture packets. Resolve a few to clear the
 							queue.
@@ -248,6 +353,7 @@ export const CapturePacketReviewSection = ({
 						pendingParticipantCountForSplitCandidate={
 							pendingParticipantCountForSplitCandidate
 						}
+						sectionFilter={selectedSectionKey}
 						spaceId={spaceId}
 						splitTargetExpenseIdFor={splitTargetExpenseIdFor}
 						splitTargetOptions={splitTargetOptions}
@@ -268,10 +374,12 @@ type CapturePacketRowProps = Omit<
 	"packets" | "decisionCount" | "documentCandidateError"
 > & {
 	packet: CapturePacket;
+	sectionFilter: PacketSectionFilterKey;
 };
 
 const CapturePacketRow = ({
 	packet,
+	sectionFilter,
 	benefitCandidateActingId,
 	documentCandidateActingId,
 	splitTargetOptions,
@@ -286,15 +394,24 @@ const CapturePacketRow = ({
 	onApplySplitCandidate,
 	onIgnoreCandidate,
 }: CapturePacketRowProps) => {
+	const scopedCandidates =
+		sectionFilter === "all"
+			? packet.candidates
+			: packet.candidates.filter(
+					(candidate) => packetSectionKey(candidate) === sectionFilter,
+				);
 	const sections = packetSectionDefinitions
+		.filter(
+			(section) => sectionFilter === "all" || section.key === sectionFilter,
+		)
 		.map((section) => ({
 			...section,
-			candidates: packet.candidates.filter(
+			candidates: scopedCandidates.filter(
 				(candidate) => packetSectionKey(candidate) === section.key,
 			),
 		}))
 		.filter((section) => section.candidates.length > 0);
-	const actionCount = actionableCount(packet);
+	const actionCount = actionableCount(scopedCandidates);
 
 	return (
 		<article className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-white/72 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
@@ -310,7 +427,9 @@ const CapturePacketRow = ({
 				</div>
 				<div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
 					<span className="rounded-full border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.95)] px-2.5 py-1 text-xs font-semibold text-foreground/75">
-						{packet.summary}
+						{sectionFilter === "all"
+							? packet.summary
+							: `${sections[0]?.title ?? "Entity"} only`}
 					</span>
 					<span className="rounded-full border border-[rgba(68,58,42,0.16)] bg-[rgba(68,58,42,0.08)] px-2.5 py-1 text-xs font-semibold text-[#4d4231]">
 						{packet.primaryActionLabel}
@@ -325,7 +444,7 @@ const CapturePacketRow = ({
 				onCreateParticipantCandidate={onCreateParticipantCandidate}
 				onCreateRecurringCandidate={onCreateRecurringCandidate}
 				onSavePromoCandidate={onSavePromoCandidate}
-				packet={packet}
+				candidates={scopedCandidates}
 				pendingParticipantCountForSplitCandidate={
 					pendingParticipantCountForSplitCandidate
 				}
@@ -387,7 +506,7 @@ const CapturePacketRow = ({
 };
 
 type PacketActionBarProps = {
-	packet: CapturePacket;
+	candidates: CandidateReviewItem[];
 	benefitCandidateActingId: number | null;
 	documentCandidateActingId: number | null;
 	splitTargetExpenseIdFor: (candidate: CandidateReviewItem) => number | null;
@@ -405,7 +524,7 @@ type PacketActionBarProps = {
 };
 
 const PacketActionBar = ({
-	packet,
+	candidates,
 	benefitCandidateActingId,
 	documentCandidateActingId,
 	splitTargetExpenseIdFor,
@@ -416,19 +535,17 @@ const PacketActionBar = ({
 	onCreateRecurringCandidate,
 	onApplySplitCandidate,
 }: PacketActionBarProps) => {
-	const promoCandidate = packet.candidates.find(
-		(candidate) => candidate.canSavePromo,
-	);
-	const participantCandidate = packet.candidates.find(
+	const promoCandidate = candidates.find((candidate) => candidate.canSavePromo);
+	const participantCandidate = candidates.find(
 		(candidate) => candidate.canCreateParticipant,
 	);
-	const recurringCandidate = packet.candidates.find(
+	const recurringCandidate = candidates.find(
 		(candidate) => candidate.canCreateRecurring,
 	);
-	const reviewCandidate = packet.candidates.find(
+	const reviewCandidate = candidates.find(
 		(candidate) => candidate.canMarkReviewed,
 	);
-	const splitCandidate = packet.candidates.find(
+	const splitCandidate = candidates.find(
 		(candidate) => candidate.canOpenSplitReview,
 	);
 	const splitTargetExpenseId = splitCandidate
@@ -537,7 +654,10 @@ const PacketActionBar = ({
 	);
 };
 
-type CaptureCandidateRowProps = Omit<CapturePacketRowProps, "packet"> & {
+type CaptureCandidateRowProps = Omit<
+	CapturePacketRowProps,
+	"packet" | "sectionFilter"
+> & {
 	candidate: CandidateReviewItem;
 };
 
