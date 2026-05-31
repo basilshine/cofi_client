@@ -66,6 +66,7 @@ type CandidateReviewItem = {
 	canCreateParticipant: boolean;
 	canOpenSplitReview: boolean;
 	canSavePromo: boolean;
+	isSelfParticipant: boolean;
 	createdAt: string;
 	raw: BenefitCandidate | DocumentCandidate;
 };
@@ -203,6 +204,39 @@ const canCreateParticipantFromCandidate = (type: string): boolean =>
 const canOpenSplitReviewFromCandidate = (type: string): boolean =>
 	type === "split_candidate";
 
+const isSelfParticipantCandidate = (candidate: DocumentCandidate): boolean => {
+	if (candidate.candidate_type !== "participant_placeholder_candidate") {
+		return false;
+	}
+	const data = candidateData(candidate);
+	const participantId = firstCandidateText(data, [
+		"participant_id",
+		"id",
+	])?.toLowerCase();
+	if (
+		participantId === "me" ||
+		participantId === "self" ||
+		participantId === "current_user"
+	) {
+		return true;
+	}
+	const participantType = firstCandidateText(data, [
+		"participant_type",
+	])?.toLowerCase();
+	if (
+		participantType === "registered_member" ||
+		participantType === "current_user"
+	) {
+		return true;
+	}
+	const displayName = firstCandidateText(data, [
+		"display_name",
+		"name",
+		"title",
+	])?.toLowerCase();
+	return displayName === "me" || displayName === "you" || displayName === "я";
+};
+
 const confidenceLabel = (confidence?: number): string =>
 	Number.isFinite(confidence) && confidence != null && confidence > 0
 		? `${Math.round(confidence * 100)}%`
@@ -336,6 +370,9 @@ const toCandidateReviewItem = (
 	candidate: BenefitCandidate | DocumentCandidate,
 ): CandidateReviewItem => {
 	const summary = candidateSummary(candidate);
+	const isSelfParticipant =
+		source === "document" &&
+		isSelfParticipantCandidate(candidate as DocumentCandidate);
 	return {
 		id: Number(candidate.id),
 		source,
@@ -362,14 +399,17 @@ const toCandidateReviewItem = (
 		confidenceLabel: confidenceLabel(candidate.confidence),
 		canMarkReviewed:
 			source === "document" &&
-			canMarkDocumentCandidateReviewed(candidate.candidate_type),
+			(isSelfParticipant ||
+				canMarkDocumentCandidateReviewed(candidate.candidate_type)),
 		canCreateParticipant:
 			source === "document" &&
-			canCreateParticipantFromCandidate(candidate.candidate_type),
+			canCreateParticipantFromCandidate(candidate.candidate_type) &&
+			!isSelfParticipant,
 		canOpenSplitReview:
 			source === "document" &&
 			canOpenSplitReviewFromCandidate(candidate.candidate_type),
 		canSavePromo: candidate.candidate_type === "promo_code_candidate",
+		isSelfParticipant,
 		createdAt: candidate.created_at,
 		raw: candidate,
 	};
@@ -800,6 +840,7 @@ export const CeitsReviewFlowPage = () => {
 		for (const candidate of documentCandidates) {
 			if (candidate.candidate_type !== "participant_placeholder_candidate")
 				continue;
+			if (isSelfParticipantCandidate(candidate)) continue;
 			counts.set(
 				candidate.source_document_id,
 				(counts.get(candidate.source_document_id) ?? 0) + 1,
@@ -1253,6 +1294,12 @@ export const CeitsReviewFlowPage = () => {
 											<p className="mt-2 text-xs font-medium text-foreground/82">
 												{candidate.detail}
 											</p>
+											{candidate.isSelfParticipant ? (
+												<p className="mt-2 rounded-lg border border-[rgba(83,103,139,0.18)] bg-white/58 px-2.5 py-1.5 text-xs text-[#405574]">
+													Already covered by your space member. Mark it reviewed
+													or ignore it.
+												</p>
+											) : null}
 											{candidate.canOpenSplitReview ? (
 												<div className="mt-3 rounded-lg border border-[rgba(181,131,52,0.18)] bg-white/58 px-2.5 py-2">
 													<label
