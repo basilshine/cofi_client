@@ -186,32 +186,6 @@ export const toPromoBenefitEntity = (
 	};
 };
 
-export const PromoBenefitMini = ({ promo }: { promo: PromoBenefit }) => (
-	<div className="flex min-w-0 items-center gap-3 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/64 px-3 py-2 shadow-sm">
-		<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(237,247,239,0.9)] text-[#405f44] shadow-[inset_0_0_0_1px_rgba(91,116,87,0.12)]">
-			<Gift className="h-4 w-4" size={16} />
-		</span>
-		<div className="min-w-0 flex-1">
-			<div className="flex min-w-0 items-center gap-2">
-				<p className="truncate font-mono text-sm font-bold tracking-[0.06em] text-foreground">
-					{promo.code}
-				</p>
-				<span
-					className={[
-						"shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
-						statusClass(promo.status),
-					].join(" ")}
-				>
-					{benefitStatusLabel(promo.status)}
-				</span>
-			</div>
-			<p className="mt-0.5 truncate text-xs text-muted-foreground">
-				{promo.merchant} · {promo.validUntil}
-			</p>
-		</div>
-	</div>
-);
-
 export const PromoBenefitListItem = ({
 	promo,
 	trailing,

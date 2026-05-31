@@ -17,11 +17,12 @@ import {
 	type PromoBenefit,
 	PromoBenefitCard,
 	PromoBenefitDetailHeader,
-	PromoBenefitMini,
 	formatBenefitSourceLabel,
 	loyaltyBenefits,
 	toPromoBenefit,
+	toPromoBenefitEntity,
 } from "../../shared/lib/benefitPresentation";
+import { EntityMini } from "../../shared/lib/entityPresentation";
 
 type CandidateView = {
 	id: number;
@@ -647,7 +648,7 @@ export const SpaceBenefitsPage = () => {
 					</div>
 					<div className="mt-4 space-y-2">
 						{expiringPromos.slice(0, 3).map((promo) => (
-							<PromoBenefitMini key={promo.id} promo={promo} />
+							<EntityMini entity={toPromoBenefitEntity(promo)} key={promo.id} />
 						))}
 					</div>
 				</section>
