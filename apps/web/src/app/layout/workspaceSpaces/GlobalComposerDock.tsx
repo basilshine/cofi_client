@@ -8,6 +8,7 @@ import {
 	type LucideIcon,
 	MessageSquareText,
 	Mic,
+	Plus,
 	ReceiptText,
 	Repeat,
 	ScanSearch,
@@ -375,6 +376,204 @@ const ComposerFlowInfographic = ({
 	);
 };
 
+type DockReviewSection = {
+	key: string;
+	title: string;
+	description: string;
+	addLabel: string;
+	foundLabel: string;
+	kinds: GlobalComposerCandidateBundle["candidates"][number]["kind"][];
+	href: string;
+	icon: LucideIcon;
+};
+
+const candidateCountFor = (
+	bundle: GlobalComposerCandidateBundle,
+	kinds: DockReviewSection["kinds"],
+): number =>
+	bundle.candidates
+		.filter((candidate) => kinds.includes(candidate.kind))
+		.reduce((sum, candidate) => sum + candidate.count, 0);
+
+const DockReviewDrawer = ({
+	benefitsHref,
+	bundle,
+	expensesHref,
+	reviewHref,
+	splitsHref,
+}: {
+	benefitsHref: string;
+	bundle: GlobalComposerCandidateBundle;
+	expensesHref: string;
+	reviewHref: string;
+	splitsHref: string;
+}) => {
+	const sections: DockReviewSection[] = [
+		{
+			key: "expense",
+			title: "Expense",
+			description: "Merchant, amount, date, category, and draft status.",
+			addLabel: "Add expense",
+			foundLabel: "Expense candidate",
+			kinds: ["expense"],
+			href: expensesHref,
+			icon: ReceiptText,
+		},
+		{
+			key: "items",
+			title: "Items",
+			description: "Products or service lines extracted from the capture.",
+			addLabel: "Add item",
+			foundLabel: "Parsed items",
+			kinds: ["expense_item"],
+			href: expensesHref,
+			icon: ListChecks,
+		},
+		{
+			key: "people",
+			title: "People",
+			description: "Participants and placeholders to use in splits.",
+			addLabel: "Add person",
+			foundLabel: "People candidate",
+			kinds: ["participant"],
+			href: reviewHref,
+			icon: UserPlus,
+		},
+		{
+			key: "splits",
+			title: "Splits",
+			description: "Who paid, who is involved, and how shares are calculated.",
+			addLabel: "Add split",
+			foundLabel: "Split candidate",
+			kinds: ["split"],
+			href: splitsHref,
+			icon: Split,
+		},
+		{
+			key: "benefits",
+			title: "Promos",
+			description: "Promo codes, loyalty, and future value found in the input.",
+			addLabel: "Add promo",
+			foundLabel: "Benefit candidate",
+			kinds: ["promo", "loyalty"],
+			href: benefitsHref,
+			icon: Gift,
+		},
+		{
+			key: "future",
+			title: "Recurring",
+			description: "Recurring, membership, renewal, or reminder hints.",
+			addLabel: "Add recurring",
+			foundLabel: "Future action",
+			kinds: ["recurring", "membership", "reminder"],
+			href: reviewHref,
+			icon: Repeat,
+		},
+		{
+			key: "documents",
+			title: "Documents",
+			description: "Payment proof, privacy, merge, and supporting documents.",
+			addLabel: "Add document",
+			foundLabel: "Document signal",
+			kinds: ["payment_proof", "privacy", "merge", "supporting_document"],
+			href: reviewHref,
+			icon: FileText,
+		},
+	];
+
+	return (
+		<div
+			className="mt-2 rounded-[1.1rem] border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.92)] p-3 shadow-[0_18px_48px_-36px_rgba(44,32,18,0.58),inset_0_1px_0_rgba(255,255,255,0.78)]"
+			data-testid="global-composer-review-drawer"
+		>
+			<div className="flex flex-wrap items-start justify-between gap-3">
+				<div className="min-w-0">
+					<p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+						Review drawer
+					</p>
+					<h3 className="mt-0.5 text-sm font-bold text-foreground">
+						Complete this parsed result
+					</h3>
+					<p className="mt-0.5 max-w-2xl text-xs leading-5 text-muted-foreground [text-wrap:pretty]">
+						Use detected candidates where Ceits found them. Add missing parts
+						manually when the parse did not include them.
+					</p>
+				</div>
+				<Link
+					className="inline-flex min-h-9 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					to={reviewHref}
+				>
+					Open full review
+				</Link>
+			</div>
+			<div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+				{sections.map((section) => {
+					const count = candidateCountFor(bundle, section.kinds);
+					const hasCandidate = count > 0;
+					const Icon = section.icon;
+					return (
+						<div
+							className={[
+								"min-w-0 rounded-xl border p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]",
+								hasCandidate
+									? "border-[rgba(72,112,76,0.2)] bg-[rgba(236,247,238,0.68)]"
+									: "border-[rgba(120,100,80,0.13)] bg-white/62",
+							].join(" ")}
+							key={section.key}
+						>
+							<div className="flex items-start gap-2">
+								<span
+									className={[
+										"inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08)]",
+										hasCandidate
+											? "bg-[rgba(218,238,222,0.9)] text-[#355a3c]"
+											: "bg-[rgba(248,245,238,0.9)] text-muted-foreground",
+									].join(" ")}
+								>
+									<Icon className="h-4 w-4" size={16} />
+								</span>
+								<div className="min-w-0">
+									<div className="flex min-w-0 items-center gap-1.5">
+										<p className="truncate text-xs font-bold text-foreground">
+											{section.title}
+										</p>
+										{hasCandidate ? (
+											<span className="rounded-full bg-white/68 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-[#355a3c]">
+												{count}
+											</span>
+										) : null}
+									</div>
+									<p className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+										{hasCandidate ? section.foundLabel : section.description}
+									</p>
+								</div>
+							</div>
+							<Link
+								className={[
+									"mt-2 inline-flex min-h-8 w-full items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold transition-[background-color,box-shadow,transform] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									hasCandidate
+										? "bg-white/78 text-[#355a3c] shadow-[0_0_0_1px_rgba(72,112,76,0.14)] hover:bg-white"
+										: "bg-[rgba(68,58,42,0.06)] text-foreground/78 shadow-[0_0_0_1px_rgba(87,70,49,0.08)] hover:bg-[rgba(68,58,42,0.1)]",
+								].join(" ")}
+								to={section.href}
+							>
+								{hasCandidate ? (
+									<>Review {section.title.toLowerCase()}</>
+								) : (
+									<>
+										<Plus className="h-3.5 w-3.5" size={14} />
+										{section.addLabel}
+									</>
+								)}
+							</Link>
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
+
 const CandidateBundlePanel = ({
 	bundle,
 	expensesHref,
@@ -388,6 +587,8 @@ const CandidateBundlePanel = ({
 	splitsHref: string;
 	reviewHref: string;
 }) => {
+	const [isReviewDrawerOpen, setIsReviewDrawerOpen] = useState(false);
+
 	if (!bundle.candidates.length && !bundle.capabilityNotice) return null;
 
 	const hasExpense = bundleHasAny(bundle, ["expense", "expense_item"]);
@@ -453,12 +654,13 @@ const CandidateBundlePanel = ({
 					) : null}
 				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-					<Link
+					<button
 						className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-semibold text-[#fffaf0] shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-						to={reviewHref}
+						onClick={() => setIsReviewDrawerOpen((current) => !current)}
+						type="button"
 					>
-						Review parsed result
-					</Link>
+						{isReviewDrawerOpen ? "Hide review" : "Review parsed result"}
+					</button>
 					{hasExpense ? (
 						<Link className={reviewActionClass} to={expensesHref}>
 							Expenses
@@ -481,6 +683,15 @@ const CandidateBundlePanel = ({
 					) : null}
 				</div>
 			</div>
+			{isReviewDrawerOpen ? (
+				<DockReviewDrawer
+					benefitsHref={benefitsHref}
+					bundle={bundle}
+					expensesHref={expensesHref}
+					reviewHref={reviewHref}
+					splitsHref={splitsHref}
+				/>
+			) : null}
 			<div className="mt-2">
 				<ComposerFlowInfographic bundle={bundle} reviewHref={reviewHref} />
 			</div>
