@@ -25,6 +25,8 @@ export type ComposerState =
 	| "ask_custom"
 	| "message_text";
 
+export type ComposerPurpose = "ask" | "capture" | "message";
+
 // ─── Payload types ───────────────────────────────────────────────────────────
 
 export type ComposerPayload =
@@ -93,7 +95,7 @@ type Props = {
 	disabled?: boolean;
 	isRecording: boolean;
 	onComposerSubmit: (payload: ComposerPayload) => void;
-	onPurposeChange?: (purpose: "capture" | "message") => void;
+	onPurposeChange?: (purpose: ComposerPurpose) => void;
 	onStartExpenseRecording: () => void;
 	onStopRecording: () => void | Promise<void>;
 	onCancelRecording?: () => void;
@@ -140,9 +142,11 @@ const BALANCE_FILTERS = [
 	"By member",
 ] as const;
 
-const composerPurposeForState = (
-	state: ComposerState,
-): "capture" | "message" => (state === "message_text" ? "message" : "capture");
+const composerPurposeForState = (state: ComposerState): ComposerPurpose => {
+	if (state === "message_text") return "message";
+	if (state === "ask_topic_select" || state.startsWith("ask_")) return "ask";
+	return "capture";
+};
 
 // ─── Chip sub-component ──────────────────────────────────────────────────────
 

@@ -28,7 +28,10 @@ import {
 import { wsClient } from "../../shared/lib/wsClient";
 import { ChatCaptureReviewEvents } from "./components/ChatCaptureReviewEvents";
 import type { ChatComposerMode } from "./components/ChatComposerDock";
-import { ChatComposerOrientation } from "./components/ChatComposerOrientation";
+import {
+	ChatComposerOrientation,
+	type ChatComposerPurpose,
+} from "./components/ChatComposerOrientation";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
 import { ChatToastPortal } from "./components/ChatToastPortal";
@@ -42,6 +45,7 @@ import { NativeChatMessageList } from "./components/NativeChatMessageList";
 import { NativeChatSpaceSurface } from "./components/NativeChatSpaceSurface";
 import { NativeChatWorkspace } from "./components/NativeChatWorkspace";
 import {
+	type ComposerPurpose,
 	SmartTextareaComposer,
 	type SmartTextareaComposerHandle,
 } from "./components/SmartTextareaComposer";
@@ -134,6 +138,15 @@ export const ChatLogPage = () => {
 	const [acceptInviteToken, setAcceptInviteToken] = useState("");
 
 	const [composerMode, setComposerMode] = useState<ChatComposerMode>("message");
+	const [composerPurpose, setComposerPurpose] =
+		useState<ChatComposerPurpose>("message");
+	const handleComposerPurposeChange = useCallback(
+		(purpose: ComposerPurpose) => {
+			setComposerPurpose(purpose);
+			setComposerMode(purpose === "message" ? "message" : "capture");
+		},
+		[],
+	);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	/** Latest main-chat message id per space (from loads + WS). */
@@ -514,6 +527,7 @@ export const ChatLogPage = () => {
 			setMembers(m.members);
 			setCanManageMemberRoles(m.can_manage_member_roles);
 			setComposerMode("message");
+			setComposerPurpose("message");
 			const msgAsc = asChronological(msgDesc);
 			setMessages(msgAsc);
 			setOldestMessageId(msgAsc[0]?.id ?? null);
@@ -537,6 +551,7 @@ export const ChatLogPage = () => {
 
 			if (opts?.openThreadExpenseId != null) {
 				setComposerMode("message");
+				setComposerPurpose("message");
 				openExpenseThread(opts.openThreadExpenseId, {
 					draftLine:
 						opts.openThreadDraftLine != null && opts.openThreadDraftLine >= 1
@@ -613,6 +628,7 @@ export const ChatLogPage = () => {
 	const openExpenseInSidebar = useCallback(
 		(expenseId: string | number) => {
 			setComposerMode("message");
+			setComposerPurpose("message");
 			openExpenseThread(expenseId);
 		},
 		[openExpenseThread],
@@ -651,6 +667,7 @@ export const ChatLogPage = () => {
 			return;
 		}
 		setComposerMode("message");
+		setComposerPurpose("message");
 		openExpenseThread(eid, { draftLine: draftLine ?? null });
 	}, [
 		location.hash,
@@ -701,6 +718,7 @@ export const ChatLogPage = () => {
 		}
 
 		setComposerMode("message");
+		setComposerPurpose("message");
 		openExpenseThread(expenseId, { draftLine: draftLine ?? null });
 	}, [
 		isExpensesRoute,
@@ -755,6 +773,7 @@ export const ChatLogPage = () => {
 			},
 		);
 		setComposerMode("message");
+		setComposerPurpose("message");
 		smartComposerRef.current?.composeText("message_text", draftText);
 	}, [
 		location.hash,
@@ -1000,8 +1019,10 @@ export const ChatLogPage = () => {
 	useEffect(() => {
 		if (!multiUserSpace) {
 			setComposerMode("capture");
+			setComposerPurpose("capture");
 		} else {
 			setComposerMode("message");
+			setComposerPurpose("message");
 		}
 	}, [multiUserSpace]);
 
@@ -1304,6 +1325,7 @@ export const ChatLogPage = () => {
 				return;
 			}
 			setComposerMode("message");
+			setComposerPurpose("message");
 			openExpenseThread(link.expenseId, { draftLine: draftLine ?? null });
 		},
 		[selectedSpaceId, openExpenseThread],
@@ -1475,14 +1497,18 @@ export const ChatLogPage = () => {
 								spaceName={selectedSpace?.name ?? null}
 							/>
 							<ChatComposerOrientation
-								composerMode={composerMode}
+								composerPurpose={composerPurpose}
 								disabled={isLoading || !selectedSpaceId}
+								onAskClick={() => {
+									handleComposerPurposeChange("ask");
+									smartComposerRef.current?.navigateTo("ask_topic_select");
+								}}
 								onCaptureClick={() => {
-									setComposerMode("capture");
+									handleComposerPurposeChange("capture");
 									smartComposerRef.current?.navigateTo("expense_method_select");
 								}}
 								onMessageClick={() => {
-									setComposerMode("message");
+									handleComposerPurposeChange("message");
 									smartComposerRef.current?.navigateTo("message_text");
 								}}
 								spaceName={selectedSpace?.name ?? null}
@@ -1493,7 +1519,7 @@ export const ChatLogPage = () => {
 								isRecording={isRecording}
 								onCancelRecording={cancelRecording}
 								onComposerSubmit={(p) => void handleComposerSubmit(p)}
-								onPurposeChange={setComposerMode}
+								onPurposeChange={handleComposerPurposeChange}
 								onStartExpenseRecording={() => void beginRecording(false)}
 								onStopRecording={handleToggleRecording}
 								spaceId={selectedSpaceId}

@@ -1,9 +1,11 @@
-import { MessageSquareText, ScanSearch } from "lucide-react";
-import type { ChatComposerMode } from "./ChatComposerDock";
+import { MessageSquareText, ScanSearch, Search } from "lucide-react";
+
+export type ChatComposerPurpose = "message" | "capture" | "ask";
 
 type ChatComposerOrientationProps = {
-	composerMode: ChatComposerMode;
+	composerPurpose: ChatComposerPurpose;
 	disabled?: boolean;
+	onAskClick: () => void;
 	onCaptureClick: () => void;
 	onMessageClick: () => void;
 	spaceName: string | null;
@@ -18,8 +20,9 @@ const modeButtonClass = (selected: boolean) =>
 	].join(" ");
 
 export const ChatComposerOrientation = ({
-	composerMode,
+	composerPurpose,
 	disabled = false,
+	onAskClick,
 	onCaptureClick,
 	onMessageClick,
 	spaceName,
@@ -34,17 +37,16 @@ export const ChatComposerOrientation = ({
 			<div className="mx-auto flex w-full max-w-[min(780px,95%)] flex-col gap-2 sm:flex-row sm:items-center">
 				<div className="min-w-0 flex-1">
 					<p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-						Chat composer
+						Input purpose
 					</p>
 					<p className="mt-0.5 truncate text-xs text-muted-foreground">
-						Choose whether this input talks to people or creates reviewable
-						Ceits work in {contextLabel}.
+						Choose what this input should do in {contextLabel}.
 					</p>
 				</div>
-				<div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
+				<div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-3">
 					<button
-						aria-pressed={composerMode === "message"}
-						className={modeButtonClass(composerMode === "message")}
+						aria-pressed={composerPurpose === "message"}
+						className={modeButtonClass(composerPurpose === "message")}
 						disabled={disabled}
 						onClick={onMessageClick}
 						type="button"
@@ -57,7 +59,7 @@ export const ChatComposerOrientation = ({
 							<span
 								className={[
 									"mt-0.5 block truncate text-[11px] font-semibold",
-									composerMode === "message"
+									composerPurpose === "message"
 										? "text-[#fffaf0]/72"
 										: "text-muted-foreground",
 								].join(" ")}
@@ -67,8 +69,8 @@ export const ChatComposerOrientation = ({
 						</span>
 					</button>
 					<button
-						aria-pressed={composerMode === "capture"}
-						className={modeButtonClass(composerMode === "capture")}
+						aria-pressed={composerPurpose === "capture"}
+						className={modeButtonClass(composerPurpose === "capture")}
 						disabled={disabled}
 						onClick={onCaptureClick}
 						type="button"
@@ -81,12 +83,36 @@ export const ChatComposerOrientation = ({
 							<span
 								className={[
 									"mt-0.5 block truncate text-[11px] font-semibold",
-									composerMode === "capture"
+									composerPurpose === "capture"
 										? "text-[#fffaf0]/72"
 										: "text-muted-foreground",
 								].join(" ")}
 							>
-								Parse receipts, voice, or text
+								Parse text, voice, receipt
+							</span>
+						</span>
+					</button>
+					<button
+						aria-pressed={composerPurpose === "ask"}
+						className={modeButtonClass(composerPurpose === "ask")}
+						disabled={disabled}
+						onClick={onAskClick}
+						type="button"
+					>
+						<Search className="h-4 w-4 shrink-0" size={16} />
+						<span className="min-w-0">
+							<span className="block truncate text-xs font-bold">
+								Ask Ceits
+							</span>
+							<span
+								className={[
+									"mt-0.5 block truncate text-[11px] font-semibold",
+									composerPurpose === "ask"
+										? "text-[#fffaf0]/72"
+										: "text-muted-foreground",
+								].join(" ")}
+							>
+								Search and explain
 							</span>
 						</span>
 					</button>
