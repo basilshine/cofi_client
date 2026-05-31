@@ -28,6 +28,7 @@ import {
 import { wsClient } from "../../shared/lib/wsClient";
 import { ChatCaptureReviewEvents } from "./components/ChatCaptureReviewEvents";
 import type { ChatComposerMode } from "./components/ChatComposerDock";
+import { ChatComposerOrientation } from "./components/ChatComposerOrientation";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
 import { ChatToastPortal } from "./components/ChatToastPortal";
@@ -1473,12 +1474,26 @@ export const ChatLogPage = () => {
 								spaceId={selectedSpaceId}
 								spaceName={selectedSpace?.name ?? null}
 							/>
+							<ChatComposerOrientation
+								composerMode={composerMode}
+								disabled={isLoading || !selectedSpaceId}
+								onCaptureClick={() => {
+									setComposerMode("capture");
+									smartComposerRef.current?.navigateTo("expense_method_select");
+								}}
+								onMessageClick={() => {
+									setComposerMode("message");
+									smartComposerRef.current?.navigateTo("message_text");
+								}}
+								spaceName={selectedSpace?.name ?? null}
+							/>
 							<SmartTextareaComposer
 								ref={smartComposerRef}
 								disabled={isLoading || !selectedSpaceId}
 								isRecording={isRecording}
 								onCancelRecording={cancelRecording}
 								onComposerSubmit={(p) => void handleComposerSubmit(p)}
+								onPurposeChange={setComposerMode}
 								onStartExpenseRecording={() => void beginRecording(false)}
 								onStopRecording={handleToggleRecording}
 								spaceId={selectedSpaceId}

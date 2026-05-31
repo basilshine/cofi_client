@@ -93,6 +93,7 @@ type Props = {
 	disabled?: boolean;
 	isRecording: boolean;
 	onComposerSubmit: (payload: ComposerPayload) => void;
+	onPurposeChange?: (purpose: "capture" | "message") => void;
 	onStartExpenseRecording: () => void;
 	onStopRecording: () => void | Promise<void>;
 	onCancelRecording?: () => void;
@@ -139,6 +140,10 @@ const BALANCE_FILTERS = [
 	"By member",
 ] as const;
 
+const composerPurposeForState = (
+	state: ComposerState,
+): "capture" | "message" => (state === "message_text" ? "message" : "capture");
+
 // ─── Chip sub-component ──────────────────────────────────────────────────────
 
 type ChipProps = {
@@ -183,6 +188,7 @@ export const SmartTextareaComposer = forwardRef<
 			disabled = false,
 			isRecording,
 			onComposerSubmit,
+			onPurposeChange,
 			onStartExpenseRecording,
 			onStopRecording,
 			onCancelRecording,
@@ -221,9 +227,10 @@ export const SmartTextareaComposer = forwardRef<
 			(next: ComposerState) => {
 				setNavStack((prev) => [...prev, state]);
 				setState(next);
+				onPurposeChange?.(composerPurposeForState(next));
 				resetDraft();
 			},
-			[state, resetDraft],
+			[state, onPurposeChange, resetDraft],
 		);
 
 		const goBack = useCallback(() => {
@@ -234,8 +241,16 @@ export const SmartTextareaComposer = forwardRef<
 			}
 			setNavStack((s) => s.slice(0, -1));
 			setState(prev);
+			onPurposeChange?.(composerPurposeForState(prev));
 			resetDraft();
-		}, [navStack, state, isRecording, onCancelRecording, resetDraft]);
+		}, [
+			navStack,
+			state,
+			isRecording,
+			onCancelRecording,
+			onPurposeChange,
+			resetDraft,
+		]);
 
 		const cancelToIdle = useCallback(() => {
 			if (state === "expense_voice" && isRecording) {
@@ -252,11 +267,13 @@ export const SmartTextareaComposer = forwardRef<
 			navigateTo: (target: ComposerState) => {
 				setState(target);
 				setNavStack([]);
+				onPurposeChange?.(composerPurposeForState(target));
 				resetDraft();
 			},
 			composeText: (target: ComposerState, text: string) => {
 				setState(target);
 				setNavStack([]);
+				onPurposeChange?.(composerPurposeForState(target));
 				setTextInput(text);
 				setSelectedPeriod(null);
 				setSelectedChip(null);
@@ -265,6 +282,7 @@ export const SmartTextareaComposer = forwardRef<
 			insertMessage: (text: string) => {
 				setState("message_text");
 				setNavStack([]);
+				onPurposeChange?.("message");
 				setTextInput((prev) => {
 					const sep = prev.length > 0 && !/\s$/.test(prev) ? " " : "";
 					return `${prev}${sep}${text}`;
