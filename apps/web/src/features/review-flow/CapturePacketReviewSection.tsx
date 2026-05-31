@@ -1,3 +1,13 @@
+import type { LucideIcon } from "lucide-react";
+import {
+	FileText,
+	Gift,
+	Inbox,
+	ReceiptText,
+	Repeat,
+	Split,
+	UsersRound,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type {
@@ -60,36 +70,53 @@ const packetSectionDefinitions: Array<{
 	title: string;
 	description: string;
 	shortTitle: string;
+	icon: LucideIcon;
+	toneClass: string;
 }> = [
 	{
 		key: "expenses",
 		title: "Expense draft",
 		shortTitle: "Expenses",
 		description: "Amounts, items, merchant, category, and draft expense data.",
+		icon: ReceiptText,
+		toneClass:
+			"border-[rgba(125,99,58,0.18)] bg-[rgba(255,250,240,0.92)] text-[#6d5331]",
 	},
 	{
 		key: "benefits",
 		title: "Benefits",
 		shortTitle: "Benefits",
 		description: "Promos and loyalty findings that can be saved separately.",
+		icon: Gift,
+		toneClass:
+			"border-[rgba(91,116,87,0.2)] bg-[rgba(237,247,239,0.92)] text-[#405f44]",
 	},
 	{
 		key: "people",
 		title: "People",
 		shortTitle: "People",
 		description: "Participants and placeholders detected from this capture.",
+		icon: UsersRound,
+		toneClass:
+			"border-[rgba(83,103,139,0.2)] bg-[rgba(235,241,252,0.92)] text-[#405574]",
 	},
 	{
 		key: "splits",
 		title: "Splits",
 		shortTitle: "Splits",
 		description: "Split proposals that need people and target expense context.",
+		icon: Split,
+		toneClass:
+			"border-[rgba(181,131,52,0.22)] bg-[rgba(255,240,208,0.86)] text-[#73501b]",
 	},
 	{
 		key: "future",
 		title: "Future actions",
 		shortTitle: "Future",
 		description: "Recurring, membership, reminder, and renewal hints.",
+		icon: Repeat,
+		toneClass:
+			"border-[rgba(117,91,142,0.18)] bg-[rgba(245,240,250,0.9)] text-[#5c4a72]",
 	},
 	{
 		key: "documents",
@@ -97,6 +124,9 @@ const packetSectionDefinitions: Array<{
 		shortTitle: "Documents",
 		description:
 			"Payment proof, privacy, merge, and supporting document signals.",
+		icon: FileText,
+		toneClass:
+			"border-[rgba(90,101,105,0.18)] bg-[rgba(241,245,246,0.9)] text-[#4d5b5e]",
 	},
 ];
 
@@ -270,35 +300,86 @@ export const CapturePacketReviewSection = ({
 					</span>
 				</div>
 			</div>
-			<div className="mt-4 flex flex-wrap items-center gap-1.5 rounded-2xl border border-[rgba(120,100,80,0.12)] bg-white/54 p-1.5">
+			<div className="mt-4 grid gap-2 rounded-2xl border border-[rgba(120,100,80,0.12)] bg-white/54 p-2 sm:grid-cols-2 xl:grid-cols-4">
 				<button
 					aria-pressed={selectedSectionKey === "all"}
-					className={`min-h-9 rounded-full px-3 text-xs font-semibold transition ${
+					className={`min-h-[4.75rem] rounded-xl border px-3 py-2 text-left transition-[background-color,border-color,box-shadow,transform] active:scale-[0.99] ${
 						selectedSectionKey === "all"
-							? "bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
-							: "text-muted-foreground hover:bg-white/80 hover:text-foreground"
+							? "border-[rgba(68,58,42,0.28)] bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
+							: "border-[rgba(120,100,80,0.1)] bg-white/68 text-foreground hover:border-[rgba(120,100,80,0.22)] hover:bg-white"
 					}`}
 					onClick={() => setSelectedSectionKey("all")}
 					type="button"
 				>
-					All {decisionCount}
+					<span className="flex items-center gap-2">
+						<span
+							className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+								selectedSectionKey === "all"
+									? "bg-white/16 text-[#fffaf0]"
+									: "bg-[rgba(248,245,238,0.92)] text-muted-foreground"
+							}`}
+						>
+							<Inbox className="h-4 w-4" size={16} />
+						</span>
+						<span className="min-w-0">
+							<span className="block text-xs font-bold">All review</span>
+							<span
+								className={`mt-0.5 block text-[11px] font-semibold ${
+									selectedSectionKey === "all"
+										? "text-[#fffaf0]/72"
+										: "text-muted-foreground"
+								}`}
+							>
+								{decisionCount} decisions
+							</span>
+						</span>
+					</span>
 				</button>
-				{packetSectionDefinitions.map((section) => (
-					<button
-						aria-pressed={selectedSectionKey === section.key}
-						className={`min-h-9 rounded-full px-3 text-xs font-semibold transition ${
-							selectedSectionKey === section.key
-								? "bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
-								: "text-muted-foreground hover:bg-white/80 hover:text-foreground"
-						}`}
-						disabled={entityCounts[section.key] === 0}
-						key={section.key}
-						onClick={() => setSelectedSectionKey(section.key)}
-						type="button"
-					>
-						{section.shortTitle} {entityCounts[section.key]}
-					</button>
-				))}
+				{packetSectionDefinitions.map((section) => {
+					const count = entityCounts[section.key];
+					const selected = selectedSectionKey === section.key;
+					const Icon = section.icon;
+					return (
+						<button
+							aria-pressed={selected}
+							className={`min-h-[4.75rem] rounded-xl border px-3 py-2 text-left transition-[background-color,border-color,box-shadow,transform] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 ${
+								selected
+									? "border-[rgba(68,58,42,0.28)] bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
+									: "border-[rgba(120,100,80,0.1)] bg-white/68 text-foreground hover:border-[rgba(120,100,80,0.22)] hover:bg-white"
+							}`}
+							disabled={count === 0}
+							key={section.key}
+							onClick={() => setSelectedSectionKey(section.key)}
+							type="button"
+						>
+							<span className="flex items-center gap-2">
+								<span
+									className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
+										selected
+											? "border-white/16 bg-white/14 text-[#fffaf0]"
+											: section.toneClass
+									}`}
+								>
+									<Icon className="h-4 w-4" size={16} />
+								</span>
+								<span className="min-w-0">
+									<span className="block truncate text-xs font-bold">
+										{section.shortTitle}
+									</span>
+									<span
+										className={`mt-0.5 block text-[11px] font-semibold ${
+											selected ? "text-[#fffaf0]/72" : "text-muted-foreground"
+										}`}
+									>
+										{count === 0
+											? "No candidates"
+											: `${count} ${count === 1 ? "candidate" : "candidates"}`}
+									</span>
+								</span>
+							</span>
+						</button>
+					);
+				})}
 			</div>
 			<div className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,0.36fr)_1fr]">
 				<div className="space-y-2">
