@@ -3,6 +3,7 @@ import {
 	FileText,
 	Gift,
 	Inbox,
+	Plus,
 	ReceiptText,
 	Repeat,
 	Split,
@@ -70,6 +71,7 @@ const packetSectionDefinitions: Array<{
 	title: string;
 	description: string;
 	shortTitle: string;
+	addLabel: string;
 	icon: LucideIcon;
 	toneClass: string;
 }> = [
@@ -78,6 +80,7 @@ const packetSectionDefinitions: Array<{
 		title: "Expense draft",
 		shortTitle: "Expenses",
 		description: "Amounts, items, merchant, category, and draft expense data.",
+		addLabel: "Add expense",
 		icon: ReceiptText,
 		toneClass:
 			"border-[rgba(125,99,58,0.18)] bg-[rgba(255,250,240,0.92)] text-[#6d5331]",
@@ -87,6 +90,7 @@ const packetSectionDefinitions: Array<{
 		title: "Benefits",
 		shortTitle: "Benefits",
 		description: "Promos and loyalty findings that can be saved separately.",
+		addLabel: "Add promo",
 		icon: Gift,
 		toneClass:
 			"border-[rgba(91,116,87,0.2)] bg-[rgba(237,247,239,0.92)] text-[#405f44]",
@@ -96,6 +100,7 @@ const packetSectionDefinitions: Array<{
 		title: "People",
 		shortTitle: "People",
 		description: "Participants and placeholders detected from this capture.",
+		addLabel: "Add person",
 		icon: UsersRound,
 		toneClass:
 			"border-[rgba(83,103,139,0.2)] bg-[rgba(235,241,252,0.92)] text-[#405574]",
@@ -105,6 +110,7 @@ const packetSectionDefinitions: Array<{
 		title: "Splits",
 		shortTitle: "Splits",
 		description: "Split proposals that need people and target expense context.",
+		addLabel: "Add split",
 		icon: Split,
 		toneClass:
 			"border-[rgba(181,131,52,0.22)] bg-[rgba(255,240,208,0.86)] text-[#73501b]",
@@ -114,6 +120,7 @@ const packetSectionDefinitions: Array<{
 		title: "Future actions",
 		shortTitle: "Future",
 		description: "Recurring, membership, reminder, and renewal hints.",
+		addLabel: "Add recurring",
 		icon: Repeat,
 		toneClass:
 			"border-[rgba(117,91,142,0.18)] bg-[rgba(245,240,250,0.9)] text-[#5c4a72]",
@@ -124,6 +131,7 @@ const packetSectionDefinitions: Array<{
 		shortTitle: "Documents",
 		description:
 			"Payment proof, privacy, merge, and supporting document signals.",
+		addLabel: "Add document",
 		icon: FileText,
 		toneClass:
 			"border-[rgba(90,101,105,0.18)] bg-[rgba(241,245,246,0.9)] text-[#4d5b5e]",
@@ -173,6 +181,30 @@ const sectionCount = (
 ): number =>
 	candidates.filter((candidate) => packetSectionKey(candidate) === sectionKey)
 		.length;
+
+const addHrefForSection = (
+	sectionKey: PacketSectionKey,
+	spaceId: number,
+	sourceDocumentId: number,
+): string => {
+	const encodedSpaceId = encodeURIComponent(String(spaceId));
+	if (sectionKey === "expenses") {
+		return `/console/chat/expenses?spaceId=${encodedSpaceId}`;
+	}
+	if (sectionKey === "benefits") {
+		return `/console/spaces/${encodedSpaceId}/benefits`;
+	}
+	if (sectionKey === "people") {
+		return `/console/spaces/${encodedSpaceId}/settings#space-settings-members`;
+	}
+	if (sectionKey === "splits") {
+		return `/console/spaces/${encodedSpaceId}/splits`;
+	}
+	if (sectionKey === "future") {
+		return `/console/spaces/${encodedSpaceId}/recurring`;
+	}
+	return `/console/review?spaceId=${encodedSpaceId}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}&section=documents`;
+};
 
 export const CapturePacketReviewSection = ({
 	packets,
@@ -522,8 +554,7 @@ const CapturePacketRow = ({
 			candidates: scopedCandidates.filter(
 				(candidate) => packetSectionKey(candidate) === section.key,
 			),
-		}))
-		.filter((section) => section.candidates.length > 0);
+		}));
 	const actionCount = actionableCount(scopedCandidates);
 
 	return (
@@ -575,41 +606,62 @@ const CapturePacketRow = ({
 						key={section.key}
 					>
 						<div className="flex flex-wrap items-start justify-between gap-2">
-							<div>
-								<h4 className="text-sm font-semibold text-foreground">
-									{section.title}
-								</h4>
-								<p className="mt-0.5 text-xs text-muted-foreground">
-									{section.description}
-								</p>
+							<div className="flex min-w-0 items-start gap-2">
+								<span
+									className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${section.toneClass}`}
+								>
+									<section.icon className="h-4 w-4" size={16} />
+								</span>
+								<div className="min-w-0">
+									<h4 className="text-sm font-semibold text-foreground">
+										{section.title}
+									</h4>
+									<p className="mt-0.5 text-xs text-muted-foreground">
+										{section.description}
+									</p>
+								</div>
 							</div>
 							<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-								{section.candidates.length}
+								{section.candidates.length > 0
+									? section.candidates.length
+									: "Not found"}
 							</span>
 						</div>
-						<div className="mt-2 divide-y divide-[rgba(120,100,80,0.1)]">
-							{section.candidates.map((candidate) => (
-								<CaptureCandidateRow
-									benefitCandidateActingId={benefitCandidateActingId}
-									candidate={candidate}
-									documentCandidateActingId={documentCandidateActingId}
-									key={`${candidate.source}-${candidate.id}`}
-									onApplySplitCandidate={onApplySplitCandidate}
-									onConfirmDocumentCandidate={onConfirmDocumentCandidate}
-									onCreateParticipantCandidate={onCreateParticipantCandidate}
-									onCreateRecurringCandidate={onCreateRecurringCandidate}
-									onIgnoreCandidate={onIgnoreCandidate}
-									onSavePromoCandidate={onSavePromoCandidate}
-									onSplitTargetChange={onSplitTargetChange}
-									pendingParticipantCountForSplitCandidate={
-										pendingParticipantCountForSplitCandidate
-									}
-									spaceId={spaceId}
-									splitTargetExpenseIdFor={splitTargetExpenseIdFor}
-									splitTargetOptions={splitTargetOptions}
-								/>
-							))}
-						</div>
+						{section.candidates.length > 0 ? (
+							<div className="mt-2 divide-y divide-[rgba(120,100,80,0.1)]">
+								{section.candidates.map((candidate) => (
+									<CaptureCandidateRow
+										benefitCandidateActingId={benefitCandidateActingId}
+										candidate={candidate}
+										documentCandidateActingId={documentCandidateActingId}
+										key={`${candidate.source}-${candidate.id}`}
+										onApplySplitCandidate={onApplySplitCandidate}
+										onConfirmDocumentCandidate={onConfirmDocumentCandidate}
+										onCreateParticipantCandidate={onCreateParticipantCandidate}
+										onCreateRecurringCandidate={onCreateRecurringCandidate}
+										onIgnoreCandidate={onIgnoreCandidate}
+										onSavePromoCandidate={onSavePromoCandidate}
+										onSplitTargetChange={onSplitTargetChange}
+										pendingParticipantCountForSplitCandidate={
+											pendingParticipantCountForSplitCandidate
+										}
+										spaceId={spaceId}
+										splitTargetExpenseIdFor={splitTargetExpenseIdFor}
+										splitTargetOptions={splitTargetOptions}
+									/>
+								))}
+							</div>
+						) : (
+							<MissingPacketSection
+								addHref={addHrefForSection(
+									section.key,
+									spaceId,
+									packet.sourceDocumentId,
+								)}
+								addLabel={section.addLabel}
+								description={`No ${section.shortTitle.toLowerCase()} candidate came from this parse.`}
+							/>
+						)}
 					</section>
 				))}
 			</div>
@@ -622,6 +674,29 @@ const CapturePacketRow = ({
 		</article>
 	);
 };
+
+type MissingPacketSectionProps = {
+	description: string;
+	addLabel: string;
+	addHref: string;
+};
+
+const MissingPacketSection = ({
+	description,
+	addLabel,
+	addHref,
+}: MissingPacketSectionProps) => (
+	<div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-[rgba(120,100,80,0.18)] bg-white/46 px-3 py-2">
+		<p className="max-w-md text-xs text-muted-foreground">{description}</p>
+		<Link
+			className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/78 px-3 text-[11px] font-bold text-foreground/78 transition hover:border-[rgba(120,100,80,0.28)] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			to={addHref}
+		>
+			<Plus className="h-3.5 w-3.5" size={14} />
+			{addLabel}
+		</Link>
+	</div>
+);
 
 type PacketWorkspaceMapProps = {
 	packet: CapturePacket;
