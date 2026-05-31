@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
+import { buildExpenseDetailHref } from "../../../shared/lib/expenseLinks";
 
 const listHeading = (tx: Transaction): string => {
 	const t = (tx.title ?? "").trim();
@@ -824,7 +825,7 @@ export const SpaceExpensesMain = ({
 							const menuOpen = openMenuExpenseId === tx.id;
 							const threadHref =
 								spaceId != null && tx.id != null
-									? `/console/chat/thread?spaceId=${encodeURIComponent(String(spaceId))}&expenseId=${encodeURIComponent(String(tx.id))}`
+									? buildExpenseDetailHref(spaceId, tx.id)
 									: null;
 
 							return (
@@ -1015,7 +1016,7 @@ export const SpaceExpensesMain = ({
 																role="menuitem"
 																to={threadHref}
 															>
-																Open chat thread
+																Open detail page
 															</Link>
 														) : null}
 														{isDraft ? (

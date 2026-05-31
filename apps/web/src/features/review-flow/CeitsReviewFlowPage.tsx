@@ -22,6 +22,7 @@ import {
 	buildCapturePacketSummaries,
 	capturePacketSummaryLine,
 } from "../../shared/lib/capturePacketSummary";
+import { buildExpenseDetailHref } from "../../shared/lib/expenseLinks";
 import { CapturePacketReviewSection } from "./CapturePacketReviewSection";
 import type {
 	CandidateReviewItem,
@@ -1626,7 +1627,10 @@ export const CeitsReviewFlowPage = () => {
 										</p>
 										<Link
 											className="mt-2 inline-flex text-xs font-medium text-primary underline-offset-2 hover:underline"
-											to={`/console/chat/thread?spaceId=${current.spaceId}&expenseId=${current.expenseId}`}
+											to={buildExpenseDetailHref(
+												current.spaceId,
+												current.expenseId,
+											)}
 										>
 											View all items
 										</Link>
@@ -1689,7 +1693,10 @@ export const CeitsReviewFlowPage = () => {
 															</button>
 															<Link
 																className="inline-flex h-8 items-center rounded-lg border border-border bg-white px-3 text-xs font-medium hover:bg-accent"
-																to={`/console/chat/thread?spaceId=${current.spaceId}&expenseId=${current.expenseId}`}
+																to={buildExpenseDetailHref(
+																	current.spaceId,
+																	current.expenseId,
+																)}
 															>
 																Create split
 															</Link>
@@ -1824,7 +1831,7 @@ export const CeitsReviewFlowPage = () => {
 						</button>
 						<Link
 							className="inline-flex h-10 items-center rounded-lg border border-border bg-background px-4 text-sm font-medium hover:bg-accent"
-							to={`/console/chat/thread?spaceId=${current.spaceId}&expenseId=${current.expenseId}`}
+							to={buildExpenseDetailHref(current.spaceId, current.expenseId)}
 						>
 							Edit
 						</Link>

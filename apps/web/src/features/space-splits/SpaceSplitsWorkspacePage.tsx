@@ -17,6 +17,7 @@ import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSp
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
+import { buildExpenseDetailHref } from "../../shared/lib/expenseLinks";
 import {
 	SpaceSplitDecisionList,
 	type SplitDecisionRow,
@@ -601,7 +602,7 @@ export const SpaceSplitsWorkspacePage = () => {
 					splitMethod,
 					othersShareLabel: formatMoney(othersShareAmount),
 					reviewTo: `/console/review?spaceId=${encodeURIComponent(sidStr)}`,
-					expenseTo: `/console/chat/thread?spaceId=${encodeURIComponent(sidStr)}&expenseId=${encodeURIComponent(String(expenseId))}`,
+					expenseTo: buildExpenseDetailHref(sidStr, expenseId),
 					participantsDetailed,
 				},
 			];

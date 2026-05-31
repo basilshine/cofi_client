@@ -21,6 +21,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
+import { buildExpenseDetailHref } from "../../shared/lib/expenseLinks";
 import { ActivityListCard } from "../../widgets/activity-list-card";
 import { OverviewRightRail } from "../../widgets/overview-right-rail";
 import { SpaceParticipantsPanel } from "../../widgets/space-participants-panel";
@@ -344,7 +345,7 @@ export const SpaceOverviewPage = () => {
 				: undefined,
 			timeLabel: formatRelative(t.occurred_at),
 			title: t.label,
-			to: `/console/chat/thread?spaceId=${encodeURIComponent(sidStr)}&expenseId=${encodeURIComponent(String(t.id))}`,
+			to: buildExpenseDetailHref(sidStr, t.id),
 		}));
 
 		const draftItems = pendingDrafts.map((draft) => {
@@ -385,7 +386,7 @@ export const SpaceOverviewPage = () => {
 			statusPillLabel: "Review",
 			timeLabel: "Needs action",
 			title: review.label || "Split approval",
-			to: `/console/chat/thread?spaceId=${encodeURIComponent(sidStr)}&expenseId=${encodeURIComponent(String(review.expense_id))}`,
+			to: buildExpenseDetailHref(sidStr, review.expense_id),
 		}));
 
 		return [...txItems, ...draftItems, ...approvalItems]

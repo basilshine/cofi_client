@@ -8,6 +8,7 @@ import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import { toPromoBenefit } from "../../shared/lib/benefitPresentation";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
+import { buildExpenseDetailHref } from "../../shared/lib/expenseLinks";
 import { OverviewRightRail } from "../../widgets/overview-right-rail";
 import { ActivityListCard } from "./components/ActivityListCard";
 import {
@@ -462,7 +463,7 @@ export const GlobalHomePage = () => {
 				transactionLabelFallbacks[t.id % transactionLabelFallbacks.length] ??
 					"Grocery run",
 			),
-			to: `/console/chat/thread?spaceId=${encodeURIComponent(String(t.space_id))}&expenseId=${encodeURIComponent(String(t.id))}`,
+			to: buildExpenseDetailHref(t.space_id, t.id),
 		}));
 
 		const draftItems = pendingDrafts.map((draft) => {
@@ -520,7 +521,7 @@ export const GlobalHomePage = () => {
 					statusPillLabel: "Review",
 					timeLabel: formatRelative(approval.updated_at),
 					title: normalizeLabel(approval.label, "Split approval"),
-					to: `/console/chat/thread?spaceId=${encodeURIComponent(String(approval.space_id))}&expenseId=${encodeURIComponent(String(approval.expense_id))}`,
+					to: buildExpenseDetailHref(approval.space_id, approval.expense_id),
 				},
 			];
 		});
