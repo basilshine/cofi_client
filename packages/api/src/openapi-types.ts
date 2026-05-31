@@ -2367,7 +2367,7 @@ export interface paths {
         };
         /**
          * Replace expense splits (creator only); amounts must sum to expense total
-         * @description Accepts legacy user_id split lines or space_participant_id lines for linked space participants.
+         * @description Accepts space_participant_id lines for shared-space participants. Compatibility user_id lines are accepted; on shared-space expense threads the server maps or creates the matching SpaceParticipant and writes participant-owned split rows. Personal/non-thread expenses still use user_id split rows.
          */
         put: {
             parameters: {
