@@ -1,5 +1,6 @@
 import type { DashboardResponse, DashboardVariant } from "./dashboard";
 import {
+	type ApplySplitCandidateResponse,
 	type BenefitCandidateListResponse,
 	type ChatMessage,
 	type CreateParticipantCandidateResponse,
@@ -576,6 +577,17 @@ export const createApiClient = (config: ApiClientConfig) => {
 						`/api/v1/spaces/${spaceId}/document-candidates/${encodeURIComponent(String(candidateId))}/create-participant`,
 					),
 					{ method: "POST", headers: authHeaders() },
+				),
+			applySplitCandidate: (
+				spaceId: string | number,
+				candidateId: string | number,
+				payload: { expense_id: string | number },
+			) =>
+				fetchJson<ApplySplitCandidateResponse>(
+					withBase(
+						`/api/v1/spaces/${spaceId}/document-candidates/${encodeURIComponent(String(candidateId))}/apply-split`,
+					),
+					{ method: "POST", headers: authHeaders(), body: payload },
 				),
 		},
 

@@ -335,6 +335,12 @@ export type CreateParticipantCandidateResponse = {
 	candidate: DocumentCandidateState;
 };
 
+export type ApplySplitCandidateResponse = {
+	expense_id: number;
+	split_count: number;
+	candidate: DocumentCandidateState;
+};
+
 export type BenefitCandidateState = {
 	id: number;
 	status: string;

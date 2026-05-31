@@ -856,6 +856,44 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 
+	const handleApplySplitCandidate = async (candidate: DocumentCandidate) => {
+		if (spaceId == null || current == null) return;
+		setDocumentCandidateActingId(candidate.id);
+		setDocumentCandidateError(null);
+		try {
+			await apiClient.spaces.applySplitCandidate(spaceId, candidate.id, {
+				expense_id: current.expenseId,
+			});
+			const updatedSplits =
+				(await apiClient.finances.expenses
+					.listSplits(current.expenseId)
+					.then((res) => res.splits ?? [])
+					.catch(() => null)) ?? null;
+			setDocumentCandidates((prev) =>
+				prev.filter((item) => item.id !== candidate.id),
+			);
+			if (updatedSplits != null) {
+				setQueue((prev) =>
+					prev.map((item) =>
+						item.id === current.id
+							? {
+									...item,
+									splits: updatedSplits,
+									splitMethod: splitMethodFromRows(updatedSplits),
+								}
+							: item,
+					),
+				);
+			}
+		} catch (e) {
+			setDocumentCandidateError(
+				e instanceof Error ? e.message : "Failed to apply split candidate",
+			);
+		} finally {
+			setDocumentCandidateActingId(null);
+		}
+	};
+
 	const handleSavePromoCandidate = async (candidate: BenefitCandidate) => {
 		if (spaceId == null) return;
 		setBenefitCandidateActingId(candidate.id);
@@ -1081,12 +1119,27 @@ export const CeitsReviewFlowPage = () => {
 														</button>
 													) : null}
 													{candidate.canOpenSplitReview ? (
-														<Link
-															className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)]"
-															to={`/console/spaces/${spaceId}/splits`}
-														>
-															Open splits
-														</Link>
+														current != null ? (
+															<button
+																className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
+																disabled={isActing}
+																onClick={() =>
+																	void handleApplySplitCandidate(
+																		candidate.raw as DocumentCandidate,
+																	)
+																}
+																type="button"
+															>
+																{isActing ? "Applying" : "Apply to selected"}
+															</button>
+														) : (
+															<Link
+																className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)]"
+																to={`/console/spaces/${spaceId}/splits`}
+															>
+																Open splits
+															</Link>
+														)
 													) : null}
 													<button
 														className="rounded-full border border-border/70 bg-white px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-50"

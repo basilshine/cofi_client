@@ -1474,6 +1474,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/apply-split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply a split candidate to an expense
+         * @description Projects a draft `split_candidate` into participant-owned split rows for an explicit target expense. The first implementation only auto-applies equal split candidates after related participant placeholders have already been projected.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Document candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApplySplitCandidateRequest"];
+                };
+            };
+            responses: {
+                /** @description Split candidate applied to the target expense. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApplySplitCandidateResponse"];
+                    };
+                };
+                /** @description Candidate cannot be applied automatically or target expense is invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate or target expense not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/ignore": {
         parameters: {
             query?: never;
@@ -5556,6 +5625,16 @@ export interface components {
         };
         CreateParticipantCandidateResponse: {
             participant?: components["schemas"]["SpaceParticipant"];
+            candidate?: components["schemas"]["DocumentCandidateState"];
+        };
+        ApplySplitCandidateRequest: {
+            /** Format: int64 */
+            expense_id: number;
+        };
+        ApplySplitCandidateResponse: {
+            /** Format: int64 */
+            expense_id?: number;
+            split_count?: number;
             candidate?: components["schemas"]["DocumentCandidateState"];
         };
         BenefitCandidateState: {
