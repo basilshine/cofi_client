@@ -4,9 +4,11 @@ import { Link } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
 import {
+	EntityIcon,
 	EntityMicro,
 	EntityMini,
 } from "../../../shared/lib/entityPresentation";
+import type { EntityVisualKey } from "../../../shared/lib/entityVisual";
 import { toExpenseItemEntity } from "../../../shared/lib/expenseItemPresentation";
 import { buildExpenseDetailHref } from "../../../shared/lib/expenseLinks";
 import {
@@ -36,56 +38,6 @@ const collectItemTags = (tx: Transaction): string[] => {
 const expenseTagPillClass =
 	"inline-flex max-w-[9rem] truncate rounded-full border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.9)] px-2.5 py-0.5 text-xs font-medium text-foreground/80";
 
-const IconReceiptMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-	>
-		<title>Receipt</title>
-		<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z" />
-		<path d="M9 8h6M9 12h6" />
-	</svg>
-);
-
-const IconMicMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-	>
-		<title>Voice</title>
-		<path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3z" />
-		<path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4M8 22h8" />
-	</svg>
-);
-
-const IconPenMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-	>
-		<title>Manual</title>
-		<path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-	</svg>
-);
-
 const IconCalendarMini = ({ className }: { className?: string }) => (
 	<svg
 		aria-hidden
@@ -100,22 +52,6 @@ const IconCalendarMini = ({ className }: { className?: string }) => (
 		<title>Date</title>
 		<rect height="16" rx="2" width="18" x="3" y="5" />
 		<path d="M16 3v4M8 3v4M3 10h18" />
-	</svg>
-);
-
-const IconRepeatMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-	>
-		<title>Recurring</title>
-		<path d="M17 1l4 4-4 4M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4M21 13v2a4 4 0 0 1-4 4H3" />
 	</svg>
 );
 
@@ -137,15 +73,10 @@ const IconMoreMini = ({ className }: { className?: string }) => (
 	</svg>
 );
 
-const SourceIcon = ({
-	kind,
-	className,
-}: { kind: ExpenseSourceKind; className?: string }) => {
-	const c = className ?? "h-4 w-4";
-	if (kind === "recurring") return <IconRepeatMini className={c} />;
-	if (kind === "voice") return <IconMicMini className={c} />;
-	if (kind === "receipt") return <IconReceiptMini className={c} />;
-	return <IconPenMini className={c} />;
+const sourceVisualKey = (kind: ExpenseSourceKind): EntityVisualKey => {
+	if (kind === "recurring") return "future";
+	if (kind === "receipt" || kind === "voice") return "document";
+	return "expense";
 };
 
 export type SpaceExpensesMainProps = {
@@ -769,20 +700,11 @@ export const SpaceExpensesMain = ({
 											}}
 											type="button"
 										>
-											<div
-												className={[
-													"mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-inner",
-													kind === "recurring"
-														? "border-[rgba(100,130,108,0.35)] bg-[rgba(120,154,124,0.12)] text-[#355a3c]"
-														: kind === "voice"
-															? "border-[rgba(120,110,160,0.3)] bg-[rgba(125,120,185,0.1)] text-[#3d3a5c]"
-															: kind === "receipt"
-																? "border-[rgba(200,155,80,0.35)] bg-[rgba(255,236,200,0.35)] text-[#6b4510]"
-																: "border-[rgba(120,100,80,0.2)] bg-white/90 text-foreground/70",
-												].join(" ")}
-											>
-												<SourceIcon className="h-5 w-5" kind={kind} />
-											</div>
+											<EntityIcon
+												className="mt-0.5 h-11 w-11 rounded-xl shadow-inner"
+												size="md"
+												visualKey={sourceVisualKey(kind)}
+											/>
 											<div className="min-w-0 flex-1">
 												<div className="flex flex-wrap items-start justify-between gap-2 gap-y-1">
 													<div className="min-w-0">
