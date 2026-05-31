@@ -1,3 +1,5 @@
+import { EntityMicro } from "../../../shared/lib/entityPresentation";
+
 type SplitParticipantPreview = {
 	id: string;
 	name: string;
@@ -139,12 +141,13 @@ export const SpaceSplitDecisionList = ({
 													{row.participantsPreview
 														.slice(0, 2)
 														.map((participant) => (
-															<span
-																className="inline-flex rounded-full bg-[rgba(142,159,136,0.14)] px-2 py-0.5 text-[11px] text-[#4A5B4D]"
+															<EntityMicro
+																entity={{
+																	label: participant.name,
+																	visualKey: "people",
+																}}
 																key={participant.id}
-															>
-																{participant.name}
-															</span>
+															/>
 														))}
 													{row.participantsPreview.length > 2 ? (
 														<span className="text-[11px] text-muted-foreground">
