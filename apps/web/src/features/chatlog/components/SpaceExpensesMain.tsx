@@ -3,7 +3,11 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
-import { EntityMicro } from "../../../shared/lib/entityPresentation";
+import {
+	EntityMicro,
+	EntityMini,
+} from "../../../shared/lib/entityPresentation";
+import { toExpenseItemEntity } from "../../../shared/lib/expenseItemPresentation";
 import { buildExpenseDetailHref } from "../../../shared/lib/expenseLinks";
 import {
 	type ExpenseSourceKind,
@@ -833,20 +837,26 @@ export const SpaceExpensesMain = ({
 												) : null}
 												{itemRows.length ? (
 													<div className="mt-3 rounded-xl border border-[rgba(120,100,80,0.1)] bg-white/60 px-3 py-2.5">
-														<ul className="space-y-1.5 text-sm">
-															{visibleItems.map((it, idx) => (
-																<li
-																	className="flex justify-between gap-3 text-foreground/90"
-																	key={`${String(it.name)}-${String(it.amount)}-${idx}`}
-																>
-																	<span className="min-w-0 truncate">
-																		{it.name}
-																	</span>
-																	<span className="shrink-0 tabular-nums text-muted-foreground">
-																		{formatMoney(it.amount)}
-																	</span>
-																</li>
-															))}
+														<ul className="space-y-1.5">
+															{visibleItems.map((it, idx) => {
+																const itemEntity = toExpenseItemEntity(it, {
+																	index: idx,
+																});
+																return (
+																	<li
+																		key={`${String(it.name)}-${String(it.amount)}-${idx}`}
+																	>
+																		<EntityMini
+																			entity={itemEntity}
+																			trailing={
+																				<span className="text-xs font-semibold tabular-nums text-muted-foreground">
+																					{formatMoney(it.amount)}
+																				</span>
+																			}
+																		/>
+																	</li>
+																);
+															})}
 														</ul>
 														{itemRows.length > previewLines ? (
 															<button

@@ -82,7 +82,13 @@ export const EntityMicro = ({
 	);
 };
 
-export const EntityMini = ({ entity }: { entity: EntityViewModel }) => {
+export const EntityMini = ({
+	entity,
+	trailing,
+}: {
+	entity: EntityViewModel;
+	trailing?: ReactNode;
+}) => {
 	const visual = entityVisuals[entity.visualKey] ?? entityVisuals.unknown;
 	const body = (
 		<span
@@ -114,6 +120,7 @@ export const EntityMini = ({ entity }: { entity: EntityViewModel }) => {
 					</span>
 				) : null}
 			</span>
+			{trailing ? <span className="shrink-0">{trailing}</span> : null}
 		</span>
 	);
 	if (entity.href) {
