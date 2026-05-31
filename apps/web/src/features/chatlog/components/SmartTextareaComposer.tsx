@@ -214,6 +214,7 @@ export const SmartTextareaComposer = forwardRef<
 
 		const textareaRef = useRef<HTMLTextAreaElement>(null);
 		const photoInputRef = useRef<HTMLInputElement>(null);
+		const previousHomeStateRef = useRef(homeState);
 
 		const spring = reduceMotion
 			? { duration: 0.01 }
@@ -230,6 +231,16 @@ export const SmartTextareaComposer = forwardRef<
 			setSelectedPeriod(null);
 			setSelectedChip(null);
 		}, []);
+
+		useEffect(() => {
+			const previousHomeState = previousHomeStateRef.current;
+			if (previousHomeState === homeState) return;
+			previousHomeStateRef.current = homeState;
+			if (navStack.length > 0 || state !== previousHomeState) return;
+			setState(homeState);
+			onPurposeChange?.(composerPurposeForState(homeState));
+			resetDraft();
+		}, [homeState, navStack.length, onPurposeChange, resetDraft, state]);
 
 		const goTo = useCallback(
 			(next: ComposerState) => {

@@ -1467,6 +1467,10 @@ export const ChatLogPage = () => {
 		);
 	}
 
+	const nativeChatHomeState = multiUserSpace
+		? "message_text"
+		: "expense_method_select";
+
 	return (
 		<NativeChatWorkspace
 			errorMessage={errorMessage}
@@ -1516,7 +1520,7 @@ export const ChatLogPage = () => {
 							<SmartTextareaComposer
 								ref={smartComposerRef}
 								disabled={isLoading || !selectedSpaceId}
-								homeState="message_text"
+								homeState={nativeChatHomeState}
 								isRecording={isRecording}
 								onCancelRecording={cancelRecording}
 								onComposerSubmit={(p) => void handleComposerSubmit(p)}
