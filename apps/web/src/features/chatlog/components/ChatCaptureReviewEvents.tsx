@@ -282,7 +282,7 @@ export const ChatCaptureReviewEvents = ({
 					"grid overflow-hidden border-t transition-[max-height,opacity,border-color] duration-200",
 					detailsOpen
 						? "max-h-80 border-[rgba(181,131,52,0.18)] opacity-100"
-						: "max-h-0 border-transparent opacity-0 group-focus-within:max-h-80 group-focus-within:border-[rgba(181,131,52,0.18)] group-focus-within:opacity-100 group-hover:max-h-80 group-hover:border-[rgba(181,131,52,0.18)] group-hover:opacity-100",
+						: "max-h-0 border-transparent opacity-0",
 				].join(" ")}
 				id={detailsRegionId}
 			>
