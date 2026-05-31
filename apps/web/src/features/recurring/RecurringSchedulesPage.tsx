@@ -9,6 +9,8 @@ import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterConte
 import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
+import { EntityIcon, EntityMicro } from "../../shared/lib/entityPresentation";
+import { toRecurringScheduleEntity } from "../../shared/lib/recurringPresentation";
 
 const sectionCard =
 	"rounded-2xl border border-border/70 bg-card text-card-foreground soft-shadow inner-glow";
@@ -1534,6 +1536,14 @@ export const RecurringSchedulesPage = () => {
 							const cadence = recurringIntervalLabel(row.interval);
 							const projectedInPeriod =
 								id != null ? (upcomingCountByRecurringId.get(id) ?? 0) : 0;
+							const recurringEntity = toRecurringScheduleEntity(row, {
+								amountLabel: formatMoney(row.amount ?? 0),
+								cadenceLabel: cadence,
+								selected:
+									highlightedRecurringId != null &&
+									id != null &&
+									highlightedRecurringId === id,
+							});
 							return (
 								<li
 									className={[
@@ -1550,23 +1560,30 @@ export const RecurringSchedulesPage = () => {
 									<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 										<div className="min-w-0 space-y-2.5">
 											<div className="flex items-start gap-3">
-												<div className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-muted/40 text-muted-foreground">
-													<IconCalendarMini />
-												</div>
+												<EntityIcon
+													className="mt-0.5"
+													size="sm"
+													visualKey={recurringEntity.visualKey}
+												/>
 												<div className="min-w-0 space-y-1">
 													<div className="flex flex-wrap items-center gap-2">
 														<span className="truncate font-semibold text-foreground">
-															{label}
+															{recurringEntity.title}
 														</span>
-														{paused ? (
-															<span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-900 dark:text-amber-100">
-																Paused
-															</span>
-														) : (
-															<span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-900 dark:text-emerald-100">
-																Active
-															</span>
-														)}
+														<EntityMicro
+															entity={{
+																label: recurringEntity.label,
+																visualKey: recurringEntity.visualKey,
+															}}
+														/>
+														<span
+															className={[
+																"rounded-full border px-2 py-0.5 text-xs font-medium",
+																recurringEntity.statusClassName,
+															].join(" ")}
+														>
+															{recurringEntity.status}
+														</span>
 													</div>
 													<div className="text-sm">
 														<span className="font-semibold text-foreground">
