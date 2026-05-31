@@ -1,4 +1,9 @@
-import { MessageSquareText, ScanSearch, Search } from "lucide-react";
+import {
+	type LucideIcon,
+	MessageSquareText,
+	ScanSearch,
+	Search,
+} from "lucide-react";
 
 export type ChatComposerPurpose = "message" | "capture" | "ask";
 
@@ -11,12 +16,38 @@ type ChatComposerOrientationProps = {
 	spaceName: string | null;
 };
 
+const PURPOSE_OPTIONS: Array<{
+	helper: string;
+	Icon: LucideIcon;
+	label: string;
+	purpose: ChatComposerPurpose;
+}> = [
+	{
+		helper: "Shared chat",
+		Icon: MessageSquareText,
+		label: "Message",
+		purpose: "message",
+	},
+	{
+		helper: "Review work",
+		Icon: ScanSearch,
+		label: "Capture",
+		purpose: "capture",
+	},
+	{
+		helper: "Ceits answer",
+		Icon: Search,
+		label: "Ask",
+		purpose: "ask",
+	},
+];
+
 const modeButtonClass = (selected: boolean) =>
 	[
-		"flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl border px-3 py-2 text-left transition-[background-color,border-color,box-shadow,transform] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+		"inline-flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-left transition-[background-color,box-shadow,color,transform] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:justify-start sm:px-3",
 		selected
-			? "border-[rgba(68,58,42,0.28)] bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
-			: "border-[rgba(120,100,80,0.14)] bg-white/72 text-foreground hover:border-[rgba(120,100,80,0.28)] hover:bg-white",
+			? "bg-[rgba(68,58,42,0.94)] text-[#fffaf0] shadow-[0_8px_18px_-14px_rgba(44,32,18,0.58)]"
+			: "text-muted-foreground hover:bg-white/78 hover:text-foreground",
 	].join(" ");
 
 export const ChatComposerOrientation = ({
@@ -28,94 +59,56 @@ export const ChatComposerOrientation = ({
 	spaceName,
 }: ChatComposerOrientationProps) => {
 	const contextLabel = spaceName?.trim() || "this space";
+	const onClickByPurpose: Record<ChatComposerPurpose, () => void> = {
+		ask: onAskClick,
+		capture: onCaptureClick,
+		message: onMessageClick,
+	};
 
 	return (
 		<section
 			aria-label="Chat composer purpose"
-			className="border-t border-[rgba(120,100,80,0.16)] bg-[rgba(250,247,240,0.72)] px-3 py-2 sm:px-4"
+			className="border-t border-[rgba(120,100,80,0.14)] bg-[rgba(250,247,240,0.64)] px-3 py-1.5 sm:px-4"
 		>
-			<div className="mx-auto flex w-full max-w-[min(780px,95%)] flex-col gap-2 sm:flex-row sm:items-center">
-				<div className="min-w-0 flex-1">
-					<p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-						Input purpose
-					</p>
-					<p className="mt-0.5 truncate text-xs text-muted-foreground">
-						Choose what this input should do in {contextLabel}.
-					</p>
+			<div className="mx-auto flex w-full max-w-[min(780px,95%)] flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+				<div className="flex min-w-0 items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+					<span
+						aria-hidden
+						className="h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(140_28%_46%)] shadow-[0_0_0_3px_rgba(92,122,91,0.14)]"
+					/>
+					<span className="truncate">Context: {contextLabel}</span>
 				</div>
-				<div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-3">
-					<button
-						aria-pressed={composerPurpose === "message"}
-						className={modeButtonClass(composerPurpose === "message")}
-						disabled={disabled}
-						onClick={onMessageClick}
-						type="button"
-					>
-						<MessageSquareText className="h-4 w-4 shrink-0" size={16} />
-						<span className="min-w-0">
-							<span className="block truncate text-xs font-bold">
-								Message people
+				<div
+					aria-label="Input purpose"
+					className="grid min-w-0 grid-cols-3 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/58 p-1 shadow-[inset_0_1px_2px_rgba(44,32,18,0.04)] sm:w-[min(100%,31rem)] sm:shrink-0"
+					role="group"
+				>
+					{PURPOSE_OPTIONS.map(({ helper, Icon, label, purpose }) => (
+						<button
+							aria-label={`${label}: ${helper}`}
+							aria-pressed={composerPurpose === purpose}
+							className={modeButtonClass(composerPurpose === purpose)}
+							disabled={disabled}
+							key={purpose}
+							onClick={onClickByPurpose[purpose]}
+							type="button"
+						>
+							<Icon className="h-3.5 w-3.5 shrink-0" size={14} />
+							<span className="min-w-0 truncate text-xs font-bold">
+								{label}
 							</span>
 							<span
 								className={[
-									"mt-0.5 block truncate text-[11px] font-semibold",
-									composerPurpose === "message"
-										? "text-[#fffaf0]/72"
-										: "text-muted-foreground",
+									"hidden min-w-0 truncate text-[10px] font-semibold sm:inline",
+									composerPurpose === purpose
+										? "text-[#fffaf0]/70"
+										: "text-muted-foreground/78",
 								].join(" ")}
 							>
-								Send to the shared chat
+								{helper}
 							</span>
-						</span>
-					</button>
-					<button
-						aria-pressed={composerPurpose === "capture"}
-						className={modeButtonClass(composerPurpose === "capture")}
-						disabled={disabled}
-						onClick={onCaptureClick}
-						type="button"
-					>
-						<ScanSearch className="h-4 w-4 shrink-0" size={16} />
-						<span className="min-w-0">
-							<span className="block truncate text-xs font-bold">
-								Capture for review
-							</span>
-							<span
-								className={[
-									"mt-0.5 block truncate text-[11px] font-semibold",
-									composerPurpose === "capture"
-										? "text-[#fffaf0]/72"
-										: "text-muted-foreground",
-								].join(" ")}
-							>
-								Parse text, voice, receipt
-							</span>
-						</span>
-					</button>
-					<button
-						aria-pressed={composerPurpose === "ask"}
-						className={modeButtonClass(composerPurpose === "ask")}
-						disabled={disabled}
-						onClick={onAskClick}
-						type="button"
-					>
-						<Search className="h-4 w-4 shrink-0" size={16} />
-						<span className="min-w-0">
-							<span className="block truncate text-xs font-bold">
-								Ask Ceits
-							</span>
-							<span
-								className={[
-									"mt-0.5 block truncate text-[11px] font-semibold",
-									composerPurpose === "ask"
-										? "text-[#fffaf0]/72"
-										: "text-muted-foreground",
-								].join(" ")}
-							>
-								Search and explain
-							</span>
-						</span>
-					</button>
+						</button>
+					))}
 				</div>
 			</div>
 		</section>
