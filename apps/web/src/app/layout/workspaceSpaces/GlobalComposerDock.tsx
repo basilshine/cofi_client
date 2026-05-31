@@ -1,5 +1,7 @@
 import {
+	Activity,
 	CheckCircle2,
+	ChevronDown,
 	Clock3,
 	FileText,
 	Image,
@@ -9,7 +11,9 @@ import {
 	Mic,
 	Plus,
 	ScanSearch,
+	Settings2,
 	Sparkles,
+	UserRound,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
@@ -1232,15 +1236,16 @@ export const GlobalComposerDock = ({
 
 	const actionButtonClass =
 		"inline-flex min-h-9 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3.5 text-xs font-semibold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_12px_28px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
-	const dockLinkClass =
-		"inline-flex min-h-8 shrink-0 items-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-[background-color,color,transform] hover:bg-background/78 hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+	const utilityGroupClass =
+		"flex min-w-0 flex-wrap items-center gap-1 rounded-full border border-[rgba(87,70,49,0.08)] bg-background/72 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.72)]";
+	const utilityLinkClass =
+		"inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold text-muted-foreground transition-[background-color,color,transform] hover:bg-card hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+	const utilityButtonClass =
+		"inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold text-muted-foreground transition-[background-color,color,transform] hover:bg-card hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	const userLinkClass =
 		"inline-flex min-h-10 min-w-0 shrink-0 items-center gap-2 rounded-full bg-background px-3 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	const settingsActionClass =
 		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.44)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-	const dockHeaderLinkClass =
-		"inline-flex min-h-8 items-center rounded-full px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-[color,transform] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
 	if (settingsActionDock) {
 		return (
 			<div
@@ -1376,14 +1381,23 @@ export const GlobalComposerDock = ({
 									</Link>
 								) : null}
 							</div>
-							<div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-full bg-muted/30 px-1.5 py-1 lg:justify-end">
-								<Link className={dockLinkClass} to={activeSpaceActivityHref}>
+							<nav
+								aria-label="Composer utility links"
+								className={utilityGroupClass}
+							>
+								<Link className={utilityLinkClass} to={activeSpaceActivityHref}>
+									<Activity aria-hidden className="h-3.5 w-3.5" />
 									Activity
 								</Link>
-								<Link className={dockLinkClass} to={spaceSettingsHref}>
+								<Link className={utilityLinkClass} to={spaceSettingsHref}>
+									<Settings2 aria-hidden className="h-3.5 w-3.5" />
 									Manage
 								</Link>
-								<Link className={dockLinkClass} to="/console/settings/account">
+								<Link
+									className={utilityLinkClass}
+									to="/console/settings/account"
+								>
+									<UserRound aria-hidden className="h-3.5 w-3.5" />
 									Account
 								</Link>
 								<Link className={userLinkClass} to="/console/settings/account">
@@ -1391,7 +1405,7 @@ export const GlobalComposerDock = ({
 										{userInitial}
 									</span>
 								</Link>
-							</div>
+							</nav>
 						</div>
 					</div>
 				) : (
@@ -1404,53 +1418,60 @@ export const GlobalComposerDock = ({
 									{contextSource ? ` · ${contextSource}` : ""}
 								</p>
 							</div>
-							<div className="flex shrink-0 items-center gap-3 rounded-full bg-background/72 px-2.5 py-1 shadow-[0_0_0_1px_rgba(87,70,49,0.07)]">
+							<nav
+								aria-label="Composer utility links"
+								className={utilityGroupClass}
+							>
 								<button
 									aria-label="Collapse global composer"
 									aria-pressed={isCollapsed}
-									className="min-h-8 rounded-full px-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-[color,transform] hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									className={utilityButtonClass}
 									onClick={handleCollapseToggle}
 									type="button"
 								>
+									<ChevronDown aria-hidden className="h-3.5 w-3.5" />
 									Collapse
 								</button>
 								{hasSpaceContext ? (
-									<Link className={dockHeaderLinkClass} to={spaceSettingsHref}>
+									<Link className={utilityLinkClass} to={spaceSettingsHref}>
+										<Settings2 aria-hidden className="h-3.5 w-3.5" />
 										Manage
 									</Link>
 								) : (
 									<Link
-										className={dockHeaderLinkClass}
+										className={utilityLinkClass}
 										to="/console/settings/spaces"
 									>
+										<ListChecks aria-hidden className="h-3.5 w-3.5" />
 										Spaces
 									</Link>
 								)}
 								<Link
-									className={dockHeaderLinkClass}
+									className={utilityLinkClass}
 									to="/console/settings/account"
 								>
+									<UserRound aria-hidden className="h-3.5 w-3.5" />
 									Account
 								</Link>
-								<Link
-									className={dockHeaderLinkClass}
-									to={activeSpaceActivityHref}
-								>
+								<Link className={utilityLinkClass} to={activeSpaceActivityHref}>
+									<Activity aria-hidden className="h-3.5 w-3.5" />
 									Activity
 								</Link>
 								{hasSpaceContext ? (
 									<Link
-										className={dockHeaderLinkClass}
+										className={utilityLinkClass}
 										to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
 									>
+										<MessageSquareText aria-hidden className="h-3.5 w-3.5" />
 										Open chat
 									</Link>
 								) : (
-									<Link className={dockHeaderLinkClass} to="/console/spaces">
+									<Link className={utilityLinkClass} to="/console/spaces">
+										<ListChecks aria-hidden className="h-3.5 w-3.5" />
 										Choose space
 									</Link>
 								)}
-							</div>
+							</nav>
 						</div>
 						<SmartTextareaComposer
 							ref={composerRef}
