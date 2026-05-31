@@ -28,6 +28,14 @@ import type {
 
 type ReviewKind = "draft" | "split_approval" | "needs_confirmation";
 type ReviewFilter = "all" | "draft" | "split_approval" | "needs_confirmation";
+type PacketSectionFilterKey =
+	| "all"
+	| "expenses"
+	| "benefits"
+	| "people"
+	| "splits"
+	| "future"
+	| "documents";
 
 type ReviewItem = {
 	id: string;
@@ -673,6 +681,23 @@ const splitMethodFromRows = (
 		: "custom";
 };
 
+const packetSectionFromParam = (
+	value: string | null,
+): PacketSectionFilterKey | null => {
+	if (
+		value === "all" ||
+		value === "expenses" ||
+		value === "benefits" ||
+		value === "people" ||
+		value === "splits" ||
+		value === "future" ||
+		value === "documents"
+	) {
+		return value;
+	}
+	return null;
+};
+
 export const CeitsReviewFlowPage = () => {
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
 	const { formatMoney } = useUserFormat();
@@ -719,6 +744,7 @@ export const CeitsReviewFlowPage = () => {
 		Number.isFinite(Number(sourceDocumentIdParam))
 			? Number(sourceDocumentIdParam)
 			: null;
+	const focusedSectionKey = packetSectionFromParam(searchParams.get("section"));
 	const activeSpace: Space | null = useMemo(() => {
 		if (spaces == null || spaceId == null) return null;
 		return spaces.find((s) => Number(s.id) === Number(spaceId)) ?? null;
@@ -1388,6 +1414,7 @@ export const CeitsReviewFlowPage = () => {
 							documentCandidateActingId={documentCandidateActingId}
 							documentCandidateError={documentCandidateError}
 							focusedSourceDocumentId={focusedSourceDocumentId}
+							focusedSectionKey={focusedSectionKey}
 							onApplySplitCandidate={(candidate, targetExpenseId) =>
 								void handleApplySplitCandidate(
 									candidate.raw as DocumentCandidate,

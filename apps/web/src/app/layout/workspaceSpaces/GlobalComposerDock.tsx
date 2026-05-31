@@ -137,16 +137,22 @@ const candidateOnlyStatus = (
 	return "Ceits parsed the input, but needs clearer expense details before creating a draft.";
 };
 
-const withSourceDocumentId = (
+const withReviewParams = (
 	href: string,
-	sourceDocumentId?: number,
+	params: {
+		sourceDocumentId?: number;
+		section?: string;
+	},
 ): string => {
-	if (sourceDocumentId == null) return href;
+	if (params.sourceDocumentId == null && !params.section) return href;
 	const [pathAndSearch, hash] = href.split("#");
 	const [pathname, search] = pathAndSearch.split("?");
-	const params = new URLSearchParams(search ?? "");
-	params.set("sourceDocumentId", String(sourceDocumentId));
-	return `${pathname}?${params.toString()}${hash ? `#${hash}` : ""}`;
+	const next = new URLSearchParams(search ?? "");
+	if (params.sourceDocumentId != null) {
+		next.set("sourceDocumentId", String(params.sourceDocumentId));
+	}
+	if (params.section) next.set("section", params.section);
+	return `${pathname}?${next.toString()}${hash ? `#${hash}` : ""}`;
 };
 
 type ComposerFlowStatus = "done" | "current" | "pending" | "blocked";
@@ -396,6 +402,7 @@ type DockReviewSection = {
 	foundLabel: string;
 	kinds: GlobalComposerCandidateBundle["candidates"][number]["kind"][];
 	href: string;
+	reviewSection: string;
 	icon: LucideIcon;
 };
 
@@ -429,6 +436,7 @@ const DockReviewDrawer = ({
 			foundLabel: "Expense candidate",
 			kinds: ["expense"],
 			href: expensesHref,
+			reviewSection: "expenses",
 			icon: ReceiptText,
 		},
 		{
@@ -439,6 +447,7 @@ const DockReviewDrawer = ({
 			foundLabel: "Parsed items",
 			kinds: ["expense_item"],
 			href: expensesHref,
+			reviewSection: "expenses",
 			icon: ListChecks,
 		},
 		{
@@ -449,6 +458,7 @@ const DockReviewDrawer = ({
 			foundLabel: "People candidate",
 			kinds: ["participant"],
 			href: reviewHref,
+			reviewSection: "people",
 			icon: UserPlus,
 		},
 		{
@@ -459,6 +469,7 @@ const DockReviewDrawer = ({
 			foundLabel: "Split candidate",
 			kinds: ["split"],
 			href: splitsHref,
+			reviewSection: "splits",
 			icon: Split,
 		},
 		{
@@ -469,6 +480,7 @@ const DockReviewDrawer = ({
 			foundLabel: "Benefit candidate",
 			kinds: ["promo", "loyalty"],
 			href: benefitsHref,
+			reviewSection: "benefits",
 			icon: Gift,
 		},
 		{
@@ -479,6 +491,7 @@ const DockReviewDrawer = ({
 			foundLabel: "Future action",
 			kinds: ["recurring", "membership", "reminder"],
 			href: reviewHref,
+			reviewSection: "future",
 			icon: Repeat,
 		},
 		{
@@ -489,6 +502,7 @@ const DockReviewDrawer = ({
 			foundLabel: "Document signal",
 			kinds: ["payment_proof", "privacy", "merge", "supporting_document"],
 			href: reviewHref,
+			reviewSection: "documents",
 			icon: FileText,
 		},
 	];
@@ -523,6 +537,12 @@ const DockReviewDrawer = ({
 					const count = candidateCountFor(bundle, section.kinds);
 					const hasCandidate = count > 0;
 					const Icon = section.icon;
+					const sectionHref = hasCandidate
+						? withReviewParams(reviewHref, {
+								section: section.reviewSection,
+								sourceDocumentId: bundle.sourceDocumentId,
+							})
+						: section.href;
 					return (
 						<div
 							className={[
@@ -567,7 +587,7 @@ const DockReviewDrawer = ({
 										? "bg-white/78 text-[#355a3c] shadow-[0_0_0_1px_rgba(72,112,76,0.14)] hover:bg-white"
 										: "bg-[rgba(68,58,42,0.06)] text-foreground/78 shadow-[0_0_0_1px_rgba(87,70,49,0.08)] hover:bg-[rgba(68,58,42,0.1)]",
 								].join(" ")}
-								to={section.href}
+								to={sectionHref}
 							>
 								{hasCandidate ? (
 									<>Review {section.title.toLowerCase()}</>
@@ -600,10 +620,9 @@ const CandidateBundlePanel = ({
 	reviewHref: string;
 }) => {
 	const [isReviewDrawerOpen, setIsReviewDrawerOpen] = useState(false);
-	const reviewHrefWithSource = withSourceDocumentId(
-		reviewHref,
-		bundle.sourceDocumentId,
-	);
+	const reviewHrefWithSource = withReviewParams(reviewHref, {
+		sourceDocumentId: bundle.sourceDocumentId,
+	});
 
 	if (!bundle.candidates.length && !bundle.capabilityNotice) return null;
 

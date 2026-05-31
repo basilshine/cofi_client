@@ -12,6 +12,7 @@ type CapturePacketReviewSectionProps = {
 	decisionCount: number;
 	spaceId: number;
 	focusedSourceDocumentId?: number | null;
+	focusedSectionKey?: PacketSectionFilterKey | null;
 	documentCandidateError: string | null;
 	benefitCandidateActingId: number | null;
 	documentCandidateActingId: number | null;
@@ -148,6 +149,7 @@ export const CapturePacketReviewSection = ({
 	decisionCount,
 	spaceId,
 	focusedSourceDocumentId,
+	focusedSectionKey,
 	documentCandidateError,
 	benefitCandidateActingId,
 	documentCandidateActingId,
@@ -163,7 +165,7 @@ export const CapturePacketReviewSection = ({
 	onIgnoreCandidate,
 }: CapturePacketReviewSectionProps) => {
 	const [selectedSectionKey, setSelectedSectionKey] =
-		useState<PacketSectionFilterKey>("all");
+		useState<PacketSectionFilterKey>(focusedSectionKey ?? "all");
 	const entityCounts = useMemo(() => {
 		const counts: Record<PacketSectionKey, number> = {
 			expenses: 0,
@@ -237,6 +239,11 @@ export const CapturePacketReviewSection = ({
 		}
 		setSelectedPacketId(defaultPacketId);
 	}, [visiblePackets, selectedPacketId, defaultPacketId]);
+
+	useEffect(() => {
+		if (focusedSectionKey == null) return;
+		setSelectedSectionKey(focusedSectionKey);
+	}, [focusedSectionKey]);
 
 	return (
 		<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.94)] p-4 shadow-sm">
