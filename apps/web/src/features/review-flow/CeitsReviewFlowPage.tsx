@@ -780,6 +780,30 @@ export const CeitsReviewFlowPage = () => {
 		if (current?.expenseId != null) return current.expenseId;
 		return splitTargetOptions[0]?.expenseId ?? null;
 	};
+	const pendingParticipantsBySourceDocument = useMemo(() => {
+		const counts = new Map<number, number>();
+		for (const candidate of documentCandidates) {
+			if (candidate.candidate_type !== "participant_placeholder_candidate")
+				continue;
+			counts.set(
+				candidate.source_document_id,
+				(counts.get(candidate.source_document_id) ?? 0) + 1,
+			);
+		}
+		return counts;
+	}, [documentCandidates]);
+	const pendingParticipantCountForSplitCandidate = (
+		candidate: CandidateReviewItem,
+	): number => {
+		if (!candidate.canOpenSplitReview || candidate.source !== "document") {
+			return 0;
+		}
+		return (
+			pendingParticipantsBySourceDocument.get(
+				(candidate.raw as DocumentCandidate).source_document_id,
+			) ?? 0
+		);
+	};
 
 	const participantName = (split: ExpenseSplitRow) => {
 		if (split.participant?.display_name?.trim()) {
@@ -1096,6 +1120,11 @@ export const CeitsReviewFlowPage = () => {
 									const splitTargetExpenseId = candidate.canOpenSplitReview
 										? splitTargetExpenseIdFor(candidate.id)
 										: null;
+									const pendingSplitParticipantCount =
+										pendingParticipantCountForSplitCandidate(candidate);
+									const splitApplyBlocked = pendingSplitParticipantCount > 0;
+									const splitParticipantLabel =
+										pendingSplitParticipantCount === 1 ? "person" : "people";
 									return (
 										<article
 											className={`rounded-xl border p-3 ${candidateToneClass(candidate.tone)}`}
@@ -1162,7 +1191,7 @@ export const CeitsReviewFlowPage = () => {
 														splitTargetExpenseId != null ? (
 															<button
 																className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
-																disabled={isActing}
+																disabled={isActing || splitApplyBlocked}
 																onClick={() =>
 																	void handleApplySplitCandidate(
 																		candidate.raw as DocumentCandidate,
@@ -1171,7 +1200,11 @@ export const CeitsReviewFlowPage = () => {
 																}
 																type="button"
 															>
-																{isActing ? "Applying" : "Apply split"}
+																{splitApplyBlocked
+																	? "Add people first"
+																	: isActing
+																		? "Applying"
+																		: "Apply split"}
 															</button>
 														) : (
 															<Link
@@ -1208,7 +1241,7 @@ export const CeitsReviewFlowPage = () => {
 													{splitTargetOptions.length > 0 ? (
 														<select
 															className="mt-1 h-8 w-full rounded-md border border-[rgba(120,100,80,0.18)] bg-white px-2 text-xs font-medium text-foreground shadow-sm outline-none transition focus:border-[rgba(181,131,52,0.48)]"
-															disabled={isActing}
+															disabled={isActing || splitApplyBlocked}
 															id={`split-target-${candidate.id}`}
 															onChange={(event) => {
 																const next = Number(event.target.value);
@@ -1233,6 +1266,13 @@ export const CeitsReviewFlowPage = () => {
 															No review expense is available yet.
 														</p>
 													)}
+													{splitApplyBlocked ? (
+														<p className="mt-2 rounded-md border border-[rgba(83,103,139,0.18)] bg-[rgba(247,250,255,0.72)] px-2 py-1.5 text-xs text-[#405574]">
+															Add {pendingSplitParticipantCount}{" "}
+															{splitParticipantLabel} from this capture first,
+															then apply the split to the expense.
+														</p>
+													) : null}
 												</div>
 											) : null}
 											{candidate.fields.length > 0 ? (
