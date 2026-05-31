@@ -190,6 +190,31 @@ const candidateEntity = (candidate: CandidateReviewItem): EntityViewModel => ({
 	status: candidate.confidenceLabel,
 });
 
+type CandidateActionTone =
+	| "attention"
+	| "benefit"
+	| "neutral"
+	| "people"
+	| "review";
+
+const candidateActionButtonClass = (tone: CandidateActionTone): string => {
+	const base =
+		"min-h-9 rounded-full border px-3 text-xs font-semibold transition disabled:opacity-50";
+	const toneClass: Record<CandidateActionTone, string> = {
+		attention:
+			"border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.78)] text-[#73501b] hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.94)]",
+		benefit:
+			"border-[rgba(91,116,87,0.34)] bg-[rgba(237,247,239,0.94)] text-[#355238] hover:border-[rgba(91,116,87,0.5)] hover:bg-[rgba(218,238,222,0.98)]",
+		neutral:
+			"border-border/70 bg-white text-muted-foreground hover:border-destructive/30 hover:text-destructive",
+		people:
+			"border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.88)] text-[#405574] hover:border-[rgba(83,103,139,0.45)] hover:bg-[rgba(222,232,249,0.96)]",
+		review:
+			"border-[rgba(78,92,72,0.26)] bg-[rgba(246,249,242,0.9)] text-[#495944] hover:border-[rgba(78,92,72,0.42)] hover:bg-[rgba(232,239,225,0.96)]",
+	};
+	return `${base} ${toneClass[tone]}`;
+};
+
 const addHrefForSection = (
 	sectionKey: PacketSectionKey,
 	spaceId: number,
@@ -860,7 +885,7 @@ const PacketActionBar = ({
 				<div className="flex flex-wrap items-center justify-end gap-1.5">
 					{promoCandidate ? (
 						<button
-							className="min-h-9 rounded-full border border-[rgba(91,116,87,0.34)] bg-[rgba(237,247,239,0.96)] px-3 text-xs font-semibold text-[#355238] transition hover:border-[rgba(91,116,87,0.5)] hover:bg-[rgba(218,238,222,0.98)] disabled:opacity-50"
+							className={candidateActionButtonClass("benefit")}
 							disabled={isBenefitActing(promoCandidate)}
 							onClick={() => onSavePromoCandidate(promoCandidate)}
 							type="button"
@@ -870,7 +895,7 @@ const PacketActionBar = ({
 					) : null}
 					{participantCandidate ? (
 						<button
-							className="min-h-9 rounded-full border border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.9)] px-3 text-xs font-semibold text-[#405574] transition hover:border-[rgba(83,103,139,0.45)] hover:bg-[rgba(222,232,249,0.96)] disabled:opacity-50"
+							className={candidateActionButtonClass("people")}
 							disabled={isDocumentActing(participantCandidate)}
 							onClick={() => onCreateParticipantCandidate(participantCandidate)}
 							type="button"
@@ -882,7 +907,7 @@ const PacketActionBar = ({
 					) : null}
 					{splitCandidate ? (
 						<button
-							className="min-h-9 rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.82)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.94)] disabled:opacity-50"
+							className={candidateActionButtonClass("attention")}
 							disabled={
 								splitBlocked ||
 								splitTargetExpenseId == null ||
@@ -902,7 +927,7 @@ const PacketActionBar = ({
 					) : null}
 					{recurringCandidate ? (
 						<button
-							className="min-h-9 rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.82)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.94)] disabled:opacity-50"
+							className={candidateActionButtonClass("attention")}
 							disabled={isDocumentActing(recurringCandidate)}
 							onClick={() => onCreateRecurringCandidate(recurringCandidate)}
 							type="button"
@@ -914,7 +939,7 @@ const PacketActionBar = ({
 					) : null}
 					{reviewCandidate ? (
 						<button
-							className="min-h-9 rounded-full border border-[rgba(78,92,72,0.26)] bg-white/88 px-3 text-xs font-semibold text-[#495944] transition hover:border-[rgba(78,92,72,0.42)] hover:bg-[rgba(232,239,225,0.96)] disabled:opacity-50"
+							className={candidateActionButtonClass("review")}
 							disabled={isDocumentActing(reviewCandidate)}
 							onClick={() => onConfirmDocumentCandidate(reviewCandidate)}
 							type="button"
@@ -1075,7 +1100,7 @@ const CaptureCandidateActions = ({
 	<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
 		{candidate.canSavePromo ? (
 			<button
-				className="min-h-9 rounded-full border border-[rgba(91,116,87,0.34)] bg-[rgba(237,247,239,0.92)] px-3 text-xs font-semibold text-[#355238] transition hover:border-[rgba(91,116,87,0.5)] hover:bg-[rgba(218,238,222,0.98)] disabled:opacity-50"
+				className={candidateActionButtonClass("benefit")}
 				disabled={isActing}
 				onClick={() => onSavePromoCandidate(candidate)}
 				type="button"
@@ -1085,7 +1110,7 @@ const CaptureCandidateActions = ({
 		) : null}
 		{candidate.canMarkReviewed ? (
 			<button
-				className="min-h-9 rounded-full border border-[rgba(78,92,72,0.26)] bg-[rgba(246,249,242,0.92)] px-3 text-xs font-semibold text-[#495944] transition hover:border-[rgba(78,92,72,0.42)] hover:bg-[rgba(232,239,225,0.96)] disabled:opacity-50"
+				className={candidateActionButtonClass("review")}
 				disabled={isActing}
 				onClick={() => onConfirmDocumentCandidate(candidate)}
 				type="button"
@@ -1095,7 +1120,7 @@ const CaptureCandidateActions = ({
 		) : null}
 		{candidate.canCreateParticipant ? (
 			<button
-				className="min-h-9 rounded-full border border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.86)] px-3 text-xs font-semibold text-[#405574] transition hover:border-[rgba(83,103,139,0.45)] hover:bg-[rgba(222,232,249,0.96)] disabled:opacity-50"
+				className={candidateActionButtonClass("people")}
 				disabled={isActing}
 				onClick={() => onCreateParticipantCandidate(candidate)}
 				type="button"
@@ -1105,7 +1130,7 @@ const CaptureCandidateActions = ({
 		) : null}
 		{candidate.canCreateRecurring ? (
 			<button
-				className="min-h-9 rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
+				className={candidateActionButtonClass("attention")}
 				disabled={isActing}
 				onClick={() => onCreateRecurringCandidate(candidate)}
 				type="button"
@@ -1116,7 +1141,7 @@ const CaptureCandidateActions = ({
 		{candidate.canOpenSplitReview ? (
 			splitTargetExpenseId != null ? (
 				<button
-					className="min-h-9 rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
+					className={candidateActionButtonClass("attention")}
 					disabled={isActing || splitApplyBlocked}
 					onClick={() => onApplySplitCandidate(candidate, splitTargetExpenseId)}
 					type="button"
@@ -1129,7 +1154,7 @@ const CaptureCandidateActions = ({
 				</button>
 			) : (
 				<Link
-					className="inline-flex min-h-9 items-center rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)]"
+					className={`inline-flex items-center ${candidateActionButtonClass("attention")}`}
 					to={`/console/spaces/${spaceId}/splits`}
 				>
 					Open splits
@@ -1137,7 +1162,7 @@ const CaptureCandidateActions = ({
 			)
 		) : null}
 		<button
-			className="min-h-9 rounded-full border border-border/70 bg-white px-3 text-xs font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-50"
+			className={candidateActionButtonClass("neutral")}
 			disabled={isActing}
 			onClick={() => onIgnoreCandidate(candidate)}
 			type="button"
