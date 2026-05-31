@@ -4,6 +4,7 @@ import type {
 	ExpenseThreadMessage,
 	SpaceMember,
 } from "@cofi/api";
+import { Pencil } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import {
 	Fragment,
@@ -1450,22 +1451,10 @@ export const ExpenseThreadInlinePanel = ({
 								>
 									{isExpensesInspector ? (
 										<div className="mb-3 flex items-center gap-2 border-b border-amber-200/50 pb-2.5 dark:border-amber-800/50">
-											<svg
+											<Pencil
 												aria-hidden
-												focusable="false"
 												className="h-4 w-4 shrink-0 text-amber-800/85 dark:text-amber-200/90"
-												fill="none"
-												stroke="currentColor"
-												strokeWidth={1.75}
-												viewBox="0 0 24 24"
-											>
-												<title>Edit</title>
-												<path
-													d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10"
-													strokeLinecap="round"
-													strokeLinejoin="round"
-												/>
-											</svg>
+											/>
 											<p className="text-sm font-semibold tracking-tight text-amber-950 dark:text-amber-50">
 												Editing expense
 											</p>
