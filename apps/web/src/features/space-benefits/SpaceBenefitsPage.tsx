@@ -653,6 +653,244 @@ export const SpaceBenefitsPage = () => {
 					</div>
 				</section>
 			) : null}
+			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
+				<div className="flex items-start justify-between gap-3">
+					<div>
+						<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+							Selected promo
+						</p>
+						<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
+							Detail and edit
+						</h2>
+					</div>
+					{selectedPromo ? (
+						<button
+							className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground"
+							onClick={() => startPromoEdit(selectedPromo)}
+							type="button"
+						>
+							Edit
+						</button>
+					) : null}
+				</div>
+
+				{selectedPromo ? (
+					<div className="mt-4 space-y-4">
+						<PromoBenefitDetailHeader promo={selectedPromo} />
+						{editingPromoId === selectedPromo.id && promoEditDraft ? (
+							<div className="space-y-3 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/66 p-3">
+								<label className="block space-y-1 text-sm">
+									<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+										Title
+									</span>
+									<input
+										className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+										onChange={(event) =>
+											setPromoEditDraft((current) =>
+												current
+													? { ...current, title: event.target.value }
+													: current,
+											)
+										}
+										value={promoEditDraft.title}
+									/>
+								</label>
+								<label className="block space-y-1 text-sm">
+									<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+										Description
+									</span>
+									<textarea
+										className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+										onChange={(event) =>
+											setPromoEditDraft((current) =>
+												current
+													? { ...current, description: event.target.value }
+													: current,
+											)
+										}
+										value={promoEditDraft.description}
+									/>
+								</label>
+								<div className="grid gap-3">
+									<label className="block space-y-1 text-sm">
+										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+											Status
+										</span>
+										<select
+											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											onChange={(event) =>
+												setPromoEditDraft((current) =>
+													current
+														? { ...current, status: event.target.value }
+														: current,
+												)
+											}
+											value={promoEditDraft.status}
+										>
+											<option value="active">Active</option>
+											<option value="draft">Draft</option>
+											<option value="used">Used</option>
+											<option value="expired">Expired</option>
+											<option value="archived">Archived</option>
+											<option value="ignored">Ignored</option>
+										</select>
+									</label>
+									<label className="block space-y-1 text-sm">
+										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+											Reminder
+										</span>
+										<input
+											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											onChange={(event) =>
+												setPromoEditDraft((current) =>
+													current
+														? {
+																...current,
+																reminderAt: event.target.value,
+															}
+														: current,
+												)
+											}
+											type="datetime-local"
+											value={promoEditDraft.reminderAt}
+										/>
+									</label>
+								</div>
+								{promoEditError ? (
+									<p className="text-sm text-red-700">{promoEditError}</p>
+								) : null}
+								<div className="flex flex-wrap justify-end gap-2">
+									<button
+										className="inline-flex h-9 items-center rounded-lg border border-border/70 bg-white px-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+										onClick={cancelPromoEdit}
+										type="button"
+									>
+										Cancel
+									</button>
+									<button
+										className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
+										disabled={promoEditBusyId === selectedPromo.id}
+										onClick={() => void savePromoEdit()}
+										type="button"
+									>
+										{promoEditBusyId === selectedPromo.id
+											? "Saving..."
+											: "Save changes"}
+									</button>
+								</div>
+							</div>
+						) : (
+							<div className="space-y-3 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 p-3 text-sm">
+								<div>
+									<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+										Offer
+									</p>
+									<p className="mt-1 font-medium text-foreground">
+										{selectedPromo.discountLabel}
+									</p>
+								</div>
+								<div>
+									<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+										Conditions
+									</p>
+									<p className="mt-1 leading-relaxed text-muted-foreground">
+										{selectedPromo.raw.conditions_text?.trim() ||
+											selectedPromo.raw.description?.trim() ||
+											"No conditions saved yet."}
+									</p>
+								</div>
+								<div className="grid grid-cols-2 gap-3">
+									<div>
+										<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+											Valid until
+										</p>
+										<p className="mt-1 text-foreground">
+											{selectedPromo.validUntil}
+										</p>
+									</div>
+									<div>
+										<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+											Source
+										</p>
+										<p className="mt-1 text-foreground">
+											{selectedPromo.source}
+										</p>
+									</div>
+								</div>
+								<p className="text-xs leading-relaxed text-muted-foreground">
+									Code, platform, and conditions are read-only until the promo
+									edit API supports those fields.
+								</p>
+							</div>
+						)}
+					</div>
+				) : (
+					<p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+						Select a saved promo to inspect its source, conditions, status, and
+						reminder.
+					</p>
+				)}
+			</section>
+
+			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+					Decision queue
+				</p>
+				<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
+					Benefits to review
+				</h2>
+				<p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+					{candidateCount === 0
+						? "Nothing waiting right now."
+						: `${candidateCount} detected item${candidateCount === 1 ? "" : "s"} need review.`}
+				</p>
+				{candidateViews.length ? (
+					<ul className="mt-4 space-y-2">
+						{candidateViews.map((candidate) => (
+							<CandidateCard
+								busy={candidateBusyId === candidate.id}
+								candidate={candidate}
+								key={candidate.id}
+								onIgnore={(item) => void ignoreCandidate(item)}
+								onSavePromo={(item) => void saveCandidatePromo(item)}
+							/>
+						))}
+					</ul>
+				) : (
+					<Link
+						className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[rgba(55,45,30,0.92)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+						to={`/console/chat?spaceId=${encodeURIComponent(String(numericSpaceId))}`}
+					>
+						Open chat
+					</Link>
+				)}
+			</section>
+
+			<section className="rounded-2xl border border-[rgba(200,160,95,0.22)] bg-[rgba(255,248,235,0.7)] p-5 shadow-sm">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
+					Sources
+				</p>
+				<dl className="mt-3 space-y-3 text-sm">
+					<div className="flex items-baseline justify-between gap-3">
+						<dt className="text-muted-foreground">Receipts</dt>
+						<dd className="font-semibold tabular-nums text-foreground">
+							{sourceCounts.receipts}
+						</dd>
+					</div>
+					<div className="flex items-baseline justify-between gap-3">
+						<dt className="text-muted-foreground">Manual</dt>
+						<dd className="font-semibold tabular-nums text-foreground">
+							{sourceCounts.manual}
+						</dd>
+					</div>
+					<div className="flex items-baseline justify-between gap-3">
+						<dt className="text-muted-foreground">Messages</dt>
+						<dd className="font-semibold tabular-nums text-foreground">
+							{sourceCounts.messages}
+						</dd>
+					</div>
+				</dl>
+			</section>
 		</div>
 	);
 
@@ -717,495 +955,250 @@ export const SpaceBenefitsPage = () => {
 				</div>
 			) : null}
 
-			<section className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-				<div className="space-y-6 lg:col-span-2">
-					<section
-						aria-labelledby="space-promos"
-						className="rounded-2xl border border-[rgba(200,160,95,0.26)] bg-gradient-to-b from-[#fffdfb] via-[#fffaf4] to-[#f8f3eb] shadow-[0_10px_32px_-28px_rgba(120,88,48,0.16)]"
-					>
-						<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(200,160,95,0.18)] bg-[rgba(255,255,255,0.36)] px-5 py-4">
-							<div className="min-w-0">
-								<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
-									Promos
-								</p>
-								<h2
-									className="mt-1 font-display text-xl font-bold tracking-tight text-foreground"
-									id="space-promos"
-								>
-									Saved promo codes
-								</h2>
-							</div>
-							<button
-								className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-sm transition-all duration-150 hover:bg-white disabled:opacity-50"
-								onClick={() => setManualOpen((open) => !open)}
-								type="button"
-							>
-								{manualOpen ? "Close" : "Add manually"}
-							</button>
-						</div>
-						<div className="p-4 sm:p-5">
-							{manualOpen ? (
-								<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4">
-									<div className="grid gap-3 sm:grid-cols-2">
-										<label className="space-y-1 text-sm">
-											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Title
-											</span>
-											<input
-												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-												onChange={(event) => setManualTitle(event.target.value)}
-												placeholder="Yandex Food discount"
-												value={manualTitle}
-											/>
-										</label>
-										<label className="space-y-1 text-sm">
-											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Code
-											</span>
-											<input
-												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 font-mono text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-												onChange={(event) => setManualCode(event.target.value)}
-												placeholder="MINUS400"
-												value={manualCode}
-											/>
-										</label>
-										<label className="space-y-1 text-sm">
-											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Redeem at
-											</span>
-											<input
-												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-												onChange={(event) =>
-													setManualRedeemAt(event.target.value)
-												}
-												placeholder="Ozon, Yandex Food..."
-												value={manualRedeemAt}
-											/>
-										</label>
-										<label className="space-y-1 text-sm">
-											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Valid until
-											</span>
-											<input
-												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-												onChange={(event) =>
-													setManualValidUntil(event.target.value)
-												}
-												placeholder="2026-06-30"
-												value={manualValidUntil}
-											/>
-										</label>
-									</div>
-									{manualError ? (
-										<p className="mt-3 text-sm text-red-700">{manualError}</p>
-									) : null}
-									<div className="mt-4 flex flex-wrap justify-end gap-2">
-										<button
-											className="inline-flex h-9 items-center rounded-lg border border-border/70 bg-white px-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
-											onClick={() => setManualOpen(false)}
-											type="button"
-										>
-											Cancel
-										</button>
-										<button
-											className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
-											disabled={manualBusy}
-											onClick={submitManualPromo}
-											type="button"
-										>
-											{manualBusy ? "Saving…" : "Save promo"}
-										</button>
-									</div>
-								</div>
-							) : null}
-
-							{promoBenefits.length ? (
-								<>
-									<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/58 p-3">
-										<div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-end">
-											<label className="space-y-1 text-sm">
-												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-													Search
-												</span>
-												<input
-													className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-													onChange={(event) =>
-														setPromoQuery(event.target.value)
-													}
-													placeholder="Code, merchant, condition..."
-													value={promoQuery}
-												/>
-											</label>
-											<label className="space-y-1 text-sm">
-												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-													Status
-												</span>
-												<select
-													className="h-10 min-w-36 rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-													onChange={(event) =>
-														setPromoStatusFilter(
-															event.target.value as PromoStatusFilter,
-														)
-													}
-													value={promoStatusFilter}
-												>
-													{promoStatusOptions.map((option) => (
-														<option key={option.value} value={option.value}>
-															{option.label}
-														</option>
-													))}
-												</select>
-											</label>
-											<label className="space-y-1 text-sm">
-												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-													Source
-												</span>
-												<select
-													className="h-10 min-w-32 rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-													onChange={(event) =>
-														setPromoSourceFilter(
-															event.target.value as PromoSourceFilter,
-														)
-													}
-													value={promoSourceFilter}
-												>
-													{promoSourceOptions.map((option) => (
-														<option key={option.value} value={option.value}>
-															{option.label}
-														</option>
-													))}
-												</select>
-											</label>
-											<button
-												className="inline-flex h-10 items-center justify-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
-												disabled={!promoFiltersActive}
-												onClick={() => {
-													setPromoQuery("");
-													setPromoStatusFilter("all");
-													setPromoSourceFilter("all");
-												}}
-												type="button"
-											>
-												Clear
-											</button>
-										</div>
-										<p className="mt-2 text-xs text-muted-foreground">
-											{filteredPromoBenefits.length} of {promoBenefits.length}{" "}
-											promo{promoBenefits.length === 1 ? "" : "s"} shown
-										</p>
-									</div>
-
-									{filteredPromoBenefits.length ? (
-										<ul className="space-y-3">
-											{filteredPromoBenefits.map((promo) => (
-												<PromoBenefitCard
-													busy={savingPromoId === promo.id}
-													isSelected={selectedPromoId === promo.id}
-													key={promo.id}
-													onArchive={(item) =>
-														void patchPromoStatus(item, "archived")
-													}
-													onMarkUsed={(item) =>
-														void patchPromoStatus(item, "used")
-													}
-													onOpen={openPromoDetail}
-													promo={promo}
-												/>
-											))}
-										</ul>
-									) : (
-										<EmptyPanel
-											body="Try another code, merchant, status, or source."
-											title="No promos match filters"
-										/>
-									)}
-								</>
-							) : isLoading ? (
-								<EmptyPanel
-									body="Loading saved promo codes from this space."
-									title="Loading promos"
-								/>
-							) : (
-								<EmptyPanel
-									body={`Saved promo codes for ${spaceName} will appear here after review.`}
-									title="No saved promos yet"
-								/>
-							)}
-						</div>
-					</section>
-
-					<section
-						aria-labelledby="space-loyalty"
-						className="rounded-2xl border border-[rgba(95,125,102,0.24)] bg-gradient-to-br from-[#f0f8f2] via-[#fefdfb] to-[#e8f2ea] shadow-[0_20px_48px_-28px_rgba(48,72,52,0.2)]"
-					>
-						<div className="border-b border-[rgba(105,135,112,0.15)] bg-[rgba(255,255,255,0.35)] px-5 py-4">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d6651]">
-								Loyalty
+			<section className="space-y-6">
+				<section
+					aria-labelledby="space-promos"
+					className="rounded-2xl border border-[rgba(200,160,95,0.26)] bg-gradient-to-b from-[#fffdfb] via-[#fffaf4] to-[#f8f3eb] shadow-[0_10px_32px_-28px_rgba(120,88,48,0.16)]"
+				>
+					<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(200,160,95,0.18)] bg-[rgba(255,255,255,0.36)] px-5 py-4">
+						<div className="min-w-0">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
+								Promos
 							</p>
 							<h2
 								className="mt-1 font-display text-xl font-bold tracking-tight text-foreground"
-								id="space-loyalty"
+								id="space-promos"
 							>
-								Bonus programs
+								Saved promo codes
 							</h2>
 						</div>
-						<div className="p-4 sm:p-5">
-							{loyaltyBenefits.length ? (
-								<ul className="space-y-3">
-									{loyaltyBenefits.map((loyalty) => (
-										<LoyaltyBenefitCard key={loyalty.id} loyalty={loyalty} />
-									))}
-								</ul>
-							) : (
-								<EmptyPanel
-									body={`Loyalty balances and bonus events for ${spaceName} will appear here after review.`}
-									title="No loyalty programs yet"
-								/>
-							)}
-						</div>
-					</section>
-				</div>
-
-				<aside className="space-y-4">
-					<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
-						<div className="flex items-start justify-between gap-3">
-							<div>
-								<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-									Selected promo
-								</p>
-								<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
-									Detail and edit
-								</h2>
+						<button
+							className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-sm transition-all duration-150 hover:bg-white disabled:opacity-50"
+							onClick={() => setManualOpen((open) => !open)}
+							type="button"
+						>
+							{manualOpen ? "Close" : "Add manually"}
+						</button>
+					</div>
+					<div className="p-4 sm:p-5">
+						{manualOpen ? (
+							<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4">
+								<div className="grid gap-3 sm:grid-cols-2">
+									<label className="space-y-1 text-sm">
+										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+											Title
+										</span>
+										<input
+											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											onChange={(event) => setManualTitle(event.target.value)}
+											placeholder="Yandex Food discount"
+											value={manualTitle}
+										/>
+									</label>
+									<label className="space-y-1 text-sm">
+										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+											Code
+										</span>
+										<input
+											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 font-mono text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											onChange={(event) => setManualCode(event.target.value)}
+											placeholder="MINUS400"
+											value={manualCode}
+										/>
+									</label>
+									<label className="space-y-1 text-sm">
+										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+											Redeem at
+										</span>
+										<input
+											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											onChange={(event) =>
+												setManualRedeemAt(event.target.value)
+											}
+											placeholder="Ozon, Yandex Food..."
+											value={manualRedeemAt}
+										/>
+									</label>
+									<label className="space-y-1 text-sm">
+										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+											Valid until
+										</span>
+										<input
+											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											onChange={(event) =>
+												setManualValidUntil(event.target.value)
+											}
+											placeholder="2026-06-30"
+											value={manualValidUntil}
+										/>
+									</label>
+								</div>
+								{manualError ? (
+									<p className="mt-3 text-sm text-red-700">{manualError}</p>
+								) : null}
+								<div className="mt-4 flex flex-wrap justify-end gap-2">
+									<button
+										className="inline-flex h-9 items-center rounded-lg border border-border/70 bg-white px-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+										onClick={() => setManualOpen(false)}
+										type="button"
+									>
+										Cancel
+									</button>
+									<button
+										className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
+										disabled={manualBusy}
+										onClick={submitManualPromo}
+										type="button"
+									>
+										{manualBusy ? "Saving…" : "Save promo"}
+									</button>
+								</div>
 							</div>
-							{selectedPromo ? (
-								<button
-									className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground"
-									onClick={() => startPromoEdit(selectedPromo)}
-									type="button"
-								>
-									Edit
-								</button>
-							) : null}
-						</div>
+						) : null}
 
-						{selectedPromo ? (
-							<div className="mt-4 space-y-4">
-								<PromoBenefitDetailHeader promo={selectedPromo} />
-								{editingPromoId === selectedPromo.id && promoEditDraft ? (
-									<div className="space-y-3 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/66 p-3">
-										<label className="block space-y-1 text-sm">
+						{promoBenefits.length ? (
+							<>
+								<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/58 p-3">
+									<div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-end">
+										<label className="space-y-1 text-sm">
 											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Title
+												Search
 											</span>
 											<input
 												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-												onChange={(event) =>
-													setPromoEditDraft((current) =>
-														current
-															? { ...current, title: event.target.value }
-															: current,
-													)
-												}
-												value={promoEditDraft.title}
+												onChange={(event) => setPromoQuery(event.target.value)}
+												placeholder="Code, merchant, condition..."
+												value={promoQuery}
 											/>
 										</label>
-										<label className="block space-y-1 text-sm">
+										<label className="space-y-1 text-sm">
 											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Description
+												Status
 											</span>
-											<textarea
-												className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											<select
+												className="h-10 min-w-36 rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
 												onChange={(event) =>
-													setPromoEditDraft((current) =>
-														current
-															? { ...current, description: event.target.value }
-															: current,
+													setPromoStatusFilter(
+														event.target.value as PromoStatusFilter,
 													)
 												}
-												value={promoEditDraft.description}
-											/>
+												value={promoStatusFilter}
+											>
+												{promoStatusOptions.map((option) => (
+													<option key={option.value} value={option.value}>
+														{option.label}
+													</option>
+												))}
+											</select>
 										</label>
-										<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-											<label className="block space-y-1 text-sm">
-												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-													Status
-												</span>
-												<select
-													className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-													onChange={(event) =>
-														setPromoEditDraft((current) =>
-															current
-																? { ...current, status: event.target.value }
-																: current,
-														)
-													}
-													value={promoEditDraft.status}
-												>
-													<option value="active">Active</option>
-													<option value="draft">Draft</option>
-													<option value="used">Used</option>
-													<option value="expired">Expired</option>
-													<option value="archived">Archived</option>
-													<option value="ignored">Ignored</option>
-												</select>
-											</label>
-											<label className="block space-y-1 text-sm">
-												<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-													Reminder
-												</span>
-												<input
-													className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-													onChange={(event) =>
-														setPromoEditDraft((current) =>
-															current
-																? {
-																		...current,
-																		reminderAt: event.target.value,
-																	}
-																: current,
-														)
-													}
-													type="datetime-local"
-													value={promoEditDraft.reminderAt}
-												/>
-											</label>
-										</div>
-										{promoEditError ? (
-											<p className="text-sm text-red-700">{promoEditError}</p>
-										) : null}
-										<div className="flex flex-wrap justify-end gap-2">
-											<button
-												className="inline-flex h-9 items-center rounded-lg border border-border/70 bg-white px-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
-												onClick={cancelPromoEdit}
-												type="button"
+										<label className="space-y-1 text-sm">
+											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+												Source
+											</span>
+											<select
+												className="h-10 min-w-32 rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												onChange={(event) =>
+													setPromoSourceFilter(
+														event.target.value as PromoSourceFilter,
+													)
+												}
+												value={promoSourceFilter}
 											>
-												Cancel
-											</button>
-											<button
-												className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
-												disabled={promoEditBusyId === selectedPromo.id}
-												onClick={() => void savePromoEdit()}
-												type="button"
-											>
-												{promoEditBusyId === selectedPromo.id
-													? "Saving..."
-													: "Save changes"}
-											</button>
-										</div>
+												{promoSourceOptions.map((option) => (
+													<option key={option.value} value={option.value}>
+														{option.label}
+													</option>
+												))}
+											</select>
+										</label>
+										<button
+											className="inline-flex h-10 items-center justify-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
+											disabled={!promoFiltersActive}
+											onClick={() => {
+												setPromoQuery("");
+												setPromoStatusFilter("all");
+												setPromoSourceFilter("all");
+											}}
+											type="button"
+										>
+											Clear
+										</button>
 									</div>
-								) : (
-									<div className="space-y-3 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 p-3 text-sm">
-										<div>
-											<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-												Offer
-											</p>
-											<p className="mt-1 font-medium text-foreground">
-												{selectedPromo.discountLabel}
-											</p>
-										</div>
-										<div>
-											<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-												Conditions
-											</p>
-											<p className="mt-1 leading-relaxed text-muted-foreground">
-												{selectedPromo.raw.conditions_text?.trim() ||
-													selectedPromo.raw.description?.trim() ||
-													"No conditions saved yet."}
-											</p>
-										</div>
-										<div className="grid grid-cols-2 gap-3">
-											<div>
-												<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-													Valid until
-												</p>
-												<p className="mt-1 text-foreground">
-													{selectedPromo.validUntil}
-												</p>
-											</div>
-											<div>
-												<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-													Source
-												</p>
-												<p className="mt-1 text-foreground">
-													{selectedPromo.source}
-												</p>
-											</div>
-										</div>
-										<p className="text-xs leading-relaxed text-muted-foreground">
-											Code, platform, and conditions are read-only until the
-											promo edit API supports those fields.
-										</p>
-									</div>
-								)}
-							</div>
-						) : (
-							<p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-								Select a saved promo to inspect its source, conditions, status,
-								and reminder.
-							</p>
-						)}
-					</section>
+									<p className="mt-2 text-xs text-muted-foreground">
+										{filteredPromoBenefits.length} of {promoBenefits.length}{" "}
+										promo{promoBenefits.length === 1 ? "" : "s"} shown
+									</p>
+								</div>
 
-					<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
-						<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-							Decision queue
-						</p>
-						<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
-							Benefits to review
-						</h2>
-						<p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-							{candidateCount === 0
-								? "Nothing waiting right now."
-								: `${candidateCount} detected item${candidateCount === 1 ? "" : "s"} need review.`}
-						</p>
-						{candidateViews.length ? (
-							<ul className="mt-4 space-y-2">
-								{candidateViews.map((candidate) => (
-									<CandidateCard
-										busy={candidateBusyId === candidate.id}
-										candidate={candidate}
-										key={candidate.id}
-										onIgnore={(item) => void ignoreCandidate(item)}
-										onSavePromo={(item) => void saveCandidatePromo(item)}
+								{filteredPromoBenefits.length ? (
+									<ul className="space-y-3">
+										{filteredPromoBenefits.map((promo) => (
+											<PromoBenefitCard
+												busy={savingPromoId === promo.id}
+												isSelected={selectedPromoId === promo.id}
+												key={promo.id}
+												onArchive={(item) =>
+													void patchPromoStatus(item, "archived")
+												}
+												onMarkUsed={(item) =>
+													void patchPromoStatus(item, "used")
+												}
+												onOpen={openPromoDetail}
+												promo={promo}
+											/>
+										))}
+									</ul>
+								) : (
+									<EmptyPanel
+										body="Try another code, merchant, status, or source."
+										title="No promos match filters"
 									/>
+								)}
+							</>
+						) : isLoading ? (
+							<EmptyPanel
+								body="Loading saved promo codes from this space."
+								title="Loading promos"
+							/>
+						) : (
+							<EmptyPanel
+								body={`Saved promo codes for ${spaceName} will appear here after review.`}
+								title="No saved promos yet"
+							/>
+						)}
+					</div>
+				</section>
+
+				<section
+					aria-labelledby="space-loyalty"
+					className="rounded-2xl border border-[rgba(95,125,102,0.24)] bg-gradient-to-br from-[#f0f8f2] via-[#fefdfb] to-[#e8f2ea] shadow-[0_20px_48px_-28px_rgba(48,72,52,0.2)]"
+				>
+					<div className="border-b border-[rgba(105,135,112,0.15)] bg-[rgba(255,255,255,0.35)] px-5 py-4">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d6651]">
+							Loyalty
+						</p>
+						<h2
+							className="mt-1 font-display text-xl font-bold tracking-tight text-foreground"
+							id="space-loyalty"
+						>
+							Bonus programs
+						</h2>
+					</div>
+					<div className="p-4 sm:p-5">
+						{loyaltyBenefits.length ? (
+							<ul className="space-y-3">
+								{loyaltyBenefits.map((loyalty) => (
+									<LoyaltyBenefitCard key={loyalty.id} loyalty={loyalty} />
 								))}
 							</ul>
 						) : (
-							<Link
-								className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[rgba(55,45,30,0.92)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
-								to={`/console/chat?spaceId=${encodeURIComponent(String(numericSpaceId))}`}
-							>
-								Open chat
-							</Link>
+							<EmptyPanel
+								body={`Loyalty balances and bonus events for ${spaceName} will appear here after review.`}
+								title="No loyalty programs yet"
+							/>
 						)}
-					</section>
-
-					<section className="rounded-2xl border border-[rgba(200,160,95,0.22)] bg-[rgba(255,248,235,0.7)] p-5 shadow-sm">
-						<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
-							Sources
-						</p>
-						<dl className="mt-3 space-y-3 text-sm">
-							<div className="flex items-baseline justify-between gap-3">
-								<dt className="text-muted-foreground">Receipts</dt>
-								<dd className="font-semibold tabular-nums text-foreground">
-									{sourceCounts.receipts}
-								</dd>
-							</div>
-							<div className="flex items-baseline justify-between gap-3">
-								<dt className="text-muted-foreground">Manual</dt>
-								<dd className="font-semibold tabular-nums text-foreground">
-									{sourceCounts.manual}
-								</dd>
-							</div>
-							<div className="flex items-baseline justify-between gap-3">
-								<dt className="text-muted-foreground">Messages</dt>
-								<dd className="font-semibold tabular-nums text-foreground">
-									{sourceCounts.messages}
-								</dd>
-							</div>
-						</dl>
-					</section>
-				</aside>
+					</div>
+				</section>
 			</section>
 		</SpaceWorkspaceLayout>
 	);
