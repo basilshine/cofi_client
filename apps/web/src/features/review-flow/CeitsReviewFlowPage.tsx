@@ -22,6 +22,11 @@ import {
 	buildCapturePacketSummaries,
 	capturePacketSummaryLine,
 } from "../../shared/lib/capturePacketSummary";
+import {
+	EntityDetailHeader,
+	EntityMicro,
+	type EntityViewModel,
+} from "../../shared/lib/entityPresentation";
 import { buildExpenseDetailHref } from "../../shared/lib/expenseLinks";
 import { CapturePacketReviewSection } from "./CapturePacketReviewSection";
 import type {
@@ -1154,6 +1159,17 @@ export const CeitsReviewFlowPage = () => {
 				: item.splits.length > 0
 					? "border-amber-500/35 bg-amber-500/10 text-amber-900"
 					: "border-emerald-500/35 bg-emerald-500/10 text-emerald-800";
+	const reviewItemEntity = (item: ReviewItem): EntityViewModel => ({
+		id: item.id,
+		visualKey: item.kind === "split_approval" ? "split" : "expense",
+		label: item.kind === "split_approval" ? "Split" : "Expense",
+		title: item.title,
+		subtitle: `${item.spaceName} - ${item.dateLabel || "No date"} - ${item.source}`,
+		meta: [formatMoney(item.amount)],
+		status: heroStatusLabel(item),
+		statusClassName: heroStatusClass(item),
+		selected: current?.id === item.id,
+	});
 
 	const moveNext = () => {
 		if (!current) return;
@@ -1529,14 +1545,8 @@ export const CeitsReviewFlowPage = () => {
 								key={current.id}
 							>
 								<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(120,100,80,0.16)] pb-4">
-									<div className="min-w-0">
-										<h2 className="mt-0.5 truncate text-3xl font-semibold tracking-tight text-foreground">
-											{current.title}
-										</h2>
-										<p className="mt-2 text-sm text-foreground/75">
-											{current.spaceName} • {current.dateLabel || "—"} •{" "}
-											<span className="capitalize">{current.source}</span>
-										</p>
+									<div className="min-w-0 flex-1">
+										<EntityDetailHeader entity={reviewItemEntity(current)} />
 									</div>
 									<div className="rounded-xl border border-[rgba(120,100,80,0.22)] bg-white/85 px-4 py-3 text-right">
 										<p className="text-[11px] uppercase tracking-wide text-muted-foreground">
@@ -1545,11 +1555,6 @@ export const CeitsReviewFlowPage = () => {
 										<p className="mt-0.5 text-2xl font-semibold tabular-nums text-foreground">
 											{formatMoney(current.amount)}
 										</p>
-										<span
-											className={`mt-2 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${heroStatusClass(current)}`}
-										>
-											{heroStatusLabel(current)}
-										</span>
 									</div>
 								</div>
 
@@ -1791,6 +1796,18 @@ export const CeitsReviewFlowPage = () => {
 													onClick={() => setCurrentId(q.id)}
 													type="button"
 												>
+													<EntityMicro
+														entity={{
+															label:
+																q.kind === "split_approval"
+																	? "Split"
+																	: "Expense",
+															visualKey:
+																q.kind === "split_approval"
+																	? "split"
+																	: "expense",
+														}}
+													/>
 													<p className="truncate text-sm font-medium text-foreground">
 														{q.title}
 													</p>
