@@ -626,19 +626,6 @@ const CandidateBundlePanel = ({
 
 	if (!bundle.candidates.length && !bundle.capabilityNotice) return null;
 
-	const hasExpense = bundleHasAny(bundle, ["expense", "expense_item"]);
-	const hasBenefits = bundleHasAny(bundle, ["promo", "loyalty"]);
-	const hasSplits = bundleHasAny(bundle, ["split", "participant"]);
-	const hasReviewFlowSignals = bundleHasAny(bundle, [
-		"payment_proof",
-		"privacy",
-		"merge",
-		"supporting_document",
-		"space_suggestion",
-		"recurring",
-		"membership",
-		"reminder",
-	]);
 	const visibleCandidates = bundle.candidates.slice(0, 5);
 	const hiddenCount = bundle.candidates.length - visibleCandidates.length;
 
@@ -696,26 +683,6 @@ const CandidateBundlePanel = ({
 					>
 						{isReviewDrawerOpen ? "Hide review" : "Review parsed result"}
 					</button>
-					{hasExpense ? (
-						<Link className={reviewActionClass} to={expensesHref}>
-							Expenses
-						</Link>
-					) : null}
-					{hasBenefits ? (
-						<Link className={reviewActionClass} to={benefitsHref}>
-							Benefits
-						</Link>
-					) : null}
-					{hasSplits ? (
-						<Link className={reviewActionClass} to={splitsHref}>
-							Splits
-						</Link>
-					) : null}
-					{hasReviewFlowSignals ? (
-						<Link className={reviewActionClass} to={reviewHrefWithSource}>
-							Signals
-						</Link>
-					) : null}
 				</div>
 			</div>
 			{isReviewDrawerOpen ? (
@@ -736,9 +703,6 @@ const CandidateBundlePanel = ({
 		</div>
 	);
 };
-
-const reviewActionClass =
-	"inline-flex min-h-8 shrink-0 items-center rounded-full bg-card px-3 text-[11px] font-semibold text-foreground/82 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const clarificationActionClass =
 	"inline-flex min-h-10 shrink-0 items-center rounded-full bg-background px-3.5 text-xs font-semibold text-foreground/82 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
