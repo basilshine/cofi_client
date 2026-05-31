@@ -78,8 +78,15 @@ export const EntityMini = ({ entity }: { entity: EntityViewModel }) => {
 		<span className="flex min-w-0 items-center gap-2 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/64 px-3 py-2 text-sm shadow-sm transition hover:bg-white">
 			<EntityIcon size="sm" visualKey={entity.visualKey} />
 			<span className="min-w-0 flex-1">
-				<span className="block truncate font-semibold text-foreground">
-					{entity.title}
+				<span className="flex min-w-0 items-center gap-2">
+					<span className="block truncate font-semibold text-foreground">
+						{entity.title}
+					</span>
+					{entity.status ? (
+						<span className="shrink-0 rounded-full border border-[rgba(120,100,80,0.14)] bg-white/60 px-1.5 py-0.5 text-[10px] font-semibold text-foreground/70">
+							{entity.status}
+						</span>
+					) : null}
 				</span>
 				{entity.subtitle ? (
 					<span className="mt-0.5 block truncate text-xs text-muted-foreground">
@@ -91,7 +98,10 @@ export const EntityMini = ({ entity }: { entity: EntityViewModel }) => {
 	);
 	if (entity.href) {
 		return (
-			<Link className="block" to={entity.href}>
+			<Link
+				className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+				to={entity.href}
+			>
 				{body}
 			</Link>
 		);

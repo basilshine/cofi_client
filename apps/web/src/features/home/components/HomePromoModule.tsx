@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import {
 	type PromoBenefit,
-	PromoBenefitMini,
+	toPromoBenefitEntity,
 } from "../../../shared/lib/benefitPresentation";
+import { EntityMini } from "../../../shared/lib/entityPresentation";
 
 const promoSkeletonKeys = [
 	"promo-skeleton-1",
@@ -68,16 +69,13 @@ export const HomePromoModule = ({
 							/>
 						))
 					: items.slice(0, 3).map((item) => (
-							<Link
-								className="block rounded-xl outline-none transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							<EntityMini
+								entity={toPromoBenefitEntity(item.promo, {
+									href: `/console/spaces/${encodeURIComponent(String(item.spaceId))}/benefits`,
+									spaceName: item.spaceName,
+								})}
 								key={`${item.spaceId}-${item.promo.id}`}
-								to={`/console/spaces/${encodeURIComponent(String(item.spaceId))}/benefits`}
-							>
-								<PromoBenefitMini promo={item.promo} />
-								<p className="mt-1 truncate px-1 text-[11px] text-muted-foreground">
-									{item.spaceName}
-								</p>
-							</Link>
+							/>
 						))}
 			</div>
 		</section>

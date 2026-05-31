@@ -1,6 +1,7 @@
 import type { PromoCode } from "@cofi/api";
 import { Gift, Tag } from "lucide-react";
 import type { ReactNode } from "react";
+import type { EntityViewModel } from "./entityPresentation";
 
 export type BenefitStatus =
 	| "active"
@@ -36,7 +37,7 @@ export type LoyaltyBenefit = {
 
 export const loyaltyBenefits: LoyaltyBenefit[] = [];
 
-const statusLabel = (status: BenefitStatus) => {
+export const benefitStatusLabel = (status: BenefitStatus) => {
 	if (status === "expires_soon") return "Expires soon";
 	return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
@@ -159,6 +160,32 @@ export const toPromoBenefit = (promo: PromoCode): PromoBenefit => {
 	};
 };
 
+export const toPromoBenefitEntity = (
+	promo: PromoBenefit,
+	options: {
+		href?: string;
+		selected?: boolean;
+		spaceName?: string;
+	} = {},
+): EntityViewModel => {
+	const title = promo.code !== "No code" ? promo.code : promo.title;
+	const context = [promo.merchant, promo.validUntil, options.spaceName]
+		.filter(Boolean)
+		.join(" · ");
+	return {
+		id: String(promo.id),
+		visualKey: "benefit",
+		label: "Promo",
+		title,
+		subtitle: context,
+		detail: `${promo.discountLabel} · redeem at ${promo.redeemAt}`,
+		href: options.href,
+		meta: [promo.discountLabel, promo.source],
+		status: benefitStatusLabel(promo.status),
+		selected: options.selected,
+	};
+};
+
 export const PromoBenefitMini = ({ promo }: { promo: PromoBenefit }) => (
 	<div className="flex min-w-0 items-center gap-3 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/64 px-3 py-2 shadow-sm">
 		<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[rgba(237,247,239,0.9)] text-[#405f44] shadow-[inset_0_0_0_1px_rgba(91,116,87,0.12)]">
@@ -175,7 +202,7 @@ export const PromoBenefitMini = ({ promo }: { promo: PromoBenefit }) => (
 						statusClass(promo.status),
 					].join(" ")}
 				>
-					{statusLabel(promo.status)}
+					{benefitStatusLabel(promo.status)}
 				</span>
 			</div>
 			<p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -207,7 +234,7 @@ export const PromoBenefitListItem = ({
 						statusClass(promo.status),
 					].join(" ")}
 				>
-					{statusLabel(promo.status)}
+					{benefitStatusLabel(promo.status)}
 				</span>
 			</div>
 			<p className="mt-1 truncate text-xs text-muted-foreground">
@@ -238,7 +265,7 @@ export const PromoBenefitDetailHeader = ({
 						statusClass(promo.status),
 					].join(" ")}
 				>
-					{statusLabel(promo.status)}
+					{benefitStatusLabel(promo.status)}
 				</span>
 			</div>
 			<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
@@ -300,7 +327,7 @@ export const PromoBenefitCard = ({
 					statusClass(promo.status),
 				].join(" ")}
 			>
-				{statusLabel(promo.status)}
+				{benefitStatusLabel(promo.status)}
 			</span>
 		</div>
 		<div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
@@ -375,7 +402,7 @@ export const LoyaltyBenefitCard = ({
 					statusClass(loyalty.status),
 				].join(" ")}
 			>
-				{statusLabel(loyalty.status)}
+				{benefitStatusLabel(loyalty.status)}
 			</span>
 		</div>
 		<div className="mt-4 grid gap-3 sm:grid-cols-2">
