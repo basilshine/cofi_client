@@ -53,11 +53,16 @@ type ReviewItem = {
 
 type CandidateReviewItem = {
 	id: number;
+	sourceDocumentId: number;
 	source: CandidateReviewSource;
 	candidateType: string;
 	label: string;
 	title: string;
 	meta: string;
+	sourceType: string;
+	inputKind: string;
+	documentType: string;
+	merchantText?: string;
 	detail: string;
 	fields: Array<{ label: string; value: string }>;
 	tone: CandidateReviewTone;
@@ -70,6 +75,24 @@ type CandidateReviewItem = {
 	isSelfParticipant: boolean;
 	createdAt: string;
 	raw: BenefitCandidate | DocumentCandidate;
+};
+
+type CapturePacket = {
+	sourceDocumentId: number;
+	title: string;
+	meta: string;
+	createdAt: string;
+	candidates: CandidateReviewItem[];
+	primaryActionLabel: string;
+	summary: string;
+	counts: {
+		expenses: number;
+		benefits: number;
+		people: number;
+		splits: number;
+		documents: number;
+		future: number;
+	};
 };
 
 const documentCandidateLabel = (type: string): string => {
@@ -159,22 +182,6 @@ const candidateTone = (type: string): CandidateReviewTone => {
 	)
 		return "document";
 	return "warning";
-};
-
-const candidateToneClass = (tone: CandidateReviewTone): string => {
-	if (tone === "benefit") {
-		return "border-[rgba(91,128,91,0.24)] bg-[rgba(249,255,249,0.88)]";
-	}
-	if (tone === "split") {
-		return "border-[rgba(170,126,54,0.25)] bg-[rgba(255,250,238,0.9)]";
-	}
-	if (tone === "participant") {
-		return "border-[rgba(89,112,150,0.22)] bg-[rgba(247,250,255,0.9)]";
-	}
-	if (tone === "document") {
-		return "border-[rgba(92,92,86,0.2)] bg-white/84";
-	}
-	return "border-[rgba(176,126,70,0.24)] bg-[rgba(255,249,240,0.9)]";
 };
 
 const candidateBadgeClass = (tone: CandidateReviewTone): string => {
@@ -496,6 +503,7 @@ const toCandidateReviewItem = (
 		isSelfParticipantCandidate(candidate as DocumentCandidate);
 	return {
 		id: Number(candidate.id),
+		sourceDocumentId: Number(candidate.source_document_id),
 		source,
 		candidateType: candidate.candidate_type,
 		label: documentCandidateLabel(candidate.candidate_type),
@@ -514,6 +522,10 @@ const toCandidateReviewItem = (
 						.map((value) => value?.trim())
 						.filter(Boolean)
 						.join(" • ") || "Benefits intelligence",
+		sourceType: candidate.source_type,
+		inputKind: candidate.input_kind,
+		documentType: candidate.document_type,
+		merchantText: candidate.merchant_text,
 		detail: summary.detail,
 		fields: summary.fields,
 		tone: candidateTone(candidate.candidate_type),
@@ -546,6 +558,122 @@ const isThreadApproval = (
 	typeof item === "object" &&
 	!Array.isArray(item) &&
 	(item as { kind?: string }).kind === "expense_thread_approval";
+
+const candidateGroup = (
+	candidate: CandidateReviewItem,
+): "expenses" | "benefits" | "people" | "splits" | "documents" | "future" => {
+	if (
+		candidate.candidateType === "promo_code_candidate" ||
+		candidate.candidateType === "loyalty_event_candidate"
+	) {
+		return "benefits";
+	}
+	if (candidate.candidateType === "participant_placeholder_candidate") {
+		return "people";
+	}
+	if (candidate.candidateType === "split_candidate") return "splits";
+	if (
+		candidate.candidateType === "recurring_candidate" ||
+		candidate.candidateType === "membership_candidate" ||
+		candidate.candidateType === "reminder_candidate"
+	) {
+		return "future";
+	}
+	if (
+		candidate.candidateType === "expense_candidate" ||
+		candidate.candidateType === "expense_item_candidate"
+	) {
+		return "expenses";
+	}
+	return "documents";
+};
+
+const countLabel = (
+	count: number,
+	singular: string,
+	plural = `${singular}s`,
+): string => `${count} ${count === 1 ? singular : plural}`;
+
+const buildCapturePackets = (
+	candidates: CandidateReviewItem[],
+): CapturePacket[] => {
+	const bySource = new Map<number, CandidateReviewItem[]>();
+	for (const candidate of candidates) {
+		const existing = bySource.get(candidate.sourceDocumentId) ?? [];
+		existing.push(candidate);
+		bySource.set(candidate.sourceDocumentId, existing);
+	}
+
+	return Array.from(bySource.entries())
+		.map(([sourceDocumentId, packetCandidates]) => {
+			const sorted = [...packetCandidates].sort((a, b) => {
+				const left = Date.parse(a.createdAt);
+				const right = Date.parse(b.createdAt);
+				if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
+				if (!Number.isFinite(left)) return 1;
+				if (!Number.isFinite(right)) return -1;
+				return right - left;
+			});
+			const first = sorted[0];
+			const counts = {
+				expenses: 0,
+				benefits: 0,
+				people: 0,
+				splits: 0,
+				documents: 0,
+				future: 0,
+			};
+			for (const candidate of sorted) {
+				const group = candidateGroup(candidate);
+				counts[group] += 1;
+			}
+			const summaryParts = [
+				counts.expenses ? countLabel(counts.expenses, "expense") : null,
+				counts.benefits ? countLabel(counts.benefits, "benefit") : null,
+				counts.people ? countLabel(counts.people, "person", "people") : null,
+				counts.splits ? countLabel(counts.splits, "split") : null,
+				counts.future ? countLabel(counts.future, "future hint") : null,
+				counts.documents
+					? countLabel(counts.documents, "document signal")
+					: null,
+			].filter((part): part is string => Boolean(part));
+			const primaryActionLabel = counts.splits
+				? "Review packet"
+				: counts.benefits && !counts.expenses
+					? "Review benefits"
+					: counts.future && !counts.expenses
+						? "Review hints"
+						: "Review parsed result";
+			const sourceLabel = [first?.inputKind, first?.documentType]
+				.map((value) => value?.trim())
+				.filter(Boolean)
+				.join(" • ");
+			const merchant = first?.merchantText?.trim();
+
+			return {
+				sourceDocumentId,
+				title: merchant || first?.title || `Capture ${sourceDocumentId}`,
+				meta:
+					[sourceLabel, first?.sourceType]
+						.map((value) => value?.trim())
+						.filter(Boolean)
+						.join(" • ") || "Capture packet",
+				createdAt: first?.createdAt ?? "",
+				candidates: sorted,
+				primaryActionLabel,
+				summary: summaryParts.join(", ") || "Review parsed result",
+				counts,
+			};
+		})
+		.sort((a, b) => {
+			const left = Date.parse(a.createdAt);
+			const right = Date.parse(b.createdAt);
+			if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
+			if (!Number.isFinite(left)) return 1;
+			if (!Number.isFinite(right)) return -1;
+			return right - left;
+		});
+};
 
 const sourceFromExpense = (
 	exp: ExpenseDetail | undefined,
@@ -640,7 +768,7 @@ export const CeitsReviewFlowPage = () => {
 		return spaces.find((s) => Number(s.id) === Number(spaceId)) ?? null;
 	}, [spaces, spaceId]);
 
-	useConsoleHeaderTitle("Review Flow", activeSpace?.name ?? null);
+	useConsoleHeaderTitle("Capture Review", activeSpace?.name ?? null);
 
 	useEffect(() => {
 		if (spaceId != null && Number.isFinite(spaceId))
@@ -902,6 +1030,10 @@ export const CeitsReviewFlowPage = () => {
 				return right - left;
 			}),
 		[benefitCandidates, documentCandidates],
+	);
+	const capturePackets = useMemo(
+		() => buildCapturePackets(captureCandidates),
+		[captureCandidates],
 	);
 	const idx = useMemo(
 		() => (current ? filteredQueue.findIndex((q) => q.id === current.id) : -1),
@@ -1285,7 +1417,7 @@ export const CeitsReviewFlowPage = () => {
 				<main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-5 lg:px-8">
 					{loading ? (
 						<p className="text-sm text-muted-foreground">
-							Loading Ceits review flow…
+							Loading capture review...
 						</p>
 					) : null}
 					{error ? (
@@ -1293,257 +1425,305 @@ export const CeitsReviewFlowPage = () => {
 							{error}
 						</p>
 					) : null}
-					{!loading && !error && captureCandidates.length > 0 ? (
-						<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.92)] p-4 shadow-sm">
+					{!loading && !error && capturePackets.length > 0 ? (
+						<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.94)] p-4 shadow-sm">
 							<div className="flex flex-wrap items-start justify-between gap-3">
 								<div>
 									<p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 										Capture review
 									</p>
 									<h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
-										Parsing candidates waiting for review
+										Capture packets waiting for review
 									</h2>
 									<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-										Promos, loyalty, payment proof, splits, and participant
-										placeholders stay as drafts until you confirm what should
-										become part of this space.
+										Each packet is one parsed text, voice note, receipt, or
+										screenshot. Review the packet, then decide which parts
+										become expenses, promos, people, splits, or document
+										signals.
 									</p>
 								</div>
-								<span className="rounded-full border border-[rgba(120,100,80,0.22)] bg-white px-2.5 py-1 text-xs font-semibold text-foreground/75">
-									{captureCandidates.length} pending
-								</span>
+								<div className="flex flex-wrap items-center gap-1.5">
+									<span className="rounded-full border border-[rgba(120,100,80,0.22)] bg-white px-2.5 py-1 text-xs font-semibold text-foreground/75">
+										{capturePackets.length} packets
+									</span>
+									<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+										{captureCandidates.length} decisions
+									</span>
+								</div>
 							</div>
-							<div className="mt-4 grid gap-2 md:grid-cols-2">
-								{captureCandidates.slice(0, 8).map((candidate) => {
-									const actingId =
-										candidate.source === "benefit"
-											? benefitCandidateActingId
-											: documentCandidateActingId;
-									const isActing = actingId === candidate.id;
-									const splitTargetExpenseId = candidate.canOpenSplitReview
-										? splitTargetExpenseIdFor(candidate)
-										: null;
-									const projectedSplitTargetExpenseId =
-										candidate.source === "document"
-											? (candidate.raw as DocumentCandidate)
-													.projected_expense_id
-											: null;
-									const splitTargetMatchedSource =
-										splitTargetExpenseId != null &&
-										projectedSplitTargetExpenseId === splitTargetExpenseId;
-									const pendingSplitParticipantCount =
-										pendingParticipantCountForSplitCandidate(candidate);
-									const splitApplyBlocked = pendingSplitParticipantCount > 0;
-									const splitParticipantLabel =
-										pendingSplitParticipantCount === 1 ? "person" : "people";
-									return (
-										<article
-											className={`rounded-xl border p-3 ${candidateToneClass(candidate.tone)}`}
-											key={`${candidate.source}-${candidate.id}`}
-										>
-											<div className="flex items-start justify-between gap-3">
-												<div className="min-w-0">
-													<p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-														{candidate.label}
-													</p>
-													<h3 className="mt-1 truncate text-sm font-semibold text-foreground">
-														{candidate.title}
-													</h3>
-												</div>
-												<div className="flex shrink-0 items-center gap-1.5">
-													<span
-														className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${candidateBadgeClass(candidate.tone)}`}
-													>
-														{candidate.confidenceLabel}
-													</span>
-													{candidate.canSavePromo ? (
-														<button
-															className="rounded-full border border-[rgba(91,116,87,0.34)] bg-[rgba(237,247,239,0.92)] px-2 py-0.5 text-[11px] font-semibold text-[#355238] transition hover:border-[rgba(91,116,87,0.5)] hover:bg-[rgba(218,238,222,0.98)] disabled:opacity-50"
-															disabled={isActing}
-															onClick={() =>
-																void handleSavePromoCandidate(
-																	candidate.raw as BenefitCandidate,
-																)
-															}
-															type="button"
-														>
-															{isActing ? "Saving" : "Save promo"}
-														</button>
-													) : null}
-													{candidate.canMarkReviewed ? (
-														<button
-															className="rounded-full border border-[rgba(78,92,72,0.26)] bg-[rgba(246,249,242,0.92)] px-2 py-0.5 text-[11px] font-semibold text-[#495944] transition hover:border-[rgba(78,92,72,0.42)] hover:bg-[rgba(232,239,225,0.96)] disabled:opacity-50"
-															disabled={isActing}
-															onClick={() =>
-																void handleConfirmDocumentCandidate(
-																	candidate.raw as DocumentCandidate,
-																)
-															}
-															type="button"
-														>
-															{isActing ? "Saving" : "Reviewed"}
-														</button>
-													) : null}
-													{candidate.canCreateParticipant ? (
-														<button
-															className="rounded-full border border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.86)] px-2 py-0.5 text-[11px] font-semibold text-[#405574] transition hover:border-[rgba(83,103,139,0.45)] hover:bg-[rgba(222,232,249,0.96)] disabled:opacity-50"
-															disabled={isActing}
-															onClick={() =>
-																void handleCreateParticipantCandidate(
-																	candidate.raw as DocumentCandidate,
-																)
-															}
-															type="button"
-														>
-															{isActing ? "Creating" : "Add person"}
-														</button>
-													) : null}
-													{candidate.canCreateRecurring ? (
-														<button
-															className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
-															disabled={isActing}
-															onClick={() =>
-																void handleCreateRecurringCandidate(
-																	candidate.raw as DocumentCandidate,
-																)
-															}
-															type="button"
-														>
-															{isActing ? "Creating" : "Create recurring"}
-														</button>
-													) : null}
-													{candidate.canOpenSplitReview ? (
-														splitTargetExpenseId != null ? (
-															<button
-																className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
-																disabled={isActing || splitApplyBlocked}
-																onClick={() =>
-																	void handleApplySplitCandidate(
-																		candidate.raw as DocumentCandidate,
-																		splitTargetExpenseId,
-																	)
-																}
-																type="button"
-															>
-																{splitApplyBlocked
-																	? "Add people first"
-																	: isActing
-																		? "Applying"
-																		: "Apply split"}
-															</button>
-														) : (
-															<Link
-																className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)]"
-																to={`/console/spaces/${spaceId}/splits`}
-															>
-																Open splits
-															</Link>
-														)
-													) : null}
-													<button
-														className="rounded-full border border-border/70 bg-white px-2 py-0.5 text-[11px] font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-50"
-														disabled={isActing}
-														onClick={() =>
-															void handleIgnoreCaptureCandidate(candidate)
-														}
-														type="button"
-													>
-														{isActing ? "Working" : "Ignore"}
-													</button>
-												</div>
-											</div>
-											<p className="mt-2 text-xs font-medium text-foreground/82">
-												{candidate.detail}
-											</p>
-											{candidate.isSelfParticipant ? (
-												<p className="mt-2 rounded-lg border border-[rgba(83,103,139,0.18)] bg-white/58 px-2.5 py-1.5 text-xs text-[#405574]">
-													Already covered by your space member. Mark it reviewed
-													or ignore it.
+							<div className="mt-4 space-y-3">
+								{capturePackets.slice(0, 6).map((packet) => (
+									<article
+										className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-white/72 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]"
+										key={packet.sourceDocumentId}
+									>
+										<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(120,100,80,0.12)] pb-3">
+											<div className="min-w-0">
+												<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+													Packet #{packet.sourceDocumentId}
 												</p>
-											) : null}
-											{candidate.canOpenSplitReview ? (
-												<div className="mt-3 rounded-lg border border-[rgba(181,131,52,0.18)] bg-white/58 px-2.5 py-2">
-													<label
-														className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-														htmlFor={`split-target-${candidate.id}`}
+												<h3 className="mt-1 truncate text-base font-semibold text-foreground">
+													{packet.title}
+												</h3>
+												<p className="mt-1 text-xs text-muted-foreground">
+													{packet.meta}
+												</p>
+											</div>
+											<div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
+												<span className="rounded-full border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.95)] px-2.5 py-1 text-xs font-semibold text-foreground/75">
+													{packet.summary}
+												</span>
+												<span className="rounded-full border border-[rgba(68,58,42,0.16)] bg-[rgba(68,58,42,0.08)] px-2.5 py-1 text-xs font-semibold text-[#4d4231]">
+													{packet.primaryActionLabel}
+												</span>
+											</div>
+										</div>
+										<div className="mt-2 divide-y divide-[rgba(120,100,80,0.1)]">
+											{packet.candidates.map((candidate) => {
+												const actingId =
+													candidate.source === "benefit"
+														? benefitCandidateActingId
+														: documentCandidateActingId;
+												const isActing = actingId === candidate.id;
+												const splitTargetExpenseId =
+													candidate.canOpenSplitReview
+														? splitTargetExpenseIdFor(candidate)
+														: null;
+												const projectedSplitTargetExpenseId =
+													candidate.source === "document"
+														? (candidate.raw as DocumentCandidate)
+																.projected_expense_id
+														: null;
+												const splitTargetMatchedSource =
+													splitTargetExpenseId != null &&
+													projectedSplitTargetExpenseId ===
+														splitTargetExpenseId;
+												const pendingSplitParticipantCount =
+													pendingParticipantCountForSplitCandidate(candidate);
+												const splitApplyBlocked =
+													pendingSplitParticipantCount > 0;
+												const splitParticipantLabel =
+													pendingSplitParticipantCount === 1
+														? "person"
+														: "people";
+
+												return (
+													<div
+														className="py-2.5 first:pt-0 last:pb-0"
+														key={`${candidate.source}-${candidate.id}`}
 													>
-														Apply to expense
-													</label>
-													{splitTargetOptions.length > 0 ? (
-														<select
-															className="mt-1 h-8 w-full rounded-md border border-[rgba(120,100,80,0.18)] bg-white px-2 text-xs font-medium text-foreground shadow-sm outline-none transition focus:border-[rgba(181,131,52,0.48)]"
-															disabled={isActing || splitApplyBlocked}
-															id={`split-target-${candidate.id}`}
-															onChange={(event) => {
-																const next = Number(event.target.value);
-																setSplitCandidateTargets((prev) => ({
-																	...prev,
-																	[candidate.id]: next,
-																}));
-															}}
-															value={String(splitTargetExpenseId ?? "")}
-														>
-															{splitTargetOptions.map((option) => (
-																<option
-																	key={option.expenseId}
-																	value={option.expenseId}
+														<div className="flex flex-wrap items-start justify-between gap-3">
+															<div className="min-w-0 flex-1">
+																<div className="flex flex-wrap items-center gap-1.5">
+																	<span
+																		className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${candidateBadgeClass(candidate.tone)}`}
+																	>
+																		{candidate.label}
+																	</span>
+																	<span className="rounded-full border border-border/60 bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
+																		{candidate.confidenceLabel}
+																	</span>
+																</div>
+																<h4 className="mt-1 truncate text-sm font-semibold text-foreground">
+																	{candidate.title}
+																</h4>
+																<p className="mt-0.5 text-xs font-medium text-foreground/78">
+																	{candidate.detail}
+																</p>
+																{candidate.fields.length > 0 ? (
+																	<div className="mt-2 flex flex-wrap gap-1.5">
+																		{candidate.fields
+																			.slice(0, 3)
+																			.map((field) => (
+																				<span
+																					className="max-w-full rounded-md border border-[rgba(120,100,80,0.12)] bg-white/72 px-2 py-1 text-[11px] text-muted-foreground"
+																					key={`${candidate.source}-${candidate.id}-${field.label}`}
+																				>
+																					<span className="font-semibold uppercase tracking-wide">
+																						{field.label}:{" "}
+																					</span>
+																					<span className="text-foreground/78">
+																						{field.value}
+																					</span>
+																				</span>
+																			))}
+																	</div>
+																) : null}
+															</div>
+															<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+																{candidate.canSavePromo ? (
+																	<button
+																		className="min-h-9 rounded-full border border-[rgba(91,116,87,0.34)] bg-[rgba(237,247,239,0.92)] px-3 text-xs font-semibold text-[#355238] transition hover:border-[rgba(91,116,87,0.5)] hover:bg-[rgba(218,238,222,0.98)] disabled:opacity-50"
+																		disabled={isActing}
+																		onClick={() =>
+																			void handleSavePromoCandidate(
+																				candidate.raw as BenefitCandidate,
+																			)
+																		}
+																		type="button"
+																	>
+																		{isActing ? "Saving" : "Save promo"}
+																	</button>
+																) : null}
+																{candidate.canMarkReviewed ? (
+																	<button
+																		className="min-h-9 rounded-full border border-[rgba(78,92,72,0.26)] bg-[rgba(246,249,242,0.92)] px-3 text-xs font-semibold text-[#495944] transition hover:border-[rgba(78,92,72,0.42)] hover:bg-[rgba(232,239,225,0.96)] disabled:opacity-50"
+																		disabled={isActing}
+																		onClick={() =>
+																			void handleConfirmDocumentCandidate(
+																				candidate.raw as DocumentCandidate,
+																			)
+																		}
+																		type="button"
+																	>
+																		{isActing ? "Saving" : "Reviewed"}
+																	</button>
+																) : null}
+																{candidate.canCreateParticipant ? (
+																	<button
+																		className="min-h-9 rounded-full border border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.86)] px-3 text-xs font-semibold text-[#405574] transition hover:border-[rgba(83,103,139,0.45)] hover:bg-[rgba(222,232,249,0.96)] disabled:opacity-50"
+																		disabled={isActing}
+																		onClick={() =>
+																			void handleCreateParticipantCandidate(
+																				candidate.raw as DocumentCandidate,
+																			)
+																		}
+																		type="button"
+																	>
+																		{isActing ? "Creating" : "Add person"}
+																	</button>
+																) : null}
+																{candidate.canCreateRecurring ? (
+																	<button
+																		className="min-h-9 rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
+																		disabled={isActing}
+																		onClick={() =>
+																			void handleCreateRecurringCandidate(
+																				candidate.raw as DocumentCandidate,
+																			)
+																		}
+																		type="button"
+																	>
+																		{isActing ? "Creating" : "Create recurring"}
+																	</button>
+																) : null}
+																{candidate.canOpenSplitReview ? (
+																	splitTargetExpenseId != null ? (
+																		<button
+																			className="min-h-9 rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
+																			disabled={isActing || splitApplyBlocked}
+																			onClick={() =>
+																				void handleApplySplitCandidate(
+																					candidate.raw as DocumentCandidate,
+																					splitTargetExpenseId,
+																				)
+																			}
+																			type="button"
+																		>
+																			{splitApplyBlocked
+																				? "Add people first"
+																				: isActing
+																					? "Applying"
+																					: "Apply split"}
+																		</button>
+																	) : (
+																		<Link
+																			className="inline-flex min-h-9 items-center rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-3 text-xs font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)]"
+																			to={`/console/spaces/${spaceId}/splits`}
+																		>
+																			Open splits
+																		</Link>
+																	)
+																) : null}
+																<button
+																	className="min-h-9 rounded-full border border-border/70 bg-white px-3 text-xs font-semibold text-muted-foreground transition hover:border-destructive/30 hover:text-destructive disabled:opacity-50"
+																	disabled={isActing}
+																	onClick={() =>
+																		void handleIgnoreCaptureCandidate(candidate)
+																	}
+																	type="button"
 																>
-																	{option.label}
-																</option>
-															))}
-														</select>
-													) : (
-														<p className="mt-1 text-xs text-muted-foreground">
-															No review expense is available yet.
-														</p>
-													)}
-													{splitApplyBlocked ? (
-														<p className="mt-2 rounded-md border border-[rgba(83,103,139,0.18)] bg-[rgba(247,250,255,0.72)] px-2 py-1.5 text-xs text-[#405574]">
-															Add {pendingSplitParticipantCount}{" "}
-															{splitParticipantLabel} from this capture first,
-															then apply the split to the expense.
-														</p>
-													) : null}
-													{splitTargetMatchedSource && !splitApplyBlocked ? (
-														<p className="mt-2 text-xs text-muted-foreground">
-															Matched to the expense created from this capture.
-														</p>
-													) : null}
-												</div>
-											) : null}
-											{candidate.fields.length > 0 ? (
-												<div className="mt-3 grid gap-1.5 sm:grid-cols-2">
-													{candidate.fields.slice(0, 4).map((field) => (
-														<div
-															className="min-w-0 rounded-lg border border-[rgba(120,100,80,0.12)] bg-white/58 px-2.5 py-1.5"
-															key={`${candidate.source}-${candidate.id}-${field.label}`}
-														>
-															<p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-																{field.label}
-															</p>
-															<p className="mt-0.5 truncate text-xs font-medium text-foreground/82">
-																{field.value}
-															</p>
+																	{isActing ? "Working" : "Ignore"}
+																</button>
+															</div>
 														</div>
-													))}
-												</div>
-											) : null}
-											<p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-												{candidate.meta}
-											</p>
-										</article>
-									);
-								})}
+														{candidate.isSelfParticipant ? (
+															<p className="mt-2 rounded-lg border border-[rgba(83,103,139,0.18)] bg-white/58 px-2.5 py-1.5 text-xs text-[#405574]">
+																Already covered by your space member. Mark it
+																reviewed or ignore it.
+															</p>
+														) : null}
+														{candidate.canOpenSplitReview ? (
+															<div className="mt-2 rounded-lg border border-[rgba(181,131,52,0.18)] bg-[rgba(255,252,246,0.72)] px-2.5 py-2">
+																<label
+																	className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+																	htmlFor={`split-target-${candidate.id}`}
+																>
+																	Apply to expense
+																</label>
+																{splitTargetOptions.length > 0 ? (
+																	<select
+																		className="mt-1 h-9 w-full rounded-md border border-[rgba(120,100,80,0.18)] bg-white px-2 text-xs font-medium text-foreground shadow-sm outline-none transition focus:border-[rgba(181,131,52,0.48)]"
+																		disabled={isActing || splitApplyBlocked}
+																		id={`split-target-${candidate.id}`}
+																		onChange={(event) => {
+																			const next = Number(event.target.value);
+																			setSplitCandidateTargets((prev) => ({
+																				...prev,
+																				[candidate.id]: next,
+																			}));
+																		}}
+																		value={String(splitTargetExpenseId ?? "")}
+																	>
+																		{splitTargetOptions.map((option) => (
+																			<option
+																				key={option.expenseId}
+																				value={option.expenseId}
+																			>
+																				{option.label}
+																			</option>
+																		))}
+																	</select>
+																) : (
+																	<p className="mt-1 text-xs text-muted-foreground">
+																		No review expense is available yet.
+																	</p>
+																)}
+																{splitApplyBlocked ? (
+																	<p className="mt-2 rounded-md border border-[rgba(83,103,139,0.18)] bg-[rgba(247,250,255,0.72)] px-2 py-1.5 text-xs text-[#405574]">
+																		Add {pendingSplitParticipantCount}{" "}
+																		{splitParticipantLabel} from this capture
+																		first, then apply the split to the expense.
+																	</p>
+																) : null}
+																{splitTargetMatchedSource &&
+																!splitApplyBlocked ? (
+																	<p className="mt-2 text-xs text-muted-foreground">
+																		Matched to the expense created from this
+																		capture.
+																	</p>
+																) : null}
+															</div>
+														) : null}
+														<p className="mt-2 line-clamp-1 text-xs text-muted-foreground">
+															{candidate.meta}
+														</p>
+													</div>
+												);
+											})}
+										</div>
+									</article>
+								))}
 							</div>
 							{documentCandidateError ? (
 								<p className="mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs text-destructive">
 									{documentCandidateError}
 								</p>
 							) : null}
-							{captureCandidates.length > 8 ? (
+							{capturePackets.length > 6 ? (
 								<p className="mt-3 text-xs text-muted-foreground">
-									Showing 8 newest capture candidates. Full resolution controls
-									come with the unified candidate review surface.
+									Showing 6 newest capture packets. Resolve a few to clear the
+									queue.
 								</p>
 							) : null}
 						</section>
@@ -1551,7 +1731,7 @@ export const CeitsReviewFlowPage = () => {
 					{!loading &&
 					!error &&
 					current == null &&
-					captureCandidates.length === 0 ? (
+					capturePackets.length === 0 ? (
 						<section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.9)] px-6 py-8 text-center shadow-sm">
 							<h2 className="text-2xl font-semibold tracking-tight text-foreground">
 								All caught up
