@@ -1,19 +1,13 @@
 import type { LucideIcon } from "lucide-react";
-import {
-	FileText,
-	Gift,
-	Inbox,
-	Plus,
-	ReceiptText,
-	Repeat,
-	Split,
-	UsersRound,
-} from "lucide-react";
+import { FileText, Inbox, Plus, ReceiptText, Split } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+	captureCandidateTypeVisual,
+	capturePacketEntityVisual,
+} from "../../shared/lib/entityVisual";
 import type {
 	CandidateReviewItem,
-	CandidateReviewTone,
 	CapturePacket,
 	SplitTargetOption,
 } from "./reviewPacketTypes";
@@ -44,19 +38,6 @@ type CapturePacketReviewSectionProps = {
 	onIgnoreCandidate: (candidate: CandidateReviewItem) => void;
 };
 
-const candidateBadgeClass = (tone: CandidateReviewTone): string => {
-	if (tone === "benefit") {
-		return "border-[rgba(102,134,108,0.28)] bg-[rgba(237,247,239,0.82)] text-[#58745f]";
-	}
-	if (tone === "split") {
-		return "border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] text-[#73501b]";
-	}
-	if (tone === "participant") {
-		return "border-[rgba(83,103,139,0.28)] bg-[rgba(235,241,252,0.82)] text-[#405574]";
-	}
-	return "border-border/70 bg-white text-muted-foreground";
-};
-
 type PacketSectionKey =
 	| "expenses"
 	| "benefits"
@@ -72,8 +53,6 @@ const packetSectionDefinitions: Array<{
 	description: string;
 	shortTitle: string;
 	addLabel: string;
-	icon: LucideIcon;
-	toneClass: string;
 }> = [
 	{
 		key: "expenses",
@@ -81,9 +60,6 @@ const packetSectionDefinitions: Array<{
 		shortTitle: "Expenses",
 		description: "Amounts, items, merchant, category, and draft expense data.",
 		addLabel: "Add expense",
-		icon: ReceiptText,
-		toneClass:
-			"border-[rgba(125,99,58,0.18)] bg-[rgba(255,250,240,0.92)] text-[#6d5331]",
 	},
 	{
 		key: "benefits",
@@ -91,9 +67,6 @@ const packetSectionDefinitions: Array<{
 		shortTitle: "Benefits",
 		description: "Promos and loyalty findings that can be saved separately.",
 		addLabel: "Add promo",
-		icon: Gift,
-		toneClass:
-			"border-[rgba(91,116,87,0.2)] bg-[rgba(237,247,239,0.92)] text-[#405f44]",
 	},
 	{
 		key: "people",
@@ -101,9 +74,6 @@ const packetSectionDefinitions: Array<{
 		shortTitle: "People",
 		description: "Participants and placeholders detected from this capture.",
 		addLabel: "Add person",
-		icon: UsersRound,
-		toneClass:
-			"border-[rgba(83,103,139,0.2)] bg-[rgba(235,241,252,0.92)] text-[#405574]",
 	},
 	{
 		key: "splits",
@@ -111,9 +81,6 @@ const packetSectionDefinitions: Array<{
 		shortTitle: "Splits",
 		description: "Split proposals that need people and target expense context.",
 		addLabel: "Add split",
-		icon: Split,
-		toneClass:
-			"border-[rgba(181,131,52,0.22)] bg-[rgba(255,240,208,0.86)] text-[#73501b]",
 	},
 	{
 		key: "future",
@@ -121,9 +88,6 @@ const packetSectionDefinitions: Array<{
 		shortTitle: "Future",
 		description: "Recurring, membership, reminder, and renewal hints.",
 		addLabel: "Add recurring",
-		icon: Repeat,
-		toneClass:
-			"border-[rgba(117,91,142,0.18)] bg-[rgba(245,240,250,0.9)] text-[#5c4a72]",
 	},
 	{
 		key: "documents",
@@ -132,9 +96,6 @@ const packetSectionDefinitions: Array<{
 		description:
 			"Payment proof, privacy, merge, and supporting document signals.",
 		addLabel: "Add document",
-		icon: FileText,
-		toneClass:
-			"border-[rgba(90,101,105,0.18)] bg-[rgba(241,245,246,0.9)] text-[#4d5b5e]",
 	},
 ];
 
@@ -370,7 +331,8 @@ export const CapturePacketReviewSection = ({
 				{packetSectionDefinitions.map((section) => {
 					const count = entityCounts[section.key];
 					const selected = selectedSectionKey === section.key;
-					const Icon = section.icon;
+					const visual = capturePacketEntityVisual(section.key);
+					const Icon = visual.icon;
 					return (
 						<button
 							aria-pressed={selected}
@@ -389,7 +351,7 @@ export const CapturePacketReviewSection = ({
 									className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${
 										selected
 											? "border-white/16 bg-white/14 text-[#fffaf0]"
-											: section.toneClass
+											: visual.toneClass
 									}`}
 								>
 									<Icon className="h-4 w-4" size={16} />
@@ -607,11 +569,17 @@ const CapturePacketRow = ({
 					>
 						<div className="flex flex-wrap items-start justify-between gap-2">
 							<div className="flex min-w-0 items-start gap-2">
-								<span
-									className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${section.toneClass}`}
-								>
-									<section.icon className="h-4 w-4" size={16} />
-								</span>
+								{(() => {
+									const visual = capturePacketEntityVisual(section.key);
+									const Icon = visual.icon;
+									return (
+										<span
+											className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border ${visual.toneClass}`}
+										>
+											<Icon className="h-4 w-4" size={16} />
+										</span>
+									);
+								})()}
 								<div className="min-w-0">
 									<h4 className="text-sm font-semibold text-foreground">
 										{section.title}
@@ -759,12 +727,13 @@ const PacketWorkspaceMap = ({
 							const count = packet.counts[section.key];
 							const selected =
 								sectionFilter === "all" || sectionFilter === section.key;
-							const Icon = section.icon;
+							const visual = capturePacketEntityVisual(section.key);
+							const Icon = visual.icon;
 							return (
 								<div
 									className={`flex min-h-14 items-center gap-2 rounded-xl border px-3 py-2 ${
 										selected
-											? section.toneClass
+											? visual.toneClass
 											: "border-[rgba(120,100,80,0.1)] bg-white/54 text-muted-foreground"
 									}`}
 									key={section.key}
@@ -1022,7 +991,7 @@ const CaptureCandidateRow = ({
 				<div className="min-w-0 flex-1">
 					<div className="flex flex-wrap items-center gap-1.5">
 						<span
-							className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${candidateBadgeClass(candidate.tone)}`}
+							className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${captureCandidateTypeVisual(candidate.candidateType).toneClass}`}
 						>
 							{candidate.label}
 						</span>

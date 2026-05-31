@@ -1,12 +1,4 @@
 import type { BenefitCandidate, DocumentCandidate } from "@cofi/api";
-import {
-	FileText,
-	Gift,
-	ReceiptText,
-	Repeat,
-	Split,
-	UsersRound,
-} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
@@ -15,6 +7,7 @@ import {
 	buildCapturePacketSummaries,
 	capturePacketSummaryLine,
 } from "../../../shared/lib/capturePacketSummary";
+import { capturePacketEntityVisual } from "../../../shared/lib/entityVisual";
 
 type ChatCaptureReviewEventsProps = {
 	spaceId: string | number;
@@ -47,48 +40,13 @@ const packetMeta = (candidate: ReviewCandidate): string =>
 		.filter(Boolean)
 		.join(" • ") || "Parsed capture";
 
-const packetIcons: Array<{
-	key: keyof CapturePacketCounts;
-	label: string;
-	icon: typeof ReceiptText;
-	className: string;
-}> = [
-	{
-		key: "expenses",
-		label: "Expenses",
-		icon: ReceiptText,
-		className: "bg-[rgba(255,250,240,0.9)] text-[#6d5331]",
-	},
-	{
-		key: "benefits",
-		label: "Benefits",
-		icon: Gift,
-		className: "bg-[rgba(237,247,239,0.9)] text-[#405f44]",
-	},
-	{
-		key: "people",
-		label: "People",
-		icon: UsersRound,
-		className: "bg-[rgba(235,241,252,0.9)] text-[#405574]",
-	},
-	{
-		key: "splits",
-		label: "Splits",
-		icon: Split,
-		className: "bg-[rgba(255,240,208,0.86)] text-[#73501b]",
-	},
-	{
-		key: "future",
-		label: "Future",
-		icon: Repeat,
-		className: "bg-[rgba(245,240,250,0.9)] text-[#5c4a72]",
-	},
-	{
-		key: "documents",
-		label: "Documents",
-		icon: FileText,
-		className: "bg-[rgba(241,245,246,0.9)] text-[#4d5b5e]",
-	},
+const packetIconKeys: Array<keyof CapturePacketCounts> = [
+	"expenses",
+	"benefits",
+	"people",
+	"splits",
+	"future",
+	"documents",
 ];
 
 export const ChatCaptureReviewEvents = ({
@@ -214,15 +172,16 @@ export const ChatCaptureReviewEvents = ({
 								</span>
 							</div>
 							<div className="mt-2 flex flex-wrap gap-1.5">
-								{packetIcons.map((item) => {
-									const count = packet.counts[item.key];
+								{packetIconKeys.map((key) => {
+									const count = packet.counts[key];
 									if (count <= 0) return null;
-									const Icon = item.icon;
+									const visual = capturePacketEntityVisual(key);
+									const Icon = visual.icon;
 									return (
 										<span
-											className={`inline-flex min-h-7 items-center gap-1.5 rounded-full px-2 text-[11px] font-semibold ${item.className}`}
-											key={item.key}
-											title={item.label}
+											className={`inline-flex min-h-7 items-center gap-1.5 rounded-full px-2 text-[11px] font-semibold ${visual.softToneClass}`}
+											key={key}
+											title={visual.label}
 										>
 											<Icon className="h-3.5 w-3.5" size={14} />
 											{count}
