@@ -812,18 +812,22 @@ export const SmartTextareaComposer = forwardRef<
 			</div>
 		);
 
-		const renderMessageText = () => (
-			<div>
-				{state === homeState && navStack.length === 0 ? null : renderNav()}
-				{renderStateTitle("Message this space")}
-				{renderTextarea("Write a message…", handleMessageSubmit)}
-				{renderSubmitButton(
-					"Send",
-					handleMessageSubmit,
-					Boolean(textInput.trim()),
-				)}
-			</div>
-		);
+		const renderMessageText = () => {
+			const isHomeMessageState = state === homeState && navStack.length === 0;
+
+			return (
+				<div>
+					{isHomeMessageState ? null : renderNav()}
+					{isHomeMessageState ? null : renderStateTitle("Message this space")}
+					{renderTextarea("Write a message…", handleMessageSubmit)}
+					{renderSubmitButton(
+						"Send",
+						handleMessageSubmit,
+						Boolean(textInput.trim()),
+					)}
+				</div>
+			);
+		};
 
 		const renderContent = () => {
 			switch (state) {
