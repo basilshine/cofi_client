@@ -5,7 +5,14 @@ import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
 import { isNotFoundHttpError } from "../../../shared/lib/apiErrors";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
-import { EntityMicro } from "../../../shared/lib/entityPresentation";
+import {
+	EntityListItem,
+	EntityMicro,
+} from "../../../shared/lib/entityPresentation";
+import {
+	expenseItemTitle,
+	toExpenseItemEntity,
+} from "../../../shared/lib/expenseItemPresentation";
 import {
 	expenseStatusLabel,
 	expenseStatusPillClass,
@@ -215,7 +222,7 @@ export const ExpenseMessageCard = ({
 										key={`${String(tx.id)}-${idx}-${it.name}`}
 									>
 										<span className="line-clamp-1 min-w-0 flex-1">
-											{it.name}
+											{expenseItemTitle(it, idx)}
 										</span>
 										<span className="shrink-0 tabular-nums text-muted-foreground">
 											{formatMoney(it.amount)}
@@ -304,41 +311,27 @@ export const ExpenseMessageCard = ({
 				</div>
 			</div>
 
-			<div className="mt-2 space-y-1">
-				{topItems.map((it, idx) => (
-					<div
-						className="flex items-center justify-between gap-3 text-xs"
-						key={`${idx}-${it.name}`}
-					>
-						<div className="min-w-0 truncate">{it.name}</div>
-						<div className="shrink-0 font-mono text-muted-foreground">
-							{formatMoney(it.amount)}
-						</div>
-					</div>
-				))}
+			<div className="mt-2 space-y-2">
+				{topItems.map((it, idx) => {
+					const itemEntity = toExpenseItemEntity(it, { index: idx });
+					return (
+						<EntityListItem
+							entity={itemEntity}
+							key={`${idx}-${it.name}`}
+							trailing={
+								<span className="rounded-xl border border-[rgba(110,104,92,0.14)] bg-white/70 px-3 py-2 text-xs font-semibold tabular-nums text-foreground shadow-sm">
+									{formatMoney(it.amount)}
+								</span>
+							}
+						/>
+					);
+				})}
 				{otherCount ? (
 					<div className="text-[10px] text-muted-foreground">
 						+ {otherCount} more item{otherCount === 1 ? "" : "s"}
 					</div>
 				) : null}
 			</div>
-
-			{tx.items.some((i) => i.tags?.length) ? (
-				<div className="mt-2 flex flex-wrap gap-1.5">
-					{Array.from(
-						new Set(tx.items.flatMap((i) => i.tags ?? []).filter(Boolean)),
-					)
-						.slice(0, 8)
-						.map((t) => (
-							<span
-								className="rounded bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground"
-								key={t}
-							>
-								{t}
-							</span>
-						))}
-				</div>
-			) : null}
 
 			<div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-2">
 				{spaceId != null ? (
