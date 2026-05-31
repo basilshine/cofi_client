@@ -8,6 +8,7 @@ import {
 	Shield,
 	Sparkles,
 	Split,
+	UserRoundPlus,
 	UsersRound,
 	WalletCards,
 } from "lucide-react";
@@ -18,6 +19,7 @@ export type EntityVisualKey =
 	| "expenseItem"
 	| "benefit"
 	| "people"
+	| "placeholder"
 	| "split"
 	| "future"
 	| "document"
@@ -92,6 +94,20 @@ export const entityVisuals: Record<EntityVisualKey, EntityVisual> = {
 			"border-[rgba(72,107,82,0.42)] bg-[rgba(235,247,238,0.94)] ring-2 ring-[rgba(72,107,82,0.16)]",
 		chipClass:
 			"border-[rgba(72,107,82,0.16)] bg-[rgba(247,252,248,0.76)] text-[#365f42]",
+	},
+	placeholder: {
+		key: "placeholder",
+		label: "Placeholder",
+		icon: UserRoundPlus,
+		toneClass:
+			"border-[rgba(64,91,118,0.24)] bg-[rgba(236,244,249,0.92)] text-[#34556f]",
+		softToneClass: "bg-[rgba(236,244,249,0.9)] text-[#34556f]",
+		surfaceClass:
+			"border-dashed border-[rgba(64,91,118,0.2)] bg-[rgba(246,251,253,0.84)] hover:border-[rgba(64,91,118,0.34)] hover:bg-[rgba(250,253,255,0.98)]",
+		selectedSurfaceClass:
+			"border-[rgba(64,91,118,0.48)] bg-[rgba(236,244,249,0.94)] ring-2 ring-[rgba(64,91,118,0.18)]",
+		chipClass:
+			"border-[rgba(64,91,118,0.16)] bg-[rgba(249,253,255,0.78)] text-[#34556f]",
 	},
 	split: {
 		key: "split",
@@ -202,7 +218,7 @@ export const captureCandidateTypeVisual = (
 	if (candidateType === "promo_code_candidate") return entityVisuals.benefit;
 	if (candidateType === "loyalty_event_candidate") return entityVisuals.loyalty;
 	if (candidateType === "participant_placeholder_candidate") {
-		return entityVisuals.people;
+		return entityVisuals.placeholder;
 	}
 	if (candidateType === "split_candidate") return entityVisuals.split;
 	if (
@@ -227,6 +243,7 @@ export const composerCandidateVisual = (
 	if (kind === "loyalty") return entityVisuals.loyalty;
 	if (kind === "split") return entityVisuals.split;
 	if (kind === "participant") return entityVisuals.people;
+	if (kind === "placeholder") return entityVisuals.placeholder;
 	if (kind === "recurring" || kind === "membership" || kind === "reminder") {
 		return entityVisuals.future;
 	}

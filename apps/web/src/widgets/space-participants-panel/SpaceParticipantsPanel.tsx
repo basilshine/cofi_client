@@ -2,6 +2,12 @@ import type { SpaceParticipant } from "@cofi/api";
 import { Check, MailPlus, Pencil, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
+import { EntityListItem } from "../../shared/lib/entityPresentation";
+import {
+	isPlaceholderParticipant,
+	participantNotes,
+	toSpaceParticipantEntity,
+} from "../../shared/lib/participantPresentation";
 import { InviteLinkSharePanel } from "../space-invite-management";
 
 type ParticipantDraft = {
@@ -19,21 +25,6 @@ type SpaceParticipantsPanelProps = {
 	onParticipantSaved: (participant: SpaceParticipant) => void;
 	selectedParticipantId?: string | number | null;
 	showTopBorder?: boolean;
-};
-
-const participantTypeLabel = (value: string): string => {
-	const normalized = value.trim().toLowerCase();
-	if (normalized === "registered_member") return "Registered";
-	if (normalized === "invited_member") return "Invited";
-	if (normalized === "external_participant") return "External";
-	if (normalized === "placeholder") return "Placeholder";
-	return normalized ? normalized.replace(/_/g, " ") : "Participant";
-};
-
-const participantStatusLabel = (value: string): string => {
-	const normalized = value.trim().toLowerCase();
-	if (!normalized) return "Draft";
-	return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 
 const contactString = (
@@ -96,8 +87,8 @@ export const SpaceParticipantsPanel = ({
 
 	const visibleParticipants = useMemo(() => {
 		return [...(participants ?? [])].sort((a, b) => {
-			const aPlaceholder = a.status === "placeholder" ? 0 : 1;
-			const bPlaceholder = b.status === "placeholder" ? 0 : 1;
+			const aPlaceholder = isPlaceholderParticipant(a) ? 0 : 1;
+			const bPlaceholder = isPlaceholderParticipant(b) ? 0 : 1;
 			if (aPlaceholder !== bPlaceholder) return aPlaceholder - bPlaceholder;
 			return a.display_name.localeCompare(b.display_name);
 		});
@@ -267,34 +258,23 @@ export const SpaceParticipantsPanel = ({
 						participant.email?.trim() &&
 						!isRegistered &&
 						participant.status !== "invited";
-					const label =
-						participant.display_name?.trim() ||
-						participant.email?.trim() ||
-						`Participant ${participant.id}`;
-					const phone = contactString(participant.contact_data, "phone").trim();
-					const whatsapp = contactString(
-						participant.contact_data,
-						"whatsapp",
-					).trim();
-					const notes = contactString(participant.contact_data, "notes").trim();
-					const contactLine = [
-						participant.email?.trim(),
-						participant.telegram_username?.trim()
-							? `@${cleanTelegram(participant.telegram_username)}`
-							: "",
-						phone ? `phone ${phone}` : "",
-						whatsapp ? `WhatsApp ${whatsapp}` : "",
-					]
-						.filter(Boolean)
-						.join(" · ");
+					const notes = participantNotes(participant);
+					const entity = toSpaceParticipantEntity(participant, {
+						selected: isSelected,
+					});
 
 					return (
 						<li
 							className={[
-								"rounded-xl border p-3 shadow-[0_8px_18px_-18px_rgba(45,48,58,0.25)] transition-[border-color,background-color,box-shadow]",
-								isSelected
-									? "border-[rgba(160,120,70,0.45)] bg-[rgba(255,249,235,0.9)] shadow-[0_14px_28px_-18px_rgba(120,75,28,0.32)] ring-2 ring-[rgba(200,155,95,0.2)]"
-									: "border-[rgba(95,105,125,0.12)] bg-white/55",
+								"scroll-mt-28 transition-[border-color,background-color,box-shadow]",
+								isEditing
+									? [
+											"rounded-xl border p-3 shadow-[0_8px_18px_-18px_rgba(45,48,58,0.25)]",
+											isSelected
+												? "border-[rgba(160,120,70,0.45)] bg-[rgba(255,249,235,0.9)] shadow-[0_14px_28px_-18px_rgba(120,75,28,0.32)] ring-2 ring-[rgba(200,155,95,0.2)]"
+												: "border-[rgba(95,105,125,0.12)] bg-white/55",
+										].join(" ")
+									: "",
 							].join(" ")}
 							id={`space-participant-${String(participant.id)}`}
 							key={participant.id}
@@ -419,73 +399,49 @@ export const SpaceParticipantsPanel = ({
 									</div>
 								</div>
 							) : (
-								<div className="flex items-start gap-3">
-									<span
-										aria-hidden
-										className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[rgba(108,128,108,0.18)] text-sm font-bold uppercase text-[#2d3a2d]"
-									>
-										{label.charAt(0).toUpperCase()}
-									</span>
-									<div className="min-w-0 flex-1">
-										<div className="flex min-w-0 flex-wrap items-center gap-2">
-											<p className="truncate text-sm font-semibold text-foreground">
-												{label}
-											</p>
-											<span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-												{participantStatusLabel(participant.status)}
+								<div className="space-y-2">
+									<EntityListItem
+										entity={entity}
+										trailing={
+											<span className="flex shrink-0 items-center gap-2">
+												{isSelected ? (
+													<span className="rounded-full border border-[rgba(160,120,70,0.28)] bg-[rgba(255,236,200,0.58)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#68400e]">
+														Selected
+													</span>
+												) : null}
+												<button
+													className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+													onClick={() => startEditing(participant)}
+													title="Edit participant"
+													type="button"
+												>
+													<Pencil className="h-4 w-4" />
+												</button>
+												<button
+													className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(90,130,98,0.28)] bg-[rgba(120,154,124,0.14)] text-[#24452b] transition hover:bg-[rgba(120,154,124,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45"
+													disabled={isInviting || !canInvite}
+													onClick={() => void inviteParticipant(participant)}
+													title={
+														canInvite
+															? "Invite participant"
+															: participant.status === "invited"
+																? "Invite already created"
+																: isRegistered
+																	? "Participant already registered"
+																	: "Add email before inviting"
+													}
+													type="button"
+												>
+													<MailPlus className="h-4 w-4" />
+												</button>
 											</span>
-											{isSelected ? (
-												<span className="rounded-full border border-[rgba(160,120,70,0.28)] bg-[rgba(255,236,200,0.58)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#68400e]">
-													Selected
-												</span>
-											) : null}
-										</div>
-										<p className="mt-1 truncate text-xs text-muted-foreground">
-											{participantTypeLabel(participant.participant_type)}
-											{participant.user_id
-												? ` · user ${participant.user_id}`
-												: ""}
-										</p>
-										{contactLine ? (
-											<p className="mt-1 truncate text-xs font-medium text-foreground/75">
-												{contactLine}
-											</p>
-										) : (
-											<p className="mt-1 text-xs text-muted-foreground/80">
-												No contact yet
-											</p>
-										)}
-										{notes ? (
-											<p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-												{notes}
-											</p>
-										) : null}
-									</div>
-									<button
-										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-										onClick={() => startEditing(participant)}
-										title="Edit participant"
-										type="button"
-									>
-										<Pencil className="h-4 w-4" />
-									</button>
-									<button
-										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(90,130,98,0.28)] bg-[rgba(120,154,124,0.14)] text-[#24452b] transition hover:bg-[rgba(120,154,124,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45"
-										disabled={isInviting || !canInvite}
-										onClick={() => void inviteParticipant(participant)}
-										title={
-											canInvite
-												? "Invite participant"
-												: participant.status === "invited"
-													? "Invite already created"
-													: isRegistered
-														? "Participant already registered"
-														: "Add email before inviting"
 										}
-										type="button"
-									>
-										<MailPlus className="h-4 w-4" />
-									</button>
+									/>
+									{notes ? (
+										<p className="px-1 text-xs leading-relaxed text-muted-foreground">
+											{notes}
+										</p>
+									) : null}
 								</div>
 							)}
 						</li>
