@@ -635,7 +635,8 @@ export const CeitsReviewFlowPage = () => {
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
 	const { formatMoney } = useUserFormat();
 	const [searchParams] = useSearchParams();
-	const [loading, setLoading] = useState(true);
+	const [queueLoading, setQueueLoading] = useState(true);
+	const [candidateLoading, setCandidateLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
@@ -693,19 +694,11 @@ export const CeitsReviewFlowPage = () => {
 	useEffect(() => {
 		if (spaceId == null || !Number.isFinite(spaceId)) return;
 		let cancelled = false;
-		setLoading(true);
+		setQueueLoading(true);
 		setError(null);
-		setDocumentCandidateError(null);
 		void (async () => {
 			try {
-				const [
-					dash,
-					tx,
-					mem,
-					participantRes,
-					benefitCandidateRes,
-					documentCandidateRes,
-				] = await Promise.all([
+				const [dash, tx, mem, participantRes] = await Promise.all([
 					apiClient.dashboard.get({
 						variant: "personal",
 						period: "month",
@@ -714,12 +707,6 @@ export const CeitsReviewFlowPage = () => {
 					apiClient.spaces.listTransactions(spaceId, { limit: 120 }),
 					apiClient.spaces.listMembers(spaceId).catch(() => null),
 					apiClient.spaces.listParticipants(spaceId).catch(() => null),
-					apiClient.spaces
-						.listBenefitCandidates(spaceId, { limit: 50 })
-						.catch(() => null),
-					apiClient.spaces
-						.listDocumentCandidates(spaceId, { limit: 50 })
-						.catch(() => null),
 				]);
 
 				const txById = new Map<number, Transaction>(
@@ -899,8 +886,6 @@ export const CeitsReviewFlowPage = () => {
 				if (!cancelled) {
 					setMembers(mem?.members ?? []);
 					setParticipants(participantRes?.participants ?? []);
-					setBenefitCandidates(benefitCandidateRes?.candidates ?? []);
-					setDocumentCandidates(documentCandidateRes?.candidates ?? []);
 					setQueue(built);
 					setCurrentId(built[0]?.id ?? null);
 				}
@@ -910,13 +895,57 @@ export const CeitsReviewFlowPage = () => {
 						e instanceof Error ? e.message : "Failed to load review queue",
 					);
 			} finally {
-				if (!cancelled) setLoading(false);
+				if (!cancelled) setQueueLoading(false);
 			}
 		})();
 		return () => {
 			cancelled = true;
 		};
 	}, [spaceId, activeSpace?.name]);
+
+	useEffect(() => {
+		if (spaceId == null || !Number.isFinite(spaceId)) return;
+		let cancelled = false;
+		setCandidateLoading(true);
+		setDocumentCandidateError(null);
+		void (async () => {
+			try {
+				const [benefitCandidateRes, documentCandidateRes] = await Promise.all([
+					apiClient.spaces
+						.listBenefitCandidates(spaceId, { limit: 50 })
+						.catch(() => null),
+					apiClient.spaces
+						.listDocumentCandidates(spaceId, { limit: 50 })
+						.catch(() => null),
+				]);
+
+				if (!cancelled) {
+					setBenefitCandidates(benefitCandidateRes?.candidates ?? []);
+					setDocumentCandidates(documentCandidateRes?.candidates ?? []);
+					if (benefitCandidateRes == null || documentCandidateRes == null) {
+						setDocumentCandidateError(
+							"Some capture candidates could not be loaded. Expense review is still available.",
+						);
+					}
+				}
+			} catch (e) {
+				if (!cancelled) {
+					setBenefitCandidates([]);
+					setDocumentCandidates([]);
+					setDocumentCandidateError(
+						e instanceof Error
+							? e.message
+							: "Failed to load capture candidates",
+					);
+				}
+			} finally {
+				if (!cancelled) setCandidateLoading(false);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [spaceId]);
 
 	const filteredQueue = useMemo(() => {
 		if (filter === "all") return queue;
@@ -958,6 +987,7 @@ export const CeitsReviewFlowPage = () => {
 		filteredQueue.length > 0 && idx >= 0
 			? Math.round(((idx + 1) / filteredQueue.length) * 100)
 			: 0;
+	const isReviewLoading = queueLoading || candidateLoading;
 	const groupedQueue = useMemo(
 		() => ({
 			draft: filteredQueue.filter((q) => q.kind === "draft"),
@@ -1330,7 +1360,7 @@ export const CeitsReviewFlowPage = () => {
 			</header>
 			<div className="flex min-h-0 flex-1 overflow-hidden bg-[linear-gradient(180deg,#faf7f2_0%,#f4efe6_100%)]">
 				<main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-5 lg:px-8">
-					{loading ? (
+					{isReviewLoading ? (
 						<p className="text-sm text-muted-foreground">
 							Loading capture review...
 						</p>
@@ -1340,7 +1370,14 @@ export const CeitsReviewFlowPage = () => {
 							{error}
 						</p>
 					) : null}
-					{!loading && !error && capturePackets.length > 0 ? (
+					{!candidateLoading &&
+					documentCandidateError &&
+					capturePackets.length === 0 ? (
+						<p className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+							{documentCandidateError}
+						</p>
+					) : null}
+					{!candidateLoading && capturePackets.length > 0 ? (
 						<CapturePacketReviewSection
 							benefitCandidateActingId={benefitCandidateActingId}
 							decisionCount={captureCandidates.length}
@@ -1390,7 +1427,8 @@ export const CeitsReviewFlowPage = () => {
 							splitTargetOptions={splitTargetOptions}
 						/>
 					) : null}
-					{!loading &&
+					{!queueLoading &&
+					!candidateLoading &&
 					!error &&
 					current == null &&
 					capturePackets.length === 0 ? (
