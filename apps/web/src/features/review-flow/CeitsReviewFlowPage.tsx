@@ -457,6 +457,9 @@ export const CeitsReviewFlowPage = () => {
 	const [benefitCandidateActingId, setBenefitCandidateActingId] = useState<
 		number | null
 	>(null);
+	const [splitCandidateTargets, setSplitCandidateTargets] = useState<
+		Record<number, number>
+	>({});
 	const [currentId, setCurrentId] = useState<string | null>(null);
 	const [filter, setFilter] = useState<ReviewFilter>("all");
 	const [acting, setActing] = useState(false);
@@ -752,6 +755,31 @@ export const CeitsReviewFlowPage = () => {
 		}),
 		[filteredQueue],
 	);
+	const splitTargetOptions = useMemo(() => {
+		const seen = new Set<number>();
+		return queue
+			.filter((item) => {
+				if (seen.has(item.expenseId)) return false;
+				seen.add(item.expenseId);
+				return true;
+			})
+			.map((item) => ({
+				expenseId: item.expenseId,
+				label: `${item.title} · ${formatMoney(item.amount)}`,
+			}));
+	}, [queue, formatMoney]);
+	const splitTargetExpenseIdFor = (candidateId: number): number | null => {
+		const explicit = splitCandidateTargets[candidateId];
+		if (
+			explicit != null &&
+			Number.isFinite(explicit) &&
+			splitTargetOptions.some((option) => option.expenseId === explicit)
+		) {
+			return explicit;
+		}
+		if (current?.expenseId != null) return current.expenseId;
+		return splitTargetOptions[0]?.expenseId ?? null;
+	};
 
 	const participantName = (split: ExpenseSplitRow) => {
 		if (split.participant?.display_name?.trim()) {
@@ -856,17 +884,26 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 
-	const handleApplySplitCandidate = async (candidate: DocumentCandidate) => {
-		if (spaceId == null || current == null) return;
+	const handleApplySplitCandidate = async (
+		candidate: DocumentCandidate,
+		targetExpenseId: number | null,
+	) => {
+		if (spaceId == null) return;
+		if (targetExpenseId == null || !Number.isFinite(targetExpenseId)) {
+			setDocumentCandidateError(
+				"Choose an expense before applying this split.",
+			);
+			return;
+		}
 		setDocumentCandidateActingId(candidate.id);
 		setDocumentCandidateError(null);
 		try {
 			await apiClient.spaces.applySplitCandidate(spaceId, candidate.id, {
-				expense_id: current.expenseId,
+				expense_id: targetExpenseId,
 			});
 			const updatedSplits =
 				(await apiClient.finances.expenses
-					.listSplits(current.expenseId)
+					.listSplits(targetExpenseId)
 					.then((res) => res.splits ?? [])
 					.catch(() => null)) ?? null;
 			setDocumentCandidates((prev) =>
@@ -875,7 +912,7 @@ export const CeitsReviewFlowPage = () => {
 			if (updatedSplits != null) {
 				setQueue((prev) =>
 					prev.map((item) =>
-						item.id === current.id
+						item.expenseId === targetExpenseId
 							? {
 									...item,
 									splits: updatedSplits,
@@ -1056,6 +1093,9 @@ export const CeitsReviewFlowPage = () => {
 											? benefitCandidateActingId
 											: documentCandidateActingId;
 									const isActing = actingId === candidate.id;
+									const splitTargetExpenseId = candidate.canOpenSplitReview
+										? splitTargetExpenseIdFor(candidate.id)
+										: null;
 									return (
 										<article
 											className={`rounded-xl border p-3 ${candidateToneClass(candidate.tone)}`}
@@ -1119,18 +1159,19 @@ export const CeitsReviewFlowPage = () => {
 														</button>
 													) : null}
 													{candidate.canOpenSplitReview ? (
-														current != null ? (
+														splitTargetExpenseId != null ? (
 															<button
 																className="rounded-full border border-[rgba(181,131,52,0.32)] bg-[rgba(255,240,208,0.72)] px-2 py-0.5 text-[11px] font-semibold text-[#73501b] transition hover:border-[rgba(181,131,52,0.48)] hover:bg-[rgba(255,232,188,0.9)] disabled:opacity-50"
 																disabled={isActing}
 																onClick={() =>
 																	void handleApplySplitCandidate(
 																		candidate.raw as DocumentCandidate,
+																		splitTargetExpenseId,
 																	)
 																}
 																type="button"
 															>
-																{isActing ? "Applying" : "Apply to selected"}
+																{isActing ? "Applying" : "Apply split"}
 															</button>
 														) : (
 															<Link
@@ -1156,6 +1197,44 @@ export const CeitsReviewFlowPage = () => {
 											<p className="mt-2 text-xs font-medium text-foreground/82">
 												{candidate.detail}
 											</p>
+											{candidate.canOpenSplitReview ? (
+												<div className="mt-3 rounded-lg border border-[rgba(181,131,52,0.18)] bg-white/58 px-2.5 py-2">
+													<label
+														className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+														htmlFor={`split-target-${candidate.id}`}
+													>
+														Apply to expense
+													</label>
+													{splitTargetOptions.length > 0 ? (
+														<select
+															className="mt-1 h-8 w-full rounded-md border border-[rgba(120,100,80,0.18)] bg-white px-2 text-xs font-medium text-foreground shadow-sm outline-none transition focus:border-[rgba(181,131,52,0.48)]"
+															disabled={isActing}
+															id={`split-target-${candidate.id}`}
+															onChange={(event) => {
+																const next = Number(event.target.value);
+																setSplitCandidateTargets((prev) => ({
+																	...prev,
+																	[candidate.id]: next,
+																}));
+															}}
+															value={String(splitTargetExpenseId ?? "")}
+														>
+															{splitTargetOptions.map((option) => (
+																<option
+																	key={option.expenseId}
+																	value={option.expenseId}
+																>
+																	{option.label}
+																</option>
+															))}
+														</select>
+													) : (
+														<p className="mt-1 text-xs text-muted-foreground">
+															No review expense is available yet.
+														</p>
+													)}
+												</div>
+											) : null}
 											{candidate.fields.length > 0 ? (
 												<div className="mt-3 grid gap-1.5 sm:grid-cols-2">
 													{candidate.fields.slice(0, 4).map((field) => (
