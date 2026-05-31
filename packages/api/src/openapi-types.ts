@@ -1308,7 +1308,7 @@ export interface paths {
         };
         /**
          * List document intelligence candidates waiting for review
-         * @description Returns draft document-level candidates such as payment proof, privacy, merge/supporting document, space suggestion, recurring, membership, and reminder signals for the selected space.
+         * @description Returns draft document-level candidates such as payment proof, privacy, merge/supporting document, space suggestion, recurring, membership, reminder, split, and participant placeholder signals for the selected space.
          */
         get: {
             parameters: {
@@ -5320,7 +5320,7 @@ export interface components {
         };
         CaptureIntentCandidate: {
             /** @enum {string} */
-            candidate_type: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate" | "split_candidate" | "participant_placeholder_candidate";
+            candidate_type: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
             title: string;
             confidence: number;
             /** @description Draft/candidate payload. Must not contain final entity creation instructions. */
@@ -5390,7 +5390,7 @@ export interface components {
             /** Format: int64 */
             source_document_id?: number;
             /** @enum {string} */
-            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate";
+            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
             title?: string;
             confidence?: number;
             /** @enum {string} */
@@ -5525,7 +5525,7 @@ export interface components {
             /** Format: int64 */
             source_document_id?: number;
             /** @enum {string} */
-            candidate_type?: "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate";
+            candidate_type?: "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
             title?: string;
             structured_data?: {
                 [key: string]: unknown;
