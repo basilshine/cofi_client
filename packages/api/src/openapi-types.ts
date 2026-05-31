@@ -5593,6 +5593,11 @@ export interface components {
             tenant_id?: number;
             /** Format: int64 */
             source_document_id?: number;
+            /**
+             * Format: int64
+             * @description Expense projected from this candidate's source document, when the capture has already created a reviewable draft.
+             */
+            projected_expense_id?: number;
             /** @enum {string} */
             candidate_type?: "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
             title?: string;

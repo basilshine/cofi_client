@@ -305,6 +305,7 @@ export type DocumentCandidate = {
 	id: number;
 	tenant_id: number;
 	source_document_id: number;
+	projected_expense_id?: number | null;
 	candidate_type: DocumentCandidateType | string;
 	title: string;
 	structured_data?: Record<string, unknown>;

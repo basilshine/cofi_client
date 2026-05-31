@@ -768,14 +768,29 @@ export const CeitsReviewFlowPage = () => {
 				label: `${item.title} · ${formatMoney(item.amount)}`,
 			}));
 	}, [queue, formatMoney]);
-	const splitTargetExpenseIdFor = (candidateId: number): number | null => {
-		const explicit = splitCandidateTargets[candidateId];
+	const splitTargetExpenseIdFor = (
+		candidate: CandidateReviewItem,
+	): number | null => {
+		const explicit = splitCandidateTargets[candidate.id];
 		if (
 			explicit != null &&
 			Number.isFinite(explicit) &&
 			splitTargetOptions.some((option) => option.expenseId === explicit)
 		) {
 			return explicit;
+		}
+		const projectedExpenseId =
+			candidate.source === "document"
+				? (candidate.raw as DocumentCandidate).projected_expense_id
+				: null;
+		if (
+			projectedExpenseId != null &&
+			Number.isFinite(projectedExpenseId) &&
+			splitTargetOptions.some(
+				(option) => option.expenseId === projectedExpenseId,
+			)
+		) {
+			return projectedExpenseId;
 		}
 		if (current?.expenseId != null) return current.expenseId;
 		return splitTargetOptions[0]?.expenseId ?? null;
@@ -1118,8 +1133,16 @@ export const CeitsReviewFlowPage = () => {
 											: documentCandidateActingId;
 									const isActing = actingId === candidate.id;
 									const splitTargetExpenseId = candidate.canOpenSplitReview
-										? splitTargetExpenseIdFor(candidate.id)
+										? splitTargetExpenseIdFor(candidate)
 										: null;
+									const projectedSplitTargetExpenseId =
+										candidate.source === "document"
+											? (candidate.raw as DocumentCandidate)
+													.projected_expense_id
+											: null;
+									const splitTargetMatchedSource =
+										splitTargetExpenseId != null &&
+										projectedSplitTargetExpenseId === splitTargetExpenseId;
 									const pendingSplitParticipantCount =
 										pendingParticipantCountForSplitCandidate(candidate);
 									const splitApplyBlocked = pendingSplitParticipantCount > 0;
@@ -1271,6 +1294,11 @@ export const CeitsReviewFlowPage = () => {
 															Add {pendingSplitParticipantCount}{" "}
 															{splitParticipantLabel} from this capture first,
 															then apply the split to the expense.
+														</p>
+													) : null}
+													{splitTargetMatchedSource && !splitApplyBlocked ? (
+														<p className="mt-2 text-xs text-muted-foreground">
+															Matched to the expense created from this capture.
 														</p>
 													) : null}
 												</div>
