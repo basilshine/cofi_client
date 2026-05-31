@@ -137,6 +137,18 @@ const candidateOnlyStatus = (
 	return "Ceits parsed the input, but needs clearer expense details before creating a draft.";
 };
 
+const withSourceDocumentId = (
+	href: string,
+	sourceDocumentId?: number,
+): string => {
+	if (sourceDocumentId == null) return href;
+	const [pathAndSearch, hash] = href.split("#");
+	const [pathname, search] = pathAndSearch.split("?");
+	const params = new URLSearchParams(search ?? "");
+	params.set("sourceDocumentId", String(sourceDocumentId));
+	return `${pathname}?${params.toString()}${hash ? `#${hash}` : ""}`;
+};
+
 type ComposerFlowStatus = "done" | "current" | "pending" | "blocked";
 
 type ComposerFlowItem = {
@@ -588,6 +600,10 @@ const CandidateBundlePanel = ({
 	reviewHref: string;
 }) => {
 	const [isReviewDrawerOpen, setIsReviewDrawerOpen] = useState(false);
+	const reviewHrefWithSource = withSourceDocumentId(
+		reviewHref,
+		bundle.sourceDocumentId,
+	);
 
 	if (!bundle.candidates.length && !bundle.capabilityNotice) return null;
 
@@ -677,7 +693,7 @@ const CandidateBundlePanel = ({
 						</Link>
 					) : null}
 					{hasReviewFlowSignals ? (
-						<Link className={reviewActionClass} to={reviewHref}>
+						<Link className={reviewActionClass} to={reviewHrefWithSource}>
 							Signals
 						</Link>
 					) : null}
@@ -688,12 +704,15 @@ const CandidateBundlePanel = ({
 					benefitsHref={benefitsHref}
 					bundle={bundle}
 					expensesHref={expensesHref}
-					reviewHref={reviewHref}
+					reviewHref={reviewHrefWithSource}
 					splitsHref={splitsHref}
 				/>
 			) : null}
 			<div className="mt-2">
-				<ComposerFlowInfographic bundle={bundle} reviewHref={reviewHref} />
+				<ComposerFlowInfographic
+					bundle={bundle}
+					reviewHref={reviewHrefWithSource}
+				/>
 			</div>
 		</div>
 	);

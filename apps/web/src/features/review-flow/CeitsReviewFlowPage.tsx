@@ -711,6 +711,14 @@ export const CeitsReviewFlowPage = () => {
 			: selectedSpaceId != null
 				? Number(selectedSpaceId)
 				: null;
+	const sourceDocumentIdParam =
+		searchParams.get("sourceDocumentId") ??
+		searchParams.get("source_document_id");
+	const focusedSourceDocumentId =
+		sourceDocumentIdParam != null &&
+		Number.isFinite(Number(sourceDocumentIdParam))
+			? Number(sourceDocumentIdParam)
+			: null;
 	const activeSpace: Space | null = useMemo(() => {
 		if (spaces == null || spaceId == null) return null;
 		return spaces.find((s) => Number(s.id) === Number(spaceId)) ?? null;
@@ -1379,6 +1387,7 @@ export const CeitsReviewFlowPage = () => {
 							decisionCount={captureCandidates.length}
 							documentCandidateActingId={documentCandidateActingId}
 							documentCandidateError={documentCandidateError}
+							focusedSourceDocumentId={focusedSourceDocumentId}
 							onApplySplitCandidate={(candidate, targetExpenseId) =>
 								void handleApplySplitCandidate(
 									candidate.raw as DocumentCandidate,

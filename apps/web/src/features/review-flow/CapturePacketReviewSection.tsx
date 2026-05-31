@@ -11,6 +11,7 @@ type CapturePacketReviewSectionProps = {
 	packets: CapturePacket[];
 	decisionCount: number;
 	spaceId: number;
+	focusedSourceDocumentId?: number | null;
 	documentCandidateError: string | null;
 	benefitCandidateActingId: number | null;
 	documentCandidateActingId: number | null;
@@ -146,6 +147,7 @@ export const CapturePacketReviewSection = ({
 	packets,
 	decisionCount,
 	spaceId,
+	focusedSourceDocumentId,
 	documentCandidateError,
 	benefitCandidateActingId,
 	documentCandidateActingId,
@@ -186,12 +188,35 @@ export const CapturePacketReviewSection = ({
 			),
 		);
 	}, [packets, selectedSectionKey]);
-	const visiblePackets = useMemo(
-		() => filteredPackets.slice(0, 6),
-		[filteredPackets],
-	);
+	const visiblePackets = useMemo(() => {
+		const newest = filteredPackets.slice(0, 6);
+		if (
+			focusedSourceDocumentId == null ||
+			newest.some(
+				(packet) => packet.sourceDocumentId === focusedSourceDocumentId,
+			)
+		) {
+			return newest;
+		}
+		const focused = filteredPackets.find(
+			(packet) => packet.sourceDocumentId === focusedSourceDocumentId,
+		);
+		if (!focused) return newest;
+		return [focused, ...newest.slice(0, 5)];
+	}, [filteredPackets, focusedSourceDocumentId]);
+	const defaultPacketId = useMemo(() => {
+		if (
+			focusedSourceDocumentId != null &&
+			visiblePackets.some(
+				(packet) => packet.sourceDocumentId === focusedSourceDocumentId,
+			)
+		) {
+			return focusedSourceDocumentId;
+		}
+		return visiblePackets[0]?.sourceDocumentId ?? null;
+	}, [focusedSourceDocumentId, visiblePackets]);
 	const [selectedPacketId, setSelectedPacketId] = useState<number | null>(
-		() => visiblePackets[0]?.sourceDocumentId ?? null,
+		() => defaultPacketId,
 	);
 	const selectedPacket = useMemo(
 		() =>
@@ -210,8 +235,8 @@ export const CapturePacketReviewSection = ({
 		) {
 			return;
 		}
-		setSelectedPacketId(visiblePackets[0]?.sourceDocumentId ?? null);
-	}, [visiblePackets, selectedPacketId]);
+		setSelectedPacketId(defaultPacketId);
+	}, [visiblePackets, selectedPacketId, defaultPacketId]);
 
 	return (
 		<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.94)] p-4 shadow-sm">
