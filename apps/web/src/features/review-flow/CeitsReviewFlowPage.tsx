@@ -196,6 +196,9 @@ const canMarkDocumentCandidateReviewed = (type: string): boolean =>
 		"merge_candidate",
 		"supporting_document_candidate",
 		"space_suggestion_candidate",
+		"recurring_candidate",
+		"membership_candidate",
+		"reminder_candidate",
 	].includes(type);
 
 const canCreateParticipantFromCandidate = (type: string): boolean =>
