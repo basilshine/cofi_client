@@ -239,6 +239,50 @@ const addHrefForSection = (
 	return `/console/review?spaceId=${encodedSpaceId}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}&section=documents`;
 };
 
+type PacketFilterTileProps = {
+	countLabel: string;
+	disabled?: boolean;
+	onClick: () => void;
+	selected: boolean;
+	title: string;
+	visualKey: EntityVisualKey;
+};
+
+const PacketFilterTile = ({
+	countLabel,
+	disabled = false,
+	onClick,
+	selected,
+	title,
+	visualKey,
+}: PacketFilterTileProps) => (
+	<button
+		aria-pressed={selected}
+		className={`min-h-[4.75rem] rounded-xl border px-3 py-2 text-left transition-[background-color,border-color,box-shadow,transform] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 ${
+			selected
+				? "border-[rgba(68,58,42,0.28)] bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
+				: "border-[rgba(120,100,80,0.1)] bg-white/68 text-foreground hover:border-[rgba(120,100,80,0.22)] hover:bg-white"
+		}`}
+		disabled={disabled}
+		onClick={onClick}
+		type="button"
+	>
+		<span className="flex items-center gap-2">
+			<EntityIcon size="sm" visualKey={visualKey} />
+			<span className="min-w-0">
+				<span className="block truncate text-xs font-bold">{title}</span>
+				<span
+					className={`mt-0.5 block text-[11px] font-semibold ${
+						selected ? "text-[#fffaf0]/72" : "text-muted-foreground"
+					}`}
+				>
+					{countLabel}
+				</span>
+			</span>
+		</span>
+	</button>
+);
+
 export const CapturePacketReviewSection = ({
 	packets,
 	decisionCount,
@@ -366,67 +410,31 @@ export const CapturePacketReviewSection = ({
 				</div>
 			</div>
 			<div className="mt-4 grid gap-2 rounded-2xl border border-[rgba(120,100,80,0.12)] bg-white/54 p-2 sm:grid-cols-2 xl:grid-cols-4">
-				<button
-					aria-pressed={selectedSectionKey === "all"}
-					className={`min-h-[4.75rem] rounded-xl border px-3 py-2 text-left transition-[background-color,border-color,box-shadow,transform] active:scale-[0.99] ${
-						selectedSectionKey === "all"
-							? "border-[rgba(68,58,42,0.28)] bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
-							: "border-[rgba(120,100,80,0.1)] bg-white/68 text-foreground hover:border-[rgba(120,100,80,0.22)] hover:bg-white"
-					}`}
+				<PacketFilterTile
+					countLabel={`${decisionCount} decisions`}
 					onClick={() => setSelectedSectionKey("all")}
-					type="button"
-				>
-					<span className="flex items-center gap-2">
-						<EntityIcon size="sm" visualKey="reviewPacket" />
-						<span className="min-w-0">
-							<span className="block text-xs font-bold">All review</span>
-							<span
-								className={`mt-0.5 block text-[11px] font-semibold ${
-									selectedSectionKey === "all"
-										? "text-[#fffaf0]/72"
-										: "text-muted-foreground"
-								}`}
-							>
-								{decisionCount} decisions
-							</span>
-						</span>
-					</span>
-				</button>
+					selected={selectedSectionKey === "all"}
+					title="All review"
+					visualKey="reviewPacket"
+				/>
 				{packetSectionDefinitions.map((section) => {
 					const count = entityCounts[section.key];
 					const selected = selectedSectionKey === section.key;
 					const visual = capturePacketEntityVisual(section.key);
 					return (
-						<button
-							aria-pressed={selected}
-							className={`min-h-[4.75rem] rounded-xl border px-3 py-2 text-left transition-[background-color,border-color,box-shadow,transform] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 ${
-								selected
-									? "border-[rgba(68,58,42,0.28)] bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
-									: "border-[rgba(120,100,80,0.1)] bg-white/68 text-foreground hover:border-[rgba(120,100,80,0.22)] hover:bg-white"
-							}`}
+						<PacketFilterTile
+							countLabel={
+								count === 0
+									? "No candidates"
+									: `${count} ${count === 1 ? "candidate" : "candidates"}`
+							}
 							disabled={count === 0}
 							key={section.key}
 							onClick={() => setSelectedSectionKey(section.key)}
-							type="button"
-						>
-							<span className="flex items-center gap-2">
-								<EntityIcon size="sm" visualKey={visual.key} />
-								<span className="min-w-0">
-									<span className="block truncate text-xs font-bold">
-										{section.shortTitle}
-									</span>
-									<span
-										className={`mt-0.5 block text-[11px] font-semibold ${
-											selected ? "text-[#fffaf0]/72" : "text-muted-foreground"
-										}`}
-									>
-										{count === 0
-											? "No candidates"
-											: `${count} ${count === 1 ? "candidate" : "candidates"}`}
-									</span>
-								</span>
-							</span>
-						</button>
+							selected={selected}
+							title={section.shortTitle}
+							visualKey={visual.key}
+						/>
 					);
 				})}
 			</div>
