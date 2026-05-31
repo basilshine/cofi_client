@@ -1,4 +1,5 @@
 import type { BenefitCandidate, DocumentCandidate } from "@cofi/api";
+import { ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
@@ -208,7 +209,7 @@ export const ChatCaptureReviewEvents = ({
 		? packetHref(spaceId, packets[0].sourceDocumentId)
 		: `/console/review?spaceId=${encodeURIComponent(String(spaceId))}`;
 	const primaryActionLabel =
-		packets.length > 1 ? "Review first" : "Open review";
+		packets.length > 1 ? "Review newest" : "Open review";
 	const processSteps = reviewProcessSteps(totalCandidateCount);
 	const detailsRegionId = `capture-review-details-${String(spaceId)}`;
 
@@ -263,11 +264,18 @@ export const ChatCaptureReviewEvents = ({
 					<button
 						aria-controls={detailsRegionId}
 						aria-expanded={detailsOpen}
-						className="inline-flex min-h-8 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-white/72 px-3 text-[11px] font-bold text-muted-foreground shadow-sm transition hover:bg-white hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.18)] bg-white/72 px-3 text-[11px] font-bold text-muted-foreground shadow-sm transition hover:bg-white hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => setDetailsOpen((open) => !open)}
 						type="button"
 					>
 						{detailsOpen ? "Hide" : "Details"}
+						<ChevronDown
+							aria-hidden
+							className={[
+								"h-3.5 w-3.5 transition-transform",
+								detailsOpen ? "rotate-180" : "",
+							].join(" ")}
+						/>
 					</button>
 					<Link
 						className="inline-flex min-h-8 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-bold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(50,43,32,0.96)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -326,7 +334,7 @@ export const ChatCaptureReviewEvents = ({
 									key={packet.sourceDocumentId}
 									trailing={
 										<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-											Packet #{packet.sourceDocumentId}
+											Capture #{packet.sourceDocumentId}
 										</span>
 									}
 								/>
