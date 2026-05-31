@@ -1,4 +1,8 @@
 import { Link } from "react-router-dom";
+import {
+	EntityMini,
+	type EntityViewModel,
+} from "../../../shared/lib/entityPresentation";
 
 export type SplitMemberSummary = {
 	id: string;
@@ -61,6 +65,29 @@ type SpaceSplitsRightRailProps = {
 	};
 	onCloseDetail: () => void;
 };
+
+const toSplitParticipantEntity = (
+	participant: SplitDetailParticipant,
+): EntityViewModel => ({
+	id: participant.id,
+	visualKey: "people",
+	label: participant.isCurrentUser ? "You" : "Participant",
+	title: participant.isCurrentUser ? "You" : participant.name,
+	subtitle: participant.amountLabel,
+	status: participant.isCurrentUser ? "Your share" : undefined,
+});
+
+const toSplitMemberSummaryEntity = (
+	member: SplitMemberSummary,
+): EntityViewModel => ({
+	id: member.id,
+	visualKey: "people",
+	label: "Member",
+	title: member.name,
+	subtitle: member.directionLabel,
+	detail: member.exposureLabel,
+	status: member.exposureLabel,
+});
 
 export const SpaceSplitsRightRail = ({
 	spaceId,
@@ -214,23 +241,13 @@ export const SpaceSplitsRightRail = ({
 							</p>
 						) : selectedDetail.participants.length > 0 ? (
 							<ul className="mt-2 space-y-2.5">
-								{selectedDetail.participants.map((participant) => {
-									const isYou = participant.isCurrentUser === true;
-									return (
-										<li
-											className="text-[13px] leading-snug text-foreground/90"
-											key={participant.id}
-										>
-											<span className="text-foreground/90">
-												{isYou ? "You" : participant.name}
-												<span className="text-foreground/40"> — </span>
-												<span className="font-medium tabular-nums text-foreground">
-													{participant.amountLabel}
-												</span>
-											</span>
-										</li>
-									);
-								})}
+								{selectedDetail.participants.map((participant) => (
+									<li key={participant.id}>
+										<EntityMini
+											entity={toSplitParticipantEntity(participant)}
+										/>
+									</li>
+								))}
 							</ul>
 						) : (
 							<p className="mt-2 text-xs text-muted-foreground">
@@ -418,21 +435,8 @@ export const SpaceSplitsRightRail = ({
 				) : (
 					<ul className="mt-2 space-y-1.5">
 						{membersSummary.map((member) => (
-							<li
-								className="flex items-center justify-between rounded-lg bg-background/45 px-3 py-2"
-								key={member.id}
-							>
-								<div>
-									<p className="text-sm font-medium text-foreground">
-										{member.name}
-									</p>
-									<p className="text-[11px] text-muted-foreground">
-										{member.directionLabel}
-									</p>
-								</div>
-								<p className="text-sm font-semibold tabular-nums text-foreground">
-									{member.exposureLabel}
-								</p>
+							<li key={member.id}>
+								<EntityMini entity={toSplitMemberSummaryEntity(member)} />
 							</li>
 						))}
 					</ul>
