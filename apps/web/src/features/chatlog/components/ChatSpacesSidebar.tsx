@@ -1,66 +1,10 @@
 import type { Space, SpaceMember, SpaceRole } from "@cofi/api";
 import { InviteParticipantIcon } from "@cofi/ceits-icons";
+import { PanelLeftClose, PanelLeftOpen, PlusSquare } from "lucide-react";
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
 import { SpaceMembersInvitesPanel } from "../../../widgets/member-invites-panel";
-
-const IconPanelOpen = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="18"
-		stroke="currentColor"
-		strokeWidth="2"
-		viewBox="0 0 24 24"
-		width="18"
-	>
-		<title>Expand sidebar</title>
-		<path
-			d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M15 12H9M18 8l4 4-4 4"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-	</svg>
-);
-
-const IconPanelClose = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="18"
-		stroke="currentColor"
-		strokeWidth="2"
-		viewBox="0 0 24 24"
-		width="18"
-	>
-		<title>Collapse sidebar</title>
-		<path
-			d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M9 12h10M6 8l-4 4 4 4"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-		/>
-	</svg>
-);
-
-const IconPlusSquare = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="18"
-		stroke="currentColor"
-		strokeWidth="2"
-		viewBox="0 0 24 24"
-		width="18"
-	>
-		<title>New space</title>
-		<rect height="18" rx="2" width="18" x="3" y="3" />
-		<path d="M12 8v8M8 12h8" strokeLinecap="round" />
-	</svg>
-);
 
 export type ChatSpacesSidebarProps = {
 	expanded: boolean;
@@ -260,7 +204,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 							onClick={() => onExpandedChange(false)}
 							type="button"
 						>
-							<IconPanelClose className="h-4 w-4" />
+							<PanelLeftClose aria-hidden className="h-4 w-4" />
 						</button>
 						<button
 							className="inline-flex h-9 shrink-0 items-center rounded-lg border border-border px-3 text-xs font-medium transition-colors hover:bg-accent disabled:opacity-50"
@@ -423,7 +367,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 						onClick={() => onExpandedChange(true)}
 						type="button"
 					>
-						<IconPanelOpen className="h-4 w-4" />
+						<PanelLeftOpen aria-hidden className="h-4 w-4" />
 					</button>
 
 					<div className="h-px w-8 shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
@@ -537,7 +481,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 						onClick={() => expandTo("chat-sidebar-create")}
 						type="button"
 					>
-						<IconPlusSquare className="h-4 w-4" />
+						<PlusSquare aria-hidden className="h-4 w-4" />
 					</button>
 				)}
 			</div>
