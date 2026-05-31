@@ -131,7 +131,67 @@ const formatAmount = (amount?: number, currency?: string): string | null => {
 const resultShellClass =
 	"group flex min-w-0 items-start gap-3 rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.76)] p-3.5 shadow-sm transition hover:border-[rgba(120,100,80,0.28)] hover:bg-white";
 
-const SearchResultRow = ({ result }: { result: SearchResult }) => {
+const escapeRegExp = (value: string): string =>
+	value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const searchTokens = (query: string): string[] => {
+	const seen = new Set<string>();
+	return query
+		.trim()
+		.split(/\s+/)
+		.map((token) => token.trim())
+		.filter((token) => token.length >= 2)
+		.filter((token) => {
+			const key = token.toLowerCase();
+			if (seen.has(key)) return false;
+			seen.add(key);
+			return true;
+		});
+};
+
+const HighlightedText = ({
+	className,
+	query,
+	text,
+}: {
+	className?: string;
+	query: string;
+	text: string;
+}) => {
+	const tokens = searchTokens(query);
+	if (tokens.length === 0) {
+		return <span className={className}>{text}</span>;
+	}
+	const matcher = new RegExp(`(${tokens.map(escapeRegExp).join("|")})`, "gi");
+	const tokenSet = new Set(tokens.map((token) => token.toLowerCase()));
+	return (
+		<span className={className}>
+			{text.split(matcher).map((part, index) => {
+				if (!part) return null;
+				const key = `${part}-${index}`;
+				if (tokenSet.has(part.toLowerCase())) {
+					return (
+						<mark
+							className="rounded bg-[rgba(220,170,72,0.28)] px-0.5 text-inherit"
+							key={key}
+						>
+							{part}
+						</mark>
+					);
+				}
+				return <span key={key}>{part}</span>;
+			})}
+		</span>
+	);
+};
+
+const SearchResultRow = ({
+	query,
+	result,
+}: {
+	query: string;
+	result: SearchResult;
+}) => {
 	const visual = entityVisuals[visualForResult(result.type)];
 	const Icon = visual.icon;
 	const amount = formatAmount(result.amount, result.currency);
@@ -155,20 +215,26 @@ const SearchResultRow = ({ result }: { result: SearchResult }) => {
 			</span>
 			<span className="min-w-0 flex-1">
 				<span className="flex min-w-0 flex-wrap items-center gap-2">
-					<span className="truncate text-sm font-semibold text-foreground">
-						{result.title}
-					</span>
+					<HighlightedText
+						className="truncate text-sm font-semibold text-foreground"
+						query={query}
+						text={result.title}
+					/>
 					<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
 						{sectionLabel[result.type]}
 					</span>
 				</span>
-				<span className="mt-1 block truncate text-sm text-foreground/72">
-					{result.subtitle || result.space_name || "Ceits"}
-				</span>
+				<HighlightedText
+					className="mt-1 block truncate text-sm text-foreground/72"
+					query={query}
+					text={result.subtitle || result.space_name || "Ceits"}
+				/>
 				{result.detail ? (
-					<span className="mt-1 block truncate text-xs text-muted-foreground">
-						{result.detail}
-					</span>
+					<HighlightedText
+						className="mt-1 block truncate text-xs text-muted-foreground"
+						query={query}
+						text={result.detail}
+					/>
 				) : null}
 				{meta.length ? (
 					<span className="mt-2 flex flex-wrap gap-1.5">
@@ -394,7 +460,11 @@ export const GlobalSearchPage = () => {
 									</div>
 									<div className="grid gap-2">
 										{section.items.map((result) => (
-											<SearchResultRow key={result.id} result={result} />
+											<SearchResultRow
+												key={result.id}
+												query={query}
+												result={result}
+											/>
 										))}
 									</div>
 								</div>
