@@ -549,6 +549,11 @@ const CapturePacketRow = ({
 					</span>
 				</div>
 			</div>
+			<PacketWorkspaceMap
+				actionCount={actionCount}
+				packet={packet}
+				sectionFilter={sectionFilter}
+			/>
 			<PacketActionBar
 				benefitCandidateActingId={benefitCandidateActingId}
 				documentCandidateActingId={documentCandidateActingId}
@@ -617,6 +622,133 @@ const CapturePacketRow = ({
 		</article>
 	);
 };
+
+type PacketWorkspaceMapProps = {
+	packet: CapturePacket;
+	sectionFilter: PacketSectionFilterKey;
+	actionCount: number;
+};
+
+const PacketWorkspaceMap = ({
+	packet,
+	sectionFilter,
+	actionCount,
+}: PacketWorkspaceMapProps) => {
+	const visibleSectionDefinitions = packetSectionDefinitions.filter(
+		(section) =>
+			packet.counts[section.key] > 0 ||
+			(sectionFilter !== "all" && sectionFilter === section.key),
+	);
+	const reviewScope =
+		sectionFilter === "all"
+			? "All entities"
+			: (packetSectionDefinitions.find(
+					(section) => section.key === sectionFilter,
+				)?.title ?? "Selected entity");
+
+	return (
+		<div className="mt-3 border-b border-[rgba(120,100,80,0.12)] pb-3">
+			<div className="grid gap-2 md:grid-cols-4">
+				<PacketWorkspaceStep
+					detail={packet.meta}
+					icon={Inbox}
+					label="Source saved"
+					title="Capture"
+				/>
+				<PacketWorkspaceStep
+					detail={packet.summary}
+					icon={ReceiptText}
+					label={`${packet.candidates.length} found`}
+					title="Structure"
+				/>
+				<PacketWorkspaceStep
+					detail={reviewScope}
+					icon={Split}
+					label={actionCount > 0 ? `${actionCount} actions` : "Read only"}
+					title="Review"
+				/>
+				<PacketWorkspaceStep
+					detail="Confirm, save, apply, or ignore"
+					icon={FileText}
+					label="Pending"
+					title="Save"
+				/>
+			</div>
+			{visibleSectionDefinitions.length > 0 ? (
+				<div className="mt-3">
+					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						What Ceits found in this packet
+					</p>
+					<div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+						{visibleSectionDefinitions.map((section) => {
+							const count = packet.counts[section.key];
+							const selected =
+								sectionFilter === "all" || sectionFilter === section.key;
+							const Icon = section.icon;
+							return (
+								<div
+									className={`flex min-h-14 items-center gap-2 rounded-xl border px-3 py-2 ${
+										selected
+											? section.toneClass
+											: "border-[rgba(120,100,80,0.1)] bg-white/54 text-muted-foreground"
+									}`}
+									key={section.key}
+								>
+									<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/62 shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08)]">
+										<Icon className="h-4 w-4" size={16} />
+									</span>
+									<span className="min-w-0">
+										<span className="block truncate text-xs font-bold">
+											{section.shortTitle}
+										</span>
+										<span className="mt-0.5 block text-[11px] font-semibold opacity-75">
+											{count === 0
+												? "Can be added manually"
+												: `${count} ${count === 1 ? "candidate" : "candidates"}`}
+										</span>
+									</span>
+								</div>
+							);
+						})}
+					</div>
+				</div>
+			) : null}
+		</div>
+	);
+};
+
+type PacketWorkspaceStepProps = {
+	title: string;
+	label: string;
+	detail: string;
+	icon: LucideIcon;
+};
+
+const PacketWorkspaceStep = ({
+	title,
+	label,
+	detail,
+	icon: Icon,
+}: PacketWorkspaceStepProps) => (
+	<div className="min-w-0 rounded-xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,252,246,0.58)] px-3 py-2">
+		<div className="flex items-start gap-2">
+			<span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/75 text-[#5f5442] shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08)]">
+				<Icon className="h-4 w-4" size={16} />
+			</span>
+			<span className="min-w-0">
+				<span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+					{title}
+				</span>
+				<span className="mt-0.5 block truncate text-xs font-bold text-foreground">
+					{label}
+				</span>
+				<span className="mt-0.5 block line-clamp-2 text-[11px] leading-4 text-muted-foreground">
+					{detail}
+				</span>
+			</span>
+		</div>
+	</div>
+);
 
 type PacketActionBarProps = {
 	candidates: CandidateReviewItem[];
