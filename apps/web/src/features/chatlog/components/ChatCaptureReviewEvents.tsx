@@ -9,6 +9,7 @@ import {
 	capturePacketSummaryLine,
 } from "../../../shared/lib/capturePacketSummary";
 import {
+	EntityIcon,
 	EntityListItem,
 	type EntityViewModel,
 } from "../../../shared/lib/entityPresentation";
@@ -53,6 +54,27 @@ const packetIconKeys: Array<keyof CapturePacketCounts> = [
 	"future",
 	"documents",
 ];
+
+const aggregatePacketCounts = (
+	packets: Array<CapturePacketSummary<ReviewCandidate>>,
+): CapturePacketCounts =>
+	packets.reduce<CapturePacketCounts>(
+		(counts, packet) => {
+			for (const key of packetIconKeys) counts[key] += packet.counts[key];
+			return counts;
+		},
+		{
+			expenses: 0,
+			benefits: 0,
+			people: 0,
+			splits: 0,
+			future: 0,
+			documents: 0,
+		},
+	);
+
+const packetCountLabel = (count: number): string =>
+	`${count} ${count === 1 ? "packet" : "packets"}`;
 
 const packetHref = (
 	spaceId: string | number,
@@ -142,6 +164,14 @@ export const ChatCaptureReviewEvents = ({
 			}).slice(0, 3),
 		[candidates],
 	);
+	const packetCounts = useMemo(() => aggregatePacketCounts(packets), [packets]);
+	const visibleEntityCounts = packetIconKeys
+		.map((key) => ({ key, count: packetCounts[key] }))
+		.filter((item) => item.count > 0);
+	const totalCandidateCount = visibleEntityCounts.reduce(
+		(total, item) => total + item.count,
+		0,
+	);
 
 	if (packets.length === 0 && !loading && !error) return null;
 
@@ -153,17 +183,40 @@ export const ChatCaptureReviewEvents = ({
 			<div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
 				<div className="min-w-0">
 					<p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b651f]">
-						Review shelf
+						Needs review
 					</p>
 					<h3 className="mt-0.5 truncate text-sm font-semibold text-foreground">
 						{loading && packets.length === 0
 							? "Checking parsed captures..."
-							: `${packets.length} parsed ${packets.length === 1 ? "capture" : "captures"} need review`}
+							: `${packetCountLabel(packets.length)} from Ceits capture`}
 					</h3>
 					<p className="mt-0.5 truncate text-xs text-muted-foreground">
-						{spaceName ?? "This space"} has parser work waiting below the chat.
+						Review before these change {spaceName ?? "this space"}.
 					</p>
 				</div>
+				{visibleEntityCounts.length > 0 ? (
+					<div
+						aria-label={`${totalCandidateCount} candidates found`}
+						className="hidden min-w-0 flex-1 flex-wrap items-center justify-end gap-1.5 md:flex"
+					>
+						{visibleEntityCounts.slice(0, 5).map(({ key, count }) => {
+							const visual = capturePacketEntityVisual(key);
+							return (
+								<span
+									className={[
+										"inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2 text-[11px] font-semibold",
+										visual.chipClass,
+									].join(" ")}
+									key={key}
+								>
+									<EntityIcon size="xs" visualKey={visual.key} />
+									<span className="tabular-nums">{count}</span>
+									<span>{visual.label}</span>
+								</span>
+							);
+						})}
+					</div>
+				) : null}
 				<Link
 					className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-bold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(50,43,32,0.96)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					to={`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`}
@@ -173,9 +226,23 @@ export const ChatCaptureReviewEvents = ({
 			</div>
 			<div className="grid max-h-0 overflow-hidden border-t border-transparent opacity-0 transition-[max-height,opacity,border-color] duration-200 group-focus-within:max-h-80 group-focus-within:border-[rgba(181,131,52,0.18)] group-focus-within:opacity-100 group-hover:max-h-80 group-hover:border-[rgba(181,131,52,0.18)] group-hover:opacity-100">
 				<div className="space-y-2 px-3 pb-3 pt-2">
+					<div className="grid gap-2 rounded-xl border border-[rgba(172,124,35,0.14)] bg-white/56 p-2 text-xs text-muted-foreground sm:grid-cols-3">
+						<div className="flex items-center gap-2">
+							<EntityIcon size="xs" visualKey="document" />
+							<span>Parsed source</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<EntityIcon size="xs" visualKey="reviewPacket" />
+							<span>{totalCandidateCount} candidates found</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<EntityIcon size="xs" visualKey="expense" />
+							<span>Review decides what is saved</span>
+						</div>
+					</div>
 					<p className="text-xs leading-5 text-muted-foreground">
-						Ceits found structured candidates. Review decides what becomes
-						expenses, promos, people, splits, or document signals.
+						This is system work from captures, not a chat message. Open review
+						to confirm expenses, promos, people, splits, or document signals.
 					</p>
 					{error ? (
 						<p className="rounded-lg border border-destructive/25 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
