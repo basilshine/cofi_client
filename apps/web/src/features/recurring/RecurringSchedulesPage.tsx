@@ -4,6 +4,15 @@ import {
 	type StandardRecurringInterval,
 	TEST_RECURRING_INTERVALS,
 } from "@cofi/api";
+import {
+	Calendar,
+	Pause,
+	Pencil,
+	Play,
+	Tag,
+	Trash2,
+	TrendingUp,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
@@ -35,6 +44,7 @@ const destructiveActionButtonClass =
 	"inline-flex h-8 items-center gap-1.5 rounded-md border border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive transition hover:bg-destructive/10 disabled:opacity-50";
 const forecastCardBaseClass =
 	"rounded-xl border p-3.5 shadow-sm transition hover:shadow-md";
+const miniIconClass = "h-3.5 w-3.5";
 
 const showTestRecurringIntervals = () =>
 	import.meta.env.DEV ||
@@ -201,134 +211,6 @@ const forecastTone = (label: ForecastSummary["label"]) => {
 			};
 	}
 };
-
-const IconCalendarMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="14"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-		width="14"
-	>
-		<title>Calendar</title>
-		<rect height="16" rx="2" width="18" x="3" y="5" />
-		<path d="M16 3v4M8 3v4M3 10h18" />
-	</svg>
-);
-
-const IconTrendMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="14"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-		width="14"
-	>
-		<title>Projection</title>
-		<path d="M4 18h16M6 15l3-3 3 2 5-6" />
-	</svg>
-);
-
-const IconTagMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="14"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-		width="14"
-	>
-		<title>Tag</title>
-		<path d="M20 13l-7 7-9-9V4h7z" />
-		<circle cx="8.5" cy="8.5" r="1.2" />
-	</svg>
-);
-
-const IconEditMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="14"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-		width="14"
-	>
-		<title>Edit</title>
-		<path d="M4 20h4l10-10-4-4L4 16zM13 7l4 4" />
-	</svg>
-);
-
-const IconPauseMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="14"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-		width="14"
-	>
-		<title>Pause</title>
-		<path d="M9 6v12M15 6v12" />
-	</svg>
-);
-
-const IconPlayMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="14"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-		width="14"
-	>
-		<title>Resume</title>
-		<path d="M8 6l10 6-10 6z" />
-	</svg>
-);
-
-const IconTrashMini = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		height="14"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-		width="14"
-	>
-		<title>Delete</title>
-		<path d="M3 6h18M8 6V4h8v2M7 6l1 14h8l1-14M10 10v7M14 10v7" />
-	</svg>
-);
 
 type RecurringEditDraft = {
 	name: string;
@@ -1596,14 +1478,14 @@ export const RecurringSchedulesPage = () => {
 												<span className={metaPillClass}>{cadence}</span>
 												{tag ? (
 													<span className={metaPillClass}>
-														<IconTagMini />
+														<Tag aria-hidden className={miniIconClass} />
 														{tag}
 													</span>
 												) : null}
 											</div>
 											<div className="space-y-1.5 text-xs text-muted-foreground">
 												<div className="inline-flex items-center gap-1.5">
-													<IconCalendarMini />
+													<Calendar aria-hidden className={miniIconClass} />
 													{paused ? (
 														<span>
 															No runs while paused. Resume to continue creating
@@ -1618,7 +1500,7 @@ export const RecurringSchedulesPage = () => {
 													)}
 												</div>
 												<div className="inline-flex items-center gap-1.5">
-													<IconTrendMini />
+													<TrendingUp aria-hidden className={miniIconClass} />
 													Projected in selected period: {projectedInPeriod}
 												</div>
 											</div>
@@ -1631,7 +1513,7 @@ export const RecurringSchedulesPage = () => {
 												onClick={() => handleStartEdit(row)}
 												type="button"
 											>
-												<IconEditMini />
+												<Pencil aria-hidden className={miniIconClass} />
 												Edit
 											</button>
 											{paused ? (
@@ -1641,7 +1523,7 @@ export const RecurringSchedulesPage = () => {
 													onClick={() => void handleResume(row)}
 													type="button"
 												>
-													<IconPlayMini />
+													<Play aria-hidden className={miniIconClass} />
 													{isActing ? "..." : "Resume"}
 												</button>
 											) : (
@@ -1651,7 +1533,7 @@ export const RecurringSchedulesPage = () => {
 													onClick={() => void handlePause(row)}
 													type="button"
 												>
-													<IconPauseMini />
+													<Pause aria-hidden className={miniIconClass} />
 													{isActing ? "..." : "Pause"}
 												</button>
 											)}
@@ -1661,7 +1543,7 @@ export const RecurringSchedulesPage = () => {
 												onClick={() => void handleDelete(row)}
 												type="button"
 											>
-												<IconTrashMini />
+												<Trash2 aria-hidden className={miniIconClass} />
 												{isActing ? "..." : "Delete"}
 											</button>
 										</div>
