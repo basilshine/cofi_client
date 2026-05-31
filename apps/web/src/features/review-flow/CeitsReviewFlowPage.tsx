@@ -17,6 +17,10 @@ import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
+import {
+	buildCapturePacketSummaries,
+	capturePacketSummaryLine,
+} from "../../shared/lib/capturePacketSummary";
 import { CapturePacketReviewSection } from "./CapturePacketReviewSection";
 import type {
 	CandidateReviewItem,
@@ -515,120 +519,49 @@ const isThreadApproval = (
 	!Array.isArray(item) &&
 	(item as { kind?: string }).kind === "expense_thread_approval";
 
-const candidateGroup = (
-	candidate: CandidateReviewItem,
-): "expenses" | "benefits" | "people" | "splits" | "documents" | "future" => {
-	if (
-		candidate.candidateType === "promo_code_candidate" ||
-		candidate.candidateType === "loyalty_event_candidate"
-	) {
-		return "benefits";
-	}
-	if (candidate.candidateType === "participant_placeholder_candidate") {
-		return "people";
-	}
-	if (candidate.candidateType === "split_candidate") return "splits";
-	if (
-		candidate.candidateType === "recurring_candidate" ||
-		candidate.candidateType === "membership_candidate" ||
-		candidate.candidateType === "reminder_candidate"
-	) {
-		return "future";
-	}
-	if (
-		candidate.candidateType === "expense_candidate" ||
-		candidate.candidateType === "expense_item_candidate"
-	) {
-		return "expenses";
-	}
-	return "documents";
-};
-
-const countLabel = (
-	count: number,
-	singular: string,
-	plural = `${singular}s`,
-): string => `${count} ${count === 1 ? singular : plural}`;
-
 const buildCapturePackets = (
 	candidates: CandidateReviewItem[],
 ): CapturePacket[] => {
-	const bySource = new Map<number, CandidateReviewItem[]>();
-	for (const candidate of candidates) {
-		const existing = bySource.get(candidate.sourceDocumentId) ?? [];
-		existing.push(candidate);
-		bySource.set(candidate.sourceDocumentId, existing);
-	}
-
-	return Array.from(bySource.entries())
-		.map(([sourceDocumentId, packetCandidates]) => {
-			const sorted = [...packetCandidates].sort((a, b) => {
-				const left = Date.parse(a.createdAt);
-				const right = Date.parse(b.createdAt);
-				if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
-				if (!Number.isFinite(left)) return 1;
-				if (!Number.isFinite(right)) return -1;
-				return right - left;
-			});
-			const first = sorted[0];
-			const counts = {
-				expenses: 0,
-				benefits: 0,
-				people: 0,
-				splits: 0,
-				documents: 0,
-				future: 0,
-			};
-			for (const candidate of sorted) {
-				const group = candidateGroup(candidate);
-				counts[group] += 1;
-			}
-			const summaryParts = [
-				counts.expenses ? countLabel(counts.expenses, "expense") : null,
-				counts.benefits ? countLabel(counts.benefits, "benefit") : null,
-				counts.people ? countLabel(counts.people, "person", "people") : null,
-				counts.splits ? countLabel(counts.splits, "split") : null,
-				counts.future ? countLabel(counts.future, "future hint") : null,
-				counts.documents
-					? countLabel(counts.documents, "document signal")
-					: null,
-			].filter((part): part is string => Boolean(part));
-			const primaryActionLabel = counts.splits
-				? "Review packet"
-				: counts.benefits && !counts.expenses
-					? "Review benefits"
-					: counts.future && !counts.expenses
-						? "Review hints"
-						: "Review parsed result";
-			const sourceLabel = [first?.inputKind, first?.documentType]
+	return buildCapturePacketSummaries(candidates, {
+		getSourceDocumentId: (candidate) => candidate.sourceDocumentId,
+		getCandidateType: (candidate) => candidate.candidateType,
+		getCreatedAt: (candidate) => candidate.createdAt,
+		getTitle: (candidate, sourceDocumentId) =>
+			candidate.merchantText?.trim() ||
+			candidate.title ||
+			`Capture ${sourceDocumentId}`,
+		getMeta: (candidate) =>
+			[
+				[candidate.inputKind, candidate.documentType]
+					.map((value) => value?.trim())
+					.filter(Boolean)
+					.join(" • "),
+				candidate.sourceType,
+			]
 				.map((value) => value?.trim())
 				.filter(Boolean)
-				.join(" • ");
-			const merchant = first?.merchantText?.trim();
+				.join(" • ") || "Capture packet",
+	}).map((packet) => {
+		const { counts } = packet;
+		const primaryActionLabel = counts.splits
+			? "Review packet"
+			: counts.benefits && !counts.expenses
+				? "Review benefits"
+				: counts.future && !counts.expenses
+					? "Review hints"
+					: "Review parsed result";
 
-			return {
-				sourceDocumentId,
-				title: merchant || first?.title || `Capture ${sourceDocumentId}`,
-				meta:
-					[sourceLabel, first?.sourceType]
-						.map((value) => value?.trim())
-						.filter(Boolean)
-						.join(" • ") || "Capture packet",
-				createdAt: first?.createdAt ?? "",
-				candidates: sorted,
-				primaryActionLabel,
-				summary: summaryParts.join(", ") || "Review parsed result",
-				counts,
-			};
-		})
-		.sort((a, b) => {
-			const left = Date.parse(a.createdAt);
-			const right = Date.parse(b.createdAt);
-			if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
-			if (!Number.isFinite(left)) return 1;
-			if (!Number.isFinite(right)) return -1;
-			return right - left;
-		});
+		return {
+			sourceDocumentId: packet.sourceDocumentId,
+			title: packet.title,
+			meta: packet.meta,
+			createdAt: packet.createdAt,
+			candidates: packet.candidates,
+			primaryActionLabel,
+			summary: capturePacketSummaryLine(counts),
+			counts,
+		};
+	});
 };
 
 const sourceFromExpense = (

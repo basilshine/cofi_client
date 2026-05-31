@@ -10,6 +10,11 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
+import {
+	type CapturePacketCounts,
+	buildCapturePacketSummaries,
+	capturePacketSummaryLine,
+} from "../../../shared/lib/capturePacketSummary";
 
 type ChatCaptureReviewEventsProps = {
 	spaceId: string | number;
@@ -18,21 +23,6 @@ type ChatCaptureReviewEventsProps = {
 };
 
 type ReviewCandidate = BenefitCandidate | DocumentCandidate;
-
-type PacketSummary = {
-	sourceDocumentId: number;
-	title: string;
-	meta: string;
-	createdAt: string;
-	counts: {
-		expenses: number;
-		benefits: number;
-		people: number;
-		splits: number;
-		future: number;
-		documents: number;
-	};
-};
 
 const activeCandidateStatuses = new Set(["", "draft", "pending", "review"]);
 
@@ -46,54 +36,6 @@ const isActiveCandidate = (candidate: ReviewCandidate): boolean => {
 	return activeCandidateStatuses.has(status);
 };
 
-const candidateGroup = (
-	candidateType: string,
-): keyof PacketSummary["counts"] => {
-	if (
-		candidateType === "expense_candidate" ||
-		candidateType === "expense_item_candidate"
-	) {
-		return "expenses";
-	}
-	if (
-		candidateType === "promo_code_candidate" ||
-		candidateType === "loyalty_event_candidate"
-	) {
-		return "benefits";
-	}
-	if (candidateType === "participant_placeholder_candidate") return "people";
-	if (candidateType === "split_candidate") return "splits";
-	if (
-		candidateType === "recurring_candidate" ||
-		candidateType === "membership_candidate" ||
-		candidateType === "reminder_candidate"
-	) {
-		return "future";
-	}
-	return "documents";
-};
-
-const countLabel = (
-	count: number,
-	singular: string,
-	plural = `${singular}s`,
-): string | null => {
-	if (count <= 0) return null;
-	return `${count} ${count === 1 ? singular : plural}`;
-};
-
-const packetLine = (counts: PacketSummary["counts"]): string =>
-	[
-		countLabel(counts.expenses, "expense"),
-		countLabel(counts.benefits, "benefit"),
-		countLabel(counts.people, "person", "people"),
-		countLabel(counts.splits, "split"),
-		countLabel(counts.future, "future hint"),
-		countLabel(counts.documents, "document signal"),
-	]
-		.filter((value): value is string => Boolean(value))
-		.join(", ") || "Capture packet";
-
 const packetTitle = (candidate: ReviewCandidate, sourceDocumentId: number) =>
 	candidate.merchant_text?.trim() ||
 	candidate.title?.trim() ||
@@ -105,58 +47,8 @@ const packetMeta = (candidate: ReviewCandidate): string =>
 		.filter(Boolean)
 		.join(" • ") || "Parsed capture";
 
-const buildPackets = (candidates: ReviewCandidate[]): PacketSummary[] => {
-	const bySource = new Map<number, ReviewCandidate[]>();
-	for (const candidate of candidates) {
-		const sourceDocumentId = Number(candidate.source_document_id);
-		if (!Number.isFinite(sourceDocumentId) || sourceDocumentId <= 0) continue;
-		const list = bySource.get(sourceDocumentId) ?? [];
-		list.push(candidate);
-		bySource.set(sourceDocumentId, list);
-	}
-
-	return Array.from(bySource.entries())
-		.map(([sourceDocumentId, packetCandidates]) => {
-			const sorted = [...packetCandidates].sort((a, b) => {
-				const left = Date.parse(a.created_at ?? "");
-				const right = Date.parse(b.created_at ?? "");
-				if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
-				if (!Number.isFinite(left)) return 1;
-				if (!Number.isFinite(right)) return -1;
-				return right - left;
-			});
-			const first = sorted[0];
-			const counts: PacketSummary["counts"] = {
-				expenses: 0,
-				benefits: 0,
-				people: 0,
-				splits: 0,
-				future: 0,
-				documents: 0,
-			};
-			for (const candidate of sorted) {
-				counts[candidateGroup(candidate.candidate_type)] += 1;
-			}
-			return {
-				sourceDocumentId,
-				title: first ? packetTitle(first, sourceDocumentId) : "Capture packet",
-				meta: first ? packetMeta(first) : "Parsed capture",
-				createdAt: first?.created_at ?? "",
-				counts,
-			};
-		})
-		.sort((a, b) => {
-			const left = Date.parse(a.createdAt);
-			const right = Date.parse(b.createdAt);
-			if (!Number.isFinite(left) && !Number.isFinite(right)) return 0;
-			if (!Number.isFinite(left)) return 1;
-			if (!Number.isFinite(right)) return -1;
-			return right - left;
-		});
-};
-
 const packetIcons: Array<{
-	key: keyof PacketSummary["counts"];
+	key: keyof CapturePacketCounts;
 	label: string;
 	icon: typeof ReceiptText;
 	className: string;
@@ -249,7 +141,14 @@ export const ChatCaptureReviewEvents = ({
 	}, [spaceId, refreshKey]);
 
 	const packets = useMemo(
-		() => buildPackets(candidates).slice(0, 3),
+		() =>
+			buildCapturePacketSummaries(candidates, {
+				getSourceDocumentId: (candidate) => candidate.source_document_id,
+				getCandidateType: (candidate) => candidate.candidate_type,
+				getCreatedAt: (candidate) => candidate.created_at,
+				getTitle: packetTitle,
+				getMeta: packetMeta,
+			}).slice(0, 3),
 		[candidates],
 	);
 
@@ -304,7 +203,7 @@ export const ChatCaptureReviewEvents = ({
 										{packet.title}
 									</p>
 									<p className="mt-0.5 text-xs text-muted-foreground">
-										{packetLine(packet.counts)}
+										{capturePacketSummaryLine(packet.counts)}
 									</p>
 									<p className="mt-0.5 text-[11px] text-muted-foreground">
 										{packet.meta}
