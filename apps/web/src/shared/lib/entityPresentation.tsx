@@ -13,6 +13,7 @@ export type EntityViewModel = {
 	href?: string;
 	meta?: ReactNode[];
 	status?: ReactNode;
+	statusClassName?: string;
 	selected?: boolean;
 };
 
@@ -128,7 +129,13 @@ export const EntityMini = ({ entity }: { entity: EntityViewModel }) => {
 	return body;
 };
 
-export const EntityListItem = ({ entity }: { entity: EntityViewModel }) => {
+export const EntityListItem = ({
+	entity,
+	trailing,
+}: {
+	entity: EntityViewModel;
+	trailing?: ReactNode;
+}) => {
 	const visual = entityVisuals[entity.visualKey] ?? entityVisuals.unknown;
 	const meta = asRenderableMeta(entity.meta);
 	const body = (
@@ -151,7 +158,7 @@ export const EntityListItem = ({ entity }: { entity: EntityViewModel }) => {
 						<span
 							className={[
 								"rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-								visual.chipClass,
+								entity.statusClassName ?? visual.chipClass,
 							].join(" ")}
 						>
 							{entity.status}
@@ -184,6 +191,7 @@ export const EntityListItem = ({ entity }: { entity: EntityViewModel }) => {
 					</span>
 				) : null}
 			</span>
+			{trailing ? <span className="shrink-0">{trailing}</span> : null}
 			{entity.href ? (
 				<ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
 			) : null}
@@ -199,7 +207,15 @@ export const EntityListItem = ({ entity }: { entity: EntityViewModel }) => {
 	return body;
 };
 
-export const EntityCard = ({ entity }: { entity: EntityViewModel }) => {
+export const EntityCard = ({
+	actions,
+	children,
+	entity,
+}: {
+	actions?: ReactNode;
+	children?: ReactNode;
+	entity: EntityViewModel;
+}) => {
 	const visual = entityVisuals[entity.visualKey] ?? entityVisuals.unknown;
 	const meta = asRenderableMeta(entity.meta);
 	return (
@@ -224,6 +240,16 @@ export const EntityCard = ({ entity }: { entity: EntityViewModel }) => {
 						</p>
 					) : null}
 				</div>
+				{entity.status ? (
+					<span
+						className={[
+							"shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold",
+							entity.statusClassName ?? visual.chipClass,
+						].join(" ")}
+					>
+						{entity.status}
+					</span>
+				) : null}
 			</div>
 			{entity.detail ? (
 				<p className="mt-3 line-clamp-3 text-sm text-foreground/76">
@@ -245,17 +271,43 @@ export const EntityCard = ({ entity }: { entity: EntityViewModel }) => {
 					))}
 				</div>
 			) : null}
+			{children ? <div className="mt-4">{children}</div> : null}
+			{actions ? (
+				<div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+					{actions}
+				</div>
+			) : null}
 		</div>
 	);
 };
 
-export const EntityDetailHeader = ({ entity }: { entity: EntityViewModel }) => (
+export const EntityDetailHeader = ({
+	entity,
+	trailing,
+}: {
+	entity: EntityViewModel;
+	trailing?: ReactNode;
+}) => (
 	<header className="flex min-w-0 items-start gap-3">
 		<EntityIcon size="lg" visualKey={entity.visualKey} />
 		<div className="min-w-0 flex-1">
-			<EntityMicro
-				entity={{ label: entity.label, visualKey: entity.visualKey }}
-			/>
+			<div className="flex flex-wrap items-center gap-2">
+				<EntityMicro
+					entity={{ label: entity.label, visualKey: entity.visualKey }}
+				/>
+				{entity.status ? (
+					<span
+						className={[
+							"rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+							entity.statusClassName ??
+								(entityVisuals[entity.visualKey] ?? entityVisuals.unknown)
+									.chipClass,
+						].join(" ")}
+					>
+						{entity.status}
+					</span>
+				) : null}
+			</div>
 			<h1 className="mt-2 truncate font-display text-2xl font-bold tracking-tight text-foreground">
 				{entity.title}
 			</h1>
@@ -263,5 +315,6 @@ export const EntityDetailHeader = ({ entity }: { entity: EntityViewModel }) => (
 				<p className="mt-1 text-sm text-muted-foreground">{entity.subtitle}</p>
 			) : null}
 		</div>
+		{trailing ? <div className="shrink-0">{trailing}</div> : null}
 	</header>
 );

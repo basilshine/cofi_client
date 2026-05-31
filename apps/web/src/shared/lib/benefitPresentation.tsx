@@ -1,7 +1,11 @@
 import type { PromoCode } from "@cofi/api";
-import { Gift, Tag } from "lucide-react";
 import type { ReactNode } from "react";
-import type { EntityViewModel } from "./entityPresentation";
+import {
+	EntityCard,
+	EntityDetailHeader,
+	EntityListItem,
+	type EntityViewModel,
+} from "./entityPresentation";
 
 export type BenefitStatus =
 	| "active"
@@ -182,9 +186,26 @@ export const toPromoBenefitEntity = (
 		href: options.href,
 		meta: [promo.discountLabel, promo.source],
 		status: benefitStatusLabel(promo.status),
+		statusClassName: statusClass(promo.status),
 		selected: options.selected,
 	};
 };
+
+export const toLoyaltyBenefitEntity = (
+	loyalty: LoyaltyBenefit,
+	options: { selected?: boolean } = {},
+): EntityViewModel => ({
+	id: loyalty.id,
+	visualKey: "loyalty",
+	label: "Loyalty",
+	title: loyalty.program,
+	subtitle: `Card ${loyalty.cardMask}`,
+	detail: loyalty.lastEvent,
+	meta: [loyalty.balanceLabel, loyalty.pendingLabel],
+	status: benefitStatusLabel(loyalty.status),
+	statusClassName: statusClass(loyalty.status),
+	selected: options.selected,
+});
 
 export const PromoBenefitListItem = ({
 	promo,
@@ -193,29 +214,8 @@ export const PromoBenefitListItem = ({
 	promo: PromoBenefit;
 	trailing?: ReactNode;
 }) => (
-	<li className="flex min-w-0 items-center gap-3 rounded-xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.74)] px-3 py-3 shadow-sm transition hover:border-[rgba(140,115,85,0.28)] hover:bg-[rgba(255,252,246,0.94)]">
-		<span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(237,247,239,0.9)] text-[#405f44] shadow-[inset_0_0_0_1px_rgba(91,116,87,0.12)]">
-			<Tag className="h-5 w-5" size={20} />
-		</span>
-		<div className="min-w-0 flex-1">
-			<div className="flex min-w-0 flex-wrap items-center gap-2">
-				<h3 className="truncate text-sm font-semibold text-foreground">
-					{promo.title}
-				</h3>
-				<span
-					className={[
-						"shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-						statusClass(promo.status),
-					].join(" ")}
-				>
-					{benefitStatusLabel(promo.status)}
-				</span>
-			</div>
-			<p className="mt-1 truncate text-xs text-muted-foreground">
-				{promo.code} · {promo.discountLabel} · {promo.validUntil}
-			</p>
-		</div>
-		{trailing ? <div className="shrink-0">{trailing}</div> : null}
+	<li>
+		<EntityListItem entity={toPromoBenefitEntity(promo)} trailing={trailing} />
 	</li>
 );
 
@@ -225,38 +225,19 @@ export const PromoBenefitDetailHeader = ({
 	promo: PromoBenefit;
 }) => (
 	<div className="flex flex-wrap items-start gap-4 rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.8)] p-4 shadow-sm">
-		<span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[rgba(237,247,239,0.94)] text-[#405f44] shadow-[inset_0_0_0_1px_rgba(91,116,87,0.14)]">
-			<Gift className="h-6 w-6" size={24} />
-		</span>
-		<div className="min-w-0 flex-1">
-			<div className="flex flex-wrap items-center gap-2">
-				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-					Promo
-				</p>
-				<span
-					className={[
-						"rounded-full border px-2 py-0.5 text-[11px] font-semibold",
-						statusClass(promo.status),
-					].join(" ")}
-				>
-					{benefitStatusLabel(promo.status)}
-				</span>
-			</div>
-			<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
-				{promo.title}
-			</h2>
-			<p className="mt-1 text-sm text-muted-foreground">
-				{promo.merchant} · redeem at {promo.redeemAt}
-			</p>
-		</div>
-		<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/72 px-3 py-2 text-right">
-			<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-				Code
-			</p>
-			<p className="mt-1 font-mono text-lg font-bold tracking-[0.08em] text-foreground">
-				{promo.code}
-			</p>
-		</div>
+		<EntityDetailHeader
+			entity={toPromoBenefitEntity(promo)}
+			trailing={
+				<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/72 px-3 py-2 text-right">
+					<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Code
+					</p>
+					<p className="mt-1 font-mono text-lg font-bold tracking-[0.08em] text-foreground">
+						{promo.code}
+					</p>
+				</div>
+			}
+		/>
 	</div>
 );
 
@@ -275,80 +256,58 @@ export const PromoBenefitCard = ({
 	onMarkUsed: (promo: PromoBenefit) => void;
 	onOpen?: (promo: PromoBenefit) => void;
 }) => (
-	<li
-		className={[
-			"rounded-2xl border bg-[rgba(255,252,246,0.78)] p-4 shadow-sm transition hover:border-[rgba(140,115,85,0.28)] hover:bg-[rgba(255,252,246,0.94)]",
-			isSelected
-				? "border-[rgba(76,105,78,0.42)] ring-2 ring-[rgba(124,152,124,0.18)]"
-				: "border-[rgba(120,100,80,0.14)]",
-		].join(" ")}
-	>
-		<div className="flex flex-wrap items-start justify-between gap-3">
-			<div className="min-w-0">
-				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-					{promo.merchant}
-				</p>
-				<h3 className="mt-1 font-display text-lg font-bold tracking-tight text-foreground">
-					{promo.title}
-				</h3>
-				<p className="mt-1 text-sm text-muted-foreground">
-					Redeem at {promo.redeemAt}
-				</p>
-			</div>
-			<span
-				className={[
-					"inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold",
-					statusClass(promo.status),
-				].join(" ")}
-			>
-				{benefitStatusLabel(promo.status)}
-			</span>
-		</div>
-		<div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-			<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/70 px-3 py-2.5">
-				<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-					Code
-				</p>
-				<p className="mt-1 font-mono text-lg font-bold tracking-[0.08em] text-foreground">
-					{promo.code}
-				</p>
-			</div>
-			<div className="text-sm sm:text-right">
-				<p className="font-semibold text-foreground">{promo.discountLabel}</p>
-				<p className="mt-1 text-muted-foreground">Until {promo.validUntil}</p>
-			</div>
-		</div>
-		<div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-			<p className="text-xs text-muted-foreground">Source: {promo.source}</p>
-			<div className="flex flex-wrap gap-2">
-				{onOpen ? (
+	<li>
+		<EntityCard
+			actions={
+				<>
+					{onOpen ? (
+						<button
+							className="inline-flex h-8 items-center rounded-lg border border-[rgba(95,125,102,0.22)] bg-[rgba(237,247,239,0.78)] px-3 text-xs font-semibold text-[#37543b] transition hover:bg-[rgba(237,247,239,0.94)] disabled:opacity-50"
+							disabled={busy}
+							onClick={() => onOpen(promo)}
+							type="button"
+						>
+							Details
+						</button>
+					) : null}
 					<button
-						className="inline-flex h-8 items-center rounded-lg border border-[rgba(95,125,102,0.22)] bg-[rgba(237,247,239,0.78)] px-3 text-xs font-semibold text-[#37543b] transition hover:bg-[rgba(237,247,239,0.94)] disabled:opacity-50"
-						disabled={busy}
-						onClick={() => onOpen(promo)}
+						className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-foreground/82 transition hover:bg-white disabled:opacity-50"
+						disabled={busy || promo.raw.status === "used"}
+						onClick={() => onMarkUsed(promo)}
 						type="button"
 					>
-						Details
+						Mark used
 					</button>
-				) : null}
-				<button
-					className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-foreground/82 transition hover:bg-white disabled:opacity-50"
-					disabled={busy || promo.raw.status === "used"}
-					onClick={() => onMarkUsed(promo)}
-					type="button"
-				>
-					Mark used
-				</button>
-				<button
-					className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
-					disabled={busy || promo.raw.status === "archived"}
-					onClick={() => onArchive(promo)}
-					type="button"
-				>
-					Archive
-				</button>
+					<button
+						className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
+						disabled={busy || promo.raw.status === "archived"}
+						onClick={() => onArchive(promo)}
+						type="button"
+					>
+						Archive
+					</button>
+				</>
+			}
+			entity={toPromoBenefitEntity(promo, { selected: isSelected })}
+		>
+			<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+				<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/70 px-3 py-2.5">
+					<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Code
+					</p>
+					<p className="mt-1 font-mono text-lg font-bold tracking-[0.08em] text-foreground">
+						{promo.code}
+					</p>
+				</div>
+				<div className="text-sm sm:text-right">
+					<p className="font-semibold text-foreground">{promo.discountLabel}</p>
+					<p className="mt-1 text-muted-foreground">Until {promo.validUntil}</p>
+				</div>
 			</div>
-		</div>
+			<p className="mt-3 text-xs text-muted-foreground">
+				Source: {promo.source}
+			</p>
+		</EntityCard>
 	</li>
 );
 
@@ -357,46 +316,26 @@ export const LoyaltyBenefitCard = ({
 }: {
 	loyalty: LoyaltyBenefit;
 }) => (
-	<li className="rounded-2xl border border-[rgba(95,125,102,0.2)] bg-gradient-to-br from-[#f0f8f2] via-[#fefdfb] to-[#eef4ed] p-4 shadow-sm">
-		<div className="flex flex-wrap items-start justify-between gap-3">
-			<div className="min-w-0">
-				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d6651]">
-					Loyalty
-				</p>
-				<h3 className="mt-1 font-display text-lg font-bold tracking-tight text-foreground">
-					{loyalty.program}
-				</h3>
-				<p className="mt-1 text-sm text-muted-foreground">
-					Card {loyalty.cardMask}
-				</p>
+	<li>
+		<EntityCard entity={toLoyaltyBenefitEntity(loyalty)}>
+			<div className="grid gap-3 sm:grid-cols-2">
+				<div className="rounded-xl border border-[rgba(95,125,102,0.16)] bg-white/62 px-3 py-2.5">
+					<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Available
+					</p>
+					<p className="mt-1 text-xl font-bold tabular-nums text-[#355a3c]">
+						{loyalty.balanceLabel}
+					</p>
+				</div>
+				<div className="rounded-xl border border-[rgba(95,125,102,0.16)] bg-white/62 px-3 py-2.5">
+					<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Pending
+					</p>
+					<p className="mt-1 text-xl font-bold tabular-nums text-foreground">
+						{loyalty.pendingLabel}
+					</p>
+				</div>
 			</div>
-			<span
-				className={[
-					"inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold",
-					statusClass(loyalty.status),
-				].join(" ")}
-			>
-				{benefitStatusLabel(loyalty.status)}
-			</span>
-		</div>
-		<div className="mt-4 grid gap-3 sm:grid-cols-2">
-			<div className="rounded-xl border border-[rgba(95,125,102,0.16)] bg-white/62 px-3 py-2.5">
-				<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-					Available
-				</p>
-				<p className="mt-1 text-xl font-bold tabular-nums text-[#355a3c]">
-					{loyalty.balanceLabel}
-				</p>
-			</div>
-			<div className="rounded-xl border border-[rgba(95,125,102,0.16)] bg-white/62 px-3 py-2.5">
-				<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-					Pending
-				</p>
-				<p className="mt-1 text-xl font-bold tabular-nums text-foreground">
-					{loyalty.pendingLabel}
-				</p>
-			</div>
-		</div>
-		<p className="mt-3 text-xs text-muted-foreground">{loyalty.lastEvent}</p>
+		</EntityCard>
 	</li>
 );
