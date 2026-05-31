@@ -1,5 +1,9 @@
 import { Fragment, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+	EntityMicro,
+	type EntityViewModel,
+} from "../../../shared/lib/entityPresentation";
 
 const sectionCard =
 	"rounded-2xl border border-border/70 bg-card text-card-foreground soft-shadow inner-glow";
@@ -62,6 +66,27 @@ type ActivityListCardProps = {
 };
 
 type TimeGroupKey = "today" | "yesterday" | "earlier";
+
+const activityEntityFor = (
+	item: ActivityItem,
+): Pick<EntityViewModel, "label" | "visualKey"> => {
+	if (item.eventType === "split-assigned") {
+		return { label: "Split", visualKey: "split" };
+	}
+	if (
+		item.eventType === "recurring" ||
+		item.eventType === "recurring-created"
+	) {
+		return { label: "Future", visualKey: "future" };
+	}
+	if (item.eventType === "receipt") {
+		return { label: "Document", visualKey: "document" };
+	}
+	if (item.eventType === "question") {
+		return { label: "Signal", visualKey: "unknown" };
+	}
+	return { label: "Expense", visualKey: "expense" };
+};
 
 const toTimeGroup = (occurredAt?: string | null): TimeGroupKey => {
 	if (!occurredAt) return "earlier";
@@ -310,160 +335,6 @@ export const ActivityListCard = ({
 		? "rounded-2xl border border-[rgba(95,105,125,0.18)] bg-gradient-to-b from-[#fdfcfa] to-[#f7f5f2] text-card-foreground shadow-[0_10px_32px_-24px_rgba(45,42,38,0.2)] transition-shadow duration-150 hover:shadow-[0_14px_36px_-22px_rgba(45,42,38,0.22)]"
 		: `${sectionCard} transition-shadow duration-150 hover:shadow-[0_12px_28px_-20px_rgba(31,37,35,0.12)]`;
 	const [expandedId, setExpandedId] = useState<string | number | null>(null);
-
-	const renderEventIcon = (type: ActivityItem["eventType"]) => {
-		switch (type) {
-			case "draft":
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Draft</title>
-						<path d="M4 4h11l5 5v11H4z" />
-						<path d="M9 13h6M9 17h5M15 4v5h5" />
-					</svg>
-				);
-			case "question":
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Question</title>
-						<path d="M9.1 9a3 3 0 015.8 1c0 2-3 2.2-3 4" />
-						<path d="M12 17h.01" />
-					</svg>
-				);
-			case "recurring":
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Recurring</title>
-						<path d="M21 12a9 9 0 01-15 6.7L3 16" />
-						<path d="M3 12a9 9 0 0115-6.7L21 8" />
-					</svg>
-				);
-			case "receipt":
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Receipt</title>
-						<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
-					</svg>
-				);
-			case "voice":
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Voice</title>
-						<path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3z" />
-						<path d="M5 11a7 7 0 0014 0" />
-					</svg>
-				);
-			case "edited":
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Edited</title>
-						<path d="M4 20l4.5-1L19 8.5 15.5 5 5 15.5 4 20z" />
-					</svg>
-				);
-			case "split-assigned":
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Split assigned</title>
-						<path d="M4 7h16M8 7l4 5 4-5M8 17h8" />
-					</svg>
-				);
-			case "recurring-created":
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Recurring created</title>
-						<path d="M12 3v4M12 17v4M4.9 6.9l2.8 2.8M16.3 14.3l2.8 2.8M3 12h4M17 12h4" />
-						<circle cx="12" cy="12" r="3.2" />
-					</svg>
-				);
-			default:
-				return (
-					<svg
-						aria-hidden
-						className="h-3.5 w-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						strokeWidth="1.6"
-						viewBox="0 0 24 24"
-					>
-						<title>Expense</title>
-						<path d="M20 7l-8 10-5-5" />
-					</svg>
-				);
-		}
-	};
 
 	const renderExpandedContent = (item: ActivityItem) => {
 		const isQuestion = item.eventType === "question";
@@ -872,25 +743,6 @@ export const ActivityListCard = ({
 										const displayStatus = isReceiptParsed
 											? item.statusLabel || "Needs review"
 											: item.statusLabel;
-										const statusToneClass = isNeedsReviewStatus(displayStatus)
-											? "border-[rgba(189,143,64,0.42)] bg-[rgba(189,143,64,0.2)] text-[rgba(120,82,27,0.95)]"
-											: isDraftStatus(displayStatus)
-												? "border-[rgba(122,126,138,0.35)] bg-[rgba(122,126,138,0.14)] text-[#5B6070]"
-												: isConfirmedStatus(displayStatus)
-													? "border-[rgba(120,154,124,0.28)] bg-[rgba(120,154,124,0.12)] text-[#55715A]"
-													: "border-border/55 bg-muted/45 text-muted-foreground";
-										const iconToneClass =
-											item.eventType === "question"
-												? isSpaceWarm
-													? "border-[rgba(95,105,125,0.35)] bg-[rgba(95,105,125,0.08)] text-[#4a5260]"
-													: "border-border/60 bg-transparent text-muted-foreground"
-												: item.eventType === "recurring"
-													? isSpaceWarm
-														? "border-[rgba(100,130,108,0.45)] bg-[rgba(120,154,124,0.16)] text-[#3d5242]"
-														: "border-[rgba(142,159,136,0.35)] bg-[rgba(142,159,136,0.12)] text-[#5D685F]"
-													: isSpaceWarm
-														? `${statusToneClass} shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]`
-														: statusToneClass;
 										const recentHighlightClass = isVeryRecent(item.occurredAt)
 											? "bg-[rgba(142,159,136,0.08)]"
 											: "bg-transparent";
@@ -923,6 +775,7 @@ export const ActivityListCard = ({
 												? "border-l border-[rgba(142,159,136,0.28)] bg-[rgba(236,243,235,0.62)]"
 												: "border-l border-[rgba(189,143,64,0.28)] bg-[rgba(255,248,236,0.76)] shadow-[0_10px_24px_-22px_rgba(143,104,43,0.55)]";
 										const expandedLayoutClass = "ml-[1.4rem] mr-10";
+										const entity = activityEntityFor(item);
 										const timelineDotClass = isNeedsReviewStatus(displayStatus)
 											? "border-[rgba(189,143,64,0.55)] bg-[rgba(189,143,64,0.88)] text-[rgba(255,248,237,0.98)]"
 											: isConfirmedStatus(displayStatus)
@@ -1029,13 +882,9 @@ export const ActivityListCard = ({
 																	</p>
 																) : null}
 																<p
-																	className={`flex min-w-0 items-center gap-1.5 truncate text-[14px] font-medium text-foreground/78 ${item.meaningLine ? "mt-1.5" : "mt-0.5"}`}
+																	className={`flex min-w-0 flex-wrap items-center gap-1.5 text-[14px] font-medium text-foreground/78 ${item.meaningLine ? "mt-1.5" : "mt-0.5"}`}
 																>
-																	<span
-																		className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${iconToneClass}`}
-																	>
-																		{renderEventIcon(item.eventType)}
-																	</span>
+																	<EntityMicro entity={entity} />
 																	<span className="truncate">
 																		{lineTwoText}
 																	</span>
