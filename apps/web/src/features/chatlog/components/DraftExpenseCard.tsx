@@ -7,7 +7,14 @@ import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
 import { isNotFoundHttpError } from "../../../shared/lib/apiErrors";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
-import { EntityMicro } from "../../../shared/lib/entityPresentation";
+import {
+	EntityMicro,
+	EntityMini,
+} from "../../../shared/lib/entityPresentation";
+import {
+	expenseItemTitle,
+	toExpenseItemEntity,
+} from "../../../shared/lib/expenseItemPresentation";
 import {
 	expenseStatusLabel,
 	expenseStatusPillClass,
@@ -498,7 +505,7 @@ export const DraftExpenseCard = ({
 										key={it.id}
 									>
 										<span className="line-clamp-1 min-w-0 flex-1">
-											{it.name}
+											{expenseItemTitle(it)}
 										</span>
 										<span className="shrink-0 tabular-nums text-muted-foreground">
 											{formatMoney(it.amount)}
@@ -818,55 +825,47 @@ export const DraftExpenseCard = ({
 			{items.length ? (
 				<ul className="mt-3 space-y-2">
 					{(isDraft && spaceId != null ? items : items.slice(0, 8)).map(
-						(it) => (
-							<li
-								className="rounded-md border border-border bg-background px-3 py-2"
-								key={it.id}
-							>
-								<div className="flex items-center justify-between gap-3">
-									<div className="min-w-0 truncate text-sm font-medium">
-										{it.name}
-									</div>
-									<div className="shrink-0 text-sm font-semibold">
-										{formatMoney(it.amount)}
-									</div>
-								</div>
-								<div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-									{it.emotion ? <span>emotion: {it.emotion}</span> : null}
-									{it.tags?.length ? (
-										<span className="truncate">
-											tags: {it.tags.map((t) => t.name).join(", ")}
-										</span>
-									) : null}
-								</div>
-								{isDraft && spaceId != null ? (
-									<ExpenseItemRecurringControls
-										disabled={isActing}
-										enabled={itemRecurring[it.id]?.enabled ?? false}
-										idPrefix={`draft-${String(expenseId)}-item-${String(it.id)}`}
-										interval={itemRecurring[it.id]?.interval ?? "monthly"}
-										onEnabledChange={(v) =>
-											setItemRecurring((prev) => ({
-												...prev,
-												[it.id]: {
-													enabled: v,
-													interval: prev[it.id]?.interval ?? "monthly",
-												},
-											}))
-										}
-										onIntervalChange={(iv) =>
-											setItemRecurring((prev) => ({
-												...prev,
-												[it.id]: {
-													enabled: prev[it.id]?.enabled ?? false,
-													interval: iv,
-												},
-											}))
+						(it, idx) => {
+							const itemEntity = toExpenseItemEntity(it, { index: idx });
+							return (
+								<li key={it.id}>
+									<EntityMini
+										entity={itemEntity}
+										trailing={
+											<span className="text-sm font-semibold tabular-nums text-foreground">
+												{formatMoney(it.amount)}
+											</span>
 										}
 									/>
-								) : null}
-							</li>
-						),
+									{isDraft && spaceId != null ? (
+										<ExpenseItemRecurringControls
+											disabled={isActing}
+											enabled={itemRecurring[it.id]?.enabled ?? false}
+											idPrefix={`draft-${String(expenseId)}-item-${String(it.id)}`}
+											interval={itemRecurring[it.id]?.interval ?? "monthly"}
+											onEnabledChange={(v) =>
+												setItemRecurring((prev) => ({
+													...prev,
+													[it.id]: {
+														enabled: v,
+														interval: prev[it.id]?.interval ?? "monthly",
+													},
+												}))
+											}
+											onIntervalChange={(iv) =>
+												setItemRecurring((prev) => ({
+													...prev,
+													[it.id]: {
+														enabled: prev[it.id]?.enabled ?? false,
+														interval: iv,
+													},
+												}))
+											}
+										/>
+									) : null}
+								</li>
+							);
+						},
 					)}
 					{!(isDraft && spaceId != null) && items.length > 8 ? (
 						<li className="text-xs text-muted-foreground">
