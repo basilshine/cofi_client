@@ -1,4 +1,3 @@
-import { Plus } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -19,28 +18,40 @@ import type {
 
 type CapturePacketReviewSectionProps = {
 	packets: CapturePacket[];
-	decisionCount: number;
+	candidateCount: number;
 	spaceId: number;
+	memberLabels: Map<number, string>;
 	focusedSourceDocumentId?: number | null;
-	focusedSectionKey?: PacketSectionFilterKey | null;
 	documentCandidateError: string | null;
 	benefitCandidateActingId: number | null;
 	documentCandidateActingId: number | null;
+	deletingSourceDocumentId: number | null;
 	splitTargetOptions: SplitTargetOption[];
 	splitTargetExpenseIdFor: (candidate: CandidateReviewItem) => number | null;
 	pendingParticipantCountForSplitCandidate: (
 		candidate: CandidateReviewItem,
 	) => number;
 	onSplitTargetChange: (candidateId: number, expenseId: number) => void;
-	onSavePromoCandidate: (candidate: CandidateReviewItem) => void;
-	onConfirmDocumentCandidate: (candidate: CandidateReviewItem) => void;
-	onCreateParticipantCandidate: (candidate: CandidateReviewItem) => void;
-	onCreateRecurringCandidate: (candidate: CandidateReviewItem) => void;
+	onSavePromoCandidate: (
+		candidate: CandidateReviewItem,
+	) => Promise<void> | void;
+	onConfirmDocumentCandidate: (
+		candidate: CandidateReviewItem,
+	) => Promise<void> | void;
+	onCreateParticipantCandidate: (
+		candidate: CandidateReviewItem,
+	) => Promise<void> | void;
+	onCreateRecurringCandidate: (
+		candidate: CandidateReviewItem,
+	) => Promise<void> | void;
 	onApplySplitCandidate: (
 		candidate: CandidateReviewItem,
 		targetExpenseId: number | null,
-	) => void;
+	) => Promise<void> | void;
+	onDeleteCapture: (sourceDocumentId: number) => void;
+	onFinishReview: (packet: CapturePacket) => Promise<void> | void;
 	onIgnoreCandidate: (candidate: CandidateReviewItem) => void;
+	finishingSourceDocumentId: number | null;
 };
 
 type PacketSectionKey =
@@ -50,49 +61,69 @@ type PacketSectionKey =
 	| "splits"
 	| "future"
 	| "documents";
-type PacketSectionFilterKey = PacketSectionKey | "all";
 
-const packetSectionDefinitions: Array<{
+type PacketSectionDefinition = {
 	key: PacketSectionKey;
 	title: string;
 	description: string;
 	shortTitle: string;
-	addLabel: string;
-}> = [
+	recordSingular: string;
+	recordLabel: string;
+	signalSingular: string;
+	signalLabel: string;
+};
+
+const packetSectionDefinitions: PacketSectionDefinition[] = [
 	{
 		key: "expenses",
-		title: "Expense draft",
-		shortTitle: "Expenses",
-		description: "Amounts, items, merchant, category, and draft expense data.",
-		addLabel: "Add expense",
+		title: "Items",
+		shortTitle: "Items",
+		description:
+			"Products, services, quantities, and amounts found in the capture.",
+		recordSingular: "item",
+		recordLabel: "items",
+		signalSingular: "item signal",
+		signalLabel: "item signals",
 	},
 	{
 		key: "benefits",
 		title: "Benefits",
 		shortTitle: "Benefits",
 		description: "Promos and loyalty findings that can be saved separately.",
-		addLabel: "Add promo",
+		recordSingular: "benefit record",
+		recordLabel: "benefit records",
+		signalSingular: "benefit signal",
+		signalLabel: "benefit signals",
 	},
 	{
 		key: "people",
 		title: "People",
 		shortTitle: "People",
 		description: "Participants and placeholders detected from this capture.",
-		addLabel: "Add person",
+		recordSingular: "participant",
+		recordLabel: "participants",
+		signalSingular: "people signal",
+		signalLabel: "people signals",
 	},
 	{
 		key: "splits",
 		title: "Splits",
 		shortTitle: "Splits",
 		description: "Split proposals that need people and target expense context.",
-		addLabel: "Add split",
+		recordSingular: "split record",
+		recordLabel: "split records",
+		signalSingular: "split signal",
+		signalLabel: "split signals",
 	},
 	{
 		key: "future",
 		title: "Future actions",
 		shortTitle: "Future",
 		description: "Recurring, membership, reminder, and renewal hints.",
-		addLabel: "Add recurring",
+		recordSingular: "future record",
+		recordLabel: "future records",
+		signalSingular: "future signal",
+		signalLabel: "future signals",
 	},
 	{
 		key: "documents",
@@ -100,7 +131,10 @@ const packetSectionDefinitions: Array<{
 		shortTitle: "Documents",
 		description:
 			"Payment proof, privacy, merge, and supporting document signals.",
-		addLabel: "Add document",
+		recordSingular: "document record",
+		recordLabel: "document records",
+		signalSingular: "document signal",
+		signalLabel: "document signals",
 	},
 ];
 
@@ -131,6 +165,19 @@ const packetSectionKey = (candidate: CandidateReviewItem): PacketSectionKey => {
 	return "documents";
 };
 
+const isTechnicalExpenseDraftCandidate = (
+	candidate: CandidateReviewItem,
+): boolean =>
+	candidate.candidateType === "expense_candidate" ||
+	candidate.candidateType === "expense_item_candidate";
+
+const reviewVisibleCandidates = (
+	candidates: CandidateReviewItem[],
+): CandidateReviewItem[] =>
+	candidates.filter(
+		(candidate) => !isTechnicalExpenseDraftCandidate(candidate),
+	);
+
 const actionableCount = (candidates: CandidateReviewItem[]): number =>
 	candidates.filter(
 		(candidate) =>
@@ -141,6 +188,32 @@ const actionableCount = (candidates: CandidateReviewItem[]): number =>
 			candidate.canMarkReviewed,
 	).length;
 
+const isDraftStatus = (status: string): boolean =>
+	status.trim().toLowerCase() === "draft";
+
+const isProjectedStatus = (status: string): boolean =>
+	["projected", "confirmed", "saved", "created"].includes(
+		status.trim().toLowerCase(),
+	);
+
+const isIgnoredStatus = (status: string): boolean =>
+	["ignored", "expired", "archived"].includes(status.trim().toLowerCase());
+
+const visiblePendingCount = (packet: CapturePacket): number => {
+	const visibleCandidates = reviewVisibleCandidates(packet.candidates);
+	if (visibleCandidates.length > 0) {
+		return visibleCandidates.filter((candidate) =>
+			isDraftStatus(candidate.status),
+		).length;
+	}
+	const hiddenDrafts = packet.candidates.filter(
+		(candidate) =>
+			isTechnicalExpenseDraftCandidate(candidate) &&
+			isDraftStatus(candidate.status),
+	).length;
+	return Math.max((packet.pendingCount ?? 0) - hiddenDrafts, 0);
+};
+
 const sectionCount = (
 	candidates: CandidateReviewItem[],
 	sectionKey: PacketSectionKey,
@@ -148,31 +221,50 @@ const sectionCount = (
 	candidates.filter((candidate) => packetSectionKey(candidate) === sectionKey)
 		.length;
 
+const visibleSectionSignalCount = (
+	packet: CapturePacket,
+	sectionKey: PacketSectionKey,
+	candidates = reviewVisibleCandidates(packet.candidates),
+): number => {
+	const loadedCount = sectionCount(candidates, sectionKey);
+	if (loadedCount > 0) return loadedCount;
+	if (sectionKey === "expenses") {
+		const savedItemCount = (packet.records?.expenses ?? []).reduce(
+			(total, expense) => total + (expense.items?.length ?? 0),
+			0,
+		);
+		if (savedItemCount > 0) return savedItemCount;
+	}
+	return packet.counts[sectionKey] ?? 0;
+};
+
 const packetEntity = (
 	packet: CapturePacket,
 	selected: boolean,
-	selectedSectionKey: PacketSectionFilterKey,
 ): EntityViewModel => {
+	const candidates = reviewVisibleCandidates(packet.candidates);
+	const pendingCount = visiblePendingCount(packet);
 	const scopedSections = packetSectionDefinitions
-		.filter(
-			(section) =>
-				selectedSectionKey === "all" || selectedSectionKey === section.key,
-		)
 		.map((section) => ({
 			label: section.shortTitle,
-			count: sectionCount(packet.candidates, section.key),
+			count: visibleSectionSignalCount(packet, section.key, candidates),
 		}))
 		.filter((section) => section.count > 0);
 
 	return {
 		id: String(packet.sourceDocumentId),
 		visualKey: "reviewPacket",
-		label: "Review packet",
+		label: "Capture",
 		title: packet.title,
-		subtitle: `Packet #${packet.sourceDocumentId} - ${packet.meta}`,
+		subtitle: `Capture #${packet.sourceDocumentId} - ${packet.meta}`,
 		detail: packet.summary,
 		meta: scopedSections.map((section) => `${section.label} ${section.count}`),
-		status: packet.primaryActionLabel,
+		status:
+			pendingCount > 0
+				? packet.primaryActionLabel
+				: (packet.projectedCount ?? 0) > 0
+					? "Records created"
+					: packet.primaryActionLabel,
 		selected,
 	};
 };
@@ -187,7 +279,13 @@ const candidateEntity = (candidate: CandidateReviewItem): EntityViewModel => ({
 	meta: candidate.fields
 		.slice(0, 3)
 		.map((field) => `${field.label}: ${field.value}`),
-	status: candidate.confidenceLabel,
+	status: isProjectedStatus(candidate.status)
+		? "Created"
+		: isDraftStatus(candidate.status)
+			? candidate.confidenceLabel
+			: isIgnoredStatus(candidate.status)
+				? "Closed"
+				: candidate.status.replace(/_/g, " "),
 });
 
 type CandidateActionTone =
@@ -214,6 +312,9 @@ const candidateActionButtonClass = (tone: CandidateActionTone): string => {
 	};
 	return `${base} ${toneClass[tone]}`;
 };
+
+const spaceMembersHref = (spaceId: string | number) =>
+	`/console/spaces/${encodeURIComponent(String(spaceId))}/members`;
 
 type CandidateActionButtonProps = {
 	children: ReactNode;
@@ -272,83 +373,34 @@ const PacketPill = ({
 	<span className={packetPillClass(tone, size)}>{children}</span>
 );
 
-const addHrefForSection = (
-	sectionKey: PacketSectionKey,
-	spaceId: number,
-	sourceDocumentId: number,
-): string => {
-	const encodedSpaceId = encodeURIComponent(String(spaceId));
-	if (sectionKey === "expenses") {
-		return `/console/chat/expenses?spaceId=${encodedSpaceId}`;
-	}
-	if (sectionKey === "benefits") {
-		return `/console/spaces/${encodedSpaceId}/benefits`;
-	}
-	if (sectionKey === "people") {
-		return `/console/spaces/${encodedSpaceId}/settings#space-settings-members`;
-	}
-	if (sectionKey === "splits") {
-		return `/console/spaces/${encodedSpaceId}/splits`;
-	}
-	if (sectionKey === "future") {
-		return `/console/spaces/${encodedSpaceId}/recurring`;
-	}
-	return `/console/review?spaceId=${encodedSpaceId}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}&section=documents`;
-};
+const formatRecordMoney = (amount: number, currency?: string): string =>
+	new Intl.NumberFormat("ru-RU", {
+		currency: currency || "RUB",
+		maximumFractionDigits: 2,
+		style: "currency",
+	}).format(Number.isFinite(amount) ? amount : 0);
 
-type PacketFilterTileProps = {
-	countLabel: string;
-	disabled?: boolean;
-	onClick: () => void;
-	selected: boolean;
-	title: string;
-	visualKey: EntityVisualKey;
+const formatRecordDate = (value?: string | null): string | null => {
+	if (!value) return null;
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return null;
+	return new Intl.DateTimeFormat("ru-RU", {
+		day: "2-digit",
+		month: "short",
+		year: "numeric",
+	}).format(date);
 };
-
-const PacketFilterTile = ({
-	countLabel,
-	disabled = false,
-	onClick,
-	selected,
-	title,
-	visualKey,
-}: PacketFilterTileProps) => (
-	<button
-		aria-pressed={selected}
-		className={`min-h-[4.75rem] rounded-xl border px-3 py-2 text-left transition-[background-color,border-color,box-shadow,transform] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 ${
-			selected
-				? "border-[rgba(68,58,42,0.28)] bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-sm"
-				: "border-[rgba(120,100,80,0.1)] bg-white/68 text-foreground hover:border-[rgba(120,100,80,0.22)] hover:bg-white"
-		}`}
-		disabled={disabled}
-		onClick={onClick}
-		type="button"
-	>
-		<span className="flex items-center gap-2">
-			<EntityIcon size="sm" visualKey={visualKey} />
-			<span className="min-w-0">
-				<span className="block truncate text-xs font-bold">{title}</span>
-				<span
-					className={`mt-0.5 block text-[11px] font-semibold ${
-						selected ? "text-[#fffaf0]/72" : "text-muted-foreground"
-					}`}
-				>
-					{countLabel}
-				</span>
-			</span>
-		</span>
-	</button>
-);
 
 export const CapturePacketReviewSection = ({
 	packets,
-	decisionCount,
+	candidateCount,
 	spaceId,
+	memberLabels,
 	focusedSourceDocumentId,
-	focusedSectionKey,
 	documentCandidateError,
 	benefitCandidateActingId,
 	documentCandidateActingId,
+	deletingSourceDocumentId,
 	splitTargetOptions,
 	splitTargetExpenseIdFor,
 	pendingParticipantCountForSplitCandidate,
@@ -358,50 +410,12 @@ export const CapturePacketReviewSection = ({
 	onCreateParticipantCandidate,
 	onCreateRecurringCandidate,
 	onApplySplitCandidate,
+	onDeleteCapture,
+	onFinishReview,
 	onIgnoreCandidate,
+	finishingSourceDocumentId,
 }: CapturePacketReviewSectionProps) => {
-	const [selectedSectionKey, setSelectedSectionKey] =
-		useState<PacketSectionFilterKey>(focusedSectionKey ?? "all");
-	const entityCounts = useMemo(() => {
-		const counts: Record<PacketSectionKey, number> = {
-			expenses: 0,
-			benefits: 0,
-			people: 0,
-			splits: 0,
-			future: 0,
-			documents: 0,
-		};
-		for (const packet of packets) {
-			for (const candidate of packet.candidates) {
-				counts[packetSectionKey(candidate)] += 1;
-			}
-		}
-		return counts;
-	}, [packets]);
-	const filteredPackets = useMemo(() => {
-		if (selectedSectionKey === "all") return packets;
-		return packets.filter((packet) =>
-			packet.candidates.some(
-				(candidate) => packetSectionKey(candidate) === selectedSectionKey,
-			),
-		);
-	}, [packets, selectedSectionKey]);
-	const visiblePackets = useMemo(() => {
-		const newest = filteredPackets.slice(0, 6);
-		if (
-			focusedSourceDocumentId == null ||
-			newest.some(
-				(packet) => packet.sourceDocumentId === focusedSourceDocumentId,
-			)
-		) {
-			return newest;
-		}
-		const focused = filteredPackets.find(
-			(packet) => packet.sourceDocumentId === focusedSourceDocumentId,
-		);
-		if (!focused) return newest;
-		return [focused, ...newest.slice(0, 5)];
-	}, [filteredPackets, focusedSourceDocumentId]);
+	const visiblePackets = packets;
 	const defaultPacketId = useMemo(() => {
 		if (
 			focusedSourceDocumentId != null &&
@@ -416,13 +430,6 @@ export const CapturePacketReviewSection = ({
 	const [selectedPacketId, setSelectedPacketId] = useState<number | null>(
 		() => defaultPacketId,
 	);
-	const selectedPacket = useMemo(
-		() =>
-			visiblePackets.find(
-				(packet) => packet.sourceDocumentId === selectedPacketId,
-			) ?? visiblePackets[0],
-		[visiblePackets, selectedPacketId],
-	);
 
 	useEffect(() => {
 		if (
@@ -436,119 +443,92 @@ export const CapturePacketReviewSection = ({
 		setSelectedPacketId(defaultPacketId);
 	}, [visiblePackets, selectedPacketId, defaultPacketId]);
 
-	useEffect(() => {
-		if (focusedSectionKey == null) return;
-		setSelectedSectionKey(focusedSectionKey);
-	}, [focusedSectionKey]);
-
 	return (
-		<section className="mx-auto mb-5 max-w-5xl rounded-[1.35rem] border border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.94)] p-4 shadow-sm">
-			<div className="flex flex-wrap items-start justify-between gap-3">
+		<section className="mx-auto mb-5 max-w-5xl">
+			<div className="flex flex-wrap items-start justify-between gap-3 px-1">
 				<div>
 					<p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 						Capture review
 					</p>
 					<h2 className="mt-1 text-xl font-semibold tracking-tight text-foreground">
-						Capture packets waiting for review
+						Captures waiting for review
 					</h2>
 					<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-						Each packet is one parsed text, voice note, receipt, or screenshot.
-						Review the packet, then decide which parts become expenses, promos,
-						people, splits, or document signals.
+						Each capture is one parsed text, voice note, receipt, or screenshot.
+						Review the capture, see what Ceits found, and follow what already
+						became expenses, promos, people, splits, or document signals.
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-1.5">
-					<PacketPill>{packets.length} packets</PacketPill>
-					<PacketPill tone="muted">{decisionCount} decisions</PacketPill>
+					<PacketPill>{packets.length} captures</PacketPill>
+					<PacketPill tone="muted">{candidateCount} candidates</PacketPill>
 				</div>
 			</div>
-			<div className="mt-4 grid gap-2 rounded-2xl border border-[rgba(120,100,80,0.12)] bg-white/54 p-2 sm:grid-cols-2 xl:grid-cols-4">
-				<PacketFilterTile
-					countLabel={`${decisionCount} decisions`}
-					onClick={() => setSelectedSectionKey("all")}
-					selected={selectedSectionKey === "all"}
-					title="All review"
-					visualKey="reviewPacket"
-				/>
-				{packetSectionDefinitions.map((section) => {
-					const count = entityCounts[section.key];
-					const selected = selectedSectionKey === section.key;
-					const visual = capturePacketEntityVisual(section.key);
-					return (
-						<PacketFilterTile
-							countLabel={
-								count === 0
-									? "No candidates"
-									: `${count} ${count === 1 ? "candidate" : "candidates"}`
-							}
-							disabled={count === 0}
-							key={section.key}
-							onClick={() => setSelectedSectionKey(section.key)}
-							selected={selected}
-							title={section.shortTitle}
-							visualKey={visual.key}
-						/>
-					);
-				})}
-			</div>
-			<div className="mt-4 grid gap-3 lg:grid-cols-[minmax(220px,0.36fr)_1fr]">
-				<div className="space-y-2">
-					<p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-						{selectedSectionKey === "all"
-							? "Packet queue"
-							: `${packetSectionDefinitions.find((section) => section.key === selectedSectionKey)?.shortTitle ?? "Entity"} queue`}
-					</p>
-					{visiblePackets.length > 0 ? (
-						visiblePackets.map((packet) => {
-							const selected =
-								selectedPacket?.sourceDocumentId === packet.sourceDocumentId;
+			<div className="mt-4">
+				<p className="px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+					Recent captures by newest first
+				</p>
+				{visiblePackets.length > 0 ? (
+					<div className="mt-2 overflow-hidden rounded-[1.25rem] border border-[rgba(120,100,80,0.16)] bg-white/66 shadow-sm">
+						{visiblePackets.map((packet) => {
+							const selected = selectedPacketId === packet.sourceDocumentId;
 							return (
-								<button
-									aria-pressed={selected}
-									className="block w-full rounded-2xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+								<div
+									className="border-t border-[rgba(120,100,80,0.1)] first:border-t-0"
 									key={packet.sourceDocumentId}
-									onClick={() => setSelectedPacketId(packet.sourceDocumentId)}
-									type="button"
 								>
-									<EntityListItem
-										entity={packetEntity(packet, selected, selectedSectionKey)}
-									/>
-								</button>
+									<button
+										aria-pressed={selected}
+										className="block w-full px-3 py-2 text-left outline-none transition hover:bg-[rgba(120,100,80,0.045)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+										onClick={() =>
+											setSelectedPacketId((current) =>
+												current === packet.sourceDocumentId
+													? null
+													: packet.sourceDocumentId,
+											)
+										}
+										type="button"
+									>
+										<EntityListItem entity={packetEntity(packet, selected)} />
+									</button>
+									{selected ? (
+										<div className="border-t border-[rgba(120,100,80,0.1)] bg-[rgba(255,252,246,0.72)] px-4 py-4">
+											<CapturePacketRow
+												benefitCandidateActingId={benefitCandidateActingId}
+												deletingSourceDocumentId={deletingSourceDocumentId}
+												documentCandidateActingId={documentCandidateActingId}
+												onApplySplitCandidate={onApplySplitCandidate}
+												onConfirmDocumentCandidate={onConfirmDocumentCandidate}
+												onCreateParticipantCandidate={
+													onCreateParticipantCandidate
+												}
+												onCreateRecurringCandidate={onCreateRecurringCandidate}
+												onDeleteCapture={onDeleteCapture}
+												onFinishReview={onFinishReview}
+												onIgnoreCandidate={onIgnoreCandidate}
+												onSavePromoCandidate={onSavePromoCandidate}
+												onSplitTargetChange={onSplitTargetChange}
+												packet={packet}
+												memberLabels={memberLabels}
+												pendingParticipantCountForSplitCandidate={
+													pendingParticipantCountForSplitCandidate
+												}
+												spaceId={spaceId}
+												splitTargetExpenseIdFor={splitTargetExpenseIdFor}
+												splitTargetOptions={splitTargetOptions}
+												finishingSourceDocumentId={finishingSourceDocumentId}
+											/>
+										</div>
+									) : null}
+								</div>
 							);
-						})
-					) : (
-						<p className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 px-3 py-3 text-xs text-muted-foreground">
-							No capture packets have this entity type yet.
-						</p>
-					)}
-					{filteredPackets.length > 6 ? (
-						<p className="px-1 text-xs text-muted-foreground">
-							Showing 6 newest capture packets. Resolve a few to clear the
-							queue.
-						</p>
-					) : null}
-				</div>
-				{selectedPacket ? (
-					<CapturePacketRow
-						benefitCandidateActingId={benefitCandidateActingId}
-						documentCandidateActingId={documentCandidateActingId}
-						onApplySplitCandidate={onApplySplitCandidate}
-						onConfirmDocumentCandidate={onConfirmDocumentCandidate}
-						onCreateParticipantCandidate={onCreateParticipantCandidate}
-						onCreateRecurringCandidate={onCreateRecurringCandidate}
-						onIgnoreCandidate={onIgnoreCandidate}
-						onSavePromoCandidate={onSavePromoCandidate}
-						onSplitTargetChange={onSplitTargetChange}
-						packet={selectedPacket}
-						pendingParticipantCountForSplitCandidate={
-							pendingParticipantCountForSplitCandidate
-						}
-						sectionFilter={selectedSectionKey}
-						spaceId={spaceId}
-						splitTargetExpenseIdFor={splitTargetExpenseIdFor}
-						splitTargetOptions={splitTargetOptions}
-					/>
-				) : null}
+						})}
+					</div>
+				) : (
+					<p className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 px-3 py-3 text-xs text-muted-foreground">
+						No captures are waiting for review.
+					</p>
+				)}
 			</div>
 			{documentCandidateError ? (
 				<p className="mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -561,17 +541,17 @@ export const CapturePacketReviewSection = ({
 
 type CapturePacketRowProps = Omit<
 	CapturePacketReviewSectionProps,
-	"packets" | "decisionCount" | "documentCandidateError"
+	"packets" | "candidateCount" | "documentCandidateError"
 > & {
 	packet: CapturePacket;
-	sectionFilter: PacketSectionFilterKey;
 };
 
 const CapturePacketRow = ({
 	packet,
-	sectionFilter,
+	memberLabels,
 	benefitCandidateActingId,
 	documentCandidateActingId,
+	deletingSourceDocumentId,
 	splitTargetOptions,
 	spaceId,
 	splitTargetExpenseIdFor,
@@ -582,52 +562,93 @@ const CapturePacketRow = ({
 	onCreateParticipantCandidate,
 	onCreateRecurringCandidate,
 	onApplySplitCandidate,
+	onDeleteCapture,
+	onFinishReview,
 	onIgnoreCandidate,
+	finishingSourceDocumentId,
 }: CapturePacketRowProps) => {
-	const scopedCandidates =
-		sectionFilter === "all"
-			? packet.candidates
-			: packet.candidates.filter(
-					(candidate) => packetSectionKey(candidate) === sectionFilter,
-				);
+	const visibleCandidates = reviewVisibleCandidates(packet.candidates);
 	const sections = packetSectionDefinitions
-		.filter(
-			(section) => sectionFilter === "all" || section.key === sectionFilter,
-		)
 		.map((section) => ({
 			...section,
-			candidates: scopedCandidates.filter(
+			candidates: visibleCandidates.filter(
 				(candidate) => packetSectionKey(candidate) === section.key,
 			),
-		}));
-	const actionCount = actionableCount(scopedCandidates);
+		}))
+		.filter((section) => section.candidates.length > 0);
+	const actionCount = actionableCount(visibleCandidates);
+	const isDeletingCapture =
+		deletingSourceDocumentId === packet.sourceDocumentId;
+	const hasDetails = packet.candidates.length > 0;
+	const hasRecords =
+		(packet.records?.expenses?.length ?? 0) > 0 ||
+		(packet.records?.benefits?.length ?? 0) > 0 ||
+		(packet.records?.participants?.length ?? 0) > 0 ||
+		(packet.records?.splits?.length ?? 0) > 0 ||
+		(packet.records?.recurring?.length ?? 0) > 0;
 
 	return (
-		<article className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-white/72 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-			<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(120,100,80,0.12)] pb-3">
+		<div className="space-y-4">
+			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="min-w-0">
 					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-						Packet #{packet.sourceDocumentId}
+						Capture #{packet.sourceDocumentId}
 					</p>
 					<h3 className="mt-1 truncate text-base font-semibold text-foreground">
 						{packet.title}
 					</h3>
 					<p className="mt-1 text-xs text-muted-foreground">{packet.meta}</p>
+					{packet.createdByLabel || packet.createdByUserId ? (
+						<p className="mt-1 text-[11px] font-medium text-muted-foreground">
+							Submitted by{" "}
+							{packet.createdByLabel ??
+								`user #${String(packet.createdByUserId)}`}
+						</p>
+					) : null}
 				</div>
 				<div className="flex max-w-full flex-wrap items-center justify-end gap-1.5">
-					<PacketPill>
-						{sectionFilter === "all"
-							? packet.summary
-							: `${sections[0]?.title ?? "Entity"} only`}
-					</PacketPill>
-					<PacketPill tone="strong">{packet.primaryActionLabel}</PacketPill>
+					<PacketPill>{packet.summary}</PacketPill>
+					{(packet.pendingCount ?? 0) > 0 ? (
+						<PacketPill tone="strong">{packet.pendingCount} pending</PacketPill>
+					) : null}
+					{(packet.projectedCount ?? 0) > 0 ? (
+						<PacketPill
+							tone={(packet.pendingCount ?? 0) > 0 ? "muted" : "strong"}
+						>
+							{packet.projectedCount} created
+						</PacketPill>
+					) : null}
+					{(packet.pendingCount ?? 0) > 0 ? (
+						<PacketPill tone="strong">{packet.primaryActionLabel}</PacketPill>
+					) : null}
+					<button
+						className="min-h-8 rounded-full border border-destructive/20 bg-white/70 px-2.5 text-[11px] font-semibold text-destructive transition hover:border-destructive/35 hover:bg-destructive/10 disabled:opacity-50"
+						disabled={isDeletingCapture}
+						onClick={() => onDeleteCapture(packet.sourceDocumentId)}
+						type="button"
+					>
+						{isDeletingCapture ? "Removing" : "Remove review data"}
+					</button>
 				</div>
 			</div>
-			<PacketWorkspaceMap
+			<PacketFinishReviewBar
 				actionCount={actionCount}
+				finishing={finishingSourceDocumentId === packet.sourceDocumentId}
+				onFinishReview={onFinishReview}
 				packet={packet}
-				sectionFilter={sectionFilter}
 			/>
+			{!hasDetails && !hasRecords ? (
+				<p className="rounded-xl border border-[rgba(120,100,80,0.16)] bg-white/70 px-3 py-3 text-sm text-muted-foreground">
+					This capture is in the backend queue, but detailed candidate forms are
+					not loaded here because there may be no pending decisions left. Use
+					the Expenses, Benefits, Members, or Splits tabs to inspect records
+					that were already created from it.
+				</p>
+			) : null}
+			<CaptureProgressStrip actionCount={actionCount} packet={packet} />
+			<CaptureOutcomeMap packet={packet} />
+			<CaptureItemsFound packet={packet} />
+			<CaptureRecordsSummary memberLabels={memberLabels} packet={packet} />
 			<PacketActionBar
 				benefitCandidateActingId={benefitCandidateActingId}
 				documentCandidateActingId={documentCandidateActingId}
@@ -636,18 +657,15 @@ const CapturePacketRow = ({
 				onCreateParticipantCandidate={onCreateParticipantCandidate}
 				onCreateRecurringCandidate={onCreateRecurringCandidate}
 				onSavePromoCandidate={onSavePromoCandidate}
-				candidates={scopedCandidates}
+				candidates={visibleCandidates}
 				pendingParticipantCountForSplitCandidate={
 					pendingParticipantCountForSplitCandidate
 				}
 				splitTargetExpenseIdFor={splitTargetExpenseIdFor}
 			/>
-			<div className="mt-3 space-y-3">
+			<div className="divide-y divide-[rgba(120,100,80,0.12)]">
 				{sections.map((section) => (
-					<section
-						className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,252,246,0.55)] p-3"
-						key={section.key}
-					>
+					<section className="py-3 first:pt-0 last:pb-0" key={section.key}>
 						<div className="flex flex-wrap items-start justify-between gap-2">
 							<div className="flex min-w-0 items-start gap-2">
 								<EntityIcon
@@ -663,204 +681,724 @@ const CapturePacketRow = ({
 									</p>
 								</div>
 							</div>
-							<PacketPill size="compact" tone="muted">
-								{section.candidates.length > 0
-									? section.candidates.length
-									: "Not found"}
-							</PacketPill>
+							<p className="text-xs font-semibold text-muted-foreground">
+								{section.candidates.length}{" "}
+								{section.candidates.length === 1 ? "finding" : "findings"}
+							</p>
 						</div>
-						{section.candidates.length > 0 ? (
-							<div className="mt-2 divide-y divide-[rgba(120,100,80,0.1)]">
-								{section.candidates.map((candidate) => (
-									<CaptureCandidateRow
-										benefitCandidateActingId={benefitCandidateActingId}
-										candidate={candidate}
-										documentCandidateActingId={documentCandidateActingId}
-										key={`${candidate.source}-${candidate.id}`}
-										onApplySplitCandidate={onApplySplitCandidate}
-										onConfirmDocumentCandidate={onConfirmDocumentCandidate}
-										onCreateParticipantCandidate={onCreateParticipantCandidate}
-										onCreateRecurringCandidate={onCreateRecurringCandidate}
-										onIgnoreCandidate={onIgnoreCandidate}
-										onSavePromoCandidate={onSavePromoCandidate}
-										onSplitTargetChange={onSplitTargetChange}
-										pendingParticipantCountForSplitCandidate={
-											pendingParticipantCountForSplitCandidate
-										}
-										spaceId={spaceId}
-										splitTargetExpenseIdFor={splitTargetExpenseIdFor}
-										splitTargetOptions={splitTargetOptions}
-									/>
-								))}
-							</div>
-						) : (
-							<MissingPacketSection
-								addHref={addHrefForSection(
-									section.key,
-									spaceId,
-									packet.sourceDocumentId,
-								)}
-								addLabel={section.addLabel}
-								description={`No ${section.shortTitle.toLowerCase()} candidate came from this parse.`}
-							/>
-						)}
+						<div className="mt-2 divide-y divide-[rgba(120,100,80,0.1)]">
+							{section.candidates.map((candidate) => (
+								<CaptureCandidateRow
+									benefitCandidateActingId={benefitCandidateActingId}
+									candidate={candidate}
+									documentCandidateActingId={documentCandidateActingId}
+									key={`${candidate.source}-${candidate.id}`}
+									onApplySplitCandidate={onApplySplitCandidate}
+									onConfirmDocumentCandidate={onConfirmDocumentCandidate}
+									onCreateParticipantCandidate={onCreateParticipantCandidate}
+									onCreateRecurringCandidate={onCreateRecurringCandidate}
+									onIgnoreCandidate={onIgnoreCandidate}
+									onSavePromoCandidate={onSavePromoCandidate}
+									onSplitTargetChange={onSplitTargetChange}
+									pendingParticipantCountForSplitCandidate={
+										pendingParticipantCountForSplitCandidate
+									}
+									spaceId={spaceId}
+									splitTargetExpenseIdFor={splitTargetExpenseIdFor}
+									splitTargetOptions={splitTargetOptions}
+								/>
+							))}
+						</div>
 					</section>
 				))}
 			</div>
-			{actionCount === 0 ? (
-				<p className="mt-3 rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 px-3 py-2 text-xs text-muted-foreground">
-					No direct action is available for this packet yet. Review the signals
-					below or ignore individual items.
+			{sections.length === 0 ? (
+				<p className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 px-3 py-2 text-xs text-muted-foreground">
+					Ceits did not find reviewable findings in this capture.
 				</p>
 			) : null}
-		</article>
+			{actionCount === 0 ? (
+				<p className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/58 px-3 py-2 text-xs text-muted-foreground">
+					No direct action is available for this capture here. Review the
+					created records and remaining signals below.
+				</p>
+			) : null}
+		</div>
 	);
 };
 
-type MissingPacketSectionProps = {
-	description: string;
-	addLabel: string;
-	addHref: string;
+type PacketFinishReviewBarProps = {
+	actionCount: number;
+	finishing: boolean;
+	onFinishReview: (packet: CapturePacket) => Promise<void> | void;
+	packet: CapturePacket;
 };
 
-const MissingPacketSection = ({
-	description,
-	addLabel,
-	addHref,
-}: MissingPacketSectionProps) => (
-	<div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-[rgba(120,100,80,0.18)] bg-white/46 px-3 py-2">
-		<p className="max-w-md text-xs text-muted-foreground">{description}</p>
-		<Link
-			className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/78 px-3 text-[11px] font-bold text-foreground/78 transition hover:border-[rgba(120,100,80,0.28)] hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-			to={addHref}
-		>
-			<Plus className="h-3.5 w-3.5" size={14} />
-			{addLabel}
-		</Link>
-	</div>
-);
+const PacketFinishReviewBar = ({
+	actionCount,
+	finishing,
+	onFinishReview,
+	packet,
+}: PacketFinishReviewBarProps) => {
+	const pendingCount = visiblePendingCount(packet);
+	const recordCount = capturePacketRecordCount(packet);
+	const draftExpenseCount = (packet.records?.expenses ?? []).filter(
+		(expense) => expense.status.trim().toLowerCase() === "draft",
+	).length;
+	const saveableExpenseCandidateCount = packet.candidates.filter(
+		(candidate) =>
+			candidate.candidateType === "expense_candidate" ||
+			candidate.candidateType === "expense_item_candidate",
+	).length;
+	const isComplete = pendingCount === 0 && recordCount > 0;
+	const needsAction = pendingCount > 0 || actionCount > 0;
+	const canSaveAll =
+		draftExpenseCount > 0 || saveableExpenseCandidateCount > 0 || needsAction;
 
-type PacketWorkspaceMapProps = {
+	return (
+		<div
+			className={[
+				"flex flex-wrap items-center justify-between gap-3 rounded-2xl border px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.68)]",
+				isComplete
+					? "border-[rgba(91,116,87,0.2)] bg-[rgba(249,253,247,0.84)]"
+					: "border-[rgba(181,131,52,0.22)] bg-[rgba(255,247,225,0.78)]",
+			].join(" ")}
+		>
+			<div className="min-w-0">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+					Final step
+				</p>
+				<p className="mt-0.5 text-sm font-semibold text-foreground">
+					{canSaveAll
+						? "Save this review"
+						: isComplete
+							? "Review complete"
+							: needsAction
+								? "Finish review before this capture is done"
+								: "Finish review"}
+				</p>
+				<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+					{canSaveAll
+						? "Save all to create the expense, people, and split from this capture."
+						: isComplete
+							? `${recordCount} ${recordCount === 1 ? "record is" : "records are"} saved and linked to this capture.`
+							: "Resolve the remaining review actions, then save the expense."}
+				</p>
+			</div>
+			<div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+				<button
+					className="inline-flex min-h-9 items-center rounded-full bg-[rgba(68,58,42,0.94)] px-3.5 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition hover:bg-[rgba(50,43,32,0.98)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+					disabled={!canSaveAll || finishing}
+					onClick={() => void onFinishReview(packet)}
+					type="button"
+				>
+					{finishing ? "Saving" : canSaveAll ? "Save all" : "Review saved"}
+				</button>
+			</div>
+		</div>
+	);
+};
+
+type CaptureItemsFoundProps = {
 	packet: CapturePacket;
-	sectionFilter: PacketSectionFilterKey;
+};
+
+const captureItemLabels = (packet: CapturePacket): string[] => {
+	const labels: string[] = [];
+	for (const candidate of packet.candidates) {
+		for (const itemLabel of candidate.itemLabels ?? []) {
+			const clean = itemLabel.trim();
+			if (clean) labels.push(clean);
+		}
+	}
+	for (const expense of packet.records?.expenses ?? []) {
+		for (const item of expense.items ?? []) {
+			const clean = item.name?.trim();
+			if (clean) labels.push(clean);
+		}
+	}
+	const seen = new Set<string>();
+	return labels.filter((label) => {
+		const key = label.toLowerCase();
+		if (seen.has(key)) return false;
+		seen.add(key);
+		return true;
+	});
+};
+
+const CaptureItemsFound = ({ packet }: CaptureItemsFoundProps) => {
+	const items = captureItemLabels(packet);
+	if (items.length === 0) return null;
+	const visibleItems = items.slice(0, 8);
+	const extraCount = Math.max(0, items.length - visibleItems.length);
+	return (
+		<div className="rounded-2xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,252,246,0.78)] px-3 py-3">
+			<div className="flex flex-wrap items-start justify-between gap-2">
+				<div className="flex min-w-0 items-start gap-2">
+					<EntityIcon size="sm" visualKey="expenseItem" />
+					<div className="min-w-0">
+						<p className="text-sm font-semibold text-foreground">
+							Items found in this capture
+						</p>
+						<p className="mt-0.5 text-xs text-muted-foreground">
+							Line items stay attached to the capture and can become expense
+							items after review.
+						</p>
+					</div>
+				</div>
+				<PacketPill size="compact" tone="muted">
+					{items.length} {items.length === 1 ? "item" : "items"}
+				</PacketPill>
+			</div>
+			<div className="mt-3 flex flex-wrap gap-1.5">
+				{visibleItems.map((item) => (
+					<span
+						className="rounded-full border border-[rgba(120,100,80,0.14)] bg-white/82 px-2.5 py-1 text-[11px] font-medium text-foreground/78"
+						key={item}
+					>
+						{item}
+					</span>
+				))}
+				{extraCount > 0 ? (
+					<span className="rounded-full border border-[rgba(120,100,80,0.14)] bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+						+{extraCount} more
+					</span>
+				) : null}
+			</div>
+		</div>
+	);
+};
+
+type CaptureRecordsSummaryProps = {
+	memberLabels: Map<number, string>;
+	packet: CapturePacket;
+};
+
+const recordCreatorLabel = (
+	userID: number | null | undefined,
+	memberLabels: Map<number, string>,
+	packet: CapturePacket,
+): string | null => {
+	if (userID == null || !Number.isFinite(Number(userID))) return null;
+	const numeric = Number(userID);
+	return (
+		memberLabels.get(numeric) ??
+		(packet.createdByUserId === numeric ? packet.createdByLabel : null) ??
+		`user #${numeric}`
+	);
+};
+
+const capturePacketRecordCount = (packet: CapturePacket): number => {
+	const records = packet.records;
+	if (!records) return 0;
+	return (
+		(records.expenses?.length ?? 0) +
+		(records.expenses ?? []).reduce(
+			(total, expense) => total + (expense.items?.length ?? 0),
+			0,
+		) +
+		(records.benefits?.length ?? 0) +
+		(records.participants?.length ?? 0) +
+		(records.splits?.length ?? 0) +
+		(records.recurring?.length ?? 0)
+	);
+};
+
+const CaptureRecordsSummary = ({
+	memberLabels,
+	packet,
+}: CaptureRecordsSummaryProps) => {
+	const expenses = packet.records?.expenses ?? [];
+	const benefits = packet.records?.benefits ?? [];
+	const participants = packet.records?.participants ?? [];
+	const splits = packet.records?.splits ?? [];
+	const recurring = packet.records?.recurring ?? [];
+	const expenseRecordItems = expenses.flatMap((expense) =>
+		(expense.items ?? []).map((item) => ({
+			...item,
+			currency: expense.currency,
+			expenseId: expense.id,
+		})),
+	);
+	const recordCount = capturePacketRecordCount(packet);
+	if (recordCount === 0) return null;
+
+	return (
+		<div className="rounded-2xl border border-[rgba(91,116,87,0.18)] bg-[rgba(249,253,247,0.8)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+			<div className="flex flex-wrap items-start justify-between gap-2">
+				<div>
+					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						Created from this capture
+					</p>
+					<p className="mt-0.5 text-xs text-muted-foreground">
+						These are already saved records linked back to this capture.
+					</p>
+				</div>
+				<PacketPill size="compact" tone="strong">
+					{recordCount} records
+				</PacketPill>
+			</div>
+			<div className="mt-3 grid gap-2 lg:grid-cols-2">
+				{expenseRecordItems.length ? (
+					<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/82 px-3 py-3">
+						<div className="flex items-start justify-between gap-3">
+							<div className="flex min-w-0 items-start gap-2">
+								<EntityIcon size="sm" visualKey="expenseItem" />
+								<div className="min-w-0">
+									<p className="truncate text-sm font-semibold text-foreground">
+										Items saved
+									</p>
+									<p className="mt-0.5 text-xs text-muted-foreground">
+										{expenseRecordItems.length}{" "}
+										{expenseRecordItems.length === 1 ? "item" : "items"} linked
+										to this capture
+									</p>
+								</div>
+							</div>
+						</div>
+						<div className="mt-2 space-y-1 rounded-lg border border-[rgba(120,100,80,0.1)] bg-[rgba(255,252,246,0.7)] px-2.5 py-2">
+							{expenseRecordItems.slice(0, 6).map((item) => (
+								<div
+									className="flex items-center justify-between gap-2 text-xs"
+									key={`expense-${item.expenseId}-item-${item.id}`}
+								>
+									<span className="min-w-0 truncate text-muted-foreground">
+										{item.name || "Item"}
+									</span>
+									<span className="shrink-0 font-semibold tabular-nums text-foreground">
+										{formatRecordMoney(item.amount, item.currency)}
+									</span>
+								</div>
+							))}
+							{expenseRecordItems.length > 6 ? (
+								<div className="text-xs font-medium text-muted-foreground">
+									+{expenseRecordItems.length - 6} more
+								</div>
+							) : null}
+						</div>
+					</div>
+				) : null}
+				{participants.map((participant) => {
+					const creator = recordCreatorLabel(
+						participant.created_by_user_id,
+						memberLabels,
+						packet,
+					);
+					return (
+						<div
+							className="rounded-xl border border-[rgba(91,116,87,0.18)] bg-[rgba(247,252,246,0.82)] px-3 py-3"
+							key={`participant-${participant.id}`}
+						>
+							<div className="flex items-start gap-2">
+								<EntityIcon
+									size="sm"
+									visualKey={
+										participant.participant_type === "placeholder"
+											? "placeholder"
+											: "people"
+									}
+								/>
+								<div className="min-w-0">
+									<p className="truncate text-sm font-semibold text-foreground">
+										{participant.display_name || "Participant"}
+									</p>
+									<p className="mt-0.5 text-xs text-muted-foreground">
+										{[
+											participant.status || participant.participant_type,
+											participant.email || participant.telegram_username,
+											creator ? `by ${creator}` : null,
+										]
+											.filter(Boolean)
+											.join(" • ")}
+									</p>
+								</div>
+							</div>
+						</div>
+					);
+				})}
+				{splits.map((split) => {
+					const creator = recordCreatorLabel(
+						split.created_by_user_id,
+						memberLabels,
+						packet,
+					);
+					const participantLines = split.participant_lines ?? [];
+					const visibleLines = participantLines.slice(0, 3);
+					const extraLines = Math.max(
+						0,
+						participantLines.length - visibleLines.length,
+					);
+					return (
+						<div
+							className="rounded-xl border border-[rgba(91,116,87,0.18)] bg-[rgba(249,253,247,0.82)] px-3 py-3"
+							key={`split-${split.expense_id}`}
+						>
+							<div className="flex items-start justify-between gap-3">
+								<div className="flex min-w-0 items-start gap-2">
+									<EntityIcon size="sm" visualKey="split" />
+									<div className="min-w-0">
+										<p className="truncate text-sm font-semibold text-foreground">
+											Split saved
+										</p>
+										<p className="mt-0.5 text-xs text-muted-foreground">
+											{[
+												split.split_count
+													? `${split.split_count} participant shares`
+													: null,
+												creator ? `by ${creator}` : null,
+											]
+												.filter(Boolean)
+												.join(" • ")}
+										</p>
+									</div>
+								</div>
+								<p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+									{formatRecordMoney(split.total_amount)}
+								</p>
+							</div>
+							{visibleLines.length ? (
+								<div className="mt-2 space-y-1 rounded-lg border border-[rgba(91,116,87,0.12)] bg-white/64 px-2.5 py-2">
+									{visibleLines.map((line) => {
+										const label =
+											line.display_name?.trim() ||
+											(line.space_participant_id != null
+												? `Participant #${line.space_participant_id}`
+												: line.user_id != null
+													? `User #${line.user_id}`
+													: "Participant");
+										return (
+											<div
+												className="flex items-center justify-between gap-2 text-xs"
+												key={`split-${split.expense_id}-line-${line.id}`}
+											>
+												<span className="min-w-0 truncate text-muted-foreground">
+													{label}
+												</span>
+												<span className="shrink-0 font-semibold tabular-nums text-foreground">
+													{formatRecordMoney(line.amount)}
+												</span>
+											</div>
+										);
+									})}
+									{extraLines ? (
+										<div className="text-xs font-medium text-muted-foreground">
+											+{extraLines} more
+										</div>
+									) : null}
+								</div>
+							) : null}
+						</div>
+					);
+				})}
+				{recurring.map((item) => {
+					const creator = recordCreatorLabel(
+						item.created_by_user_id,
+						memberLabels,
+						packet,
+					);
+					return (
+						<div
+							className="rounded-xl border border-[rgba(72,97,137,0.18)] bg-[rgba(244,248,253,0.82)] px-3 py-3"
+							key={`recurring-${item.id}`}
+						>
+							<div className="flex items-start justify-between gap-3">
+								<div className="flex min-w-0 items-start gap-2">
+									<EntityIcon size="sm" visualKey="future" />
+									<div className="min-w-0">
+										<p className="truncate text-sm font-semibold text-foreground">
+											{item.name || "Recurring rule"}
+										</p>
+										<p className="mt-0.5 text-xs text-muted-foreground">
+											{[
+												item.interval,
+												item.next_run
+													? `next ${formatRecordDate(item.next_run)}`
+													: null,
+												creator ? `by ${creator}` : null,
+											]
+												.filter(Boolean)
+												.join(" • ")}
+										</p>
+									</div>
+								</div>
+								<p className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+									{formatRecordMoney(item.amount)}
+								</p>
+							</div>
+						</div>
+					);
+				})}
+				{benefits.map((benefit) => {
+					const creator = recordCreatorLabel(
+						benefit.created_by_user_id,
+						memberLabels,
+						packet,
+					);
+					return (
+						<div
+							className="rounded-xl border border-[rgba(181,131,52,0.2)] bg-[rgba(255,250,235,0.82)] px-3 py-3"
+							key={`benefit-${benefit.id}`}
+						>
+							<div className="flex items-start justify-between gap-3">
+								<div className="flex min-w-0 items-start gap-2">
+									<EntityIcon size="sm" visualKey="benefit" />
+									<div className="min-w-0">
+										<p className="truncate text-sm font-semibold text-foreground">
+											{benefit.promo_code || benefit.title || "Saved promo"}
+										</p>
+										<p className="mt-0.5 text-xs text-muted-foreground">
+											{[
+												benefit.redeem_platform ||
+													benefit.redeem_merchant_name ||
+													benefit.source_merchant_name,
+												benefit.discount_type,
+												benefit.valid_until
+													? `until ${formatRecordDate(benefit.valid_until)}`
+													: null,
+												creator ? `by ${creator}` : null,
+											]
+												.filter(Boolean)
+												.join(" • ") || benefit.status}
+										</p>
+									</div>
+								</div>
+								{benefit.discount_value != null ? (
+									<p className="shrink-0 text-sm font-semibold tabular-nums text-[#715016]">
+										{benefit.discount_value}
+									</p>
+								) : null}
+							</div>
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
+
+type CaptureOutcomeMapProps = {
+	packet: CapturePacket;
+};
+
+const CaptureOutcomeMap = ({ packet }: CaptureOutcomeMapProps) => {
+	const visibleCandidates = reviewVisibleCandidates(packet.candidates);
+	const summaries = packetSectionDefinitions
+		.map((section) => {
+			const candidates = visibleCandidates.filter(
+				(candidate) => packetSectionKey(candidate) === section.key,
+			);
+			const total = visibleSectionSignalCount(
+				packet,
+				section.key,
+				visibleCandidates,
+			);
+			const loadedPending = candidates.filter((candidate) =>
+				isDraftStatus(candidate.status),
+			).length;
+			const loadedCreated = candidates.filter((candidate) =>
+				isProjectedStatus(candidate.status),
+			).length;
+			const loadedClosed = candidates.filter((candidate) =>
+				isIgnoredStatus(candidate.status),
+			).length;
+			const hasLoadedStatus = candidates.length > 0;
+			const pending =
+				loadedPending ||
+				(!hasLoadedStatus && (packet.pendingCount ?? 0) > 0 ? total : 0);
+			const created =
+				loadedCreated ||
+				(!hasLoadedStatus &&
+				(packet.pendingCount ?? 0) === 0 &&
+				(packet.projectedCount ?? 0) > 0
+					? total
+					: 0);
+			const closed =
+				loadedClosed ||
+				(!hasLoadedStatus &&
+				(packet.pendingCount ?? 0) === 0 &&
+				(packet.projectedCount ?? 0) === 0 &&
+				(packet.ignoredCount ?? 0) > 0
+					? total
+					: 0);
+			return { candidates, closed, created, pending, section, total };
+		})
+		.filter((summary) => summary.total > 0 || summary.candidates.length > 0);
+
+	if (summaries.length === 0) return null;
+
+	return (
+		<div className="rounded-2xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,253,249,0.72)] px-3 py-3">
+			<div className="flex flex-wrap items-start justify-between gap-2">
+				<div>
+					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+						What this capture contains
+					</p>
+					<p className="mt-0.5 text-xs text-muted-foreground">
+						Each group stays under this capture until it becomes a saved record
+						or is ignored.
+					</p>
+				</div>
+				<PacketPill size="compact" tone="muted">
+					{summaries.length} groups
+				</PacketPill>
+			</div>
+			<div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+				{summaries.map(({ closed, created, pending, section, total }) => {
+					const visual = capturePacketEntityVisual(section.key);
+					const totalLabel =
+						total === 1 ? section.signalSingular : section.signalLabel;
+					const stateLabel =
+						pending > 0
+							? `${pending} need review`
+							: created > 0
+								? `${created} created`
+								: closed > 0
+									? `${closed} closed`
+									: "Detected";
+					const consequence =
+						section.key === "expenses"
+							? "Can become expenses and line items."
+							: section.key === "benefits"
+								? "Can become promos or loyalty records."
+								: section.key === "people"
+									? "Can become participants or aliases."
+									: section.key === "splits"
+										? "Can attach people to an expense split."
+										: section.key === "future"
+											? "Can become recurring rules or reminders."
+											: "Can become proof, privacy, or supporting context.";
+					return (
+						<div
+							className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/76 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+							key={section.key}
+						>
+							<div className="flex items-start justify-between gap-2">
+								<div className="flex min-w-0 items-center gap-2">
+									<EntityIcon size="xs" visualKey={visual.key} />
+									<div className="min-w-0">
+										<p className="truncate text-xs font-semibold text-foreground">
+											{section.shortTitle}
+										</p>
+										<p className="text-[11px] text-muted-foreground">
+											{total} {totalLabel}
+										</p>
+									</div>
+								</div>
+								<span className="shrink-0 rounded-full border border-[rgba(120,100,80,0.12)] bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-foreground/70">
+									{stateLabel}
+								</span>
+							</div>
+							<p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+								{consequence}
+							</p>
+						</div>
+					);
+				})}
+			</div>
+		</div>
+	);
+};
+
+type CaptureProgressStripProps = {
+	packet: CapturePacket;
 	actionCount: number;
 };
 
-const PacketWorkspaceMap = ({
+const CaptureProgressStrip = ({
 	packet,
-	sectionFilter,
 	actionCount,
-}: PacketWorkspaceMapProps) => {
-	const visibleSectionDefinitions = packetSectionDefinitions.filter(
-		(section) =>
-			packet.counts[section.key] > 0 ||
-			(sectionFilter !== "all" && sectionFilter === section.key),
-	);
-	const reviewScope =
-		sectionFilter === "all"
-			? "All entities"
-			: (packetSectionDefinitions.find(
-					(section) => section.key === sectionFilter,
-				)?.title ?? "Selected entity");
+}: CaptureProgressStripProps) => {
+	const visibleCandidates = reviewVisibleCandidates(packet.candidates);
+	const visibleSectionDefinitions = packetSectionDefinitions
+		.map((section) => ({
+			...section,
+			count: visibleSectionSignalCount(packet, section.key, visibleCandidates),
+		}))
+		.filter((section) => section.count > 0);
+	const pendingCount = visiblePendingCount(packet);
+	const createdCount = packet.projectedCount ?? 0;
+	const foundCount =
+		visibleCandidates.length > 0
+			? visibleCandidates.length
+			: (packet.candidateCount ?? 0);
+	const foundLabel =
+		foundCount > 0
+			? `Found ${foundCount} ${foundCount === 1 ? "signal" : "signals"}`
+			: "Found no open signals";
+	const actionLabel =
+		pendingCount > 0
+			? `Needs action: ${pendingCount}`
+			: actionCount > 0
+				? `Needs action: ${actionCount}`
+				: "Needs action: none";
+	const recordCount = capturePacketRecordCount(packet);
+	const createdRecordCount = Math.max(createdCount, recordCount);
+	const createdLabel =
+		createdRecordCount > 0
+			? `Created ${createdRecordCount} ${createdRecordCount === 1 ? "record" : "records"}`
+			: "Created no records yet";
 
 	return (
-		<div className="mt-3 border-b border-[rgba(120,100,80,0.12)] pb-3">
-			<div className="grid gap-2 md:grid-cols-4">
-				<PacketWorkspaceStep
-					detail={packet.meta}
-					label="Source saved"
-					title="Capture"
-					visualKey="document"
-				/>
-				<PacketWorkspaceStep
-					detail={packet.summary}
-					label={`${packet.candidates.length} found`}
-					title="Structure"
+		<div className="rounded-2xl border border-[rgba(120,100,80,0.12)] bg-white/62 px-3 py-3">
+			<div className="flex flex-wrap items-center gap-2">
+				<CaptureStepPill
+					label={`Received ${packet.meta.toLowerCase()}`}
 					visualKey="reviewPacket"
 				/>
-				<PacketWorkspaceStep
-					detail={reviewScope}
-					label={actionCount > 0 ? `${actionCount} actions` : "Read only"}
-					title="Review"
-					visualKey="reviewPacket"
+				<CaptureStepPill label={foundLabel} visualKey="document" />
+				<CaptureStepPill
+					label={actionLabel}
+					tone={pendingCount > 0 ? "strong" : "muted"}
+					visualKey={pendingCount > 0 ? "reviewPacket" : "expense"}
 				/>
-				<PacketWorkspaceStep
-					detail="Confirm, save, apply, or ignore"
-					label="Pending"
-					title="Save"
-					visualKey="expense"
+				<CaptureStepPill
+					label={createdLabel}
+					tone={createdRecordCount > 0 ? "strong" : "muted"}
+					visualKey="future"
 				/>
 			</div>
 			{visibleSectionDefinitions.length > 0 ? (
-				<div className="mt-3">
-					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-						What Ceits found in this packet
-					</p>
-					<div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-						{visibleSectionDefinitions.map((section) => {
-							const count = packet.counts[section.key];
-							const selected =
-								sectionFilter === "all" || sectionFilter === section.key;
-							const visual = capturePacketEntityVisual(section.key);
-							return (
-								<div
-									className={`flex min-h-14 items-center gap-2 rounded-xl border px-3 py-2 ${
-										selected
-											? visual.toneClass
-											: "border-[rgba(120,100,80,0.1)] bg-white/54 text-muted-foreground"
-									}`}
-									key={section.key}
-								>
-									<EntityIcon size="sm" visualKey={visual.key} />
-									<span className="min-w-0">
-										<span className="block truncate text-xs font-bold">
-											{section.shortTitle}
-										</span>
-										<span className="mt-0.5 block text-[11px] font-semibold opacity-75">
-											{count === 0
-												? "Can be added manually"
-												: `${count} ${count === 1 ? "candidate" : "candidates"}`}
-										</span>
-									</span>
-								</div>
-							);
-						})}
-					</div>
+				<div className="mt-2 flex flex-wrap items-center gap-1.5">
+					{visibleSectionDefinitions.map((section) => {
+						const visual = capturePacketEntityVisual(section.key);
+						return (
+							<span
+								className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.12)] bg-white/74 px-2.5 text-[11px] font-semibold text-foreground/76"
+								key={section.key}
+							>
+								<EntityIcon size="xs" visualKey={visual.key} />
+								{section.shortTitle} {section.count}
+							</span>
+						);
+					})}
 				</div>
 			) : null}
 		</div>
 	);
 };
 
-type PacketWorkspaceStepProps = {
-	title: string;
+type CaptureStepPillProps = {
 	label: string;
-	detail: string;
+	tone?: PacketPillTone;
 	visualKey: EntityVisualKey;
 };
 
-const PacketWorkspaceStep = ({
-	title,
+const CaptureStepPill = ({
 	label,
-	detail,
+	tone = "muted",
 	visualKey,
-}: PacketWorkspaceStepProps) => (
-	<div className="min-w-0 rounded-xl border border-[rgba(120,100,80,0.12)] bg-[rgba(255,252,246,0.58)] px-3 py-2">
-		<div className="flex items-start gap-2">
-			<EntityIcon size="sm" visualKey={visualKey} />
-			<span className="min-w-0">
-				<span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-					{title}
-				</span>
-				<span className="mt-0.5 block truncate text-xs font-bold text-foreground">
-					{label}
-				</span>
-				<span className="mt-0.5 block line-clamp-2 text-[11px] leading-4 text-muted-foreground">
-					{detail}
-				</span>
-			</span>
-		</div>
-	</div>
+}: CaptureStepPillProps) => (
+	<span
+		className={[
+			"inline-flex min-h-8 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold",
+			tone === "strong"
+				? "border-[rgba(172,124,35,0.24)] bg-[rgba(255,245,219,0.9)] text-[#715016]"
+				: "border-[rgba(120,100,80,0.12)] bg-white/76 text-muted-foreground",
+		].join(" ")}
+	>
+		<EntityIcon size="xs" visualKey={visualKey} />
+		{label}
+	</span>
 );
 
 type PacketActionBarProps = {
@@ -871,14 +1409,22 @@ type PacketActionBarProps = {
 	pendingParticipantCountForSplitCandidate: (
 		candidate: CandidateReviewItem,
 	) => number;
-	onSavePromoCandidate: (candidate: CandidateReviewItem) => void;
-	onConfirmDocumentCandidate: (candidate: CandidateReviewItem) => void;
-	onCreateParticipantCandidate: (candidate: CandidateReviewItem) => void;
-	onCreateRecurringCandidate: (candidate: CandidateReviewItem) => void;
+	onSavePromoCandidate: (
+		candidate: CandidateReviewItem,
+	) => Promise<void> | void;
+	onConfirmDocumentCandidate: (
+		candidate: CandidateReviewItem,
+	) => Promise<void> | void;
+	onCreateParticipantCandidate: (
+		candidate: CandidateReviewItem,
+	) => Promise<void> | void;
+	onCreateRecurringCandidate: (
+		candidate: CandidateReviewItem,
+	) => Promise<void> | void;
 	onApplySplitCandidate: (
 		candidate: CandidateReviewItem,
 		targetExpenseId: number | null,
-	) => void;
+	) => Promise<void> | void;
 };
 
 const PacketActionBar = ({
@@ -893,6 +1439,7 @@ const PacketActionBar = ({
 	onCreateRecurringCandidate,
 	onApplySplitCandidate,
 }: PacketActionBarProps) => {
+	const [acceptingAll, setAcceptingAll] = useState(false);
 	const promoCandidate = candidates.find((candidate) => candidate.canSavePromo);
 	const participantCandidate = candidates.find(
 		(candidate) => candidate.canCreateParticipant,
@@ -926,25 +1473,65 @@ const PacketActionBar = ({
 		recurringCandidate ||
 		reviewCandidate ||
 		splitCandidate;
+	const handleAcceptAll = async () => {
+		if (!hasActions || acceptingAll) return;
+		setAcceptingAll(true);
+		try {
+			for (const candidate of candidates.filter(
+				(item) => item.canCreateParticipant,
+			)) {
+				await Promise.resolve(onCreateParticipantCandidate(candidate));
+			}
+			for (const candidate of candidates.filter((item) => item.canSavePromo)) {
+				await Promise.resolve(onSavePromoCandidate(candidate));
+			}
+			for (const candidate of candidates.filter(
+				(item) => item.canCreateRecurring,
+			)) {
+				await Promise.resolve(onCreateRecurringCandidate(candidate));
+			}
+			for (const candidate of candidates.filter(
+				(item) => item.canMarkReviewed,
+			)) {
+				await Promise.resolve(onConfirmDocumentCandidate(candidate));
+			}
+			for (const candidate of candidates.filter(
+				(item) => item.canOpenSplitReview,
+			)) {
+				await Promise.resolve(
+					onApplySplitCandidate(candidate, splitTargetExpenseIdFor(candidate)),
+				);
+			}
+		} finally {
+			setAcceptingAll(false);
+		}
+	};
 
 	if (!hasActions) return null;
 
 	return (
-		<div className="mt-3 rounded-xl border border-[rgba(68,58,42,0.14)] bg-[rgba(68,58,42,0.055)] px-3 py-2">
+		<div className="border-b border-[rgba(120,100,80,0.1)] pb-3">
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<div>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 						Next actions
 					</p>
 					<p className="mt-0.5 text-xs text-muted-foreground">
-						Start with the highest-signal decisions, then finish details inside
+						Start with the highest-signal candidates, then finish details inside
 						sections.
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center justify-end gap-1.5">
+					<CandidateActionButton
+						disabled={acceptingAll}
+						onClick={() => void handleAcceptAll()}
+						tone="attention"
+					>
+						{acceptingAll ? "Accepting" : "Accept all"}
+					</CandidateActionButton>
 					{promoCandidate ? (
 						<CandidateActionButton
-							disabled={isBenefitActing(promoCandidate)}
+							disabled={acceptingAll || isBenefitActing(promoCandidate)}
 							onClick={() => onSavePromoCandidate(promoCandidate)}
 							tone="benefit"
 						>
@@ -953,7 +1540,7 @@ const PacketActionBar = ({
 					) : null}
 					{participantCandidate ? (
 						<CandidateActionButton
-							disabled={isDocumentActing(participantCandidate)}
+							disabled={acceptingAll || isDocumentActing(participantCandidate)}
 							onClick={() => onCreateParticipantCandidate(participantCandidate)}
 							tone="people"
 						>
@@ -965,6 +1552,7 @@ const PacketActionBar = ({
 					{splitCandidate ? (
 						<CandidateActionButton
 							disabled={
+								acceptingAll ||
 								splitBlocked ||
 								splitTargetExpenseId == null ||
 								isDocumentActing(splitCandidate)
@@ -983,7 +1571,7 @@ const PacketActionBar = ({
 					) : null}
 					{recurringCandidate ? (
 						<CandidateActionButton
-							disabled={isDocumentActing(recurringCandidate)}
+							disabled={acceptingAll || isDocumentActing(recurringCandidate)}
 							onClick={() => onCreateRecurringCandidate(recurringCandidate)}
 							tone="attention"
 						>
@@ -994,7 +1582,7 @@ const PacketActionBar = ({
 					) : null}
 					{reviewCandidate ? (
 						<CandidateActionButton
-							disabled={isDocumentActing(reviewCandidate)}
+							disabled={acceptingAll || isDocumentActing(reviewCandidate)}
 							onClick={() => onConfirmDocumentCandidate(reviewCandidate)}
 							tone="review"
 						>
@@ -1009,7 +1597,12 @@ const PacketActionBar = ({
 
 type CaptureCandidateRowProps = Omit<
 	CapturePacketRowProps,
-	"packet" | "sectionFilter"
+	| "packet"
+	| "memberLabels"
+	| "deletingSourceDocumentId"
+	| "onDeleteCapture"
+	| "onFinishReview"
+	| "finishingSourceDocumentId"
 > & {
 	candidate: CandidateReviewItem;
 };
@@ -1150,72 +1743,87 @@ const CaptureCandidateActions = ({
 	onCreateRecurringCandidate,
 	onApplySplitCandidate,
 	onIgnoreCandidate,
-}: CaptureCandidateActionsProps) => (
-	<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-		{candidate.canSavePromo ? (
-			<CandidateActionButton
-				disabled={isActing}
-				onClick={() => onSavePromoCandidate(candidate)}
-				tone="benefit"
-			>
-				{isActing ? "Saving" : "Save promo"}
-			</CandidateActionButton>
-		) : null}
-		{candidate.canMarkReviewed ? (
-			<CandidateActionButton
-				disabled={isActing}
-				onClick={() => onConfirmDocumentCandidate(candidate)}
-				tone="review"
-			>
-				{isActing ? "Saving" : "Reviewed"}
-			</CandidateActionButton>
-		) : null}
-		{candidate.canCreateParticipant ? (
-			<CandidateActionButton
-				disabled={isActing}
-				onClick={() => onCreateParticipantCandidate(candidate)}
-				tone="people"
-			>
-				{isActing ? "Creating" : "Add person"}
-			</CandidateActionButton>
-		) : null}
-		{candidate.canCreateRecurring ? (
-			<CandidateActionButton
-				disabled={isActing}
-				onClick={() => onCreateRecurringCandidate(candidate)}
-				tone="attention"
-			>
-				{isActing ? "Creating" : "Create recurring"}
-			</CandidateActionButton>
-		) : null}
-		{candidate.canOpenSplitReview ? (
-			splitTargetExpenseId != null ? (
+}: CaptureCandidateActionsProps) => {
+	const isDraft = candidate.status === "draft";
+	return (
+		<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+			{candidate.canSavePromo ? (
 				<CandidateActionButton
-					disabled={isActing || splitApplyBlocked}
-					onClick={() => onApplySplitCandidate(candidate, splitTargetExpenseId)}
+					disabled={isActing}
+					onClick={() => onSavePromoCandidate(candidate)}
+					tone="benefit"
+				>
+					{isActing ? "Saving" : "Save promo"}
+				</CandidateActionButton>
+			) : null}
+			{candidate.canMarkReviewed ? (
+				<CandidateActionButton
+					disabled={isActing}
+					onClick={() => onConfirmDocumentCandidate(candidate)}
+					tone="review"
+				>
+					{isActing ? "Saving" : "Reviewed"}
+				</CandidateActionButton>
+			) : null}
+			{candidate.canCreateParticipant ? (
+				<CandidateActionButton
+					disabled={isActing}
+					onClick={() => onCreateParticipantCandidate(candidate)}
+					tone="people"
+				>
+					{isActing ? "Creating" : "Add person"}
+				</CandidateActionButton>
+			) : null}
+			{candidate.candidateType === "participant_placeholder_candidate" ? (
+				<Link
+					className={`inline-flex items-center ${candidateActionButtonClass("people")}`}
+					to={spaceMembersHref(spaceId)}
+				>
+					Manage aliases
+				</Link>
+			) : null}
+			{candidate.canCreateRecurring ? (
+				<CandidateActionButton
+					disabled={isActing}
+					onClick={() => onCreateRecurringCandidate(candidate)}
 					tone="attention"
 				>
-					{splitApplyBlocked
-						? "Add people first"
-						: isActing
-							? "Applying"
-							: "Apply split"}
+					{isActing ? "Creating" : "Create recurring"}
 				</CandidateActionButton>
-			) : (
-				<Link
-					className={`inline-flex items-center ${candidateActionButtonClass("attention")}`}
-					to={`/console/spaces/${spaceId}/splits`}
+			) : null}
+			{candidate.canOpenSplitReview ? (
+				splitTargetExpenseId != null ? (
+					<CandidateActionButton
+						disabled={isActing || splitApplyBlocked}
+						onClick={() =>
+							onApplySplitCandidate(candidate, splitTargetExpenseId)
+						}
+						tone="attention"
+					>
+						{splitApplyBlocked
+							? "Add people first"
+							: isActing
+								? "Applying"
+								: "Apply split"}
+					</CandidateActionButton>
+				) : (
+					<Link
+						className={`inline-flex items-center ${candidateActionButtonClass("attention")}`}
+						to={`/console/spaces/${spaceId}/splits`}
+					>
+						Open splits
+					</Link>
+				)
+			) : null}
+			{isDraft ? (
+				<CandidateActionButton
+					disabled={isActing}
+					onClick={() => onIgnoreCandidate(candidate)}
+					tone="neutral"
 				>
-					Open splits
-				</Link>
-			)
-		) : null}
-		<CandidateActionButton
-			disabled={isActing}
-			onClick={() => onIgnoreCandidate(candidate)}
-			tone="neutral"
-		>
-			{isActing ? "Working" : "Ignore"}
-		</CandidateActionButton>
-	</div>
-);
+					{isActing ? "Working" : "Ignore"}
+				</CandidateActionButton>
+			) : null}
+		</div>
+	);
+};

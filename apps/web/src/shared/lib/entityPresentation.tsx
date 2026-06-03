@@ -137,10 +137,12 @@ export const EntityMini = ({
 };
 
 export const EntityListItem = ({
+	children,
 	density = "regular",
 	entity,
 	trailing,
 }: {
+	children?: ReactNode;
 	density?: "regular" | "compact";
 	entity: EntityViewModel;
 	trailing?: ReactNode;
@@ -205,6 +207,7 @@ export const EntityListItem = ({
 						))}
 					</span>
 				) : null}
+				{children ? <span className="mt-3 block">{children}</span> : null}
 			</span>
 			{trailing ? <span className="shrink-0">{trailing}</span> : null}
 			{entity.href ? (

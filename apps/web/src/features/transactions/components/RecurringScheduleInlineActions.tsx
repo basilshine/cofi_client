@@ -3,8 +3,10 @@ import { apiClient } from "../../../shared/lib/apiClient";
 import { isNotFoundHttpError } from "../../../shared/lib/apiErrors";
 
 export type TransactionInlineActionsProps = {
-	/** Expense / transaction id (same id in list API). */
+	/** Expense record id. */
 	expenseId: string | number;
+	/** Space context for canonical space-owned expense record actions. */
+	spaceId?: string | number;
 	recurringId?: number;
 	/** When omitted for a recurring-linked row, Pause is shown. */
 	recurringPaused?: boolean;
@@ -16,10 +18,11 @@ export type TransactionInlineActionsProps = {
 
 /**
  * Pause/resume schedule (if linked) + delete flows for a single posting.
- * Regular transactions: one delete. Recurring: delete posting, stop schedule, or purge all + schedule.
+ * Regular expense records: one delete. Recurring: delete posting, stop schedule, or purge all + schedule.
  */
-export const TransactionInlineActions = ({
+export const ExpenseInlineActions = ({
 	expenseId,
+	spaceId,
 	recurringId,
 	recurringPaused = false,
 	onAfterChange,
@@ -47,7 +50,11 @@ export const TransactionInlineActions = ({
 		}
 		setIsActing(true);
 		try {
-			await apiClient.finances.recurring.pause(recurringId);
+			if (spaceId != null) {
+				await apiClient.spaces.recurring.pause(spaceId, recurringId);
+			} else {
+				await apiClient.finances.recurring.pause(recurringId);
+			}
 			await runAfter();
 		} catch (e) {
 			setErrorMessage(
@@ -64,7 +71,11 @@ export const TransactionInlineActions = ({
 		setInfoMessage(null);
 		setIsActing(true);
 		try {
-			await apiClient.finances.recurring.resume(recurringId);
+			if (spaceId != null) {
+				await apiClient.spaces.recurring.resume(spaceId, recurringId);
+			} else {
+				await apiClient.finances.recurring.resume(recurringId);
+			}
 			await runAfter();
 		} catch (e) {
 			setErrorMessage(
@@ -78,17 +89,21 @@ export const TransactionInlineActions = ({
 	const handleDeleteTransactionOnly = async () => {
 		setErrorMessage(null);
 		setInfoMessage(null);
-		if (!window.confirm("Delete this transaction? This cannot be undone.")) {
+		if (!window.confirm("Delete this expense record? This cannot be undone.")) {
 			return;
 		}
 		setIsActing(true);
 		try {
-			await apiClient.finances.expenses.delete(expenseId);
+			if (spaceId != null) {
+				await apiClient.spaces.expenses.delete(spaceId, expenseId);
+			} else {
+				await apiClient.finances.expenses.delete(expenseId);
+			}
 			await runAfter();
 		} catch (e) {
 			if (isNotFoundHttpError(e)) {
 				setInfoMessage(
-					"This transaction was already removed or is no longer available.",
+					"This expense record was already removed or is no longer available.",
 				);
 				if (onResourceGone) {
 					onResourceGone();
@@ -97,7 +112,7 @@ export const TransactionInlineActions = ({
 				}
 			} else {
 				setErrorMessage(
-					e instanceof Error ? e.message : "Could not delete transaction",
+					e instanceof Error ? e.message : "Could not delete expense record",
 				);
 			}
 		} finally {
@@ -111,19 +126,23 @@ export const TransactionInlineActions = ({
 		setInfoMessage(null);
 		if (
 			!window.confirm(
-				"This posting came from a recurring schedule.\n\nDelete ONLY this transaction? The schedule will keep running for future dates.",
+				"This posting came from a recurring schedule.\n\nDelete only this expense posting? The schedule will keep running for future dates.",
 			)
 		) {
 			return;
 		}
 		setIsActing(true);
 		try {
-			await apiClient.finances.expenses.delete(expenseId);
+			if (spaceId != null) {
+				await apiClient.spaces.expenses.delete(spaceId, expenseId);
+			} else {
+				await apiClient.finances.expenses.delete(expenseId);
+			}
 			await runAfter();
 		} catch (e) {
 			if (isNotFoundHttpError(e)) {
 				setInfoMessage(
-					"This transaction was already removed or is no longer available.",
+					"This expense record was already removed or is no longer available.",
 				);
 				if (onResourceGone) {
 					onResourceGone();
@@ -132,7 +151,7 @@ export const TransactionInlineActions = ({
 				}
 			} else {
 				setErrorMessage(
-					e instanceof Error ? e.message : "Could not delete transaction",
+					e instanceof Error ? e.message : "Could not delete expense record",
 				);
 			}
 		} finally {
@@ -146,14 +165,18 @@ export const TransactionInlineActions = ({
 		setInfoMessage(null);
 		if (
 			!window.confirm(
-				"Delete the recurring schedule? Future automatic charges will stop. Past transactions in your history stay.",
+				"Delete the recurring schedule? Future automatic charges will stop. Past expense records stay in your history.",
 			)
 		) {
 			return;
 		}
 		setIsActing(true);
 		try {
-			await apiClient.finances.recurring.remove(recurringId);
+			if (spaceId != null) {
+				await apiClient.spaces.recurring.remove(spaceId, recurringId);
+			} else {
+				await apiClient.finances.recurring.remove(recurringId);
+			}
 			await runAfter();
 		} catch (e) {
 			if (isNotFoundHttpError(e)) {
@@ -181,16 +204,22 @@ export const TransactionInlineActions = ({
 		setInfoMessage(null);
 		if (
 			!window.confirm(
-				"Delete the schedule AND every transaction that was posted from it? This cannot be undone.",
+				"Delete the schedule AND every expense record that was posted from it? This cannot be undone.",
 			)
 		) {
 			return;
 		}
 		setIsActing(true);
 		try {
-			await apiClient.finances.recurring.remove(recurringId, {
-				purgeExpenses: true,
-			});
+			if (spaceId != null) {
+				await apiClient.spaces.recurring.remove(spaceId, recurringId, {
+					purgeExpenses: true,
+				});
+			} else {
+				await apiClient.finances.recurring.remove(recurringId, {
+					purgeExpenses: true,
+				});
+			}
 			await runAfter();
 		} catch (e) {
 			if (isNotFoundHttpError(e)) {
@@ -249,7 +278,7 @@ export const TransactionInlineActions = ({
 
 			<div className="space-y-1.5">
 				<div className="text-[10px] font-medium text-muted-foreground">
-					Transaction
+					Expense record
 				</div>
 				{hasRecurring ? (
 					<div className="flex flex-col gap-1.5">
@@ -263,7 +292,7 @@ export const TransactionInlineActions = ({
 							Delete this posting only
 						</button>
 						<button
-							aria-label="Stop schedule and keep past transactions"
+							aria-label="Stop schedule and keep past expense records"
 							className="inline-flex h-8 items-center justify-center rounded-md border border-border px-2 text-[10px] font-semibold hover:bg-accent disabled:opacity-50"
 							disabled={isActing}
 							onClick={() => void handleStopScheduleKeepPast()}
@@ -283,7 +312,7 @@ export const TransactionInlineActions = ({
 					</div>
 				) : (
 					<button
-						aria-label="Delete transaction"
+						aria-label="Delete expense record"
 						className="inline-flex h-8 items-center rounded-md border border-destructive/40 px-2 text-[10px] font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-50"
 						disabled={isActing}
 						onClick={() => void handleDeleteTransactionOnly()}
@@ -304,7 +333,10 @@ export const TransactionInlineActions = ({
 	);
 };
 
-/** @deprecated Use TransactionInlineActions */
-export const RecurringScheduleInlineActions = TransactionInlineActions;
+/** @deprecated Use ExpenseInlineActions */
+export const TransactionInlineActions = ExpenseInlineActions;
+
+/** @deprecated Use ExpenseInlineActions */
+export const RecurringScheduleInlineActions = ExpenseInlineActions;
 
 export type RecurringScheduleInlineActionsProps = TransactionInlineActionsProps;

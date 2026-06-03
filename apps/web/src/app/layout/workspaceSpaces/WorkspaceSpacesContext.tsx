@@ -36,7 +36,7 @@ type WorkspaceSpacesContextValue = {
 	/** When set, renders ChatSpacesSidebar (members, invites) below the space list */
 	chatSidebarProps: ChatSpacesSidebarProps | null;
 	setChatSidebarProps: (props: ChatSpacesSidebarProps | null) => void;
-	/** Chat route: right panel (space expenses + thread) — same expand/collapse behavior as the left rail */
+	/** Chat route: right panel for space captures/expenses — same expand/collapse behavior as the left rail */
 	rightSidebarExpanded: boolean;
 	setRightSidebarExpanded: (next: boolean) => void;
 	newSpaceName: string;

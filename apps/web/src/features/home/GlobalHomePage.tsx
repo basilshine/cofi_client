@@ -50,6 +50,8 @@ const detectActivityType = (
 	| "voice"
 	| "edited"
 	| "split-assigned"
+	| "benefit"
+	| "participant"
 	| "recurring-created" => {
 	const normalized = `${label} ${status ?? ""}`.toLowerCase();
 	if (
@@ -84,7 +86,11 @@ const detectActivityType = (
 	if (
 		normalized.includes("receipt") ||
 		normalized.includes("invoice") ||
-		normalized.includes("bill")
+		normalized.includes("bill") ||
+		normalized.includes("кассовый чек") ||
+		normalized.includes("фискальный") ||
+		normalized.includes("фн ") ||
+		normalized.includes("фд ")
 	) {
 		return "receipt";
 	}
@@ -98,6 +104,33 @@ const detectActivityType = (
 	return "expense";
 };
 
+const detectDashboardOutcomeType = (
+	action?: string | null,
+	entity?: string | null,
+): ReturnType<typeof detectActivityType> => {
+	const key = `${action ?? ""} ${entity ?? ""}`.toLowerCase();
+	if (key.includes("promo") || key.includes("benefit")) return "benefit";
+	if (key.includes("participant")) return "participant";
+	if (key.includes("split")) return "split-assigned";
+	if (key.includes("recurring")) return "recurring-created";
+	return "expense";
+};
+
+const dashboardOutcomeStatus = (action?: string | null): string => {
+	switch (action) {
+		case "promo_saved":
+			return "Benefit record";
+		case "participant_created":
+			return "Participant record";
+		case "expense_splits_updated":
+			return "Split records";
+		case "recurring_created":
+			return "Recurring rule";
+		default:
+			return "Record saved";
+	}
+};
+
 const humanizeStatus = (
 	value?: string | null,
 	fallback = "Confirmed",
@@ -108,18 +141,20 @@ const humanizeStatus = (
 	return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
 };
 
-const friendlySpaceNameByIndex = [
-	"Family Budget",
-	"Home & Bills",
-	"Weekend Trip",
-	"Personal",
-];
-
-const normalizeSpaceName = (name: string, index: number): string => {
-	const trimmed = name.trim();
-	if (!trimmed) return friendlySpaceNameByIndex[index] ?? `Space ${index + 1}`;
+const normalizeSpaceName = (
+	name: string | undefined | null,
+	spaceId?: number | null,
+): string => {
+	const trimmed = name?.trim() ?? "";
+	if (!trimmed) {
+		return typeof spaceId === "number" && Number.isFinite(spaceId)
+			? `Space #${spaceId}`
+			: "Unknown space";
+	}
 	if (/^ws shared \d+$/i.test(trimmed)) {
-		return friendlySpaceNameByIndex[index] ?? "Shared Space";
+		return typeof spaceId === "number" && Number.isFinite(spaceId)
+			? `Space #${spaceId}`
+			: "Shared space";
 	}
 	return trimmed;
 };
@@ -132,6 +167,50 @@ const normalizeLabel = (
 	if (!trimmed) return fallback;
 	if (/\(dummy\)/i.test(trimmed)) return fallback;
 	return trimmed;
+};
+
+const looksLikeRawCaptureText = (value: string | undefined | null): boolean => {
+	const text = value?.trim() ?? "";
+	if (!text) return false;
+	const normalized = text.toLowerCase();
+	return (
+		text.length > 90 ||
+		/\r|\n/.test(text) ||
+		normalized.includes("кассовый чек") ||
+		normalized.includes("фискальный") ||
+		normalized.includes("налогообложения") ||
+		normalized.includes("итого") ||
+		/\bфн\b/.test(normalized) ||
+		/\bфд\b/.test(normalized) ||
+		/\b(?:receipt|invoice)\b/.test(normalized)
+	);
+};
+
+const captureActivityTitle = (
+	value: string | undefined | null,
+	eventType: ReturnType<typeof detectActivityType>,
+): string => {
+	if (looksLikeRawCaptureText(value)) {
+		return eventType === "receipt" ? "Receipt capture" : "Capture needs review";
+	}
+	return normalizeLabel(
+		value,
+		eventType === "receipt" ? "Receipt capture" : "Capture with expense draft",
+	);
+};
+
+const buildReviewHref = (
+	spaceId: string | number,
+	sourceDocumentId?: string | number | null,
+): string => {
+	const params = new URLSearchParams({ spaceId: String(spaceId) });
+	if (sourceDocumentId != null) {
+		const parsed = Number(sourceDocumentId);
+		if (Number.isFinite(parsed) && parsed > 0) {
+			params.set("sourceDocumentId", String(parsed));
+		}
+	}
+	return `/console/review?${params.toString()}`;
 };
 
 const transactionLabelFallbacks = [
@@ -224,9 +303,9 @@ export const GlobalHomePage = () => {
 	const monthly = dashboardData?.monthly_snapshot ?? null;
 	const pendingDrafts = dashboardData?.pending_drafts ?? [];
 	const recentTx = dashboardData?.recent_transactions ?? [];
-	const reviewQ = dashboardData?.review_queue ?? null;
 	const recurringUpcoming = dashboardData?.recurring_upcoming ?? [];
 	const spendOverview = dashboardData?.spend_overview;
+	const dashboardActivity = dashboardData?.recent_activity?.items ?? [];
 
 	const monthlyTotal =
 		monthly != null
@@ -237,13 +316,6 @@ export const GlobalHomePage = () => {
 			: null;
 
 	const reviewContextLine = useMemo(() => {
-		const pendingSplits =
-			reviewQ?.items?.filter(
-				(item) =>
-					typeof item === "object" &&
-					item != null &&
-					(item as { kind?: string }).kind === "expense_thread_approval",
-			).length ?? 0;
 		const dueSoonCount = recurringUpcoming.filter((item) => {
 			const nextDue = Date.parse(item.next_due);
 			if (!Number.isFinite(nextDue)) return false;
@@ -251,19 +323,19 @@ export const GlobalHomePage = () => {
 			return daysUntil >= 0 && daysUntil <= 7;
 		}).length;
 
-		if (pendingSplits > 0 && dueSoonCount > 0) {
-			return `${pendingSplits} split${pendingSplits === 1 ? "" : "s"} and a bill need attention`;
+		if (pendingDrafts.length > 0 && dueSoonCount > 0) {
+			return `${pendingDrafts.length} capture${pendingDrafts.length === 1 ? "" : "s"} and a bill need attention`;
 		}
-		if (pendingSplits > 0) {
-			return "Splits need your attention";
+		if (pendingDrafts.length > 0) {
+			return `${pendingDrafts.length} capture${pendingDrafts.length === 1 ? "" : "s"} need review`;
 		}
 		if (dueSoonCount > 0) {
 			return "A bill is due soon";
 		}
-		return "Splits and bills need attention";
-	}, [reviewQ?.items, recurringUpcoming]);
+		return "Captures and bills need attention";
+	}, [pendingDrafts.length, recurringUpcoming]);
 
-	const newTransactionsContextLine = useMemo(() => {
+	const newExpenseRecordsContextLine = useMemo(() => {
 		const todayCount = recentTx.filter((t) => {
 			const d = new Date(t.occurred_at);
 			return (
@@ -284,24 +356,6 @@ export const GlobalHomePage = () => {
 
 	const reviewTopSpaces = useMemo(() => {
 		const topSpaces = new Map<number, { name: string; count: number }>();
-		for (const item of reviewQ?.items ?? []) {
-			if (typeof item !== "object" || item == null) continue;
-			const spaceId = (item as { space_id?: number }).space_id;
-			const spaceName = (item as { space_name?: string }).space_name;
-			if (
-				typeof spaceId !== "number" ||
-				!Number.isFinite(spaceId) ||
-				!spaceName ||
-				!spaceName.trim()
-			) {
-				continue;
-			}
-			const existing = topSpaces.get(spaceId);
-			topSpaces.set(spaceId, {
-				name: spaceName,
-				count: (existing?.count ?? 0) + 1,
-			});
-		}
 		for (const draft of pendingDrafts) {
 			const spaceId = draft.space_id;
 			const spaceName = draft.space_name?.trim();
@@ -322,7 +376,7 @@ export const GlobalHomePage = () => {
 			.sort((a, b) => b[1].count - a[1].count)
 			.slice(0, 2)
 			.map(([id, payload]) => ({ id, name: payload.name }));
-	}, [reviewQ?.items, pendingDrafts]);
+	}, [pendingDrafts]);
 
 	const reviewPrimarySpaceId = useMemo(() => {
 		return reviewTopSpaces[0]?.id ?? null;
@@ -369,7 +423,7 @@ export const GlobalHomePage = () => {
 			)?.name;
 			byId.set(
 				spaceId,
-				normalizeSpaceName(spaceName ?? fallback ?? "", byId.size),
+				normalizeSpaceName(spaceName ?? fallback ?? "", spaceId),
 			);
 		};
 
@@ -442,21 +496,53 @@ export const GlobalHomePage = () => {
 	}, [promoPreviewSpaces]);
 
 	const recentActivityItems = useMemo(() => {
+		const outcomeItems = dashboardActivity
+			.filter((item) => item.action || item.source_document_id != null)
+			.map((item) => {
+				const eventType = detectDashboardOutcomeType(item.action, item.entity);
+				const statusLabel = dashboardOutcomeStatus(item.action);
+				return {
+					eventType,
+					id: item.id ?? `activity-${item.space_id}-${item.timestamp}`,
+					meaningLine:
+						item.source_document_id != null
+							? "Saved record with source capture provenance."
+							: "Saved record in this space.",
+					occurredAt: item.timestamp,
+					spaceName: normalizeSpaceName(item.space_name, item.space_id),
+					statusLabel,
+					statusPillLabel: "Saved record",
+					sourceCaptureTo:
+						item.source_document_id != null
+							? buildReviewHref(item.space_id, item.source_document_id)
+							: null,
+					sourceDocumentId: item.source_document_id ?? null,
+					timeLabel: formatRelative(item.timestamp),
+					title: normalizeLabel(item.caption, statusLabel),
+					to:
+						item.source_document_id != null
+							? buildReviewHref(item.space_id, item.source_document_id)
+							: `/console/spaces/${encodeURIComponent(String(item.space_id))}/overview`,
+				};
+			});
+
 		const txItems = recentTx.map((t) => ({
 			amountLabel: formatMoney(t.amount),
 			eventType: detectActivityType(t.label, t.status),
 			id: `tx-${t.id}`,
 			occurredAt: t.occurred_at,
-			spaceName: normalizeSpaceName(
-				t.space_name,
-				t.space_id % friendlySpaceNameByIndex.length,
-			),
+			spaceName: normalizeSpaceName(t.space_name, t.space_id),
 			statusLabel: humanizeStatus(t.status, "Confirmed"),
 			statusPillLabel: ["draft", "pending", "question", "review"].some(
 				(token) => (t.status ?? "").toLowerCase().includes(token),
 			)
 				? humanizeStatus(t.status)
 				: undefined,
+			sourceCaptureTo:
+				t.source_document_id != null
+					? buildReviewHref(t.space_id, t.source_document_id)
+					: null,
+			sourceDocumentId: t.source_document_id ?? null,
 			timeLabel: formatRelative(t.occurred_at),
 			title: normalizeLabel(
 				t.label,
@@ -468,71 +554,41 @@ export const GlobalHomePage = () => {
 
 		const draftItems = pendingDrafts.map((draft) => {
 			const detectedEventType = detectActivityType(draft.label, "draft");
-			const draftEventType =
-				detectedEventType === "receipt" ? "receipt" : "draft";
-			const humanDraftStatus =
-				draftEventType === "receipt" ? "Needs review" : "Not saved yet";
+			const captureSource =
+				detectedEventType === "receipt" ? "Receipt capture" : "Text capture";
+			const captureMeaning =
+				detectedEventType === "receipt"
+					? "Receipt capture needs review before it becomes records."
+					: "Capture produced an expense draft that is not recorded until you confirm.";
 			return {
 				amountLabel: formatMoney(
 					typeof draft.my_share === "number" ? draft.my_share : draft.total,
 				),
-				eventType: draftEventType as "draft" | "receipt",
+				eventType: "capture" as const,
 				id: `draft-${draft.id}`,
+				meaningLine: captureMeaning,
 				occurredAt: draft.updated_at,
-				spaceName: normalizeSpaceName(
-					draft.space_name,
-					draft.space_id % friendlySpaceNameByIndex.length,
-				),
-				statusLabel: humanDraftStatus,
-				statusPillLabel: humanDraftStatus,
+				spaceName: normalizeSpaceName(draft.space_name, draft.space_id),
+				statusLabel: captureSource,
+				statusPillLabel: "Capture review",
+				sourceCaptureTo:
+					draft.source_document_id != null
+						? buildReviewHref(draft.space_id, draft.source_document_id)
+						: null,
+				sourceDocumentId: draft.source_document_id ?? null,
 				timeLabel: formatRelative(draft.updated_at),
-				title: normalizeLabel(draft.label, "Expense draft"),
-				to: `/console/chat?spaceId=${encodeURIComponent(String(draft.space_id))}&view=activity`,
+				title: captureActivityTitle(draft.label, detectedEventType),
+				to: buildReviewHref(draft.space_id, draft.source_document_id),
 			};
 		});
 
-		const reviewItems = (reviewQ?.items ?? []).flatMap((item) => {
-			if (
-				typeof item !== "object" ||
-				item == null ||
-				(item as { kind?: string }).kind !== "expense_thread_approval"
-			) {
-				return [];
-			}
-			const approval = item as {
-				expense_id: number;
-				space_id: number;
-				space_name: string;
-				label: string;
-				my_share: number;
-				updated_at: string;
-			};
-			return [
-				{
-					amountLabel: formatMoney(approval.my_share),
-					eventType: "split-assigned" as const,
-					id: `review-${approval.expense_id}`,
-					occurredAt: approval.updated_at,
-					spaceName: normalizeSpaceName(
-						approval.space_name,
-						approval.space_id % friendlySpaceNameByIndex.length,
-					),
-					statusLabel: "Split review",
-					statusPillLabel: "Review",
-					timeLabel: formatRelative(approval.updated_at),
-					title: normalizeLabel(approval.label, "Split approval"),
-					to: buildExpenseDetailHref(approval.space_id, approval.expense_id),
-				},
-			];
-		});
-
-		return [...txItems, ...draftItems, ...reviewItems]
+		return [...outcomeItems, ...txItems, ...draftItems]
 			.sort(
 				(a, b) =>
 					Date.parse(b.occurredAt ?? "") - Date.parse(a.occurredAt ?? ""),
 			)
 			.slice(0, 6);
-	}, [recentTx, pendingDrafts, reviewQ?.items, formatMoney]);
+	}, [dashboardActivity, recentTx, pendingDrafts, formatMoney]);
 
 	const breakdownItems = useMemo(() => {
 		const tags =
@@ -661,18 +717,16 @@ export const GlobalHomePage = () => {
 										: "/console/spaces"
 								}
 								tone="review"
-								value={String(
-									(reviewQ?.total_count ?? 0) + pendingDrafts.length,
-								)}
+								value={String(pendingDrafts.length)}
 							/>
 							<InsightMetricCard
-								contextLine={newTransactionsContextLine}
-								label="New transactions"
+								contextLine={newExpenseRecordsContextLine}
+								label="New expenses"
 								loading={isLoading}
 								spaceLinks={transactionTopSpaces}
 								to={
 									recentActiveSpaceId != null
-										? `/console/chat?spaceId=${encodeURIComponent(String(recentActiveSpaceId))}&view=activity`
+										? `/console/spaces/${encodeURIComponent(String(recentActiveSpaceId))}/expenses`
 										: "/console/spaces"
 								}
 								tone="activity"
@@ -687,11 +741,16 @@ export const GlobalHomePage = () => {
 					/>
 
 					<ActivityListCard
-						ctaLabel="View history"
-						ctaTo="/console/chat/expenses"
+						ctaLabel="Review captures"
+						ctaTo={
+							reviewPrimarySpaceId != null
+								? `/console/review?spaceId=${encodeURIComponent(String(reviewPrimarySpaceId))}`
+								: "/console/spaces"
+						}
 						emptyText="No activity yet"
 						items={recentActivityItems}
 						linkState={chatWorkspace ? { chatWorkspace } : undefined}
+						scope="global"
 						title="Recent activity"
 					/>
 

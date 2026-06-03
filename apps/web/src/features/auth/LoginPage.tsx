@@ -75,7 +75,7 @@ export const LoginPage = () => {
 			return;
 		}
 		if (inviteOnly) {
-			navigate(`/console/chat?invite=${encodeURIComponent(inviteOnly)}`, {
+			navigate(`/join?token=${encodeURIComponent(inviteOnly)}`, {
 				replace: true,
 			});
 			return;

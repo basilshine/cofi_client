@@ -1,4 +1,4 @@
-import type { ExpenseThreadSummary, SpaceMember } from "@cofi/api";
+import type { SpaceMember } from "@cofi/api";
 import {
 	useCallback,
 	useEffect,
@@ -17,8 +17,8 @@ import {
 	percentsToAmounts,
 	splitRowKey,
 	splitRowsFromParticipants,
-	userIsThreadOrSpaceMaster,
-} from "../hooks/useExpenseThreadState";
+	userCanManageExpenseSplits,
+} from "../lib/spaceExpenseSplits";
 
 /** 50% draft owner, remaining 50% split equally among everyone else in the space. */
 const ownerHalfRestEqualPercents = (
@@ -54,7 +54,7 @@ export type ExpenseSplitDialogProps = {
 	spaceId: string | number;
 	expenseId: string | number;
 	expenseTotal: number;
-	/** Draft / expense owner (thread creator in this product). */
+	/** Draft / expense owner. */
 	expenseOwnerUserId: number;
 	currentUserId: number | null;
 	formatMoney: (n: number) => string;
@@ -62,7 +62,7 @@ export type ExpenseSplitDialogProps = {
 };
 
 /**
- * Full-screen split editor for a space expense (same rules as the expense thread sidebar).
+ * Full-screen split editor for a space expense.
  */
 export const ExpenseSplitDialog = ({
 	open,
@@ -78,7 +78,9 @@ export const ExpenseSplitDialog = ({
 	const titleId = useId();
 	const dialogRef = useRef<HTMLDialogElement>(null);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
-	const [summary, setSummary] = useState<ExpenseThreadSummary | null>(null);
+	const [expenseStatus, setExpenseStatus] = useState<string | null>(null);
+	const [loadedExpenseOwnerUserId, setLoadedExpenseOwnerUserId] =
+		useState<number>(expenseOwnerUserId);
 	const [splitRows, setSplitRows] = useState<SplitPercentRow[]>([]);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [actionError, setActionError] = useState<string | null>(null);
@@ -106,15 +108,17 @@ export const ExpenseSplitDialog = ({
 			return;
 		}
 		try {
-			await apiClient.threads.getOrCreate(spaceId, expenseId);
-			const [sum, memRes, participantRes, splitRes] = await Promise.all([
-				apiClient.threads.getSummary(spaceId, expenseId),
+			const [expense, memRes, participantRes, splitRes] = await Promise.all([
+				apiClient.spaces.expenses.get(spaceId, expenseId),
 				apiClient.spaces.listMembers(spaceId),
 				apiClient.spaces.listParticipants(spaceId).catch(() => null),
-				apiClient.finances.expenses.listSplits(expenseId).catch(() => null),
+				apiClient.spaces.expenses
+					.listSplits(spaceId, expenseId)
+					.catch(() => null),
 			]);
 			const mem = memRes.members ?? [];
-			setSummary(sum);
+			setExpenseStatus(expense.status ?? null);
+			setLoadedExpenseOwnerUserId(expense.user_id ?? expenseOwnerUserId);
 			setMembers(mem);
 			const total = expenseTotal;
 			const participantRows = splitRowsFromParticipants(
@@ -135,7 +139,8 @@ export const ExpenseSplitDialog = ({
 				e instanceof Error ? e.message : "Failed to load split editor",
 			);
 			setMembers([]);
-			setSummary(null);
+			setExpenseStatus(null);
+			setLoadedExpenseOwnerUserId(expenseOwnerUserId);
 			setSplitRows([]);
 		} finally {
 			setLoading(false);
@@ -147,12 +152,16 @@ export const ExpenseSplitDialog = ({
 		void loadData();
 	}, [open, loadData]);
 
-	const finalized = summary?.thread.status === "finalized";
+	const finalized =
+		expenseStatus === "approved" || expenseStatus === "cancelled";
 	const canEdit =
 		currentUserId != null &&
-		summary != null &&
 		!finalized &&
-		userIsThreadOrSpaceMaster(summary, members, currentUserId);
+		userCanManageExpenseSplits(
+			loadedExpenseOwnerUserId,
+			members,
+			currentUserId,
+		);
 
 	const setPercentChange = useCallback((rowKey: string, value: string) => {
 		setSplitRows((prev) =>
@@ -200,7 +209,8 @@ export const ExpenseSplitDialog = ({
 		setSaving(true);
 		setActionError(null);
 		try {
-			await apiClient.finances.expenses.putSplits(
+			await apiClient.spaces.expenses.putSplits(
+				spaceId,
 				expenseId,
 				splitRows.map((r, i) => ({
 					...(r.space_participant_id != null
@@ -237,9 +247,8 @@ export const ExpenseSplitDialog = ({
 					</h2>
 					<p className="mt-1 text-xs leading-snug text-muted-foreground">
 						Set how the total ({formatMoney(expenseTotal)}) is shared between
-						space members. Percentages must sum to 100%. Same rules as the
-						expense thread: thread creator or space owner can save (creator is
-						the expense owner).
+						space participants. Percentages must sum to 100%. The expense owner
+						or space owner can save changes.
 					</p>
 
 					{loading ? (
@@ -379,8 +388,8 @@ export const ExpenseSplitDialog = ({
 							) : (
 								<p className="mt-3 text-xs text-muted-foreground">
 									{finalized
-										? "Thread is finalized — splits are read-only."
-										: "Only the thread creator or the space owner can edit splits."}
+										? "This expense is finalized — splits are read-only."
+										: "Only the expense owner or the space owner can edit splits."}
 								</p>
 							)}
 

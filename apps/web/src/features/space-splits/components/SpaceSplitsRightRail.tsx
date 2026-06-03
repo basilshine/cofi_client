@@ -44,6 +44,7 @@ export type SelectedSplitDetail = {
 	currentUserId?: number | null;
 	reviewTo: string;
 	expenseTo: string;
+	sourceDocumentId?: number;
 };
 
 type SpaceSplitsRightRailProps = {
@@ -195,6 +196,14 @@ export const SpaceSplitsRightRail = ({
 							{selectedDetail.dateDisplayLabel} · {selectedDetail.categoryLabel}{" "}
 							· {selectedDetail.spaceLabel}
 						</p>
+						{selectedDetail.sourceDocumentId != null ? (
+							<Link
+								className="inline-flex w-fit rounded-full border border-blue-200/80 bg-blue-50/70 px-2.5 py-1 text-[11px] font-semibold text-blue-900 transition hover:bg-blue-100"
+								to={selectedDetail.reviewTo}
+							>
+								Source capture #{selectedDetail.sourceDocumentId}
+							</Link>
+						) : null}
 						<p className="text-xl font-semibold tabular-nums tracking-tight text-foreground">
 							{selectedDetail.totalLabel}
 						</p>
@@ -313,7 +322,7 @@ export const SpaceSplitsRightRail = ({
 								className="inline-flex h-11 items-center justify-center rounded-xl bg-foreground px-4 text-sm font-semibold tracking-wide text-background shadow-[0_14px_32px_-18px_rgba(20,22,21,0.55)] transition hover:bg-foreground/92 hover:shadow-[0_16px_36px_-18px_rgba(20,22,21,0.5)] active:scale-[0.99]"
 								to={selectedDetail.reviewTo}
 							>
-								Review split
+								Review capture
 							</Link>
 						)}
 						<Link
@@ -338,23 +347,23 @@ export const SpaceSplitsRightRail = ({
 	return (
 		<div className="flex flex-col gap-4">
 			<section className="rounded-2xl border border-[rgba(189,143,64,0.28)] bg-[linear-gradient(180deg,rgba(255,250,241,0.97)_0%,rgba(255,245,229,0.9)_100%)] p-4 shadow-[0_12px_20px_-18px_rgba(143,104,43,0.72)]">
-				<p className="eyebrow">Decision queue</p>
+				<p className="eyebrow">Capture queue</p>
 				<p className="mt-1 text-[15px] font-semibold text-foreground">
 					{reviewCount === 0
-						? "Nothing waiting for confirmation"
+						? "No split captures waiting"
 						: reviewCount === 1
-							? "1 decision needs your confirmation"
-							: `${reviewCount} decisions need your confirmation`}
+							? "1 capture includes split candidates"
+							: `${reviewCount} captures include split candidates`}
 				</p>
 				<p className="mt-1 text-xs text-foreground/75">
-					{draftCount} draft{draftCount === 1 ? "" : "s"} still pending split
-					review.
+					{draftCount} expense draft{draftCount === 1 ? "" : "s"} can become
+					split records after capture review.
 				</p>
 				<Link
 					className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary px-3 text-xs font-semibold uppercase tracking-[0.1em] text-primary-foreground"
 					to={`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`}
 				>
-					Open split reviews
+					Review captures
 				</Link>
 			</section>
 

@@ -1,10 +1,12 @@
-import { useCallback, useMemo } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
 	CeitsLogoMark,
 	CeitsWordmark,
 } from "../../../components/brand/ceits-logo";
 import { useAuth } from "../../../contexts/AuthContext";
+import { apiClient } from "../../../shared/lib/apiClient";
 import { sortSpacesByLastActivity } from "../../../shared/lib/recentSpaceIds";
 import { SpaceSidebarActivity } from "./SpaceSidebarActivity";
 import { WorkspaceCreateSpaceDialog } from "./WorkspaceCreateSpaceDialog";
@@ -280,6 +282,53 @@ const IconCard = ({ className }: { className?: string }) => (
 	</svg>
 );
 
+const IconMore = ({ className }: { className?: string }) => (
+	<svg
+		aria-hidden
+		className={className}
+		fill="none"
+		height="16"
+		stroke="currentColor"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		strokeWidth="1.8"
+		viewBox="0 0 24 24"
+		width="16"
+	>
+		<title>More actions</title>
+		<circle cx="5" cy="12" r="1.2" />
+		<circle cx="12" cy="12" r="1.2" />
+		<circle cx="19" cy="12" r="1.2" />
+	</svg>
+);
+
+const IconTrash = ({ className }: { className?: string }) => (
+	<svg
+		aria-hidden
+		className={className}
+		fill="none"
+		height="16"
+		stroke="currentColor"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		strokeWidth="1.8"
+		viewBox="0 0 24 24"
+		width="16"
+	>
+		<title>Delete</title>
+		<path d="M4 7h16" />
+		<path d="M10 11v6M14 11v6" />
+		<path d="M6 7l1 14h10l1-14" />
+		<path d="M9 7V4h6v3" />
+	</svg>
+);
+
+type PendingSpaceDestructive = {
+	kind: "delete" | "leave";
+	id: string | number;
+	name: string;
+};
+
 export const WorkspaceSpaceListNav = ({
 	soloNav = false,
 }: {
@@ -292,14 +341,22 @@ export const WorkspaceSpaceListNav = ({
 	const {
 		workspaceScope,
 		spaces,
+		patchSpaces,
 		loadError,
+		refreshSpaces,
 		sidebarExpanded,
 		setSidebarExpanded,
 		selectedSpaceId,
 		setSelectedSpaceId,
 		spaceHasUnread,
+		chatSidebarProps,
 		setCreateSpaceDialogOpen,
 	} = useWorkspaceSpaces();
+	const [openSpaceMenuId, setOpenSpaceMenuId] = useState<string | null>(null);
+	const [pendingSpaceDestructive, setPendingSpaceDestructive] =
+		useState<PendingSpaceDestructive | null>(null);
+	const [destructiveBusy, setDestructiveBusy] = useState(false);
+	const [destructiveError, setDestructiveError] = useState<string | null>(null);
 
 	const spacesSorted = useMemo(
 		() => (spaces?.length ? sortSpacesByLastActivity(spaces) : spaces),
@@ -350,6 +407,7 @@ export const WorkspaceSpaceListNav = ({
 
 	const handleSelectSpace = useCallback(
 		(id: string | number) => {
+			setOpenSpaceMenuId(null);
 			setSelectedSpaceId(id);
 			// Chat owns its own space switcher — it reacts to the context change
 			// and re-fetches messages without any URL navigation.
@@ -382,6 +440,46 @@ export const WorkspaceSpaceListNav = ({
 			location.pathname,
 		],
 	);
+
+	const handleConfirmSpaceDestructive = useCallback(async () => {
+		if (pendingSpaceDestructive == null) return;
+		const targetId = pendingSpaceDestructive.id;
+		setDestructiveBusy(true);
+		setDestructiveError(null);
+		try {
+			await apiClient.spaces.delete(targetId);
+			patchSpaces((prev) =>
+				prev ? prev.filter((s) => String(s.id) !== String(targetId)) : prev,
+			);
+			if (
+				selectedSpaceId != null &&
+				String(selectedSpaceId) === String(targetId)
+			) {
+				setSelectedSpaceId(null);
+				navigate("/console/home");
+			}
+			setPendingSpaceDestructive(null);
+			setOpenSpaceMenuId(null);
+			void refreshSpaces();
+		} catch (error) {
+			setDestructiveError(
+				error instanceof Error
+					? error.message
+					: pendingSpaceDestructive.kind === "delete"
+						? "Failed to delete this space"
+						: "Failed to leave this space",
+			);
+		} finally {
+			setDestructiveBusy(false);
+		}
+	}, [
+		navigate,
+		patchSpaces,
+		pendingSpaceDestructive,
+		refreshSpaces,
+		selectedSpaceId,
+		setSelectedSpaceId,
+	]);
 
 	if (!workspaceScope) {
 		return (
@@ -650,87 +748,107 @@ export const WorkspaceSpaceListNav = ({
 										ownerId != null &&
 										ownerId === Number(user.id);
 									const sid = String(s.id);
+									const menuOpen = openSpaceMenuId === sid;
+									const membersCount =
+										isSelected && chatSidebarProps?.members
+											? chatSidebarProps.members.length
+											: null;
+									const metaLabel =
+										membersCount != null
+											? `${membersCount} participant${membersCount === 1 ? "" : "s"}`
+											: isYours
+												? "Your space"
+												: ownerId != null
+													? "Shared"
+													: `id ${sid}`;
+									const settingsHref = `/console/settings/spaces/${encodeURIComponent(sid)}`;
 									return (
-										<li key={sid}>
-											{isYours ? (
-												<div className={spaceNavRowClass(isSelected)}>
-													<button
-														aria-current={isSelected ? "page" : undefined}
-														aria-label={`Open space ${s.name}${unread ? ", unread messages" : ""}`}
+										<li className="relative" key={sid}>
+											<div className={spaceNavRowClass(isSelected)}>
+												<button
+													aria-current={isSelected ? "page" : undefined}
+													aria-label={`Open space ${s.name}${unread ? ", unread messages" : ""}`}
+													className={[
+														"flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left",
+														isSelected ? "font-bold" : "font-medium",
+														"rounded-l-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+													].join(" ")}
+													onClick={() => handleSelectSpace(s.id)}
+													type="button"
+												>
+													<span
+														aria-hidden
 														className={[
-															"flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left",
-															isSelected ? "font-bold" : "font-medium",
-															"rounded-l-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+															"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold uppercase tracking-tight transition-colors",
+															isSelected
+																? "bg-foreground text-background"
+																: "bg-muted/60 text-muted-foreground group-hover/space:text-foreground",
 														].join(" ")}
-														onClick={() => handleSelectSpace(s.id)}
-														type="button"
 													>
+														{spaceInitial(s.name)}
+													</span>
+													<span className="min-w-0 flex-1">
+														<span className="block truncate">{s.name}</span>
+														<span className="mt-0.5 block truncate text-[10px] font-medium tracking-wide text-muted-foreground">
+															{metaLabel}
+														</span>
+													</span>
+													{unread ? (
 														<span
 															aria-hidden
-															className={[
-																"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold uppercase tracking-tight transition-colors",
-																isSelected
-																	? "bg-foreground text-background"
-																	: "bg-muted/60 text-muted-foreground group-hover/space:text-foreground",
-															].join(" ")}
-														>
-															{spaceInitial(s.name)}
-														</span>
-														<span className="min-w-0 flex-1">
-															<span className="block truncate">{s.name}</span>
-															<span className="mt-0.5 block truncate text-[10px] font-medium tracking-wide text-muted-foreground">
-																Your space
-															</span>
-														</span>
-														{unread ? (
-															<span
-																aria-hidden
-																className="ml-1 h-2 w-2 shrink-0 rounded-full bg-secondary shadow-[0_0_0_2px_hsl(var(--background))]"
-																title="Unread messages"
-															/>
-														) : null}
-													</button>
-												</div>
-											) : (
-												<div className={spaceNavRowClass(isSelected)}>
+															className="ml-1 h-2 w-2 shrink-0 rounded-full bg-secondary shadow-[0_0_0_2px_hsl(var(--background))]"
+															title="Unread messages"
+														/>
+													) : null}
+												</button>
+												<button
+													aria-expanded={menuOpen}
+													aria-label={`More actions for ${s.name}`}
+													className={[
+														"mr-1 my-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground",
+														"transition-colors hover:bg-background/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+														menuOpen
+															? "bg-background text-foreground shadow-sm"
+															: "",
+													].join(" ")}
+													onClick={(event) => {
+														event.stopPropagation();
+														setOpenSpaceMenuId(menuOpen ? null : sid);
+														setDestructiveError(null);
+													}}
+													type="button"
+												>
+													<IconMore className="h-4 w-4" />
+												</button>
+											</div>
+											{menuOpen ? (
+												<div className="absolute right-1 top-[calc(100%+0.25rem)] z-30 w-52 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur">
+													<Link
+														className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														onClick={() => setOpenSpaceMenuId(null)}
+														to={settingsHref}
+													>
+														<IconCog className="h-4 w-4" />
+														Space settings
+													</Link>
 													<button
-														aria-label={`Select space ${s.name}${unread ? ", unread messages" : ""}`}
-														aria-current={isSelected ? "page" : undefined}
-														className={[
-															"flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left",
-															isSelected ? "font-bold" : "font-medium",
-															"rounded-l-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-														].join(" ")}
-														onClick={() => handleSelectSpace(s.id)}
+														className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														onClick={() => {
+															setPendingSpaceDestructive({
+																kind: isYours ? "delete" : "leave",
+																id: s.id,
+																name: s.name,
+															});
+															setOpenSpaceMenuId(null);
+															setDestructiveError(null);
+														}}
 														type="button"
 													>
-														<span
-															aria-hidden
-															className={[
-																"flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-bold uppercase tracking-tight transition-colors",
-																isSelected
-																	? "bg-foreground text-background"
-																	: "bg-muted/60 text-muted-foreground group-hover/space:text-foreground",
-															].join(" ")}
-														>
-															{spaceInitial(s.name)}
-														</span>
-														<span className="min-w-0 flex-1">
-															<span className="block truncate">{s.name}</span>
-															<span className="mt-0.5 block truncate text-[10px] font-medium tracking-wide text-muted-foreground">
-																{ownerId != null ? "Shared" : `id ${sid}`}
-															</span>
-														</span>
-														{unread ? (
-															<span
-																aria-hidden
-																className="ml-1 h-2 w-2 shrink-0 rounded-full bg-secondary shadow-[0_0_0_2px_hsl(var(--background))]"
-																title="Unread messages"
-															/>
-														) : null}
+														<IconTrash className="h-4 w-4" />
+														{isYours ? "Delete space" : "Leave space"}
 													</button>
 												</div>
-											)}
+											) : null}
 										</li>
 									);
 								})}
@@ -826,6 +944,62 @@ export const WorkspaceSpaceListNav = ({
 				{collapsedRail}
 			</div>
 			<WorkspaceCreateSpaceDialog />
+			<Dialog.Root
+				onOpenChange={(open) => {
+					if (!open && !destructiveBusy) {
+						setPendingSpaceDestructive(null);
+						setDestructiveError(null);
+					}
+				}}
+				open={pendingSpaceDestructive != null}
+			>
+				<Dialog.Portal>
+					<Dialog.Overlay className="fixed inset-0 z-[100] bg-[rgba(38,30,22,0.38)] backdrop-blur-sm" />
+					<Dialog.Content
+						className="fixed left-1/2 top-1/2 z-[101] w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background p-5 shadow-[0_24px_80px_-36px_rgba(40,30,20,0.6)] outline-none"
+						onOpenAutoFocus={(event) => event.preventDefault()}
+					>
+						<Dialog.Title className="font-display text-xl font-bold tracking-tight text-foreground">
+							{pendingSpaceDestructive?.kind === "delete"
+								? "Delete space"
+								: "Leave space"}
+						</Dialog.Title>
+						<Dialog.Description className="mt-2 text-sm leading-relaxed text-muted-foreground">
+							{pendingSpaceDestructive?.kind === "delete"
+								? `This permanently deletes "${pendingSpaceDestructive.name}" and everything inside it: chat, expenses, benefits, splits, recurring items, and settings. This cannot be undone.`
+								: `You will leave "${pendingSpaceDestructive?.name ?? "this space"}" and lose access until someone invites you again.`}
+						</Dialog.Description>
+						{destructiveError ? (
+							<p className="mt-3 rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+								{destructiveError}
+							</p>
+						) : null}
+						<div className="mt-5 flex justify-end gap-2">
+							<Dialog.Close asChild>
+								<button
+									className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									disabled={destructiveBusy}
+									type="button"
+								>
+									Cancel
+								</button>
+							</Dialog.Close>
+							<button
+								className="inline-flex h-10 items-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-95 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								disabled={pendingSpaceDestructive == null || destructiveBusy}
+								onClick={() => void handleConfirmSpaceDestructive()}
+								type="button"
+							>
+								{destructiveBusy
+									? "Working..."
+									: pendingSpaceDestructive?.kind === "delete"
+										? "Delete permanently"
+										: "Leave space"}
+							</button>
+						</div>
+					</Dialog.Content>
+				</Dialog.Portal>
+			</Dialog.Root>
 		</div>
 	);
 };

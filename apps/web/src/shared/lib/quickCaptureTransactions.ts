@@ -41,6 +41,7 @@ export type CaptureParsePreview = {
 	requires_deep_parse?: boolean;
 	clarification_message?: string;
 	source_document_id?: number;
+	media_id?: number;
 	candidates?: CaptureParseCandidate[];
 	model_policy?: {
 		profile?: string;
@@ -76,6 +77,7 @@ export type CaptureIntentPreview = {
 	confidence: number;
 	requires_review: boolean;
 	required_clarification?: string | null;
+	source_document_id?: number;
 	target_context: {
 		space_id?: number | null;
 		space_name?: string;

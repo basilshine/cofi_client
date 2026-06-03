@@ -1,5 +1,5 @@
 import { type ReactNode, Suspense, lazy } from "react";
-import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { AuthEntryPage } from "../../features/auth/AuthEntryPage";
 import { LoginPage } from "../../features/auth/LoginPage";
 import { RegisterPage } from "../../features/auth/RegisterPage";
@@ -8,6 +8,7 @@ import { OnboardingPage } from "../../features/onboarding/OnboardingPage";
 import type { SettingsSectionKey } from "../../features/settings/SettingsHubPage";
 import { AppShell } from "../layout/AppShell";
 import { ConsoleWorkspaceSplit } from "../layout/workspaceSpaces/ConsoleWorkspaceSplit";
+import { useWorkspaceSpaces } from "../layout/workspaceSpaces/WorkspaceSpacesContext";
 import { ConsoleIndexRedirect } from "./ConsoleIndexRedirect";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RequireOnboarded } from "./RequireOnboarded";
@@ -23,10 +24,12 @@ const DraftsPage = lazy(() =>
 		default: module.DraftsPage,
 	})),
 );
-const ExpenseThreadPage = lazy(() =>
-	import("../../features/expense-thread/ExpenseThreadPage").then((module) => ({
-		default: module.ExpenseThreadPage,
-	})),
+const LegacyReviewRedirectPage = lazy(() =>
+	import("../../features/legacy-review-redirect/LegacyReviewRedirectPage").then(
+		(module) => ({
+			default: module.LegacyReviewRedirectPage,
+		}),
+	),
 );
 const GlobalHomePage = lazy(() =>
 	import("../../features/home/GlobalHomePage").then((module) => ({
@@ -68,6 +71,11 @@ const SpaceBenefitsPage = lazy(() =>
 		default: module.SpaceBenefitsPage,
 	})),
 );
+const SpaceMembersPage = lazy(() =>
+	import("../../features/space-members/SpaceMembersPage").then((module) => ({
+		default: module.SpaceMembersPage,
+	})),
+);
 const SpaceOverviewPage = lazy(() =>
 	import("../../features/space-overview/SpaceOverviewPage").then((module) => ({
 		default: module.SpaceOverviewPage,
@@ -97,12 +105,6 @@ const SpacesPage = lazy(() =>
 		default: module.SpacesPage,
 	})),
 );
-const TransactionsPage = lazy(() =>
-	import("../../features/transactions/TransactionsPage").then((module) => ({
-		default: module.TransactionsPage,
-	})),
-);
-
 const RouteLoading = () => (
 	<div className="flex min-h-[14rem] items-center justify-center px-4 py-10 text-sm text-muted-foreground">
 		Loading page...
@@ -117,6 +119,41 @@ const ChatSectionLayout = () => <Outlet />;
 const SettingsSectionRoute = ({ section }: { section: SettingsSectionKey }) => (
 	<SettingsHubPage section={section} />
 );
+const initialLegacyTransactionsSearch =
+	typeof window !== "undefined" &&
+	window.location.pathname === "/console/transactions"
+		? window.location.search
+		: "";
+const LegacyTransactionsRoute = () => {
+	const location = useLocation();
+	const { isLoading, selectedSpaceId } = useWorkspaceSpaces();
+	const browserSearch =
+		typeof window === "undefined" ? "" : new URL(window.location.href).search;
+	const spaceIdRaw =
+		new URLSearchParams(location.search).get("spaceId") ??
+		new URLSearchParams(browserSearch).get("spaceId") ??
+		new URLSearchParams(initialLegacyTransactionsSearch).get("spaceId");
+	const spaceId =
+		spaceIdRaw != null && Number.isFinite(Number(spaceIdRaw))
+			? Number(spaceIdRaw)
+			: null;
+	const fallbackSpaceId =
+		selectedSpaceId != null && Number.isFinite(Number(selectedSpaceId))
+			? Number(selectedSpaceId)
+			: null;
+	const targetSpaceId = spaceId ?? fallbackSpaceId;
+	if (targetSpaceId == null && isLoading) return <RouteLoading />;
+	return (
+		<Navigate
+			replace
+			to={
+				targetSpaceId != null
+					? `/console/spaces/${encodeURIComponent(String(targetSpaceId))}/expenses`
+					: "/console/spaces"
+			}
+		/>
+	);
+};
 
 export const AppRouter = () => {
 	return (
@@ -156,12 +193,20 @@ export const AppRouter = () => {
 								path="spaces/:spaceId/overview"
 							/>
 							<Route
+								element={lazyRoute(<ChatPage />)}
+								path="spaces/:spaceId/expenses"
+							/>
+							<Route
 								element={lazyRoute(<SpaceSplitsWorkspacePage />)}
 								path="spaces/:spaceId/splits"
 							/>
 							<Route
 								element={lazyRoute(<SpaceBenefitsPage />)}
 								path="spaces/:spaceId/benefits"
+							/>
+							<Route
+								element={lazyRoute(<SpaceMembersPage />)}
+								path="spaces/:spaceId/members"
 							/>
 							<Route
 								element={lazyRoute(<SpaceRecurringPage />)}
@@ -178,7 +223,7 @@ export const AppRouter = () => {
 								path="review"
 							/>
 							<Route
-								element={lazyRoute(<TransactionsPage />)}
+								element={<LegacyTransactionsRoute />}
 								path="transactions"
 							/>
 							<Route
@@ -189,7 +234,7 @@ export const AppRouter = () => {
 								<Route element={lazyRoute(<ChatPage />)} index />
 								<Route element={lazyRoute(<ChatPage />)} path="expenses" />
 								<Route
-									element={lazyRoute(<ExpenseThreadPage />)}
+									element={lazyRoute(<LegacyReviewRedirectPage />)}
 									path="thread"
 								/>
 							</Route>

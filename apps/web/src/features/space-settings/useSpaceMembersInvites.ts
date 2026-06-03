@@ -1,7 +1,6 @@
 import type { Space, SpaceMember, SpaceRole } from "@cofi/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
-import { wsClient } from "../../shared/lib/wsClient";
 
 export type UseSpaceMembersInvitesArgs = {
 	spaceId: string | number | null;
@@ -29,6 +28,8 @@ export const useSpaceMembersInvites = ({
 		setInviteEmailState(v);
 	}, []);
 	const [inviteToken, setInviteToken] = useState<string | null>(null);
+	const [inviteFeedback, setInviteFeedback] = useState<string | null>(null);
+	const [inviteError, setInviteError] = useState<string | null>(null);
 	const [inviteSuggestionsNonce, setInviteSuggestionsNonce] = useState(0);
 	const [incomingInvitesRefreshKey, setIncomingInvitesRefreshKey] = useState(0);
 	const [tenantInviteEmail, setTenantInviteEmailState] = useState("");
@@ -138,15 +139,18 @@ export const useSpaceMembersInvites = ({
 		const email = inviteEmail.trim();
 		if (!email) return;
 		setIsLoading(true);
+		setInviteFeedback(null);
+		setInviteError(null);
 		try {
-			await wsClient.connect();
-			const res = await wsClient.rpc<{ token: string }>("spaces.invite", {
-				spaceId,
-				email,
-			});
+			const res = await apiClient.spaces.createInvite(spaceId, { email });
 			setInviteToken(res.token ?? null);
+			setInviteFeedback(`Invite created for ${email}.`);
 			setInviteEmailState("");
 			setInviteSuggestionsNonce((n) => n + 1);
+		} catch (e) {
+			setInviteError(
+				e instanceof Error ? e.message : "Could not create invite",
+			);
 		} finally {
 			setIsLoading(false);
 		}
@@ -184,7 +188,14 @@ export const useSpaceMembersInvites = ({
 				setIncomingInvitesRefreshKey((k) => k + 1);
 				if (outcome.kind === "space" && onJoinedSpace) {
 					onJoinedSpace(outcome.space);
+					setInviteFeedback(`Joined ${outcome.space.name}.`);
+				} else {
+					setInviteFeedback("Joined organization. Spaces refreshed.");
 				}
+			} catch (e) {
+				setInviteError(
+					e instanceof Error ? e.message : "Could not accept invite",
+				);
 			} finally {
 				setIsLoading(false);
 			}
@@ -195,7 +206,7 @@ export const useSpaceMembersInvites = ({
 	const handleHardPurgeAllMessages = useCallback(async () => {
 		if (spaceId == null) return;
 		const ok = window.confirm(
-			"Clear ALL chat messages in this space?\n\nThis cannot be undone. Expenses, transactions, and recurring schedules are not deleted — only chat lines.\n\nContinue?",
+			"Clear ALL chat messages in this space?\n\nThis cannot be undone. Expense records and recurring schedules are not deleted — only chat lines.\n\nContinue?",
 		);
 		if (!ok) return;
 		setHardPurgeFeedback(null);
@@ -221,6 +232,8 @@ export const useSpaceMembersInvites = ({
 		inviteEmail,
 		setInviteEmail,
 		inviteToken,
+		inviteFeedback,
+		inviteError,
 		inviteSuggestionsNonce,
 		incomingInvitesRefreshKey,
 		tenantInviteEmail,

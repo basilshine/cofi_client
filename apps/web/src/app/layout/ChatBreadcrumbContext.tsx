@@ -7,10 +7,11 @@ import {
 	useState,
 } from "react";
 
-/** Published by ChatLogPage for shell breadcrumbs (space + optional expense thread). */
+/** Published by ChatLogPage for shell breadcrumbs (space + optional selected expense). */
 export type ChatBreadcrumbPayload = {
+	spaceId: string | number | null;
 	spaceName: string | null;
-	thread: {
+	selectedExpense: {
 		label: string;
 		detail?: string | null;
 	} | null;

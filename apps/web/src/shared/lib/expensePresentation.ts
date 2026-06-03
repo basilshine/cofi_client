@@ -1,4 +1,4 @@
-import type { Transaction } from "@cofi/api";
+import type { ExpenseDetail, Transaction } from "@cofi/api";
 import type { EntityViewModel } from "./entityPresentation";
 
 export const expenseListHeading = (tx: Transaction): string => {
@@ -54,7 +54,7 @@ export const expenseStatusTone = (raw?: string): ExpenseStatusTone => {
 
 export const expenseStatusLabel = (raw?: string): string => {
 	const value = (raw ?? "").trim();
-	if (!value) return "Unknown";
+	if (!value) return "Recorded";
 	return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
@@ -110,8 +110,8 @@ export const expenseSourceLabel = (tx: Transaction): string => {
 	const kind = expenseSourceKind(tx);
 	if (kind === "recurring") return "Recurring";
 	if (kind === "voice") return "Voice capture";
-	if (kind === "receipt") return "Receipt";
-	return "Manual";
+	if (kind === "receipt") return "Receipt capture";
+	return "Text capture";
 };
 
 export const toTransactionExpenseEntity = (
@@ -134,5 +134,45 @@ export const toTransactionExpenseEntity = (
 		status: expenseStatusLabel(tx.status),
 		statusClassName: expenseStatusClass(tx.status),
 		selected: options.selected,
+	};
+};
+
+export const expenseDetailToTransaction = (
+	expense: ExpenseDetail,
+	spaceId: string | number,
+): Transaction => {
+	const items = (expense.items ?? []).map((item) => ({
+		name: item.name,
+		amount: Number(item.amount) || 0,
+		emotion: item.emotion,
+		notes: item.notes,
+		tags: item.tags?.map((tag) => tag.name).filter(Boolean),
+	}));
+	const fallbackTotal = items.reduce((sum, item) => sum + item.amount, 0);
+	return {
+		id: expense.id,
+		space_id: spaceId,
+		user_id: expense.user_id,
+		type: "expense",
+		status: expense.status ?? "draft",
+		title: expense.title,
+		description: expense.description,
+		payee_text: expense.payee_text,
+		currency: expense.currency,
+		txn_date: expense.txn_date,
+		items,
+		total: Number(expense.amount ?? fallbackTotal) || 0,
+		created_at: expense.created_at,
+		source_document_id: expense.source_document_id,
+		recurring_id: expense.recurring_id,
+		recurring_paused: expense.recurring_paused,
+		vendor_id: expense.vendor_id ?? expense.vendor?.id,
+		vendor_name: expense.vendor?.name,
+		business_meta: expense.business_meta
+			? {
+					invoice_ref: expense.business_meta.invoice_ref,
+					notes: expense.business_meta.notes,
+				}
+			: undefined,
 	};
 };

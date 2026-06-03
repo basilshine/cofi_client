@@ -20,6 +20,7 @@ export type SplitDecisionRow = {
 	myShareLabel: string;
 	totalLabel: string;
 	statusLabel: "Needs confirmation" | "Split saved" | "Draft" | "Cancelled";
+	sourceDocumentId?: number;
 };
 
 type SpaceSplitDecisionListProps = {
@@ -130,6 +131,11 @@ export const SpaceSplitDecisionList = ({
 											<p className="mt-1 truncate text-[12px] leading-snug text-foreground/70">
 												{row.contextLine}
 											</p>
+											{row.sourceDocumentId != null ? (
+												<span className="mt-2 inline-flex rounded-full border border-blue-200/80 bg-blue-50/70 px-2 py-0.5 text-[10px] font-semibold text-blue-900">
+													Source capture #{row.sourceDocumentId}
+												</span>
+											) : null}
 										</div>
 										<div className="min-w-0">
 											{row.participantsCount <= 1 ? (

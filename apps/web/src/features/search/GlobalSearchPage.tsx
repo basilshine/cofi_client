@@ -1,7 +1,7 @@
 import type { SearchEntityType, SearchResult } from "@cofi/api";
 import { ListChecks, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { apiClient } from "../../shared/lib/apiClient";
 import {
 	EntityIcon,
@@ -45,6 +45,12 @@ const entityFilters: Array<{
 		serverType: "participant",
 	},
 	{
+		key: "split",
+		label: "Splits",
+		visualKey: "split",
+		serverType: "split",
+	},
+	{
 		key: "recurring",
 		label: "Recurring",
 		visualKey: "future",
@@ -52,8 +58,8 @@ const entityFilters: Array<{
 	},
 	{
 		key: "source_document",
-		label: "Documents",
-		visualKey: "document",
+		label: "Captures",
+		visualKey: "reviewPacket",
 		serverType: "source_document",
 	},
 	{ key: "space", label: "Spaces", visualKey: "people", serverType: "space" },
@@ -64,6 +70,7 @@ const sectionOrder: SearchEntityType[] = [
 	"expense",
 	"expense_item",
 	"participant",
+	"split",
 	"recurring",
 	"source_document",
 	"space",
@@ -74,8 +81,9 @@ const sectionLabel: Record<SearchEntityType, string> = {
 	expense: "Expenses",
 	expense_item: "Purchased items",
 	participant: "People",
+	split: "Splits",
 	recurring: "Recurring",
-	source_document: "Source documents",
+	source_document: "Captures",
 	space: "Spaces",
 };
 
@@ -89,10 +97,12 @@ const visualForResult = (type: SearchEntityType): EntityVisualKey => {
 			return "benefit";
 		case "participant":
 			return "people";
+		case "split":
+			return "split";
 		case "recurring":
 			return "future";
 		case "source_document":
-			return "document";
+			return "reviewPacket";
 		case "space":
 			return "people";
 		default:
@@ -123,6 +133,28 @@ const formatAmount = (amount?: number, currency?: string): string | null => {
 	} catch {
 		return `${amount.toLocaleString()} ${code}`;
 	}
+};
+
+const searchStatusLabel = (status?: string | null): string | undefined => {
+	const normalized = status?.trim().toLowerCase();
+	if (!normalized) return undefined;
+	if (normalized === "records_created") return "Records created";
+	if (normalized === "needs_review") return "Needs review";
+	if (normalized === "captured") return "Captured";
+	return normalized
+		.replace(/_/g, " ")
+		.replace(/^\w/, (letter) => letter.toUpperCase());
+};
+
+const searchStatusClassName = (status?: string | null): string | undefined => {
+	const normalized = status?.trim().toLowerCase();
+	if (normalized === "records_created") {
+		return "border-[rgba(72,112,76,0.22)] bg-[rgba(236,247,238,0.92)] text-[#355a3c]";
+	}
+	if (normalized === "needs_review") {
+		return "border-[rgba(181,131,52,0.28)] bg-[rgba(255,240,208,0.86)] text-[#73501b]";
+	}
+	return undefined;
 };
 
 const escapeRegExp = (value: string): string =>
@@ -188,6 +220,17 @@ const SearchResultRow = ({
 }) => {
 	const amount = formatAmount(result.amount, result.currency);
 	const when = formatDate(result.occurred_at ?? result.created_at);
+	const sourceCapture =
+		result.source_document_id != null && Number(result.source_document_id) > 0
+			? `Source capture #${Number(result.source_document_id)}`
+			: null;
+	const sourceCaptureHref =
+		result.space_id != null &&
+		result.source_document_id != null &&
+		Number(result.source_document_id) > 0
+			? `/console/review?spaceId=${encodeURIComponent(String(result.space_id))}&sourceDocumentId=${encodeURIComponent(String(result.source_document_id))}`
+			: null;
+	const statusLabel = searchStatusLabel(result.status);
 	const entity: EntityViewModel = {
 		id: result.id,
 		visualKey: visualForResult(result.type),
@@ -214,13 +257,31 @@ const SearchResultRow = ({
 			/>
 		) : undefined,
 		href: result.href,
-		status: result.status || undefined,
-		meta: [amount, when, ...(result.matched_fields ?? []).slice(0, 2)].filter(
-			Boolean,
-		),
+		status: statusLabel,
+		statusClassName: searchStatusClassName(result.status),
+		meta: [
+			amount,
+			when,
+			sourceCapture,
+			...(result.matched_fields ?? []).slice(0, 2),
+		].filter(Boolean),
 	};
 
-	return <EntityListItem entity={entity} />;
+	return (
+		<div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
+			<div className="min-w-0 flex-1">
+				<EntityListItem entity={entity} />
+			</div>
+			{sourceCaptureHref ? (
+				<Link
+					className="inline-flex h-8 shrink-0 items-center justify-center rounded-full border border-[rgba(82,72,57,0.16)] bg-white/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-3"
+					to={sourceCaptureHref}
+				>
+					Review capture
+				</Link>
+			) : null}
+		</div>
+	);
 };
 
 const isSearchFilter = (value: string | null): value is SearchFilter =>
@@ -230,6 +291,7 @@ const isSearchFilter = (value: string | null): value is SearchFilter =>
 	value === "expense_item" ||
 	value === "promo_code" ||
 	value === "participant" ||
+	value === "split" ||
 	value === "recurring" ||
 	value === "source_document";
 
@@ -295,6 +357,7 @@ export const GlobalSearchPage = () => {
 			expense_item: 0,
 			promo_code: 0,
 			participant: 0,
+			split: 0,
 			recurring: 0,
 			source_document: 0,
 		};

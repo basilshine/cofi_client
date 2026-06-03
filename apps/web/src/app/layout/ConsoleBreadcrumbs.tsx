@@ -51,12 +51,13 @@ const buildCrumbs = (
 	}
 
 	const spaceMatch = pathname.match(
-		/^\/console\/spaces\/([^/]+)\/(overview|splits|benefits|recurring)\/?$/,
+		/^\/console\/spaces\/([^/]+)\/(overview|expenses|splits|benefits|recurring)\/?$/,
 	);
 	if (spaceMatch) {
 		const tail = spaceMatch[2];
 		const tailLabel: Record<string, string> = {
 			overview: "Overview",
+			expenses: "Expenses",
 			splits: "Splits",
 			benefits: "Benefits",
 			recurring: "Recurring",
@@ -71,29 +72,33 @@ const buildCrumbs = (
 
 	if (pathname.startsWith("/console/chat")) {
 		const space = chat?.spaceName?.trim() ?? "";
-		const hasThread = Boolean(chat?.thread);
+		const hasSelectedExpense = Boolean(chat?.selectedExpense);
 		const base: Crumb[] = [{ label: "Console", to: "/console" }, workspace];
 
-		if (!space && !hasThread) {
+		if (!space && !hasSelectedExpense) {
 			base.push({ label: "Chat" });
 			if (pathname.startsWith("/console/chat/thread")) {
-				base.push({ label: "Thread" });
+				base.push({ label: "Review" });
 			}
 			return base;
 		}
 
 		base.push({ label: "Chat", to: "/console/chat" });
 
-		if (!space && hasThread && chat?.thread) {
+		if (!space && hasSelectedExpense && chat?.selectedExpense) {
 			base.push({
-				label: chat.thread.label,
-				detail: chat.thread.detail ?? null,
+				label: chat.selectedExpense.label,
+				detail: chat.selectedExpense.detail ?? null,
 			});
 			return base;
 		}
 
 		if (space) {
-			if (!hasThread) {
+			const canonicalExpensesHref =
+				chat?.spaceId != null
+					? `/console/spaces/${encodeURIComponent(String(chat.spaceId))}/expenses`
+					: undefined;
+			if (!hasSelectedExpense) {
 				base.push({ label: space });
 				if (pathname.startsWith("/console/chat/expenses")) {
 					base.push({ label: "Expenses" });
@@ -104,18 +109,18 @@ const buildCrumbs = (
 			if (pathname.startsWith("/console/chat/expenses")) {
 				base.push({
 					label: "Expenses",
-					to: "/console/chat/expenses",
+					to: canonicalExpensesHref,
 				});
 			}
 			base.push({
-				label: chat?.thread?.label ?? "Expense thread",
-				detail: chat?.thread?.detail ?? null,
+				label: chat?.selectedExpense?.label ?? "Expense detail",
+				detail: chat?.selectedExpense?.detail ?? null,
 			});
 			return base;
 		}
 
 		if (pathname.startsWith("/console/chat/thread")) {
-			base.push({ label: "Thread" });
+			base.push({ label: "Review" });
 		}
 		return base;
 	}
@@ -160,7 +165,7 @@ const buildCrumbs = (
 		account: "Account",
 		spaces: "Spaces",
 		drafts: "Drafts",
-		transactions: "Transactions",
+		transactions: "Expenses",
 		recurring: "Recurring",
 		quota: "Quota",
 	};

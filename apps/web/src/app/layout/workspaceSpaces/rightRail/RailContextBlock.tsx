@@ -7,6 +7,8 @@ type UpcomingBill = {
 	dueLabel: string;
 	dueSoonLabel?: string;
 	spaceName?: string | null;
+	sourceCaptureTo?: string | null;
+	sourceDocumentId?: number | null;
 	isUrgent: boolean;
 };
 
@@ -82,6 +84,17 @@ export const RailContextBlock = ({
 										{bill.name}
 										{bill.spaceName ? ` · ${bill.spaceName}` : ""}
 									</p>
+									{bill.sourceCaptureTo && bill.sourceDocumentId != null ? (
+										<p className="mt-0.5 truncate text-[10px] text-muted-foreground">
+											Source capture #{bill.sourceDocumentId} ·{" "}
+											<Link
+												className="font-semibold text-[rgba(34,72,108,0.92)] underline-offset-2 hover:underline"
+												to={bill.sourceCaptureTo}
+											>
+												Review capture
+											</Link>
+										</p>
+									) : null}
 								</div>
 								<div className="text-right">
 									<p className="text-sm font-semibold tabular-nums text-foreground">

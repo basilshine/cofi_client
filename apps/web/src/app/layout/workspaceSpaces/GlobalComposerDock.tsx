@@ -1,5 +1,7 @@
+import type { CapturePacket as ApiCapturePacket } from "@cofi/api";
 import {
 	Activity,
+	ArrowRight,
 	CheckCircle2,
 	ChevronDown,
 	Clock3,
@@ -15,7 +17,14 @@ import {
 	Sparkles,
 	UserRound,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	type CSSProperties,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
 import {
@@ -24,9 +33,9 @@ import {
 	SmartTextareaComposer,
 	type SmartTextareaComposerHandle,
 } from "../../../features/chatlog/components/SmartTextareaComposer";
+import { apiClient } from "../../../shared/lib/apiClient";
 import { composerCandidateVisual } from "../../../shared/lib/entityVisual";
 import {
-	createManualDraftInSpace,
 	parseCaptureIntentText,
 	parseCapturePhoto,
 	parseCaptureText,
@@ -35,6 +44,8 @@ import {
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 import {
 	type GlobalComposerCandidateBundle,
+	type GlobalComposerCandidateKind,
+	type GlobalComposerCandidateSummary,
 	summarizeCaptureIntentPreview,
 	summarizeCapturePreview,
 } from "./globalComposerFlow";
@@ -44,23 +55,6 @@ import {
 	hasSettingsActionDock,
 } from "./globalComposerRoutePolicy";
 import { useGlobalComposerFlow } from "./useGlobalComposerFlow";
-
-const toDraftItems = (
-	items:
-		| {
-				name: string;
-				amount: number;
-				tags?: string[];
-		  }[]
-		| undefined,
-) =>
-	(items ?? [])
-		.filter((item) => item.name?.trim() && Number(item.amount) !== 0)
-		.map((item) => ({
-			name: item.name.trim(),
-			amount: Number(item.amount),
-			tags: item.tags,
-		}));
 
 const spaceIdFromPath = (pathname: string): string | null => {
 	const match = pathname.match(
@@ -105,15 +99,28 @@ const isPromoCapabilityGate = (bundle?: GlobalComposerCandidateBundle) =>
 	!bundleHasAny(bundle, ["promo"]) &&
 	bundle.capabilityNotice != null;
 
+const dockRightRailWidth = (pathname: string): string => {
+	if (/^\/console\/chat\/expenses(?:\/|$)/.test(pathname)) return "22rem";
+	if (/^\/console\/review(?:\/|$)/.test(pathname)) return "21rem";
+	return "20rem";
+};
+
+const routeHasRightRail = (pathname: string): boolean =>
+	/^\/console\/spaces\/[^/]+\/(?:overview|benefits|splits|recurring|members)(?:\/|$)/.test(
+		pathname,
+	) ||
+	/^\/console\/review(?:\/|$)/.test(pathname) ||
+	/^\/console\/chat\/expenses(?:\/|$)/.test(pathname);
+
 const candidateOnlyStatus = (
 	bundle: GlobalComposerCandidateBundle,
 	spaceName: string,
 ) => {
 	if (bundleHasAny(bundle, ["promo", "loyalty"])) {
-		return `Benefits candidate ready in ${spaceName}`;
+		return `Benefits found in ${spaceName}; review before saving.`;
 	}
 	if (bundleHasAny(bundle, ["split", "participant"])) {
-		return `Split candidate ready in ${spaceName}`;
+		return `People or split details found in ${spaceName}; review the capture.`;
 	}
 	if (
 		bundleHasAny(bundle, [
@@ -124,10 +131,10 @@ const candidateOnlyStatus = (
 			"space_suggestion",
 		])
 	) {
-		return `Document candidate ready for review in ${spaceName}`;
+		return `Document signal found in ${spaceName}; review before saving records.`;
 	}
 	if (bundle.candidates.length) {
-		return `Parsed result ready for review in ${spaceName}`;
+		return `Capture ready for review in ${spaceName}`;
 	}
 	if (bundle.capabilityNotice) {
 		return `Basic parse finished in ${spaceName}; smart candidates are gated by plan.`;
@@ -206,48 +213,71 @@ const candidateSummaryText = (
 		.join(", ");
 };
 
+const createdRecordSummaryText = (
+	bundle: GlobalComposerCandidateBundle,
+): string | null => {
+	if ((bundle.createdRecordCount ?? 0) <= 0) return null;
+	return bundle.createdRecordLabels?.length
+		? bundle.createdRecordLabels.slice(0, 3).join(", ")
+		: `${bundle.createdRecordCount} records`;
+};
+
 const buildComposerFlowItems = (
 	bundle: GlobalComposerCandidateBundle,
-): ComposerFlowItem[] => [
-	{
-		key: "capture",
-		title: "Capture",
-		detail: inputKindLabel(bundle),
-		status: "done",
-		icon: inputKindIcon(bundle),
-	},
-	{
-		key: "parse",
-		title: "Parse",
-		detail: bundle.modelProfile
-			? `${bundle.modelProfile} model`
-			: "Structure detected",
-		status: "done",
-		icon: ScanSearch,
-	},
-	{
-		key: "candidates",
-		title: "Candidates",
-		detail: candidateSummaryText(bundle),
-		status:
-			bundle.candidates.length || bundle.capabilityNotice ? "done" : "blocked",
-		icon: ListChecks,
-	},
-	{
-		key: "review",
-		title: "Review",
-		detail: bundle.requiresReview ? "Needs decision" : "Ready to save",
-		status: bundle.requiresReview ? "current" : "done",
-		icon: Clock3,
-	},
-	{
-		key: "finish",
-		title: "Save",
-		detail: "After review",
-		status: bundle.requiresReview ? "pending" : "current",
-		icon: CheckCircle2,
-	},
-];
+): ComposerFlowItem[] => {
+	const createdRecordText = createdRecordSummaryText(bundle);
+	const hasCreatedRecords = createdRecordText != null;
+	return [
+		{
+			key: "capture",
+			title: "Capture",
+			detail: inputKindLabel(bundle),
+			status: "done",
+			icon: inputKindIcon(bundle),
+		},
+		{
+			key: "parse",
+			title: "Parse",
+			detail: bundle.modelProfile
+				? `${bundle.modelProfile} model`
+				: "Structure detected",
+			status: "done",
+			icon: ScanSearch,
+		},
+		{
+			key: "candidates",
+			title: "Findings",
+			detail: candidateSummaryText(bundle),
+			status:
+				bundle.candidates.length || bundle.capabilityNotice || hasCreatedRecords
+					? "done"
+					: "blocked",
+			icon: ListChecks,
+		},
+		{
+			key: "review",
+			title: "Review",
+			detail: bundle.requiresReview
+				? "Needs decision"
+				: hasCreatedRecords
+					? "Reviewed"
+					: "Ready to save",
+			status: bundle.requiresReview ? "current" : "done",
+			icon: Clock3,
+		},
+		{
+			key: "finish",
+			title: "Save",
+			detail: hasCreatedRecords ? "Records created" : "After review",
+			status: bundle.requiresReview
+				? "pending"
+				: hasCreatedRecords
+					? "done"
+					: "current",
+			icon: CheckCircle2,
+		},
+	];
+};
 
 const candidateIcon = (
 	kind: GlobalComposerCandidateBundle["candidates"][number]["kind"],
@@ -259,16 +289,15 @@ const candidateActionText = (
 	label: string,
 ): string => {
 	const prefix = count > 1 ? `${count} ${label}` : label;
-	if (kind === "expense") return "Expense draft candidate created";
+	if (kind === "expense") return "Expense draft prepared for review";
 	if (kind === "expense_item") return `${prefix} extracted from the capture`;
-	if (kind === "promo") return "Promo candidate separated from the expense";
+	if (kind === "promo") return "Promo found separately from the expense";
 	if (kind === "loyalty") return "Loyalty or bonus signal detected";
 	if (kind === "split") return "Split proposal prepared for review";
-	if (kind === "participant")
-		return "Participant placeholder candidate created";
-	if (kind === "recurring") return "Recurring rule candidate prepared";
-	if (kind === "membership") return "Membership period candidate detected";
-	if (kind === "reminder") return "Reminder candidate detected";
+	if (kind === "participant") return "Person found and ready to add";
+	if (kind === "recurring") return "Recurring rule prepared for review";
+	if (kind === "membership") return "Membership period detected";
+	if (kind === "reminder") return "Reminder hint detected";
 	if (kind === "payment_proof")
 		return "Payment proof detected as a document signal";
 	if (kind === "privacy") return "Privacy signal detected";
@@ -279,19 +308,159 @@ const candidateActionText = (
 	return `${prefix} detected`;
 };
 
+const composerCandidateKindFromServerType = (
+	candidateType: string,
+): GlobalComposerCandidateKind | null => {
+	if (candidateType === "expense_candidate") return "expense";
+	if (candidateType === "expense_item_candidate") return "expense_item";
+	if (candidateType === "promo_code_candidate") return "promo";
+	if (candidateType === "loyalty_event_candidate") return "loyalty";
+	if (candidateType === "payment_proof_candidate") return "payment_proof";
+	if (candidateType === "privacy_signal_candidate") return "privacy";
+	if (candidateType === "recurring_candidate") return "recurring";
+	if (candidateType === "membership_candidate") return "membership";
+	if (candidateType === "reminder_candidate") return "reminder";
+	if (candidateType === "split_candidate") return "split";
+	if (candidateType === "participant_placeholder_candidate")
+		return "participant";
+	if (candidateType === "space_suggestion_candidate") return "space_suggestion";
+	if (candidateType === "merge_candidate") return "merge";
+	if (candidateType === "supporting_document_candidate") {
+		return "supporting_document";
+	}
+	return null;
+};
+
+const composerCandidateLabel = (
+	kind: GlobalComposerCandidateKind,
+	count: number,
+): string => {
+	if (kind === "expense_item") return count === 1 ? "item" : "items";
+	if (kind === "payment_proof") return "payment proof";
+	if (kind === "space_suggestion") return "space suggestion";
+	if (kind === "supporting_document") return "supporting document";
+	if (kind === "participant") return count === 1 ? "person" : "people";
+	return kind.replace(/_/g, " ");
+};
+
+const candidateSummariesFromCapturePacket = (
+	packet: ApiCapturePacket,
+): GlobalComposerCandidateSummary[] => {
+	const byKind = new Map<GlobalComposerCandidateKind, number>();
+	for (const [candidateType, count] of Object.entries(
+		packet.candidate_type_counts ?? {},
+	)) {
+		const kind = composerCandidateKindFromServerType(candidateType);
+		if (!kind) continue;
+		byKind.set(kind, (byKind.get(kind) ?? 0) + Number(count || 0));
+	}
+	return Array.from(byKind.entries())
+		.filter(([, count]) => count > 0)
+		.map(([kind, count]) => ({
+			kind,
+			count,
+			label: composerCandidateLabel(kind, count),
+		}));
+};
+
+const capturePacketCreatedRecordLabels = (
+	packet: ApiCapturePacket,
+): { count: number; labels: string[] } => {
+	const records = packet.records;
+	if (!records) return { count: 0, labels: [] };
+	const counts = [
+		{
+			count: records.expenses?.length ?? 0,
+			singular: "expense record",
+			plural: "expense records",
+		},
+		{
+			count: (records.expenses ?? []).reduce(
+				(total, expense) => total + (expense.items?.length ?? 0),
+				0,
+			),
+			singular: "item record",
+			plural: "item records",
+		},
+		{
+			count: records.benefits?.length ?? 0,
+			singular: "benefit record",
+			plural: "benefit records",
+		},
+		{
+			count: records.participants?.length ?? 0,
+			singular: "person record",
+			plural: "people records",
+		},
+		{
+			count: records.splits?.length ?? 0,
+			singular: "split record",
+			plural: "split records",
+		},
+		{
+			count: records.recurring?.length ?? 0,
+			singular: "future record",
+			plural: "future records",
+		},
+	];
+	return {
+		count: counts.reduce((sum, item) => sum + item.count, 0),
+		labels: counts
+			.filter((item) => item.count > 0)
+			.map((item) =>
+				item.count === 1
+					? `1 ${item.singular}`
+					: `${item.count} ${item.plural}`,
+			),
+	};
+};
+
+const hydrateBundleFromCapturePacket = async (
+	spaceId: string | number,
+	bundle: GlobalComposerCandidateBundle,
+): Promise<GlobalComposerCandidateBundle> => {
+	if (bundle.sourceDocumentId == null) return bundle;
+	try {
+		const response = await apiClient.spaces.listCapturePackets(spaceId, {
+			includeRecords: true,
+			limit: 25,
+			sourceDocumentId: bundle.sourceDocumentId,
+		});
+		const packet = (response.captures ?? []).find(
+			(candidatePacket) =>
+				Number(candidatePacket.source_document_id) ===
+				Number(bundle.sourceDocumentId),
+		);
+		if (!packet) return bundle;
+		const candidates = candidateSummariesFromCapturePacket(packet);
+		const createdRecords = capturePacketCreatedRecordLabels(packet);
+		return {
+			...bundle,
+			candidates: candidates.length ? candidates : bundle.candidates,
+			createdRecordCount: createdRecords.count,
+			createdRecordLabels: createdRecords.labels,
+			requiresReview: Number(packet.pending_count ?? 0) > 0,
+		};
+	} catch {
+		return bundle;
+	}
+};
+
 const ComposerFlowInfographic = ({
 	bundle,
 	reviewHref,
+	showReviewLink = true,
 }: {
 	bundle: GlobalComposerCandidateBundle;
 	reviewHref: string;
+	showReviewLink?: boolean;
 }) => {
 	const flowItems = buildComposerFlowItems(bundle);
 	const actionItems = [
 		{
 			key: "source",
 			label: bundle.sourceDocumentId
-				? `Source document #${bundle.sourceDocumentId} saved`
+				? `Capture #${bundle.sourceDocumentId} saved`
 				: "Capture source received",
 			icon: FileText,
 		},
@@ -309,39 +478,49 @@ const ComposerFlowInfographic = ({
 			),
 			icon: candidateIcon(candidate.kind),
 		})),
+		...((bundle.createdRecordLabels ?? []).length
+			? [
+					{
+						key: "created-records",
+						label: `Records created: ${(bundle.createdRecordLabels ?? []).join(", ")}`,
+						icon: CheckCircle2,
+					},
+				]
+			: []),
 	];
 
 	return (
 		<div className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.72)] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
-			<div className="grid gap-2 sm:grid-cols-5">
+			<ol
+				aria-label="Capture journey"
+				className="flex min-w-0 items-center gap-1.5 overflow-x-auto px-1 py-1"
+			>
 				{flowItems.map((item, index) => {
 					const Icon = item.icon;
 					return (
-						<div className="relative min-w-0" key={item.key}>
+						<li className="flex shrink-0 items-center gap-1.5" key={item.key}>
 							{index > 0 ? (
-								<span className="absolute -left-1.5 top-5 hidden h-px w-3 bg-[rgba(120,100,80,0.16)] sm:block" />
+								<span
+									aria-hidden
+									className="inline-flex h-6 w-5 items-center justify-center text-muted-foreground/55"
+								>
+									<ArrowRight className="h-3.5 w-3.5" size={14} />
+								</span>
 							) : null}
-							<div
+							<span
+								aria-label={`${index + 1}. ${item.title}: ${item.detail}`}
 								className={[
-									"min-h-[5.4rem] rounded-xl border px-2.5 py-2",
+									"inline-flex h-9 w-9 items-center justify-center rounded-full border shadow-[0_0_0_1px_rgba(255,255,255,0.5),0_6px_16px_-14px_rgba(44,32,18,0.5)]",
 									composerStatusClass(item.status),
 								].join(" ")}
+								title={`${index + 1}. ${item.title}: ${item.detail}`}
 							>
-								<div className="flex items-center justify-between gap-2">
-									<Icon className="h-4 w-4 shrink-0" size={16} />
-									<span className="rounded-full bg-white/62 px-1.5 py-0.5 text-[10px] font-bold tabular-nums">
-										{index + 1}
-									</span>
-								</div>
-								<p className="mt-2 truncate text-xs font-bold">{item.title}</p>
-								<p className="mt-0.5 line-clamp-2 text-[11px] leading-4 opacity-78">
-									{item.detail}
-								</p>
-							</div>
-						</div>
+								<Icon className="h-4 w-4 shrink-0" size={16} />
+							</span>
+						</li>
 					);
 				})}
-			</div>
+			</ol>
 			<div className="mt-2 grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
 				<div className="min-w-0">
 					<p className="px-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -367,12 +546,14 @@ const ComposerFlowInfographic = ({
 						) : null}
 					</div>
 				</div>
-				<Link
-					className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[rgba(68,58,42,0.94)] px-4 text-xs font-bold text-[#fffaf0] shadow-[0_12px_26px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.98)] hover:shadow-[0_14px_30px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					to={reviewHref}
-				>
-					Review parsed result
-				</Link>
+				{showReviewLink ? (
+					<Link
+						className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[rgba(68,58,42,0.94)] px-4 text-xs font-bold text-[#fffaf0] shadow-[0_12px_26px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.98)] hover:shadow-[0_14px_30px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						to={reviewHref}
+					>
+						Review capture
+					</Link>
+				) : null}
 			</div>
 		</div>
 	);
@@ -385,7 +566,6 @@ type DockReviewSection = {
 	addLabel: string;
 	foundLabel: string;
 	kinds: GlobalComposerCandidateBundle["candidates"][number]["kind"][];
-	href: string;
 	reviewSection: string;
 };
 
@@ -398,27 +578,25 @@ const candidateCountFor = (
 		.reduce((sum, candidate) => sum + candidate.count, 0);
 
 const DockReviewDrawer = ({
-	benefitsHref,
 	bundle,
-	expensesHref,
 	reviewHref,
-	splitsHref,
 }: {
-	benefitsHref: string;
 	bundle: GlobalComposerCandidateBundle;
-	expensesHref: string;
 	reviewHref: string;
-	splitsHref: string;
 }) => {
+	const createdRecordText = createdRecordSummaryText(bundle);
+	const finalExpenseHref = withReviewParams(reviewHref, {
+		section: "expenses",
+		sourceDocumentId: bundle.sourceDocumentId,
+	});
 	const sections: DockReviewSection[] = [
 		{
 			key: "expense",
 			title: "Expense",
 			description: "Merchant, amount, date, category, and draft status.",
 			addLabel: "Add expense",
-			foundLabel: "Expense candidate",
+			foundLabel: "Expense draft",
 			kinds: ["expense"],
-			href: expensesHref,
 			reviewSection: "expenses",
 		},
 		{
@@ -428,7 +606,6 @@ const DockReviewDrawer = ({
 			addLabel: "Add item",
 			foundLabel: "Parsed items",
 			kinds: ["expense_item"],
-			href: expensesHref,
 			reviewSection: "expenses",
 		},
 		{
@@ -436,9 +613,8 @@ const DockReviewDrawer = ({
 			title: "People",
 			description: "Participants and placeholders to use in splits.",
 			addLabel: "Add person",
-			foundLabel: "People candidate",
+			foundLabel: "People found",
 			kinds: ["participant"],
-			href: reviewHref,
 			reviewSection: "people",
 		},
 		{
@@ -446,9 +622,8 @@ const DockReviewDrawer = ({
 			title: "Splits",
 			description: "Who paid, who is involved, and how shares are calculated.",
 			addLabel: "Add split",
-			foundLabel: "Split candidate",
+			foundLabel: "Split finding",
 			kinds: ["split"],
-			href: splitsHref,
 			reviewSection: "splits",
 		},
 		{
@@ -456,9 +631,8 @@ const DockReviewDrawer = ({
 			title: "Promos",
 			description: "Promo codes, loyalty, and future value found in the input.",
 			addLabel: "Add promo",
-			foundLabel: "Benefit candidate",
+			foundLabel: "Benefit found",
 			kinds: ["promo", "loyalty"],
-			href: benefitsHref,
 			reviewSection: "benefits",
 		},
 		{
@@ -468,7 +642,6 @@ const DockReviewDrawer = ({
 			addLabel: "Add recurring",
 			foundLabel: "Future action",
 			kinds: ["recurring", "membership", "reminder"],
-			href: reviewHref,
 			reviewSection: "future",
 		},
 		{
@@ -478,7 +651,6 @@ const DockReviewDrawer = ({
 			addLabel: "Add document",
 			foundLabel: "Document signal",
 			kinds: ["payment_proof", "privacy", "merge", "supporting_document"],
-			href: reviewHref,
 			reviewSection: "documents",
 		},
 	];
@@ -494,19 +666,27 @@ const DockReviewDrawer = ({
 						Review drawer
 					</p>
 					<h3 className="mt-0.5 text-sm font-bold text-foreground">
-						Complete this parsed result
+						Complete this capture
 					</h3>
 					<p className="mt-0.5 max-w-2xl text-xs leading-5 text-muted-foreground [text-wrap:pretty]">
-						Use detected candidates where Ceits found them. Add missing parts
-						manually when the parse did not include them.
+						Review the detected expense, then save it as the final posted record
+						for this space.
 					</p>
 				</div>
-				<Link
-					className="inline-flex min-h-9 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					to={reviewHref}
-				>
-					Open full review
-				</Link>
+				{createdRecordText ? (
+					<span className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[rgba(236,247,238,0.82)] px-3 text-xs font-bold text-[#355a3c] shadow-[0_0_0_1px_rgba(72,112,76,0.14)]">
+						<CheckCircle2 className="h-3.5 w-3.5" size={14} />
+						Expense saved
+					</span>
+				) : (
+					<Link
+						className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						to={finalExpenseHref}
+					>
+						<CheckCircle2 className="h-3.5 w-3.5" size={14} />
+						Save expense
+					</Link>
+				)}
 			</div>
 			<div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
 				{sections.map((section) => {
@@ -514,12 +694,10 @@ const DockReviewDrawer = ({
 					const hasCandidate = count > 0;
 					const visual = composerCandidateVisual(section.kinds[0]);
 					const Icon = visual.icon;
-					const sectionHref = hasCandidate
-						? withReviewParams(reviewHref, {
-								section: section.reviewSection,
-								sourceDocumentId: bundle.sourceDocumentId,
-							})
-						: section.href;
+					const sectionHref = withReviewParams(reviewHref, {
+						section: section.reviewSection,
+						sourceDocumentId: bundle.sourceDocumentId,
+					});
 					return (
 						<div
 							className={[
@@ -585,23 +763,24 @@ const DockReviewDrawer = ({
 
 const CandidateBundlePanel = ({
 	bundle,
-	expensesHref,
-	benefitsHref,
-	splitsHref,
 	reviewHref,
 }: {
 	bundle: GlobalComposerCandidateBundle;
-	expensesHref: string;
-	benefitsHref: string;
-	splitsHref: string;
 	reviewHref: string;
 }) => {
 	const [isReviewDrawerOpen, setIsReviewDrawerOpen] = useState(false);
 	const reviewHrefWithSource = withReviewParams(reviewHref, {
 		sourceDocumentId: bundle.sourceDocumentId,
 	});
+	const createdRecordText = createdRecordSummaryText(bundle);
 
-	if (!bundle.candidates.length && !bundle.capabilityNotice) return null;
+	if (
+		!bundle.candidates.length &&
+		!bundle.capabilityNotice &&
+		!createdRecordText
+	) {
+		return null;
+	}
 
 	const visibleCandidates = bundle.candidates.slice(0, 5);
 	const hiddenCount = bundle.candidates.length - visibleCandidates.length;
@@ -614,7 +793,7 @@ const CandidateBundlePanel = ({
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div className="min-w-0">
 					<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-						Parsed result status
+						Capture result
 					</p>
 					{visibleCandidates.length ? (
 						<div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
@@ -646,6 +825,11 @@ const CandidateBundlePanel = ({
 							a duplicate expense automatically.
 						</p>
 					) : null}
+					{createdRecordText ? (
+						<p className="mt-1.5 max-w-3xl text-[11px] font-semibold leading-4 text-[#355a3c]">
+							Records created from this capture: {createdRecordText}.
+						</p>
+					) : null}
 					{bundle.capabilityNotice ? (
 						<p className="mt-1.5 max-w-3xl text-[11px] leading-4 text-muted-foreground">
 							{bundle.capabilityNotice}
@@ -658,23 +842,18 @@ const CandidateBundlePanel = ({
 						onClick={() => setIsReviewDrawerOpen((current) => !current)}
 						type="button"
 					>
-						{isReviewDrawerOpen ? "Hide review" : "Review parsed result"}
+						{isReviewDrawerOpen ? "Hide review" : "Review capture"}
 					</button>
 				</div>
 			</div>
 			{isReviewDrawerOpen ? (
-				<DockReviewDrawer
-					benefitsHref={benefitsHref}
-					bundle={bundle}
-					expensesHref={expensesHref}
-					reviewHref={reviewHrefWithSource}
-					splitsHref={splitsHref}
-				/>
+				<DockReviewDrawer bundle={bundle} reviewHref={reviewHrefWithSource} />
 			) : null}
 			<div className="mt-2">
 				<ComposerFlowInfographic
 					bundle={bundle}
 					reviewHref={reviewHrefWithSource}
+					showReviewLink={!isReviewDrawerOpen}
 				/>
 			</div>
 		</div>
@@ -874,14 +1053,6 @@ export const GlobalComposerDock = ({
 		activeSpaceId == null
 			? "/console/settings/spaces"
 			: `/console/spaces/${encodeURIComponent(String(activeSpaceId))}/benefits`;
-	const activeSpaceSplitsHref =
-		activeSpaceId == null
-			? "/console/settings/spaces"
-			: `/console/spaces/${encodeURIComponent(String(activeSpaceId))}/splits`;
-	const activeSpaceExpensesHref =
-		activeSpaceId == null
-			? "/console/settings/spaces"
-			: `/console/chat/expenses?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
 	const activeSpaceReviewHref =
 		activeSpaceId == null
 			? "/console/review"
@@ -898,6 +1069,21 @@ export const GlobalComposerDock = ({
 		(!hasSpaceContext
 			? "Choose a space before capturing expenses or posting messages."
 			: (composerFlow.message ?? null));
+	const reserveSpaceRail = routeHasRightRail(location.pathname);
+	const dockReservedRailWidth = dockRightRailWidth(location.pathname);
+	const dockShellClass = [
+		"pointer-events-none absolute bottom-0 left-0 z-40 flex justify-center border-t border-border/35 bg-[linear-gradient(180deg,rgba(250,247,240,0.56),rgba(250,247,240,0.92))] px-4 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.42)] backdrop-blur-xl lg:px-6 xl:px-8",
+		reserveSpaceRail
+			? "right-0 xl:right-[var(--dock-right-rail-width)]"
+			: "right-0",
+	].join(" ");
+	const dockShellStyle = reserveSpaceRail
+		? ({
+				"--dock-right-rail-width": dockReservedRailWidth,
+			} as CSSProperties)
+		: undefined;
+	const dockCardClass =
+		"pointer-events-auto w-full max-w-[72rem] overflow-hidden rounded-[1.35rem] bg-background/96 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65";
 
 	const showTransientStatus = useCallback((message: string) => {
 		setStatusText(message);
@@ -905,31 +1091,6 @@ export const GlobalComposerDock = ({
 			setStatusText((current) => (current === message ? null : current));
 		}, 2600);
 	}, []);
-
-	const createDraftFromParsed = useCallback(
-		async (
-			spaceId: string | number,
-			description: string,
-			items:
-				| {
-						name: string;
-						amount: number;
-						tags?: string[];
-				  }[]
-				| undefined,
-			sourceDocumentId?: number,
-		) => {
-			const draftItems = toDraftItems(items);
-			if (!draftItems.length) {
-				return false;
-			}
-			await createManualDraftInSpace(spaceId, description, draftItems, {
-				sourceDocumentId,
-			});
-			return true;
-		},
-		[],
-	);
 
 	const handleSubmit = useCallback(
 		async (payload: ComposerPayload) => {
@@ -949,45 +1110,31 @@ export const GlobalComposerDock = ({
 						const parsed = await parseCaptureText(text, {
 							spaceId: activeSpaceId,
 						});
-						const bundle = summarizeCapturePreview(parsed, {
-							fallbackIntent: "expense",
-							inputKind: "text",
-							spaceId: activeSpaceId,
-						});
-						showCandidateSummary(bundle);
-						const savedDraft = await createDraftFromParsed(
+						const bundle = await hydrateBundleFromCapturePacket(
 							activeSpaceId,
-							text,
-							parsed.items,
-							parsed.source_document_id,
+							summarizeCapturePreview(parsed, {
+								fallbackIntent: "expense",
+								inputKind: "text",
+								spaceId: activeSpaceId,
+							}),
 						);
-						showTransientStatus(
-							savedDraft
-								? `Draft saved to ${activeSpaceName}`
-								: candidateOnlyStatus(bundle, activeSpaceName),
-						);
+						showCandidateSummary(bundle);
+						showTransientStatus(candidateOnlyStatus(bundle, activeSpaceName));
 					} else if (payload.expense_input_type === "photo") {
 						beginDetecting("photo");
 						const parsed = await parseCapturePhoto(payload.file, {
 							spaceId: activeSpaceId,
 						});
-						const bundle = summarizeCapturePreview(parsed, {
-							fallbackIntent: "expense",
-							inputKind: "photo",
-							spaceId: activeSpaceId,
-						});
-						showCandidateSummary(bundle);
-						const savedDraft = await createDraftFromParsed(
+						const bundle = await hydrateBundleFromCapturePacket(
 							activeSpaceId,
-							payload.file.name || "Receipt photo",
-							parsed.items,
-							parsed.source_document_id,
+							summarizeCapturePreview(parsed, {
+								fallbackIntent: "expense",
+								inputKind: "photo",
+								spaceId: activeSpaceId,
+							}),
 						);
-						showTransientStatus(
-							savedDraft
-								? `Receipt draft saved to ${activeSpaceName}`
-								: candidateOnlyStatus(bundle, activeSpaceName),
-						);
+						showCandidateSummary(bundle);
+						showTransientStatus(candidateOnlyStatus(bundle, activeSpaceName));
 					}
 					return;
 				}
@@ -1002,11 +1149,14 @@ export const GlobalComposerDock = ({
 				const intentPreview = await parseCaptureIntentText(text, {
 					spaceId: activeSpaceId,
 				});
-				const bundle = summarizeCaptureIntentPreview(intentPreview, {
-					fallbackIntent: payload.composer_mode,
-					inputKind: payload.composer_mode === "message" ? "message" : "ask",
-					spaceId: activeSpaceId,
-				});
+				const bundle = await hydrateBundleFromCapturePacket(
+					activeSpaceId,
+					summarizeCaptureIntentPreview(intentPreview, {
+						fallbackIntent: payload.composer_mode,
+						inputKind: payload.composer_mode === "message" ? "message" : "ask",
+						spaceId: activeSpaceId,
+					}),
+				);
 				if (bundle.clarificationMessage) {
 					setClarificationDraftText(text);
 					clarify(bundle.clarificationMessage, bundle);
@@ -1045,7 +1195,6 @@ export const GlobalComposerDock = ({
 			beginDetecting,
 			clarify,
 			complete,
-			createDraftFromParsed,
 			fail,
 			showCandidateSummary,
 			showTransientStatus,
@@ -1110,23 +1259,16 @@ export const GlobalComposerDock = ({
 				recorder.mimeType || "audio/webm",
 				{ spaceId: activeSpaceId },
 			);
-			const bundle = summarizeCapturePreview(parsed, {
-				fallbackIntent: "expense",
-				inputKind: "voice",
-				spaceId: activeSpaceId,
-			});
-			showCandidateSummary(bundle);
-			const savedDraft = await createDraftFromParsed(
+			const bundle = await hydrateBundleFromCapturePacket(
 				activeSpaceId,
-				parsed.transcription?.trim() || "Voice expense",
-				parsed.items,
-				parsed.source_document_id,
+				summarizeCapturePreview(parsed, {
+					fallbackIntent: "expense",
+					inputKind: "voice",
+					spaceId: activeSpaceId,
+				}),
 			);
-			showTransientStatus(
-				savedDraft
-					? `Voice draft saved to ${activeSpaceName}`
-					: candidateOnlyStatus(bundle, activeSpaceName),
-			);
+			showCandidateSummary(bundle);
+			showTransientStatus(candidateOnlyStatus(bundle, activeSpaceName));
 		} catch (error) {
 			const message =
 				error instanceof Error ? error.message : "Failed to parse voice";
@@ -1139,7 +1281,6 @@ export const GlobalComposerDock = ({
 		activeSpaceId,
 		activeSpaceName,
 		beginDetecting,
-		createDraftFromParsed,
 		fail,
 		showCandidateSummary,
 		showTransientStatus,
@@ -1249,11 +1390,12 @@ export const GlobalComposerDock = ({
 	if (settingsActionDock) {
 		return (
 			<div
-				className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center border-t border-border/35 bg-[linear-gradient(180deg,rgba(250,247,240,0.62),rgba(250,247,240,0.9))] px-3 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.42)] backdrop-blur-xl sm:px-5"
+				className={dockShellClass}
 				data-testid="global-composer-dock"
+				style={dockShellStyle}
 			>
 				<div
-					className="pointer-events-auto flex w-full max-w-5xl flex-col gap-2 rounded-[1.35rem] bg-background/96 p-2.5 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65 sm:flex-row sm:items-center sm:justify-between"
+					className="pointer-events-auto flex w-full max-w-[72rem] flex-col gap-2 rounded-[1.35rem] bg-background/96 p-2.5 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65 sm:flex-row sm:items-center sm:justify-between"
 					data-testid="settings-action-dock"
 				>
 					<div className="min-w-0 px-1">
@@ -1316,10 +1458,11 @@ export const GlobalComposerDock = ({
 
 	return (
 		<div
-			className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex justify-center border-t border-border/35 bg-[linear-gradient(180deg,rgba(250,247,240,0.56),rgba(250,247,240,0.92))] px-3 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.42)] backdrop-blur-xl sm:px-5"
+			className={dockShellClass}
 			data-testid="global-composer-dock"
+			style={dockShellStyle}
 		>
-			<div className="pointer-events-auto w-full max-w-5xl overflow-hidden rounded-[1.35rem] bg-background/96 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65">
+			<div className={dockCardClass}>
 				{isCollapsed ? (
 					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(11rem,15rem)_minmax(18rem,1fr)_auto] xl:items-center">
 						<div className="min-w-0 rounded-[0.85rem] bg-muted/35 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(87,70,49,0.06)]">
@@ -1488,11 +1631,8 @@ export const GlobalComposerDock = ({
 				)}
 				{composerFlow.bundle ? (
 					<CandidateBundlePanel
-						benefitsHref={activeSpaceBenefitsHref}
 						bundle={composerFlow.bundle}
-						expensesHref={activeSpaceExpensesHref}
 						reviewHref={activeSpaceReviewHref}
-						splitsHref={activeSpaceSplitsHref}
 					/>
 				) : null}
 				{composerFlow.step === "clarifying" ? (

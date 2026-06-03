@@ -593,7 +593,7 @@ export interface paths {
         put?: never;
         /**
          * Parse composer intent
-         * @description Experimental composer intent endpoint. It returns the validated `ceits_capture_v1` contract for text, image, or voice input without creating draft expenses or persisted source documents. Existing capture parse and capture draft endpoints remain unchanged.
+         * @description Experimental composer intent endpoint. It returns the validated `ceits_capture_v1` contract for text, image, or voice input and, when a valid space context is provided, persists a source document and review candidates without creating draft expenses. Existing capture parse and capture draft endpoints remain unchanged.
          */
         post: {
             parameters: {
@@ -932,13 +932,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List transactions in a shared space
-         * @description Canonical shared-space transaction list for Chat and space views. Includes draft and approved expense-backed transactions linked to the space.
+         * List expense records in a shared space (deprecated transaction alias)
+         * @deprecated
+         * @description Compatibility alias for older clients. Prefer `GET /api/v1/spaces/{spaceId}/expenses` for space-scoped expense records. Includes draft and approved expense-backed records linked to the space.
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description Maximum number of transactions to return. */
+                    /** @description Maximum number of expense records to return. */
                     limit?: number;
                 };
                 header?: never;
@@ -950,7 +951,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Space transactions ordered by newest first */
+                /** @description Space expense records ordered by newest first */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -984,8 +985,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get transaction in a shared space
-         * @description Canonical space-scoped transaction detail for Chat and space views. The transaction must be linked to the requested space.
+         * Get expense record in a shared space (deprecated transaction alias)
+         * @deprecated
+         * @description Compatibility alias for older clients. Prefer `GET /api/v1/spaces/{spaceId}/expenses/{expenseId}` for space-scoped expense records. The transaction must be linked to the requested space.
          */
         get: {
             parameters: {
@@ -994,14 +996,14 @@ export interface paths {
                 path: {
                     /** @description Space ID */
                     spaceId: number;
-                    /** @description Transaction ID */
+                    /** @description Deprecated transaction/expense record ID */
                     id: number;
                 };
                 cookie?: never;
             };
             requestBody?: never;
             responses: {
-                /** @description Space transaction detail */
+                /** @description Space expense record detail */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1017,7 +1019,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Transaction not found in this space */
+                /** @description Expense record not found in this space */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -1042,8 +1044,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List transaction tags in a shared space
-         * @description Canonical shared-space tag list for transaction filters.
+         * List expense tags in a shared space
+         * @description Canonical shared-space tag list for expense filters. The path name is kept as a compatibility alias.
          */
         get: {
             parameters: {
@@ -1057,7 +1059,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Distinct tag names used by space transactions */
+                /** @description Distinct tag names used by space expense records */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1094,7 +1096,7 @@ export interface paths {
         };
         /**
          * List saved promo codes in a space
-         * @description Space-scoped Promo Wallet list. Promos may be manually added or projected from receipt/document intelligence candidates.
+         * @description Space-scoped Promo Wallet list. Promos may be manually added or projected from capture review candidates.
          */
         get: {
             parameters: {
@@ -1188,7 +1190,47 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete a saved promo code
+         * @description Permanently removes a saved promo from the space benefit wallet and clears its capture-review projection links. Source captures and candidates are left intact.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Promo code ID */
+                    promoId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Promo code deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Promo not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         /**
@@ -1247,7 +1289,7 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/v1/spaces/{spaceId}/benefits/candidates": {
+    "/api/v1/spaces/{spaceId}/review/benefit-candidates": {
         parameters: {
             query?: never;
             header?: never;
@@ -1256,13 +1298,15 @@ export interface paths {
         };
         /**
          * List benefit candidates waiting for review
-         * @description Returns draft promo and loyalty candidates extracted from source documents in this space. Candidates remain non-final until a review action projects or ignores them.
+         * @description Canonical capture-review alias for draft promo and loyalty candidates extracted from captures in this space.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description Maximum number of draft candidates to return. */
                     limit?: number;
+                    /** @description When provided, return only benefit candidates from this capture/source document. */
+                    source_document_id?: number;
                 };
                 header?: never;
                 path: {
@@ -1299,7 +1343,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/spaces/{spaceId}/document-candidates": {
+    "/api/v1/spaces/{spaceId}/benefits/candidates": {
         parameters: {
             query?: never;
             header?: never;
@@ -1307,14 +1351,127 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List document intelligence candidates waiting for review
-         * @description Returns draft document-level candidates such as payment proof, privacy, merge/supporting document, space suggestion, recurring, membership, reminder, split, and participant placeholder signals for the selected space.
+         * List benefit candidates waiting for review
+         * @deprecated
+         * @description Deprecated compatibility route. Use GET /api/v1/spaces/{spaceId}/review/benefit-candidates instead. Returns draft promo and loyalty candidates extracted from source documents in this space. Candidates remain non-final until a review action projects or ignores them.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description Maximum number of draft candidates to return. */
                     limit?: number;
+                    /** @description When provided, return only benefit candidates from this capture/source document. */
+                    source_document_id?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Draft benefit candidates ordered by newest first. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BenefitCandidateListResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/captures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List capture packets in a space
+         * @description Returns source-document-backed capture packets grouped with candidate counts and statuses for review, overview, and composer shelves. This is a read model; candidate mutations remain on document and benefit candidate endpoints.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Maximum number of capture packets to return. */
+                    limit?: number;
+                    /** @description Include compact records that were projected from each capture, for capture-centered review screens. */
+                    include_records?: boolean;
+                    /** @description When provided, include this capture/source document even if it is outside the newest capture limit. */
+                    source_document_id?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Capture packets ordered by newest source document first. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CapturePacketListResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List capture review candidates waiting for review
+         * @description Canonical capture-review alias for document-level candidates such as payment proof, privacy, merge/supporting document, space suggestion, recurring, membership, reminder, split, and participant placeholder signals.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Maximum number of draft candidates to return. */
+                    limit?: number;
+                    /** @description When provided, return only review candidates from this capture/source document. */
+                    source_document_id?: number;
                 };
                 header?: never;
                 path: {
@@ -1351,6 +1508,376 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/document-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List capture review candidates waiting for review
+         * @deprecated
+         * @description Deprecated compatibility route. Use GET /api/v1/spaces/{spaceId}/review/candidates instead. Returns draft document-level candidates such as payment proof, privacy, merge/supporting document, space suggestion, recurring, membership, reminder, split, and participant placeholder signals for the selected space.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Maximum number of draft candidates to return. */
+                    limit?: number;
+                    /** @description When provided, return only review candidates from this capture/source document. */
+                    source_document_id?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Draft document candidates ordered by newest first. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentCandidateListResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/candidates/{candidateId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm a capture review candidate
+         * @description Canonical capture-review alias for confirming a reviewed document-level candidate without projecting it into another entity.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Document candidate confirmed. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentCandidateState"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/candidates/{candidateId}/create-participant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a space participant from a participant placeholder candidate
+         * @description Canonical capture-review alias for projecting a participant placeholder candidate into a space participant.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Space participant created or reused. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreateParticipantCandidateResponse"];
+                    };
+                };
+                /** @description Candidate cannot be projected into a participant */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/candidates/{candidateId}/create-recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a recurring expense from a recurring candidate
+         * @description Canonical capture-review alias for projecting a recurring candidate into a space-scoped recurring expense.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Recurring expense created from the candidate. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreateRecurringCandidateResponse"];
+                    };
+                };
+                /** @description Candidate cannot be projected into a recurring expense */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/candidates/{candidateId}/apply-split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply a split candidate to an expense
+         * @description Canonical capture-review alias for projecting a split candidate into participant-owned split rows for an explicit target expense.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApplySplitCandidateRequest"];
+                };
+            };
+            responses: {
+                /** @description Split candidate applied to the target expense. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApplySplitCandidateResponse"];
+                    };
+                };
+                /** @description Candidate cannot be applied automatically or target expense is invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate or target expense not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/candidates/{candidateId}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ignore a capture review candidate
+         * @description Canonical capture-review alias for recording an ignore resolution and removing the draft candidate from active review.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Document candidate ignored. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DocumentCandidateState"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/confirm": {
         parameters: {
             query?: never;
@@ -1361,8 +1888,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Confirm a document intelligence candidate
-         * @description Records a confirm resolution and removes the draft document-level candidate from the active Review Flow queue without projecting it into another entity. This is for safe reviewed/acknowledged signals; entity projection remains explicit.
+         * Confirm a capture review candidate
+         * @deprecated
+         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/confirm instead. Records a confirm resolution and removes the draft document-level candidate from the active Review Flow queue without projecting it into another entity. This is for safe reviewed/acknowledged signals; entity projection remains explicit.
          */
         post: {
             parameters: {
@@ -1420,7 +1948,8 @@ export interface paths {
         put?: never;
         /**
          * Create a space participant from a participant placeholder candidate
-         * @description Projects a draft `participant_placeholder_candidate` into a `space_participants` placeholder, records a resolution/projection, and marks the candidate as projected. It reuses an existing matching participant by email or display name when possible.
+         * @deprecated
+         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/create-participant instead. Projects a draft `participant_placeholder_candidate` into a `space_participants` placeholder, records a resolution/projection, and marks the candidate as projected. It reuses an existing matching participant by email or display name when possible.
          */
         post: {
             parameters: {
@@ -1485,7 +2014,8 @@ export interface paths {
         put?: never;
         /**
          * Create a recurring expense from a recurring candidate
-         * @description Projects a draft `recurring_candidate` into a space-scoped `recurring_expenses` row, records a resolution/projection, and marks the candidate as projected. Membership and reminder candidates are intentionally not projected by this endpoint.
+         * @deprecated
+         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/create-recurring instead. Projects a draft `recurring_candidate` into a space-scoped `recurring_expenses` row, records a resolution/projection, and marks the candidate as projected. Membership and reminder candidates are intentionally not projected by this endpoint.
          */
         post: {
             parameters: {
@@ -1550,7 +2080,8 @@ export interface paths {
         put?: never;
         /**
          * Apply a split candidate to an expense
-         * @description Projects a draft `split_candidate` into participant-owned split rows for an explicit target expense. The first implementation only auto-applies equal split candidates after related participant placeholders have already been projected.
+         * @deprecated
+         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/apply-split instead. Projects a draft `split_candidate` into participant-owned split rows for an explicit target expense. The first implementation only auto-applies equal split candidates after related participant placeholders have already been projected.
          */
         post: {
             parameters: {
@@ -1618,8 +2149,9 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Ignore a document intelligence candidate
-         * @description Records an ignore resolution and removes the draft document-level candidate from the active Review Flow queue without projecting it into another entity.
+         * Ignore a capture review candidate
+         * @deprecated
+         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/ignore instead. Records an ignore resolution and removes the draft document-level candidate from the active Review Flow queue without projecting it into another entity.
          */
         post: {
             parameters: {
@@ -1666,6 +2198,246 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/review/captures/{sourceDocumentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a review capture and its candidates
+         * @description Canonical capture-review alias for deleting the selected capture from the space review queue and removing its review candidates, resolutions, and projections.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Source document / capture ID */
+                    sourceDocumentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Source document review data deleted. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeleteSourceDocumentReviewResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Source document not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/source-documents/{sourceDocumentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete a review capture and its candidates
+         * @deprecated
+         * @description Deprecated compatibility route. Use DELETE /api/v1/spaces/{spaceId}/review/captures/{sourceDocumentId} instead. Deletes the selected source document from the space review queue and removes its capture review candidates, resolutions, and projections. Saved records that were already projected remain separate domain records; saved promo records are detached from the deleted source document.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Source document / capture ID */
+                    sourceDocumentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Source document review data deleted. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeleteSourceDocumentReviewResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Source document not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/benefit-candidates/{candidateId}/save-promo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save a promo candidate to the Promo Wallet
+         * @description Canonical capture-review alias for projecting a draft promo candidate into the space Promo Wallet.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Promo saved and candidate projected. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SaveBenefitCandidatePromoResponse"];
+                    };
+                };
+                /** @description Candidate is not a promo candidate or is otherwise invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/benefit-candidates/{candidateId}/ignore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ignore a benefit candidate
+         * @description Canonical capture-review alias for recording an ignore resolution and removing a draft benefit candidate from active review.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Candidate ignored. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BenefitCandidateState"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/benefits/candidates/{candidateId}/save-promo": {
         parameters: {
             query?: never;
@@ -1677,7 +2449,8 @@ export interface paths {
         put?: never;
         /**
          * Save a promo candidate to the Promo Wallet
-         * @description Projects a draft `promo_code_candidate` into `promo_codes`, records a resolution/projection, and marks the candidate as projected.
+         * @deprecated
+         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/benefit-candidates/{candidateId}/save-promo instead. Projects a draft `promo_code_candidate` into `promo_codes`, records a resolution/projection, and marks the candidate as projected.
          */
         post: {
             parameters: {
@@ -1742,7 +2515,8 @@ export interface paths {
         put?: never;
         /**
          * Ignore a benefit candidate
-         * @description Records an ignore resolution and removes the draft candidate from the active Benefits review queue.
+         * @deprecated
+         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/benefit-candidates/{candidateId}/ignore instead. Records an ignore resolution and removes the draft candidate from the active Review queue.
          */
         post: {
             parameters: {
@@ -2221,14 +2995,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/thread": {
+    "/api/v1/spaces/{spaceId}/expenses": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Expense thread summary (counts, approvers) */
+        /**
+         * List expense records in a space
+         * @description Canonical shared-space expense record list for Chat, Expenses, Review, and space views. Returns draft, approved, and cancelled expense-backed records linked to the requested space through captures, chat messages, or historical expense links.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Maximum number of expense records to return. */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Space expense records ordered by newest first */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Transaction"][];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/expenses/{expenseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get an expense record in a space
+         * @description Canonical shared-space expense detail route. The expense must be linked to the requested space through a capture, chat message, or historical expense link.
+         */
         get: {
             parameters: {
                 query?: never;
@@ -2241,8 +3070,24 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Thread summary */
+                /** @description Space expense */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Expense"];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2250,8 +3095,116 @@ export interface paths {
                 };
             };
         };
+        /**
+         * Update an expense record in a space
+         * @description Canonical shared-space expense update route. The expense must be linked to the requested space; only the expense owner may mutate it in this compatibility slice.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ExpensePatch"];
+                };
+            };
+            responses: {
+                /** @description Updated space expense */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Expense"];
+                    };
+                };
+                /** @description Invalid patch */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot update this expense */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Delete an expense record in a space
+         * @description Canonical shared-space expense delete route. The expense must be linked to the requested space; only the expense owner may delete it in this compatibility slice.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot delete this expense */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
         put?: never;
-        /** Get or create expense discussion thread */
+        /**
+         * Confirm a draft expense in a space
+         * @description Canonical shared-space draft confirmation route. The expense must be linked to the requested space; only the expense owner may confirm it in this compatibility slice.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -2264,8 +3217,516 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Thread record */
+                /** @description Expense approved */
                 200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Current user cannot confirm this expense */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a draft expense in a space
+         * @description Canonical shared-space draft cancellation route. The expense must be linked to the requested space; only the expense owner may cancel it in this compatibility slice.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Expense cancelled */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message?: string;
+                        };
+                    };
+                };
+                /** @description Current user cannot cancel this expense */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/splits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List split rows for an expense in a space
+         * @description Canonical shared-space split route. The expense must be linked to the requested space. Participant-owned split rows are returned when present.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Split lines */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            splits?: components["schemas"]["ExpenseSplitLine"][];
+                        };
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /**
+         * Replace split rows for an expense in a space
+         * @description Canonical shared-space split write route. Accepts space_participant_id lines for placeholders and registered participants. Compatibility user_id lines are still accepted and mapped to SpaceParticipant rows when possible.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        user_id?: number;
+                        space_participant_id?: number;
+                        amount?: number;
+                    }[];
+                };
+            };
+            responses: {
+                /** @description Saved */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid split rows */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot update these splits */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/recurring": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List recurring records in a space
+         * @description Canonical space-scoped recurring read model. Recurring records are projections from expense items, membership/recurring candidates, or manual schedule creation inside the selected space. Cross-space management remains available through the compatibility `/api/v1/finances/recurring` routes.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Recurring records owned by the current user in this space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecurringExpense"][];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a recurring record in a space
+         * @description Canonical space-scoped recurring creation. The path space owns the record; any request body space_id is ignored in favor of the path spaceId.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RecurringExpense"];
+                };
+            };
+            responses: {
+                /** @description Recurring record created in this space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecurringExpense"];
+                    };
+                };
+                /** @description Invalid recurring schedule or origin message */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/recurring/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update a recurring record in a space
+         * @description Canonical space-scoped recurring update. The recurring record must belong to the path space; moving it to another space is rejected.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Recurring record ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RecurringExpense"];
+                };
+            };
+            responses: {
+                /** @description Updated recurring record */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecurringExpense"];
+                    };
+                };
+                /** @description Invalid recurring schedule or mismatched space_id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Recurring record not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Delete a recurring record in a space
+         * @description Canonical space-scoped recurring deletion. The recurring record must belong to the path space. Set purge_expenses=1 to remove linked postings created by this schedule.
+         */
+        delete: {
+            parameters: {
+                query?: {
+                    /** @description Delete linked expense records generated by this schedule. */
+                    purge_expenses?: boolean;
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Recurring record ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Recurring record deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Recurring record not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/recurring/{id}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause a recurring record in a space
+         * @description Stops future automatic runs for a recurring record owned by the path space.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Recurring record ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated recurring record */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecurringExpense"];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Recurring record not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/recurring/{id}/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume a recurring record in a space
+         * @description Resumes future automatic runs for a recurring record owned by the path space.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Recurring record ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated recurring record */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecurringExpense"];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Recurring record not found in this space */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2318,155 +3779,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/threads/{threadId}/messages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Paginated thread messages (cursor = message id) */
-        get: {
-            parameters: {
-                query?: {
-                    cursor?: number;
-                    limit?: number;
-                };
-                header?: never;
-                path: {
-                    threadId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: never;
-        };
-        put?: never;
-        /** Post a message in expense thread */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    threadId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        body?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Created message */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/threads/{threadId}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Approve thread (idempotent) */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    threadId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        /** Remove approval */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    threadId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/threads/{threadId}/finalize": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Finalize thread (creator only); confirms draft expense if still draft */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    threadId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description OK */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/finances/expenses/{id}/splits": {
         parameters: {
             query?: never;
@@ -2501,7 +3813,7 @@ export interface paths {
         };
         /**
          * Replace expense splits (creator only); amounts must sum to expense total
-         * @description Accepts space_participant_id lines for shared-space participants. Compatibility user_id lines are accepted; on shared-space expense threads the server maps or creates the matching SpaceParticipant and writes participant-owned split rows. Personal/non-thread expenses still use user_id split rows.
+         * @description Accepts space_participant_id lines for shared-space participants. Compatibility user_id lines are accepted; on shared-space expenses the server maps or creates the matching SpaceParticipant and writes participant-owned split rows. Personal expenses still use user_id split rows.
          */
         put: {
             parameters: {
@@ -2894,7 +4206,7 @@ export interface paths {
                     scope?: "all" | "space" | "tenant";
                     /** @description Optional space id to restrict results. */
                     spaceId?: number;
-                    /** @description Comma-separated result types. Supported aliases include spaces, expenses, items, promos, people, recurring, and documents. */
+                    /** @description Comma-separated result types. Supported aliases include spaces, expenses, items, promos, people, splits, recurring, and documents. */
                     types?: string;
                     limit?: number;
                 };
@@ -3891,215 +5203,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/thread/expense": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get expenses thread expense */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    expenseId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/thread/proposals": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get expenses thread proposals */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    expenseId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create expenses thread proposals */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    expenseId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/thread/proposals/{proposalId}/accept": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create thread proposals accept */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    expenseId: string;
-                    proposalId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/thread/proposals/{proposalId}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create thread proposals reject */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                    expenseId: string;
-                    proposalId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/spaces/{spaceId}/invite-suggestions": {
         parameters: {
             query?: never;
@@ -4228,6 +5331,43 @@ export interface paths {
             };
         };
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/invites/{inviteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Cancel a pending space invite created by the current user */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    inviteId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Invite cancelled */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -4391,7 +5531,52 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Archive a financial participant
+         * @description Owner-only. Archives a non-registered participant so it no longer appears in active participant lists while preserving historical split/document references.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    participantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Participant archived */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Registered participants must be removed from space settings */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Only the space creator can archive participants */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Participant not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         /** Update a financial participant placeholder/contact fields */
@@ -4454,6 +5639,73 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["InviteSpaceParticipantResponse"];
                     };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/participants/{participantId}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Link a placeholder participant to a canonical participant
+         * @description Owner-only. Keeps the source participant as an alias while resolving future stats and balances through the canonical participant when possible. Send null or omit canonical_participant_id to unlink.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: string;
+                    participantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["LinkSpaceParticipantRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated participant alias link */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SpaceParticipant"];
+                    };
+                };
+                /** @description Invalid alias target */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Only the space creator can link participant aliases */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Participant not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -4981,74 +6233,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/threads/{threadId}/messages/{messageId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete threads messages */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    threadId: string;
-                    messageId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description No content */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /** Patch threads messages */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    threadId: string;
-                    messageId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -5070,7 +6254,7 @@ export interface components {
             user?: components["schemas"]["User"];
         };
         /** @enum {string} */
-        SearchEntityType: "space" | "expense" | "expense_item" | "promo_code" | "participant" | "recurring" | "source_document";
+        SearchEntityType: "space" | "expense" | "expense_item" | "promo_code" | "participant" | "split" | "recurring" | "source_document";
         SearchResult: {
             /** @description Stable typed result id, formatted as `{type}:{entity_id}`. */
             id: string;
@@ -5080,6 +6264,11 @@ export interface components {
             /** Format: int64 */
             space_id?: number;
             space_name?: string;
+            /**
+             * Format: int64
+             * @description Source capture that projected this result, when available.
+             */
+            source_document_id?: number;
             title: string;
             subtitle?: string;
             detail?: string;
@@ -5151,6 +6340,13 @@ export interface components {
             invitation_id?: number;
             /** Format: int64 */
             linked_user_id?: number;
+            /** Format: int64 */
+            canonical_participant_id?: number | null;
+            /**
+             * Format: int64
+             * @description Source capture that projected this participant, when available.
+             */
+            source_document_id?: number;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -5167,12 +6363,21 @@ export interface components {
             };
             status?: string;
         };
+        LinkSpaceParticipantRequest: {
+            /** Format: int64 */
+            canonical_participant_id?: number | null;
+        };
         ExpenseSplitLine: {
             /** Format: int64 */
             user_id?: number;
             /** Format: int64 */
             space_participant_id?: number;
             participant?: components["schemas"]["SpaceParticipant"];
+            /**
+             * Format: int64
+             * @description Source capture that projected these split rows, when available.
+             */
+            source_document_id?: number;
             amount?: number;
         };
         InviteSpaceParticipantResponse: {
@@ -5330,6 +6535,11 @@ export interface components {
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
+            /**
+             * Format: int64
+             * @description Capture/source document that created this expense record, when available.
+             */
+            source_document_id?: number;
             items?: components["schemas"]["ExpenseItem"][];
             /** Format: int64 */
             recurring_id?: number;
@@ -5371,6 +6581,11 @@ export interface components {
              * @description Optional chat message this recurring was created from (same space as spaceId).
              */
             originMessageId?: number;
+            /**
+             * Format: int64
+             * @description Source capture that projected this recurring schedule, when available.
+             */
+            source_document_id?: number;
             amount?: number;
             name?: string;
             tagLabel?: string;
@@ -5531,6 +6746,11 @@ export interface components {
             confidence: number;
             requires_review: boolean;
             required_clarification?: string | null;
+            /**
+             * Format: int64
+             * @description Persisted source document id for this intent preview when capture review recording succeeded.
+             */
+            source_document_id?: number;
             target_context: components["schemas"]["CaptureTargetContext"];
             source: components["schemas"]["CaptureSource"];
             candidates: components["schemas"]["CaptureIntentCandidate"][];
@@ -5592,7 +6812,7 @@ export interface components {
             media_id?: number;
             /**
              * Format: int64
-             * @description Persisted source document id for this parse preview when document intelligence recording succeeded.
+             * @description Persisted source document id for this parse preview when capture review recording succeeded.
              */
             source_document_id?: number;
             /** @description Lightweight draft candidates created from this parse preview for later review. */
@@ -5620,7 +6840,7 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** @description Lightweight document intelligence candidate summary created during capture parse. */
+        /** @description Lightweight capture review candidate summary created during capture parse. */
         CaptureParseCandidate: {
             /** Format: int64 */
             id?: number;
@@ -5633,7 +6853,7 @@ export interface components {
             /** @enum {string} */
             status?: "draft" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
         };
-        /** @description Saved promo code found by the user or projected from document intelligence. */
+        /** @description Saved promo code found by the user or projected from capture review. */
         PromoCode: {
             /** Format: int64 */
             id?: number;
@@ -5753,6 +6973,152 @@ export interface components {
         BenefitCandidateListResponse: {
             candidates?: components["schemas"]["BenefitCandidate"][];
         };
+        /** @description User-facing grouped counts for what Ceits found inside a capture. */
+        CaptureCandidateCounts: {
+            expenses?: number;
+            expense_items?: number;
+            benefits?: number;
+            people?: number;
+            splits?: number;
+            future?: number;
+            documents?: number;
+        };
+        /** @description Source-document-backed capture packet with grouped review counts. */
+        CapturePacket: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            source_document_id?: number;
+            /** Format: int64 */
+            space_id?: number;
+            /** Format: int64 */
+            created_by_user_id?: number;
+            /** Format: int64 */
+            media_object_id?: number;
+            title?: string;
+            source_type?: string;
+            input_kind?: string;
+            document_type?: string;
+            merchant_text?: string;
+            /** Format: date-time */
+            document_date?: string;
+            total_amount?: number;
+            currency?: string;
+            confidence?: number;
+            candidate_count?: number;
+            pending_count?: number;
+            projected_count?: number;
+            ignored_count?: number;
+            candidate_counts?: components["schemas"]["CaptureCandidateCounts"];
+            candidate_type_counts?: {
+                [key: string]: number;
+            };
+            candidate_status_counts?: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            latest_candidate_at?: string;
+            records?: components["schemas"]["CapturePacketRecords"];
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        CapturePacketRecords: {
+            expenses?: components["schemas"]["CaptureExpenseRecord"][];
+            benefits?: components["schemas"]["CaptureBenefitRecord"][];
+            participants?: components["schemas"]["CaptureParticipantRecord"][];
+            splits?: components["schemas"]["CaptureSplitRecord"][];
+            recurring?: components["schemas"]["CaptureRecurringRecord"][];
+        };
+        CaptureExpenseRecord: {
+            /** Format: int64 */
+            id?: number;
+            title?: string;
+            description?: string;
+            status?: string;
+            currency?: string;
+            /** Format: date-time */
+            txn_date?: string;
+            total_amount?: number;
+            /** Format: int64 */
+            created_by_user_id?: number;
+            items?: components["schemas"]["CaptureExpenseItemRecord"][];
+        };
+        CaptureExpenseItemRecord: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            amount?: number;
+        };
+        CaptureBenefitRecord: {
+            /** Format: int64 */
+            id?: number;
+            title?: string;
+            promo_code?: string;
+            source_merchant_name?: string;
+            redeem_merchant_name?: string;
+            redeem_platform?: string;
+            discount_type?: string;
+            discount_value?: number | null;
+            currency?: string;
+            /** Format: date-time */
+            valid_until?: string | null;
+            status?: string;
+            /** Format: int64 */
+            created_by_user_id?: number;
+        };
+        CaptureParticipantRecord: {
+            /** Format: int64 */
+            id?: number;
+            display_name?: string;
+            participant_type?: string;
+            status?: string;
+            email?: string;
+            telegram_username?: string;
+            /** Format: int64 */
+            user_id?: number;
+            /** Format: int64 */
+            linked_user_id?: number;
+            /** Format: int64 */
+            canonical_participant_id?: number;
+            /** Format: int64 */
+            created_by_user_id?: number;
+        };
+        CaptureSplitRecord: {
+            /** Format: int64 */
+            expense_id?: number;
+            split_count?: number;
+            total_amount?: number;
+            /** Format: int64 */
+            created_by_user_id?: number;
+            participant_lines?: components["schemas"]["CaptureSplitLineRecord"][];
+        };
+        CaptureSplitLineRecord: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            space_participant_id?: number;
+            display_name?: string;
+            /** Format: int64 */
+            user_id?: number;
+            amount?: number;
+        };
+        CaptureRecurringRecord: {
+            /** Format: int64 */
+            id?: number;
+            name?: string;
+            amount?: number;
+            interval?: string;
+            /** Format: date-time */
+            next_run?: string;
+            paused?: boolean;
+            /** Format: int64 */
+            created_by_user_id?: number;
+        };
+        CapturePacketListResponse: {
+            captures?: components["schemas"]["CapturePacket"][];
+        };
         /** @description Reviewable document-level signal extracted from a source document. */
         DocumentCandidate: {
             /** Format: int64 */
@@ -5767,7 +7133,7 @@ export interface components {
              */
             projected_expense_id?: number;
             /** @enum {string} */
-            candidate_type?: "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
+            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
             title?: string;
             structured_data?: {
                 [key: string]: unknown;
@@ -5795,6 +7161,11 @@ export interface components {
             /** Format: int64 */
             id?: number;
             status?: string;
+        };
+        DeleteSourceDocumentReviewResponse: {
+            /** Format: int64 */
+            source_document_id?: number;
+            deleted?: boolean;
         };
         CreateParticipantCandidateResponse: {
             participant?: components["schemas"]["SpaceParticipant"];
@@ -5857,7 +7228,7 @@ export interface components {
             media_id?: number;
             /**
              * Format: int64
-             * @description Source document linked to the created draft expense when the request came from a prior parse preview.
+             * @description Source document linked to the created draft expense, either created by this direct text/photo/voice capture or supplied from a prior parse preview.
              */
             source_document_id?: number;
         };
@@ -5880,6 +7251,22 @@ export interface components {
             related_transaction_id?: number;
             /** Format: int64 */
             related_expense_id?: number;
+            /**
+             * Format: int64
+             * @description Private media object attached to this chat message, when the message was created from a photo or voice capture.
+             */
+            media_id?: number;
+            /** @description Media category, for example image or voice. */
+            media_kind?: string;
+            /** @description Original media MIME type. */
+            media_content_type?: string;
+            /** @description Original uploaded filename when available. */
+            media_filename?: string;
+            /**
+             * Format: int64
+             * @description Source document that produced this chat message's draft/review work.
+             */
+            source_document_id?: number;
             /** Format: date-time */
             created_at?: string;
         };
@@ -5915,6 +7302,11 @@ export interface components {
             vendor_id?: number;
             vendor_name?: string;
             business_meta?: components["schemas"]["TransactionBusinessMeta"];
+            /**
+             * Format: int64
+             * @description Capture/source document that created this expense record, when available.
+             */
+            source_document_id?: number;
             items?: components["schemas"]["TransactionItem"][];
             total?: number;
             /** Format: date-time */

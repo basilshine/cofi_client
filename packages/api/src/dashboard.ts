@@ -28,7 +28,6 @@ export type DashboardContinue = {
 	space_id: number;
 	space_name: string;
 	draft_id: number | null;
-	expense_thread_path: string | null;
 };
 
 export type DashboardSpaceRow = {
@@ -84,23 +83,8 @@ export type DashboardOrgSnapshot = {
 	type: string;
 } | null;
 
-/** Open expense thread where the current user has not approved yet (dashboard review queue). */
-export type DashboardExpenseThreadApprovalItem = {
-	kind: "expense_thread_approval";
-	thread_id: number;
-	expense_id: number;
-	space_id: number;
-	space_name: string;
-	label: string;
-	total: number;
-	my_share: number;
-	currency: string;
-	updated_at: string;
-};
-
-export type DashboardReviewQueueItem =
-	| DashboardExpenseThreadApprovalItem
-	| Record<string, unknown>;
+/** Legacy compatibility payload. New review attention should come from capture packets. */
+export type DashboardReviewQueueItem = Record<string, unknown>;
 
 export type DashboardReviewQueue = {
 	items: DashboardReviewQueueItem[];
@@ -114,6 +98,8 @@ export type DashboardRecurringUpcomingItem = {
 	amount: number;
 	space_id?: number;
 	space_name?: string;
+	/** Capture/source document that created this recurring rule, when available. */
+	source_document_id?: number | null;
 };
 
 export type DashboardRecentTransaction = {
@@ -123,6 +109,8 @@ export type DashboardRecentTransaction = {
 	occurred_at: string;
 	space_id: number;
 	space_name: string;
+	/** Capture/source document that created this saved expense, when available. */
+	source_document_id?: number | null;
 	status: string;
 	label: string;
 };
@@ -138,6 +126,8 @@ export type DashboardPendingDraft = {
 	/** User's share (split rows when present; else full total for owner). */
 	my_share?: number;
 	currency: string;
+	/** Capture/source document that created this draft, when available. */
+	source_document_id?: number | null;
 	updated_at: string;
 };
 
@@ -153,10 +143,14 @@ export type DashboardSpendOverview = {
 } | null;
 
 export type DashboardActivityItem = {
+	id?: string;
 	caption: string;
 	timestamp: string;
 	space_name: string;
 	space_id: number;
+	action?: string;
+	entity?: string;
+	source_document_id?: number | null;
 };
 
 export type DashboardRecentActivity = {

@@ -32,7 +32,7 @@ const buildPurposeOptions = (isSharedSpace: boolean): PurposeOption[] => [
 		purpose: "message",
 	},
 	{
-		helper: "Review packet",
+		helper: "Review capture",
 		Icon: ScanSearch,
 		label: "Capture",
 		purpose: "capture",

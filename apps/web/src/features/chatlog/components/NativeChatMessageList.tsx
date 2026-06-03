@@ -1,18 +1,20 @@
 import type { ChatMessage } from "@cofi/api";
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
 import { EntityMicro } from "../../../shared/lib/entityPresentation";
 import { userMessageAccent } from "../lib/userMessageAccent";
+import { ChatMediaAttachment } from "./ChatMediaAttachment";
+import {
+	ChatMessageRichText,
+	type LegacyReviewDeepLink,
+} from "./ChatMessageRichText";
 import {
 	isDraftExpenseSystemMessage,
 	isRecurringExpenseChatMessage,
 } from "./DraftExpenseBoilerplateCaption";
 import { DraftExpenseCard } from "./DraftExpenseCard";
 import { ExpenseMessageCard } from "./ExpenseMessageCard";
-import {
-	type ThreadDeepLink,
-	ThreadDiscussionRichText,
-} from "./ThreadDiscussionRichText";
 
 type NativeChatMessageListProps = {
 	canDeleteMessage: (message: ChatMessage) => boolean;
@@ -27,13 +29,13 @@ type NativeChatMessageListProps = {
 	onCancelEditMessage: () => void;
 	onDeleteMessageRequest: (message: ChatMessage) => void;
 	onEditMessageTextChange: (text: string) => void;
-	onOpenExpenseThread: (expenseId: string | number) => void;
-	onOpenThreadLink: (link: ThreadDeepLink) => void;
+	onOpenExpenseDetail: (expenseId: string | number) => void;
+	onOpenLegacyReviewLink: (link: LegacyReviewDeepLink) => void;
 	onRelatedResourceGone: (messageId: string | number) => void;
 	onSaveEditMessage: () => void;
 	onStartEditMessage: (message: ChatMessage) => void;
 	selectedSpaceId: string | number;
-	sidebarThreadExpenseId: string | number | null;
+	selectedExpenseId: string | number | null;
 };
 
 export const NativeChatMessageList = ({
@@ -49,13 +51,13 @@ export const NativeChatMessageList = ({
 	onCancelEditMessage,
 	onDeleteMessageRequest,
 	onEditMessageTextChange,
-	onOpenExpenseThread,
-	onOpenThreadLink,
+	onOpenExpenseDetail,
+	onOpenLegacyReviewLink,
 	onRelatedResourceGone,
 	onSaveEditMessage,
 	onStartEditMessage,
 	selectedSpaceId,
-	sidebarThreadExpenseId,
+	selectedExpenseId,
 }: NativeChatMessageListProps) => {
 	const expenseRenderMeta = useMemo(() => {
 		const latestIndexByKey = new Map<string, number>();
@@ -113,15 +115,30 @@ export const NativeChatMessageList = ({
 					editingMessageId != null && String(editingMessageId) === String(m.id)
 				);
 			const isRelatedSelected =
-				sidebarThreadExpenseId != null &&
+				selectedExpenseId != null &&
 				((m.related_expense_id != null &&
-					String(m.related_expense_id) === String(sidebarThreadExpenseId)) ||
+					String(m.related_expense_id) === String(selectedExpenseId)) ||
 					(m.related_transaction_id != null &&
-						String(m.related_transaction_id) ===
-							String(sidebarThreadExpenseId)));
-			const hasExpenseAttachment = Boolean(
-				m.related_expense_id || m.related_transaction_id,
+						String(m.related_transaction_id) === String(selectedExpenseId)));
+			const relatedExpenseStatus = (
+				m.related_expense_status ?? ""
+			).toLowerCase();
+			const hasGoneRelatedResource = relatedExpenseStatus === "gone";
+			const hasExpenseAttachment =
+				!hasGoneRelatedResource &&
+				Boolean(m.related_expense_id || m.related_transaction_id);
+			const hasMediaAttachment = Boolean(
+				m.media_id &&
+					(m.media_kind === "image" ||
+						m.media_content_type?.startsWith("image/")),
 			);
+			const hasCaptureContext = Boolean(
+				m.source_document_id || hasMediaAttachment || hasExpenseAttachment,
+			);
+			const hasRemovedCaptureReview =
+				hasMediaAttachment &&
+				m.source_document_id == null &&
+				!hasExpenseAttachment;
 			const messageDateKey = m.created_at
 				? new Date(m.created_at).toDateString()
 				: "";
@@ -144,12 +161,17 @@ export const NativeChatMessageList = ({
 					day: "numeric",
 				});
 			})();
-			const currentRelatedId =
-				m.related_expense_id != null
+			const currentRelatedId = hasGoneRelatedResource
+				? null
+				: m.related_expense_id != null
 					? String(m.related_expense_id)
 					: m.related_transaction_id != null
 						? String(m.related_transaction_id)
 						: null;
+			const reviewCaptureUrl =
+				m.source_document_id != null
+					? `/console/review?spaceId=${encodeURIComponent(String(selectedSpaceId))}&sourceDocumentId=${encodeURIComponent(String(m.source_document_id))}`
+					: null;
 			const prevRelatedId =
 				prev?.related_expense_id != null
 					? String(prev.related_expense_id)
@@ -168,12 +190,20 @@ export const NativeChatMessageList = ({
 				currentRelatedId == null
 					? []
 					: (expenseRenderMeta.updatesByKey.get(currentRelatedId) ?? []);
-			const inspectorOpen = sidebarThreadExpenseId != null;
+			const inspectorOpen = selectedExpenseId != null;
 			// Chat cards are compact event summaries. Detailed expense work belongs to the shared inspector or review flow.
 			if (
 				hasExpenseAttachment &&
 				!isLatestForExpense &&
 				!showCaptionAboveExpense &&
+				!m.text?.trim()
+			) {
+				return null;
+			}
+			if (
+				hasGoneRelatedResource &&
+				!m.source_document_id &&
+				!hasMediaAttachment &&
 				!m.text?.trim()
 			) {
 				return null;
@@ -204,7 +234,7 @@ export const NativeChatMessageList = ({
 						<div
 							className={[
 								"group relative transition-colors",
-								hasExpenseAttachment
+								hasExpenseAttachment || hasMediaAttachment
 									? "max-w-[min(780px,95%)]"
 									: isUser
 										? "max-w-[min(620px,88%)]"
@@ -243,7 +273,15 @@ export const NativeChatMessageList = ({
 									</div>
 								)}
 								<div className="flex shrink-0 items-center gap-2">
-									{canEditMessage(m) ? (
+									{reviewCaptureUrl ? (
+										<Link
+											className="rounded-full border border-[rgba(120,100,80,0.18)] bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-foreground/75 transition hover:bg-white hover:text-foreground"
+											to={reviewCaptureUrl}
+										>
+											Review capture
+										</Link>
+									) : null}
+									{canEditMessage(m) && !hasCaptureContext ? (
 										<button
 											aria-label="Edit message"
 											className="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary opacity-0 transition-opacity hover:bg-primary/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -254,7 +292,7 @@ export const NativeChatMessageList = ({
 											Edit
 										</button>
 									) : null}
-									{canDeleteMessage(m) ? (
+									{canDeleteMessage(m) && !hasCaptureContext ? (
 										<button
 											aria-label="Delete message"
 											className="rounded px-1.5 py-0.5 text-[10px] font-medium text-destructive opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -273,31 +311,60 @@ export const NativeChatMessageList = ({
 
 							{showCaptionAboveExpense ? (
 								<div className="whitespace-pre-wrap text-sm text-foreground">
-									<ThreadDiscussionRichText
+									<ChatMessageRichText
 										body={m.text ?? ""}
 										expenseId={null}
 										onJumpToLine={() => {}}
-										onOpenThreadLink={onOpenThreadLink}
+										onOpenLegacyReviewLink={onOpenLegacyReviewLink}
 										spaceId={selectedSpaceId}
 									/>
 								</div>
 							) : null}
 
-							{m.related_transaction_id && isLatestForExpense ? (
+							{hasMediaAttachment && m.media_id ? (
+								<ChatMediaAttachment
+									contentType={m.media_content_type}
+									filename={m.media_filename}
+									mediaId={m.media_id}
+									mediaKind={m.media_kind}
+								/>
+							) : null}
+
+							{hasRemovedCaptureReview ? (
+								<div className="rounded-lg border border-[rgba(120,100,80,0.16)] bg-white/62 px-3 py-2 text-xs text-muted-foreground">
+									<EntityMicro
+										entity={{
+											label: "Capture review removed",
+											visualKey: "reviewPacket",
+										}}
+									/>
+									<p className="mt-1">
+										This message still keeps the uploaded media, but the parsed
+										review packet was removed from this space.
+									</p>
+								</div>
+							) : null}
+
+							{hasExpenseAttachment &&
+							m.related_transaction_id &&
+							isLatestForExpense ? (
 								<ExpenseMessageCard
 									chatWorkspace={chatWorkspace}
 									compact
 									inspectorOpen={inspectorOpen}
 									isSelected={isRelatedSelected}
-									onOpenExpenseThread={onOpenExpenseThread}
+									onOpenExpenseDetail={onOpenExpenseDetail}
 									onTransactionOrphaned={() => onRelatedResourceGone(m.id)}
 									spaceId={selectedSpaceId}
+									sourceDocumentId={m.source_document_id}
 									transactionId={m.related_transaction_id}
 									updates={groupedUpdates}
 								/>
 							) : null}
 
-							{m.related_expense_id && isLatestForExpense ? (
+							{hasExpenseAttachment &&
+							m.related_expense_id &&
+							isLatestForExpense ? (
 								<DraftExpenseCard
 									chatWorkspace={chatWorkspace}
 									compact
@@ -305,14 +372,16 @@ export const NativeChatMessageList = ({
 									inspectorOpen={inspectorOpen}
 									isSelected={isRelatedSelected}
 									onExpenseOrphaned={() => onRelatedResourceGone(m.id)}
-									onOpenExpenseThread={onOpenExpenseThread}
+									onOpenExpenseDetail={onOpenExpenseDetail}
 									originMessageId={m.id}
 									relatedExpenseStatusHint={m.related_expense_status}
 									spaceId={selectedSpaceId}
+									sourceDocumentId={m.source_document_id}
 								/>
 							) : null}
 
 							{canEditMessage(m) &&
+							!hasCaptureContext &&
 							editingMessageId != null &&
 							String(editingMessageId) === String(m.id) ? (
 								<div className="mt-2 space-y-2">
@@ -348,11 +417,11 @@ export const NativeChatMessageList = ({
 										entity={{ label: "Recurring", visualKey: "future" }}
 									/>
 									<div className="whitespace-pre-wrap text-sm text-foreground">
-										<ThreadDiscussionRichText
+										<ChatMessageRichText
 											body={m.text ?? ""}
 											expenseId={null}
 											onJumpToLine={() => {}}
-											onOpenThreadLink={onOpenThreadLink}
+											onOpenLegacyReviewLink={onOpenLegacyReviewLink}
 											spaceId={selectedSpaceId}
 										/>
 									</div>
@@ -361,11 +430,11 @@ export const NativeChatMessageList = ({
 									m,
 								) ? null : showCaptionAboveExpense ? null : (
 								<div className="whitespace-pre-wrap text-sm text-foreground">
-									<ThreadDiscussionRichText
+									<ChatMessageRichText
 										body={m.text ?? ""}
 										expenseId={null}
 										onJumpToLine={() => {}}
-										onOpenThreadLink={onOpenThreadLink}
+										onOpenLegacyReviewLink={onOpenLegacyReviewLink}
 										spaceId={selectedSpaceId}
 									/>
 								</div>

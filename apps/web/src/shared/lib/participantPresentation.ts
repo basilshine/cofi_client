@@ -79,17 +79,23 @@ export const toSpaceParticipantEntity = (
 	const contact = participantContactSummary(participant);
 	const type = participantTypeLabel(participant.participant_type);
 	const user = participant.user_id ? `user ${participant.user_id}` : "";
+	const isPlaceholder = isPlaceholderParticipant(participant);
+	const status = participantStatusLabel(participant.status);
+	const statusDuplicatesType =
+		status.toLowerCase() === type.toLowerCase() ||
+		(isPlaceholder && status.toLowerCase() === "placeholder");
+	const placeholderSubtitle = user || "From capture, split, or manual entry";
 	return {
 		id: String(participant.id),
-		visualKey: isPlaceholderParticipant(participant) ? "placeholder" : "people",
-		label: isPlaceholderParticipant(participant)
-			? "Placeholder"
-			: "Participant",
+		visualKey: isPlaceholder ? "placeholder" : "people",
+		label: isPlaceholder ? "Placeholder" : "Participant",
 		title: participantDisplayName(participant),
-		subtitle: [type, user].filter(Boolean).join(" · "),
+		subtitle: isPlaceholder
+			? placeholderSubtitle
+			: [type, user].filter(Boolean).join(" · "),
 		detail: contact || "No contact yet",
-		meta: contact ? [contact] : [],
-		status: participantStatusLabel(participant.status),
+		meta: [],
+		status: statusDuplicatesType ? undefined : status,
 		statusClassName: participantStatusClass(participant),
 		selected: options.selected,
 	};

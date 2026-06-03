@@ -14,21 +14,24 @@ import {
 	toExpenseItemEntity,
 } from "../../../shared/lib/expenseItemPresentation";
 import {
+	expenseDetailToTransaction,
 	expenseStatusLabel,
 	expenseStatusPillClass,
 	toTransactionExpenseEntity,
 } from "../../../shared/lib/expensePresentation";
-import { TransactionInlineActions } from "../../transactions/components/RecurringScheduleInlineActions";
+import { ExpenseInlineActions } from "../../transactions/components/RecurringScheduleInlineActions";
 
 type Props = {
 	transactionId: string | number;
-	/** Space context for expense thread navigation. */
+	/** Space context for expense lookup and review navigation. */
 	spaceId?: string | number;
-	/** Active chat workspace (passed through thread deep links). */
+	/** Capture parent for review navigation when this expense came from parsing. */
+	sourceDocumentId?: string | number | null;
+	/** Active chat workspace. */
 	chatWorkspace?: ChatWorkspaceScope;
-	/** When set (e.g. ChatLogPage), opens the expense review thread inline instead of navigating. */
-	onOpenExpenseThread?: (expenseId: string | number) => void;
-	/** When the transaction no longer exists (404); parent may remove the chat row. */
+	/** When set (e.g. ChatLogPage), opens the expense detail panel instead of navigating. */
+	onOpenExpenseDetail?: (expenseId: string | number) => void;
+	/** When the expense no longer exists (404); parent may remove the chat row. */
 	onTransactionOrphaned?: () => void;
 	/** Narrow summary row; primary action opens the workspace expenses panel. */
 	compact?: boolean;
@@ -47,12 +50,12 @@ type Props = {
 export const ExpenseMessageCard = ({
 	transactionId,
 	spaceId,
+	sourceDocumentId,
 	chatWorkspace,
-	onOpenExpenseThread,
+	onOpenExpenseDetail,
 	onTransactionOrphaned,
 	compact = false,
 	isSelected = false,
-	inspectorOpen = false,
 	updates = [],
 }: Props) => {
 	const navigate = useNavigate();
@@ -68,17 +71,17 @@ export const ExpenseMessageCard = ({
 			if (spaceId == null) {
 				setTx(null);
 				setOrphanNotice(null);
-				setError("Missing space context for transaction lookup");
+				setError("Missing space context for expense lookup");
 				return;
 			}
 
 			try {
-				const data = await apiClient.transactions.getBySpaceAndId(
+				const data = await apiClient.spaces.expenses.get(
 					spaceId,
 					transactionId,
 				);
 				if (!isMounted) return;
-				setTx(data);
+				setTx(expenseDetailToTransaction(data, spaceId));
 				setError(null);
 				setOrphanNotice(null);
 			} catch (e) {
@@ -87,13 +90,11 @@ export const ExpenseMessageCard = ({
 				if (isNotFoundHttpError(e)) {
 					setError(null);
 					setOrphanNotice(
-						"This transaction was removed or is no longer available.",
+						"The saved expense is no longer attached to this chat entry.",
 					);
 				} else {
 					setOrphanNotice(null);
-					setError(
-						e instanceof Error ? e.message : "Failed to load transaction",
-					);
+					setError(e instanceof Error ? e.message : "Failed to load expense");
 				}
 			}
 		};
@@ -118,7 +119,8 @@ export const ExpenseMessageCard = ({
 				{orphanNotice}
 				{onTransactionOrphaned ? (
 					<span className="mt-1 block text-[10px] text-muted-foreground">
-						This chat line will be removed in a moment.
+						The message stays here as capture history; open review if the
+						original capture still exists.
 					</span>
 				) : null}
 			</output>
@@ -128,7 +130,7 @@ export const ExpenseMessageCard = ({
 	if (error) {
 		return (
 			<div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-				Failed to load transaction #{String(transactionId)}: {error}
+				Failed to load expense #{String(transactionId)}: {error}
 			</div>
 		);
 	}
@@ -136,7 +138,7 @@ export const ExpenseMessageCard = ({
 	if (!tx) {
 		return (
 			<div className="rounded-md border border-border bg-muted p-2 text-xs text-muted-foreground">
-				Loading transaction #{String(transactionId)}…
+				Loading expense #{String(transactionId)}...
 			</div>
 		);
 	}
@@ -146,12 +148,22 @@ export const ExpenseMessageCard = ({
 	const expenseEntity = toTransactionExpenseEntity(tx, {
 		amountLabel: formatMoney(tx.total),
 	});
+	const effectiveSourceDocumentId =
+		sourceDocumentId ?? tx.source_document_id ?? null;
+	const reviewHref =
+		spaceId == null
+			? null
+			: effectiveSourceDocumentId != null
+				? `/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(effectiveSourceDocumentId))}`
+				: `/console/review?spaceId=${encodeURIComponent(String(spaceId))}&expenseId=${encodeURIComponent(String(tx.id))}`;
+	const navigateToReview = () => {
+		if (!reviewHref) return;
+		navigate(reviewHref, {
+			state: chatWorkspace ? { chatWorkspace } : undefined,
+		});
+	};
 
-	if (compact && onOpenExpenseThread && spaceId != null) {
-		const handleOpen = () => {
-			onOpenExpenseThread(tx.id);
-		};
-		const selectedInInspector = inspectorOpen && isSelected;
+	if (compact && onOpenExpenseDetail && spaceId != null) {
 		const compactRows = tx.items.slice(0, 3);
 		const compactMoreCount = Math.max(0, tx.items.length - compactRows.length);
 
@@ -251,30 +263,12 @@ export const ExpenseMessageCard = ({
 
 				<div className="mt-1 flex flex-wrap items-center gap-1.5">
 					<button
-						aria-label="Open expense inspector"
+						aria-label="Open capture review"
 						className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-						onClick={handleOpen}
+						onClick={navigateToReview}
 						type="button"
 					>
-						View
-					</button>
-					{!selectedInInspector ? (
-						<button
-							aria-label="Review split details"
-							className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-							onClick={handleOpen}
-							type="button"
-						>
-							Split
-						</button>
-					) : null}
-					<button
-						aria-label="Open more expense options"
-						className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-						onClick={handleOpen}
-						type="button"
-					>
-						More
+						Open review
 					</button>
 				</div>
 			</div>
@@ -299,7 +293,7 @@ export const ExpenseMessageCard = ({
 							{statusLabel}
 						</span>
 						<span className="text-xs font-semibold text-muted-foreground">
-							tx #{String(tx.id)}
+							expense #{String(tx.id)}
 						</span>
 					</div>
 					<div className="mt-0.5 text-sm font-semibold">
@@ -336,24 +330,19 @@ export const ExpenseMessageCard = ({
 			<div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-2">
 				{spaceId != null ? (
 					<button
-						aria-label="Open expense discussion thread"
+						aria-label="Open expense review"
 						className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-semibold hover:bg-accent"
 						onClick={() =>
-							onOpenExpenseThread
-								? onOpenExpenseThread(tx.id)
-								: navigate(
-										`/console/chat/thread?spaceId=${encodeURIComponent(String(spaceId))}&expenseId=${encodeURIComponent(String(tx.id))}`,
-										{
-											state: chatWorkspace ? { chatWorkspace } : undefined,
-										},
-									)
+							onOpenExpenseDetail
+								? onOpenExpenseDetail(tx.id)
+								: navigateToReview()
 						}
 						type="button"
 					>
-						Open thread
+						Open review
 					</button>
 				) : null}
-				<TransactionInlineActions
+				<ExpenseInlineActions
 					expenseId={tx.id}
 					onAfterChange={() => setReloadToken((n) => n + 1)}
 					onResourceGone={onTransactionOrphaned}
@@ -363,6 +352,7 @@ export const ExpenseMessageCard = ({
 							: undefined
 					}
 					recurringPaused={tx.recurring_paused}
+					spaceId={spaceId}
 				/>
 			</div>
 		</div>

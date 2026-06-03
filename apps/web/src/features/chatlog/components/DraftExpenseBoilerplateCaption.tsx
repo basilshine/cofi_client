@@ -1,15 +1,26 @@
 import type { ChatMessage } from "@cofi/api";
 import { useEffect, useState } from "react";
+import { apiClient } from "../../../shared/lib/apiClient";
 import { httpClient } from "../../../shared/lib/httpClient";
 
-/** Matches server copy in cofi_server chat_transactions handler (system draft message). */
-export const DRAFT_TRANSACTION_READY_TEXT =
+/** Compatibility copy from older system draft messages. */
+export const LEGACY_DRAFT_TRANSACTION_READY_TEXT =
 	"Draft transaction ready. Review and approve/edit/cancel.";
+export const LEGACY_DRAFT_EXPENSE_READY_TEXT =
+	"Draft expense ready. Review and approve/edit/cancel.";
+export const DRAFT_EXPENSE_READY_TEXT =
+	"Expense draft ready. Review the capture, then save, edit, or cancel.";
+
+const DRAFT_EXPENSE_SYSTEM_TEXTS = new Set([
+	LEGACY_DRAFT_TRANSACTION_READY_TEXT,
+	LEGACY_DRAFT_EXPENSE_READY_TEXT,
+	DRAFT_EXPENSE_READY_TEXT,
+]);
 
 export const isDraftExpenseSystemMessage = (m: ChatMessage) =>
 	Boolean(m.related_expense_id) &&
 	(m.message_type === "draft_expense" ||
-		m.text.trim() === DRAFT_TRANSACTION_READY_TEXT);
+		DRAFT_EXPENSE_SYSTEM_TEXTS.has(m.text.trim()));
 
 /** Bot message created by the recurring scheduler (space chat). */
 export const isRecurringExpenseChatMessage = (m: ChatMessage) => {
@@ -26,12 +37,28 @@ export const isRecurringExpenseChatMessage = (m: ChatMessage) => {
 
 type ExpenseLite = { status?: string };
 
+const loadExpenseStatus = async (
+	expenseId: string | number,
+	spaceId?: string | number,
+) => {
+	if (spaceId != null) {
+		return (await apiClient.spaces.expenses.get(spaceId, expenseId)).status;
+	}
+	return (
+		await httpClient.get<ExpenseLite>(
+			`/api/v1/finances/expenses/${String(expenseId)}`,
+		)
+	).data?.status;
+};
+
 export const DraftExpenseBoilerplateCaption = ({
 	expenseId,
+	spaceId,
 	serverText,
 	relatedExpenseStatus,
 }: {
 	expenseId: string | number;
+	spaceId?: string | number;
 	serverText: string;
 	/** From chat list payload — avoids GET when present (e.g. `gone` after delete). */
 	relatedExpenseStatus?: string;
@@ -56,10 +83,8 @@ export const DraftExpenseBoilerplateCaption = ({
 		const run = async () => {
 			setLoading(true);
 			try {
-				const res = await httpClient.get<ExpenseLite>(
-					`/api/v1/finances/expenses/${String(expenseId)}`,
-				);
-				if (!cancelled) setStatus(res.data?.status);
+				const nextStatus = await loadExpenseStatus(expenseId, spaceId);
+				if (!cancelled) setStatus(nextStatus);
 			} catch {
 				if (!cancelled) setStatus(undefined);
 			} finally {
@@ -70,14 +95,16 @@ export const DraftExpenseBoilerplateCaption = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [expenseId, relatedExpenseStatus]);
+	}, [expenseId, relatedExpenseStatus, spaceId]);
 
 	if (loading) return null;
 
 	if (status === "draft") {
 		return (
 			<div className="whitespace-pre-wrap text-sm text-foreground">
-				{serverText}
+				{DRAFT_EXPENSE_SYSTEM_TEXTS.has(serverText.trim())
+					? DRAFT_EXPENSE_READY_TEXT
+					: serverText}
 			</div>
 		);
 	}

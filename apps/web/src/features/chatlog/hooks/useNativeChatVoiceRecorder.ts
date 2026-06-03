@@ -57,9 +57,14 @@ export const useNativeChatVoiceRecorder = ({
 			} catch (e) {
 				setIsRecording(false);
 				recordingForMessageRef.current = false;
-				onError(
-					e instanceof Error ? e.message : "Microphone permission denied",
-				);
+				const message =
+					e instanceof DOMException &&
+					(e.name === "NotAllowedError" || e.name === "SecurityError")
+						? "Microphone access is blocked in this browser. Allow microphone access or use text/photo."
+						: e instanceof Error
+							? e.message
+							: "Microphone permission denied";
+				onError(message);
 			}
 		},
 		[isRecording, onError],

@@ -23,10 +23,10 @@ type Props = {
 	/** Unique id prefix for a11y (e.g. item id) */
 	idPrefix: string;
 	/** Narrow sidebars: one control per row, full-width interval select */
-	variant?: "default" | "thread";
+	variant?: "default" | "panel";
 };
 
-/** Per expense line: optional recurring schedule (not the whole transaction). */
+/** Per expense line: optional recurring schedule (not the whole expense). */
 export const ExpenseItemRecurringControls = ({
 	disabled = false,
 	enabled,
@@ -39,12 +39,12 @@ export const ExpenseItemRecurringControls = ({
 	const selId = `${idPrefix}-recurring-interval`;
 	const intervals = recurringIntervalChoices();
 	const testIntervalsVisible = showTestRecurringIntervals();
-	const isThread = variant === "thread";
+	const isPanel = variant === "panel";
 
 	return (
 		<div
 			className={
-				isThread
+				isPanel
 					? "mt-2 rounded-lg border border-primary/20 bg-primary/[0.04] p-2.5"
 					: "mt-2 flex flex-col gap-2 border-t border-border/60 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
 			}
@@ -79,14 +79,14 @@ export const ExpenseItemRecurringControls = ({
 			{enabled ? (
 				<div
 					className={
-						isThread
+						isPanel
 							? "mt-2 flex min-w-0 flex-col gap-1.5"
 							: "flex min-w-0 flex-col gap-1 sm:flex-1"
 					}
 				>
 					<label
 						className={
-							isThread
+							isPanel
 								? "flex min-w-0 flex-col gap-1"
 								: "flex flex-wrap items-center gap-2"
 						}
@@ -96,7 +96,7 @@ export const ExpenseItemRecurringControls = ({
 						<select
 							aria-label="Recurring interval for this line"
 							className={
-								isThread
+								isPanel
 									? "h-9 w-full min-w-0 rounded-md border border-border bg-background px-2 text-xs shadow-sm"
 									: "h-8 max-w-[14rem] rounded-md border border-border bg-background px-2 text-xs"
 							}

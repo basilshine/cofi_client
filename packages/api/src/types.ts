@@ -87,7 +87,7 @@ export type Space = {
 	/** Set on list responses: display label for `owner_user_id`. */
 	owner_display_name?: string;
 	created_at?: string;
-	/** Latest activity: main chat, expense-thread posts, or thread updates (ISO 8601). */
+	/** Latest activity: chat, capture/review work, expense changes, or compatibility thread updates (ISO 8601). */
 	last_activity_at?: string;
 	/** Space-specific UI and behavior preferences. */
 	settings?: {
@@ -155,6 +155,8 @@ export type SpaceParticipant = {
 	contact_data?: Record<string, unknown>;
 	invitation_id?: number | null;
 	linked_user_id?: number | null;
+	canonical_participant_id?: number | null;
+	source_document_id?: number;
 	created_at: string;
 	updated_at: string;
 };
@@ -172,6 +174,10 @@ export type SpaceParticipantPatch = {
 	status?: string;
 };
 
+export type SpaceParticipantLink = {
+	canonical_participant_id?: number | null;
+};
+
 export type SpaceParticipantInviteResponse = {
 	token: string;
 	expires_at: string;
@@ -184,6 +190,7 @@ export type InviteSuggestionUser = {
 	user_id: number;
 	name: string;
 	email?: string;
+	relationship_label?: string;
 };
 
 export type PendingInviteBrief = {
@@ -261,6 +268,7 @@ export type SearchEntityType =
 	| "expense_item"
 	| "promo_code"
 	| "participant"
+	| "split"
 	| "recurring"
 	| "source_document";
 
@@ -270,6 +278,7 @@ export type SearchResult = {
 	entity_id: number;
 	space_id?: number;
 	space_name?: string;
+	source_document_id?: number;
 	title: string;
 	subtitle?: string;
 	detail?: string;
@@ -324,7 +333,133 @@ export type BenefitCandidateListResponse = {
 	candidates: BenefitCandidate[];
 };
 
+export type CaptureCandidateCounts = {
+	expenses: number;
+	expense_items: number;
+	benefits: number;
+	people: number;
+	splits: number;
+	future: number;
+	documents: number;
+};
+
+export type CaptureExpenseItemRecord = {
+	id: number;
+	name: string;
+	amount: number;
+};
+
+export type CaptureExpenseRecord = {
+	id: number;
+	title: string;
+	description?: string;
+	status: string;
+	currency: string;
+	txn_date: string;
+	total_amount: number;
+	created_by_user_id: number;
+	items?: CaptureExpenseItemRecord[];
+};
+
+export type CaptureBenefitRecord = {
+	id: number;
+	title: string;
+	promo_code?: string;
+	source_merchant_name?: string;
+	redeem_merchant_name?: string;
+	redeem_platform?: string;
+	discount_type?: string;
+	discount_value?: number | null;
+	currency?: string;
+	valid_until?: string | null;
+	status: string;
+	created_by_user_id: number;
+};
+
+export type CaptureParticipantRecord = {
+	id: number;
+	display_name: string;
+	participant_type?: string;
+	status?: string;
+	email?: string;
+	telegram_username?: string;
+	user_id?: number | null;
+	linked_user_id?: number | null;
+	canonical_participant_id?: number | null;
+	created_by_user_id?: number | null;
+};
+
+export type CaptureSplitLineRecord = {
+	id: number;
+	space_participant_id?: number | null;
+	display_name?: string;
+	user_id?: number | null;
+	amount: number;
+};
+
+export type CaptureSplitRecord = {
+	expense_id: number;
+	split_count: number;
+	total_amount: number;
+	created_by_user_id?: number | null;
+	participant_lines?: CaptureSplitLineRecord[];
+};
+
+export type CaptureRecurringRecord = {
+	id: number;
+	name: string;
+	amount: number;
+	interval?: string;
+	next_run?: string | null;
+	paused?: boolean;
+	created_by_user_id?: number | null;
+};
+
+export type CapturePacketRecords = {
+	expenses?: CaptureExpenseRecord[];
+	benefits?: CaptureBenefitRecord[];
+	participants?: CaptureParticipantRecord[];
+	splits?: CaptureSplitRecord[];
+	recurring?: CaptureRecurringRecord[];
+};
+
+export type CapturePacket = {
+	id: number;
+	source_document_id: number;
+	space_id: number;
+	created_by_user_id: number;
+	media_object_id?: number | null;
+	title: string;
+	source_type: string;
+	input_kind: string;
+	document_type: string;
+	merchant_text?: string;
+	document_date?: string | null;
+	total_amount?: number | null;
+	currency?: string;
+	confidence: number;
+	candidate_count: number;
+	pending_count: number;
+	projected_count: number;
+	ignored_count: number;
+	candidate_counts: CaptureCandidateCounts;
+	candidate_type_counts: Record<string, number>;
+	candidate_status_counts: Record<string, number>;
+	latest_candidate_at?: string | null;
+	records?: CapturePacketRecords;
+	created_at: string;
+	updated_at: string;
+};
+
+export type CapturePacketListResponse = {
+	captures: CapturePacket[];
+};
+
 export type DocumentCandidateType =
+	| "expense_candidate"
+	| "expense_item_candidate"
+	| "promo_code_candidate"
+	| "loyalty_event_candidate"
 	| "payment_proof_candidate"
 	| "privacy_signal_candidate"
 	| "recurring_candidate"
@@ -364,6 +499,11 @@ export type DocumentCandidateListResponse = {
 export type DocumentCandidateState = {
 	id: number;
 	status: string;
+};
+
+export type DeleteSourceDocumentReviewResponse = {
+	source_document_id: number;
+	deleted: boolean;
 };
 
 export type CreateParticipantCandidateResponse = {
@@ -502,6 +642,8 @@ export type Transaction = {
 	items: DraftItem[];
 	total: number;
 	created_at?: string;
+	/** Capture/source document that created this expense record, when available. */
+	source_document_id?: number;
 	/** Present when this posting was generated from a recurring schedule. */
 	recurring_id?: number;
 	/** Whether that schedule is currently paused (omitted if unknown). */
@@ -533,7 +675,7 @@ export type ExpenseBusinessMeta = {
 /** `GET /api/v1/finances/expenses/:id` — line items may include tag objects. */
 export type ExpenseDetail = {
 	id: number;
-	/** Present on thread-scoped expense responses; expense owner id. */
+	/** Present on space-scoped expense responses; expense owner id. */
 	user_id?: number;
 	/** Sum of line amounts (server-computed). */
 	amount?: number;
@@ -546,6 +688,8 @@ export type ExpenseDetail = {
 	status?: string;
 	created_at?: string;
 	updated_at?: string;
+	/** Capture/source document that created this expense record, when available. */
+	source_document_id?: number;
 	items?: Array<{
 		id?: number;
 		name: string;
@@ -587,67 +731,11 @@ export type ExpensePatch = {
 	items?: ExpenseDetail["items"];
 };
 
-/** Parsed line proposal for a thread draft (`/thread/proposals`). */
-export type ExpenseThreadItemProposal = {
-	id: number;
-	thread_id: number;
-	space_id: number;
-	proposed_by_user_id: number;
-	status: "pending" | "accepted" | "rejected";
-	description: string;
-	items: Array<{
-		name: string;
-		amount: number;
-		tags?: string[];
-		emotion?: string;
-		notes?: string;
-	}>;
-	/** From parser when proposal was created (dummy or live). */
-	parsed_vendor_name?: string;
-	parsed_payee_text?: string;
-	created_at: string;
-	resolved_at?: string | null;
-};
-
-/** Returned on `POST .../proposals/:id/accept` when merged lines may not match draft payee. */
-export type PayeeMismatchHint = {
-	mismatch: true;
-	draft_payee: string;
-	incoming_payee: string;
-};
-
-/** Expense-scoped discussion thread (see `POST /spaces/:spaceId/expenses/:expenseId/thread`). */
-export type ExpenseThread = {
-	id: number;
-	space_id: number;
-	expense_id: number;
-	created_by_user_id: number;
-	status: string;
-	created_at: string;
-	updated_at: string;
-};
-
-export type ExpenseThreadMessage = {
-	id: number;
-	thread_id: number;
-	space_id: number;
-	user_id: number;
-	body: string;
-	created_at: string;
-};
-
-/** `GET /spaces/:spaceId/expenses/:expenseId/thread` */
-export type ExpenseThreadSummary = {
-	thread: ExpenseThread;
-	message_count: number;
-	approval_count: number;
-	approver_user_ids: number[];
-};
-
 export type ExpenseSplitRow = {
 	user_id?: number | null;
 	space_participant_id?: number | null;
 	participant?: SpaceParticipant | null;
+	source_document_id?: number;
 	amount: number;
 };
 
@@ -677,6 +765,11 @@ export type ChatMessage = {
 	related_expense_id?: string | number;
 	/** From list messages: expense status for the viewer, `gone` if deleted, `inaccessible` if owned by someone else. */
 	related_expense_status?: string;
+	media_id?: string | number;
+	media_kind?: "image" | "voice" | (string & {});
+	media_content_type?: string;
+	media_filename?: string;
+	source_document_id?: string | number;
 	created_at?: string;
 };
 
@@ -735,6 +828,9 @@ export const parseInviteAcceptResponse = (
 		throw new Error("Invalid invite accept response");
 	}
 	const o = data as Record<string, unknown>;
+	if (o.kind === "space" && typeof o.space === "object" && o.space !== null) {
+		return { kind: "space", space: o.space as Space };
+	}
 	if ("name" in o && "id" in o) {
 		return { kind: "space", space: data as Space };
 	}
@@ -874,6 +970,7 @@ export type RecurringExpense = {
 	spaceId?: number;
 	origin_message_id?: number;
 	originMessageId?: number;
+	source_document_id?: number;
 	amount?: number;
 	name?: string;
 	tag_label?: string;

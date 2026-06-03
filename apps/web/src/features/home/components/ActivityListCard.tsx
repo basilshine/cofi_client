@@ -7,7 +7,7 @@ import {
 	ScanLine,
 } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
 	EntityMicro,
 	type EntityViewModel,
@@ -40,12 +40,17 @@ type ActivityItem = {
 	nextDueLabel?: string | null;
 	itemPreview?: string[];
 	previewNote?: string | null;
+	sourceDocumentId?: number | null;
+	sourceCaptureTo?: string | null;
 	eventType?:
 		| "expense"
 		| "draft"
 		| "edited"
 		| "split-assigned"
 		| "recurring-created"
+		| "benefit"
+		| "participant"
+		| "capture"
 		| "question"
 		| "recurring"
 		| "receipt"
@@ -71,6 +76,8 @@ type ActivityListCardProps = {
 	railHighlightMode?: "splits" | "drafts" | "bills" | "none";
 	/** Optional anchor id (e.g. link from rail hint). */
 	activityAnchorId?: string;
+	/** Whether the list represents one space or a cross-space dashboard. */
+	scope?: "global" | "space";
 };
 
 type TimeGroupKey = "today" | "yesterday" | "earlier";
@@ -78,8 +85,17 @@ type TimeGroupKey = "today" | "yesterday" | "earlier";
 const activityEntityFor = (
 	item: ActivityItem,
 ): Pick<EntityViewModel, "label" | "visualKey"> => {
+	if (item.eventType === "capture") {
+		return { label: "Capture", visualKey: "reviewPacket" };
+	}
 	if (item.eventType === "split-assigned") {
 		return { label: "Split", visualKey: "split" };
+	}
+	if (item.eventType === "benefit") {
+		return { label: "Benefit", visualKey: "benefit" };
+	}
+	if (item.eventType === "participant") {
+		return { label: "Person", visualKey: "people" };
 	}
 	if (
 		item.eventType === "recurring" ||
@@ -247,6 +263,12 @@ const isConfirmedStatus = (status: string): boolean => {
 
 /** Pending / actionable rows for Space Overview attention stream. */
 const rowNeedsAttention = (item: ActivityItem): boolean => {
+	if (item.eventType === "capture") {
+		return (
+			!isConfirmedStatus(item.statusLabel) &&
+			!isConfirmedStatus(item.statusPillLabel ?? "")
+		);
+	}
 	if (item.eventType === "split-assigned") return true;
 	if (item.eventType === "draft") return true;
 	const sl = item.statusLabel ?? "";
@@ -274,8 +296,10 @@ const rowMatchesRailHighlight = (
 	}
 	if (mode === "drafts") {
 		return (
+			item.eventType === "capture" ||
 			item.eventType === "draft" ||
 			item.eventType === "receipt" ||
+			/\bexpense draft\b/i.test(labels) ||
 			/\bdraft\b/i.test(labels) ||
 			/\bneeds review\b/i.test(labels.toLowerCase()) ||
 			/\bpending\b/i.test(labels.toLowerCase())
@@ -302,7 +326,38 @@ const buildHoverPreviewHint = (
 	if (item.eventType === "question") {
 		return "Includes a generated answer preview";
 	}
+	if (item.eventType === "capture") {
+		return isConfirmedStatus(item.statusLabel) ||
+			isConfirmedStatus(item.statusPillLabel ?? "")
+			? "Capture records were saved"
+			: "Capture is waiting for review";
+	}
 	return null;
+};
+
+const expenseRecordStateLine = (item: ActivityItem): string => {
+	if (item.eventType === "draft" || isDraftStatus(item.statusLabel)) {
+		return "Draft needs confirmation";
+	}
+	if (isNeedsReviewStatus(item.statusLabel)) {
+		return "Needs capture review";
+	}
+	if (isConfirmedStatus(item.statusLabel)) {
+		return "Saved expense record";
+	}
+	return "Expense record";
+};
+
+const sourceCaptureLabel = (item: ActivityItem): string | null => {
+	const sourceDocumentId = item.sourceDocumentId;
+	if (
+		sourceDocumentId == null ||
+		!Number.isFinite(sourceDocumentId) ||
+		sourceDocumentId <= 0
+	) {
+		return null;
+	}
+	return `Source capture #${sourceDocumentId}`;
 };
 
 type ReceiptProcessStep = {
@@ -344,8 +399,11 @@ export const ActivityListCard = ({
 	railHighlightActive = false,
 	railHighlightMode = "none",
 	activityAnchorId,
+	scope = "space",
 }: ActivityListCardProps) => {
+	const navigate = useNavigate();
 	const isSpaceWarm = surfaceVariant === "spaceWarm";
+	const isGlobalScope = scope === "global";
 	const surfaceSectionClass = isSpaceWarm
 		? "rounded-2xl border border-[rgba(95,105,125,0.18)] bg-gradient-to-b from-[#fdfcfa] to-[#f7f5f2] text-card-foreground shadow-[0_10px_32px_-24px_rgba(45,42,38,0.2)] transition-shadow duration-150 hover:shadow-[0_14px_36px_-22px_rgba(45,42,38,0.22)]"
 		: `${sectionCard} transition-shadow duration-150 hover:shadow-[0_12px_28px_-20px_rgba(31,37,35,0.12)]`;
@@ -353,23 +411,43 @@ export const ActivityListCard = ({
 
 	const renderExpandedContent = (item: ActivityItem) => {
 		const isQuestion = item.eventType === "question";
-		const isRecurring = item.eventType === "recurring";
+		const isRecurring =
+			item.eventType === "recurring" || item.eventType === "recurring-created";
 		const isReceiptParsed = item.eventType === "receipt";
 		const isExpenseLike =
+			item.eventType === "capture" ||
 			item.eventType === "expense" ||
 			item.eventType === "draft" ||
+			item.eventType === "benefit" ||
+			item.eventType === "participant" ||
+			item.eventType === "split-assigned" ||
 			item.eventType === "receipt" ||
 			item.eventType === "voice" ||
 			!item.eventType;
 		const helperLine =
 			item.eventType === "draft"
-				? `Added to ${item.spaceName} as draft`
-				: item.eventType === "voice"
-					? "Recorded from voice"
-					: item.eventType === "receipt"
-						? `Added to ${item.spaceName} from receipt`
-						: `Saved in ${item.spaceName}`;
-		const detailLine = [item.categoryLabel, item.timeLabel, item.spaceName]
+				? isGlobalScope
+					? `Added to ${item.spaceName} as draft`
+					: "Added to this space as draft"
+				: item.eventType === "capture"
+					? isGlobalScope
+						? `Waiting in ${item.spaceName} capture review`
+						: "Waiting in this space capture review"
+					: item.eventType === "voice"
+						? "Recorded from voice"
+						: item.eventType === "receipt"
+							? isGlobalScope
+								? `Added to ${item.spaceName} from receipt`
+								: "Added to this space from receipt"
+							: isGlobalScope
+								? `Saved in ${item.spaceName}`
+								: "Saved in this space";
+		const detailLine = [
+			item.categoryLabel,
+			item.timeLabel,
+			isGlobalScope ? item.spaceName : null,
+			sourceCaptureLabel(item),
+		]
 			.filter(Boolean)
 			.join(" · ");
 
@@ -378,7 +456,7 @@ export const ActivityListCard = ({
 			const breakdownLine =
 				item.previewNote?.trim() ||
 				(item.categoryLabel && item.itemPreview?.length
-					? `${item.categoryLabel} · ${item.itemPreview.length} transactions`
+					? `${item.categoryLabel} · ${item.itemPreview.length} expense records`
 					: item.categoryLabel
 						? `${item.categoryLabel} + ${item.spaceName}`
 						: `${item.spaceName} · recent activity`);
@@ -389,7 +467,8 @@ export const ActivityListCard = ({
 					</p>
 					<p className="text-[11px] text-foreground/75">{breakdownLine}</p>
 					<p className="text-[11px] text-muted-foreground">
-						{item.spaceName} · {toDisplayDate(item.occurredAt, item.timeLabel)}
+						{isGlobalScope ? `${item.spaceName} · ` : ""}
+						{toDisplayDate(item.occurredAt, item.timeLabel)}
 					</p>
 					<div className="flex flex-wrap gap-1.5 pt-1">
 						<Link
@@ -421,7 +500,7 @@ export const ActivityListCard = ({
 				<div className="space-y-2">
 					<div className="rounded-md bg-white/90 px-2.5 py-1.5 shadow-[0_6px_14px_-16px_rgba(31,37,35,0.55)]">
 						<p className="text-[14px] text-foreground/78">
-							Added to {item.spaceName} ·{" "}
+							{isGlobalScope ? `Added to ${item.spaceName}` : "Added here"} ·{" "}
 							{needsReview ? "needs review before saving" : "processed"}
 						</p>
 					</div>
@@ -511,10 +590,12 @@ export const ActivityListCard = ({
 						{item.nextDueLabel
 							? `Next due ${item.nextDueLabel}`
 							: "No due date scheduled"}{" "}
-						· {item.spaceName}
+						{isGlobalScope ? `· ${item.spaceName}` : ""}
 					</p>
 					<p className="text-[11px] text-muted-foreground">
-						Recurring in {item.spaceName}
+						{isGlobalScope
+							? `Recurring in ${item.spaceName}`
+							: "Recurring in this space"}
 					</p>
 					<div className="flex flex-wrap gap-1.5 pt-1">
 						<Link
@@ -527,23 +608,73 @@ export const ActivityListCard = ({
 						<Link
 							className="inline-flex h-7 items-center rounded-full border border-border/60 bg-background/50 px-3 text-[11px] text-foreground/80 transition hover:bg-background"
 							state={linkState}
-							to="/console/chat/expenses"
+							to={item.to}
 						>
-							View history
+							Open record
 						</Link>
+						{item.sourceCaptureTo ? (
+							<Link
+								className="inline-flex h-7 items-center rounded-full border border-[rgba(82,72,57,0.16)] bg-background/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-background"
+								state={linkState}
+								to={item.sourceCaptureTo}
+							>
+								Review capture
+							</Link>
+						) : null}
 					</div>
 				</div>
 			);
 		}
 
 		if (isExpenseLike) {
+			if (item.eventType === "capture") {
+				const captureConfirmed =
+					isConfirmedStatus(item.statusLabel) ||
+					isConfirmedStatus(item.statusPillLabel ?? "");
+				return (
+					<div className="space-y-1.5">
+						<p className="truncate text-[11px] text-muted-foreground">
+							{detailLine ||
+								(isGlobalScope
+									? `${item.timeLabel} · ${item.spaceName}`
+									: item.timeLabel)}
+						</p>
+						<p className="text-[11px] text-foreground/75">
+							{item.meaningLine || helperLine}
+						</p>
+						<p className="text-[11px] text-foreground/75">
+							{captureConfirmed
+								? "Open the source capture to inspect saved records."
+								: "Open capture review to decide what becomes records."}
+						</p>
+						<div className="flex flex-wrap gap-1.5 pt-1">
+							<Link
+								className={
+									captureConfirmed
+										? "inline-flex h-7 items-center rounded-full border border-border/60 bg-background/60 px-3 text-[11px] text-foreground/85 transition hover:bg-background"
+										: "inline-flex h-7 items-center rounded-full bg-[rgba(189,143,64,0.24)] px-3 text-[11px] font-semibold text-[rgba(111,78,22,0.96)] shadow-[0_6px_16px_-14px_rgba(111,78,22,0.8)] transition hover:bg-[rgba(189,143,64,0.32)]"
+								}
+								state={linkState}
+								to={item.to}
+							>
+								{captureConfirmed ? "Open capture" : "Review capture"}
+							</Link>
+						</div>
+					</div>
+				);
+			}
 			return (
 				<div className="space-y-1.5">
 					<p className="truncate text-[11px] text-muted-foreground">
-						{detailLine || `${item.timeLabel} · ${item.spaceName}`}
+						{detailLine ||
+							(isGlobalScope
+								? `${item.timeLabel} · ${item.spaceName}`
+								: item.timeLabel)}
 					</p>
 					<p className="text-[11px] text-foreground/75">{helperLine}</p>
-					<p className="text-[11px] text-foreground/75">Ready for review</p>
+					<p className="text-[11px] text-foreground/75">
+						{expenseRecordStateLine(item)}
+					</p>
 					{item.itemPreview && item.itemPreview.length > 0 ? (
 						<div className="border-t border-border/35 pt-1.5">
 							<ul className="space-y-0.5">
@@ -569,6 +700,15 @@ export const ActivityListCard = ({
 						>
 							Open in space
 						</Link>
+						{item.sourceCaptureTo ? (
+							<Link
+								className="inline-flex h-7 items-center rounded-full border border-[rgba(82,72,57,0.16)] bg-background/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-background"
+								state={linkState}
+								to={item.sourceCaptureTo}
+							>
+								Review capture
+							</Link>
+						) : null}
 						<Link
 							className="inline-flex h-7 items-center rounded-full border border-border/60 bg-background/50 px-3 text-[11px] text-foreground/80 transition hover:bg-background"
 							state={linkState}
@@ -721,6 +861,7 @@ export const ActivityListCard = ({
 												(item.statusPillLabel
 													? `${item.statusPillLabel}`
 													: displayStatus);
+										const sourceLabel = sourceCaptureLabel(item);
 										const hoverPreviewHint = buildHoverPreviewHint(
 											item,
 											isReceiptParsed ? receiptMerchant : null,
@@ -791,11 +932,15 @@ export const ActivityListCard = ({
 																	: "bg-[rgba(255,247,233,0.72)] shadow-[0_14px_26px_-24px_rgba(143,104,43,0.62)]"
 																: ""
 														}`}
-														onClick={() =>
+														onClick={() => {
+															if (item.eventType === "capture") {
+																navigate(item.to, { state: linkState });
+																return;
+															}
 															setExpandedId((prev) =>
 																prev === item.id ? null : item.id,
-															)
-														}
+															);
+														}}
 														type="button"
 													>
 														<div className="grid grid-cols-[1.75rem_minmax(0,1fr)_auto] items-start gap-x-3">
@@ -840,12 +985,21 @@ export const ActivityListCard = ({
 																	</span>
 																</p>
 																<p className="mt-0.5 flex min-w-0 items-center gap-1.5 truncate text-[12px] text-muted-foreground/95">
-																	<span className="truncate">
-																		{item.spaceName}
-																	</span>
-																	<span aria-hidden>·</span>
+																	{isGlobalScope ? (
+																		<>
+																			<span className="truncate">
+																				Space: {item.spaceName}
+																			</span>
+																			<span aria-hidden>·</span>
+																		</>
+																	) : null}
 																	<span>{item.timeLabel}</span>
 																</p>
+																{sourceLabel ? (
+																	<p className="mt-0.5 truncate text-[11px] font-medium text-muted-foreground">
+																		{sourceLabel}
+																	</p>
+																) : null}
 																{hoverPreviewHint ? (
 																	<p className="mt-1 h-3 overflow-hidden text-[10px] text-foreground/65 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
 																		{hoverPreviewHint}

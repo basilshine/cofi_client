@@ -1,16 +1,26 @@
-import type { Transaction } from "@cofi/api";
-import { useMemo } from "react";
+import type { CapturePacket as ApiCapturePacket, Transaction } from "@cofi/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { openGlobalComposerIntent } from "../../../app/layout/workspaceSpaces/globalComposerIntent";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
-import { EntityMicro } from "../../../shared/lib/entityPresentation";
+import { apiClient } from "../../../shared/lib/apiClient";
+import {
+	type CapturePacketCounts,
+	type CapturePacketSummary,
+	capturePacketEntityCountLabel,
+	capturePacketSummaryFromApi,
+	capturePacketSummaryLine,
+} from "../../../shared/lib/capturePacketSummary";
+import {
+	EntityListItem,
+	EntityMicro,
+	type EntityViewModel,
+} from "../../../shared/lib/entityPresentation";
 import {
 	expenseStatusTone,
 	toTransactionExpenseEntity,
 } from "../../../shared/lib/expensePresentation";
-import type { ExpenseThreadController } from "../hooks/useExpenseThreadState";
-import { ExpenseThreadInlinePanel } from "./ExpenseThreadInlinePanel";
-import type { ParseTestSnippet } from "./ParseExpenseComposer";
+import { SpaceExpenseDetailPanel } from "./SpaceExpenseDetailPanel";
 
 type Props = {
 	spaceId: string | number;
@@ -18,23 +28,66 @@ type Props = {
 	listLoading: boolean;
 	listError: string | null;
 	onReloadList: () => void;
-	sidebarThreadExpenseId: string | number | null;
+	selectedExpenseId: string | number | null;
 	onSelectExpense: (expenseId: string | number) => void;
-	onCloseThread: () => void;
-	expenseThreadCtrl: ExpenseThreadController;
-	currentUserId: number | null;
-	draftLineScrollRequest: number | null;
-	onDraftLineScrollConsumed: () => void;
-	parseTestSnippets: ParseTestSnippet[];
-	onInsertLineLinkToMainChat?: (markdown: string) => void;
-	/** When true, expense thread uses inspector-first layout (Space Expenses route). */
+	onCloseExpense: () => void;
+	/** When true, this rail supports the dedicated Space Expenses route. */
 	expensesWorkspaceRoute?: boolean;
 	spaceName?: string | null;
-	/** Space Expenses: workspace edit mode active (dim main column from parent). */
-	onWorkspaceEditModeChange?: (editing: boolean) => void;
-	/** Highlight right rail when expense is in workspace edit mode. */
-	workspaceEditSurfaceActive?: boolean;
 };
+
+const packetIconKeys: Array<keyof CapturePacketCounts> = [
+	"expenses",
+	"benefits",
+	"people",
+	"splits",
+	"future",
+	"documents",
+];
+
+const emptyPacketCounts = (): CapturePacketCounts => ({
+	expenses: 0,
+	benefits: 0,
+	people: 0,
+	splits: 0,
+	future: 0,
+	documents: 0,
+});
+
+const aggregatePacketCounts = (
+	packets: Array<CapturePacketSummary<unknown>>,
+): CapturePacketCounts =>
+	packets.reduce<CapturePacketCounts>((counts, packet) => {
+		for (const key of packetIconKeys) counts[key] += packet.counts[key];
+		return counts;
+	}, emptyPacketCounts());
+
+const packetHref = (
+	spaceId: string | number,
+	sourceDocumentId: string | number,
+): string =>
+	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`;
+
+const packetEntity = (
+	packet: CapturePacketSummary<unknown>,
+	spaceId: string | number,
+	pendingCount: number,
+): EntityViewModel => ({
+	id: String(packet.sourceDocumentId),
+	visualKey: "reviewPacket",
+	label: "Capture",
+	title: packet.title,
+	subtitle: capturePacketSummaryLine(packet.counts),
+	detail: packet.meta,
+	href: packetHref(spaceId, packet.sourceDocumentId),
+	status: pendingCount > 0 ? "Needs review" : "Created",
+	meta: packetIconKeys
+		.map((key) => {
+			const count = packet.counts[key];
+			return capturePacketEntityCountLabel(key, count);
+		})
+		.filter((value): value is string => Boolean(value)),
+});
 
 export const ChatExpenseRightPanelContent = ({
 	spaceId,
@@ -42,28 +95,52 @@ export const ChatExpenseRightPanelContent = ({
 	listLoading,
 	listError,
 	onReloadList,
-	sidebarThreadExpenseId,
+	selectedExpenseId,
 	onSelectExpense,
-	onCloseThread,
-	expenseThreadCtrl,
-	currentUserId,
-	draftLineScrollRequest,
-	onDraftLineScrollConsumed,
-	parseTestSnippets,
-	onInsertLineLinkToMainChat,
+	onCloseExpense,
 	expensesWorkspaceRoute = false,
 	spaceName = null,
-	onWorkspaceEditModeChange,
-	workspaceEditSurfaceActive = false,
 }: Props) => {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const { formatMoney, formatDateTime } = useUserFormat();
+	const [capturePackets, setCapturePackets] = useState<ApiCapturePacket[]>([]);
+	const [captureLoading, setCaptureLoading] = useState(false);
+	const [captureError, setCaptureError] = useState<string | null>(null);
 	const spaceLabel = spaceName?.trim() || "this space";
-	const chatHref = `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}`;
+	const reviewHref = `/console/review?spaceId=${encodeURIComponent(String(spaceId))}`;
 	const handleOpenAddExpense = () => {
 		openGlobalComposerIntent(navigate, location, "expense");
 	};
+
+	const loadCapturePackets = useCallback(async () => {
+		if (expensesWorkspaceRoute) return;
+		const numericSpaceId = Number(spaceId);
+		if (!Number.isFinite(numericSpaceId) || numericSpaceId <= 0) return;
+		setCaptureLoading(true);
+		setCaptureError(null);
+		try {
+			const response = await apiClient.spaces.listCapturePackets(
+				numericSpaceId,
+				{
+					includeRecords: true,
+					limit: 12,
+				},
+			);
+			setCapturePackets(response.captures ?? []);
+		} catch (err) {
+			setCaptureError(
+				err instanceof Error ? err.message : "Failed to load captures.",
+			);
+			setCapturePackets([]);
+		} finally {
+			setCaptureLoading(false);
+		}
+	}, [expensesWorkspaceRoute, spaceId]);
+
+	useEffect(() => {
+		void loadCapturePackets();
+	}, [loadCapturePackets]);
 
 	const stats = useMemo(() => {
 		const list = spaceTransactions ?? [];
@@ -88,33 +165,170 @@ export const ChatExpenseRightPanelContent = ({
 		return { total: list.length, draft, needsReview, approved, approvedRecent };
 	}, [spaceTransactions]);
 
-	if (sidebarThreadExpenseId != null) {
+	const captureSummaries = useMemo(
+		() => capturePackets.map(capturePacketSummaryFromApi),
+		[capturePackets],
+	);
+	const captureCounts = useMemo(
+		() => aggregatePacketCounts(captureSummaries),
+		[captureSummaries],
+	);
+	const pendingCaptureCount = useMemo(
+		() =>
+			capturePackets.filter((packet) => Number(packet.pending_count ?? 0) > 0)
+				.length,
+		[capturePackets],
+	);
+	const totalCaptureOutcomes = packetIconKeys.reduce(
+		(total, key) => total + captureCounts[key],
+		0,
+	);
+
+	if (selectedExpenseId != null) {
 		return (
-			<div
-				className={
-					workspaceEditSurfaceActive
-						? "flex h-full min-h-0 flex-col border-l border-amber-400/35 bg-[linear-gradient(180deg,#fffbf5_0%,#fff4e5_55%,#faf6f0_100%)] pb-3 pt-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] dark:border-amber-600/35 dark:bg-[linear-gradient(180deg,#1c1410_0%,#231a14_100%)]"
-						: "flex h-full min-h-0 flex-col border-l border-[rgba(120,100,80,0.09)] bg-[linear-gradient(180deg,#fdfbf8_0%,#f8f4ee_100%)] pb-3 pt-1"
-				}
-			>
-				<ExpenseThreadInlinePanel
-					closeLabel="← Back to expenses"
-					controller={expenseThreadCtrl}
-					currentUserId={currentUserId}
-					draftLineScrollRequest={draftLineScrollRequest}
-					formatDateTime={formatDateTime}
-					formatMoney={formatMoney}
-					onClose={onCloseThread}
-					onDraftLineScrollConsumed={onDraftLineScrollConsumed}
-					onInsertLineLinkToMainChat={onInsertLineLinkToMainChat}
-					onWorkspaceEditModeChange={
-						expensesWorkspaceRoute ? onWorkspaceEditModeChange : undefined
-					}
-					panelLayout="expensesInspector"
-					parseTestSnippets={parseTestSnippets}
-					reviewDraftOpensFlow={expensesWorkspaceRoute}
-					spaceId={spaceId}
-				/>
+			<SpaceExpenseDetailPanel
+				expenseId={selectedExpenseId}
+				formatDateTime={formatDateTime}
+				formatMoney={formatMoney}
+				onClose={onCloseExpense}
+				onReloadList={onReloadList}
+				spaceId={spaceId}
+			/>
+		);
+	}
+
+	if (!expensesWorkspaceRoute) {
+		return (
+			<div className="flex h-full min-h-0 flex-col overflow-y-auto border-l border-[rgba(120,100,80,0.12)] bg-[linear-gradient(180deg,#fdfaf5_0%,#f5f0e8_100%)] px-4 py-5 sm:px-5">
+				<div className="mx-auto w-full max-w-md space-y-5">
+					<div>
+						<p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#8b651f]">
+							Capture context
+						</p>
+						<h2 className="mt-1 font-display text-lg font-bold tracking-tight text-foreground">
+							Captures in {spaceLabel}
+						</h2>
+						<p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+							Review what Ceits found from chat, receipts, voice, and text.
+							Expenses, benefits, people, splits, and recurring hints stay
+							grouped under their source capture.
+						</p>
+					</div>
+
+					{captureError ? (
+						<div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+							{captureError}
+						</div>
+					) : null}
+
+					<section
+						aria-labelledby="capture-rail-summary"
+						className="rounded-2xl border border-[rgba(172,124,35,0.18)] bg-[rgba(255,252,246,0.88)] p-4 shadow-sm"
+					>
+						<div className="flex items-start justify-between gap-3">
+							<div>
+								<h3
+									className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+									id="capture-rail-summary"
+								>
+									Review work
+								</h3>
+								<p className="mt-1 text-sm text-muted-foreground">
+									{pendingCaptureCount > 0
+										? `${pendingCaptureCount} ${pendingCaptureCount === 1 ? "capture needs" : "captures need"} review.`
+										: "No captures are waiting for review."}
+								</p>
+							</div>
+							<Link
+								className="inline-flex h-9 shrink-0 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-3 text-xs font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+								to={reviewHref}
+							>
+								Open review
+							</Link>
+						</div>
+						<dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+							<div>
+								<dt className="text-xs font-medium text-muted-foreground">
+									Captures
+								</dt>
+								<dd className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
+									{capturePackets.length}
+								</dd>
+							</div>
+							<div>
+								<dt className="text-xs font-medium text-[#7a4510]">Outcomes</dt>
+								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#5a3008]">
+									{totalCaptureOutcomes}
+								</dd>
+							</div>
+							<div>
+								<dt className="text-xs font-medium text-[#7a5210]">Benefits</dt>
+								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#5a3008]">
+									{captureCounts.benefits}
+								</dd>
+							</div>
+							<div>
+								<dt className="text-xs font-medium text-[#355a3c]">People</dt>
+								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#2d4a32]">
+									{captureCounts.people}
+								</dd>
+							</div>
+						</dl>
+					</section>
+
+					{captureLoading && capturePackets.length === 0 ? (
+						<p className="text-sm text-muted-foreground">
+							Loading capture queue…
+						</p>
+					) : null}
+
+					{!captureLoading && capturePackets.length === 0 ? (
+						<p className="rounded-2xl border border-dashed border-[rgba(120,100,80,0.18)] bg-white/60 px-4 py-4 text-sm leading-relaxed text-muted-foreground">
+							No captures in this space yet. Send text, voice, or a receipt from
+							chat and Ceits will keep the review work here.
+						</p>
+					) : null}
+
+					{captureSummaries.length > 0 ? (
+						<section className="space-y-2">
+							<div className="flex items-center justify-between gap-3">
+								<h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+									Recent captures
+								</h3>
+								<button
+									className="rounded-full border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
+									disabled={captureLoading}
+									onClick={() => void loadCapturePackets()}
+									type="button"
+								>
+									{captureLoading ? "Refreshing…" : "Refresh"}
+								</button>
+							</div>
+							<div className="space-y-2">
+								{captureSummaries.slice(0, 6).map((packet) => {
+									const source = capturePackets.find(
+										(item) =>
+											Number(item.source_document_id) ===
+											Number(packet.sourceDocumentId),
+									);
+									const pendingCount = Number(source?.pending_count ?? 0);
+									return (
+										<EntityListItem
+											density="compact"
+											entity={packetEntity(packet, spaceId, pendingCount)}
+											key={packet.sourceDocumentId}
+											trailing={
+												<span className="rounded-full border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.9)] px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+													#{packet.sourceDocumentId}
+												</span>
+											}
+										/>
+									);
+								})}
+							</div>
+						</section>
+					) : null}
+				</div>
 			</div>
 		);
 	}
@@ -124,11 +338,14 @@ export const ChatExpenseRightPanelContent = ({
 			<div className="mx-auto w-full max-w-md space-y-5">
 				<div>
 					<h2 className="font-display text-lg font-bold tracking-tight text-foreground">
-						Expenses in {spaceLabel}
+						{expensesWorkspaceRoute
+							? `Expenses in ${spaceLabel}`
+							: "Space captures"}
 					</h2>
 					<p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-						Select an expense from the list to review splits, line items, and
-						approvals in this panel.
+						{expensesWorkspaceRoute
+							? "Select an expense from the list to inspect line items and saved splits in this panel."
+							: `Review what Ceits found from chat, receipts, voice, and text in ${spaceLabel}. Expense records are one possible outcome of a capture.`}
 					</p>
 				</div>
 
@@ -139,12 +356,16 @@ export const ChatExpenseRightPanelContent = ({
 				) : null}
 
 				{listLoading && !spaceTransactions?.length ? (
-					<p className="text-sm text-muted-foreground">Loading expenses…</p>
+					<p className="text-sm text-muted-foreground">
+						{expensesWorkspaceRoute ? "Loading expenses…" : "Loading captures…"}
+					</p>
 				) : null}
 
 				{!listLoading && spaceTransactions && spaceTransactions.length === 0 ? (
 					<p className="text-sm leading-relaxed text-muted-foreground">
-						No expenses in this space yet. Capture from chat or add one below.
+						{expensesWorkspaceRoute
+							? "No expenses in this space yet. Capture from chat or add one below."
+							: "No capture results in this space yet. Send text, voice, or a receipt from chat."}
 					</p>
 				) : null}
 
@@ -157,12 +378,14 @@ export const ChatExpenseRightPanelContent = ({
 							className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
 							id="exp-rail-summary"
 						>
-							Summary
+							{expensesWorkspaceRoute
+								? "Summary"
+								: "Saved outcomes from captures"}
 						</h3>
 						<dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
 							<div>
 								<dt className="text-xs font-medium text-muted-foreground">
-									Total
+									Expense records
 								</dt>
 								<dd className="mt-0.5 text-lg font-bold tabular-nums text-foreground">
 									{stats.total}
@@ -170,14 +393,16 @@ export const ChatExpenseRightPanelContent = ({
 							</div>
 							<div>
 								<dt className="text-xs font-medium text-[#7a4510]">
-									Needs review
+									Need review
 								</dt>
 								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#5a3008]">
 									{stats.needsReview}
 								</dd>
 							</div>
 							<div>
-								<dt className="text-xs font-medium text-[#7a5210]">Drafts</dt>
+								<dt className="text-xs font-medium text-[#7a5210]">
+									Draft expenses
+								</dt>
 								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#5a3008]">
 									{stats.draft}
 								</dd>
@@ -255,9 +480,9 @@ export const ChatExpenseRightPanelContent = ({
 							) : (
 								<Link
 									className="inline-flex h-10 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
-									to={chatHref}
+									to={reviewHref}
 								>
-									Add expense
+									Review captures
 								</Link>
 							)}
 						</div>

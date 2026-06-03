@@ -68,15 +68,39 @@ export const HomePromoModule = ({
 								key={key}
 							/>
 						))
-					: items.slice(0, 3).map((item) => (
-							<EntityMini
-								entity={toPromoBenefitEntity(item.promo, {
-									href: `/console/spaces/${encodeURIComponent(String(item.spaceId))}/benefits`,
-									spaceName: item.spaceName,
-								})}
-								key={`${item.spaceId}-${item.promo.id}`}
-							/>
-						))}
+					: items.slice(0, 3).map((item) => {
+							const sourceDocumentId = item.promo.sourceDocumentId;
+							const reviewHref =
+								sourceDocumentId != null
+									? `/console/review?spaceId=${encodeURIComponent(String(item.spaceId))}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`
+									: null;
+							return (
+								<div
+									className="min-w-0 rounded-xl"
+									key={`${item.spaceId}-${item.promo.id}`}
+								>
+									<EntityMini
+										entity={toPromoBenefitEntity(item.promo, {
+											href: `/console/spaces/${encodeURIComponent(String(item.spaceId))}/benefits`,
+											spaceName: item.spaceName,
+										})}
+									/>
+									{reviewHref ? (
+										<div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2 px-1 text-[10px] text-muted-foreground">
+											<span className="truncate">
+												Source capture #{sourceDocumentId}
+											</span>
+											<Link
+												className="font-bold uppercase tracking-wide text-[rgba(34,72,108,0.92)] underline-offset-2 hover:underline"
+												to={reviewHref}
+											>
+												Review capture
+											</Link>
+										</div>
+									) : null}
+								</div>
+							);
+						})}
 			</div>
 		</section>
 	);

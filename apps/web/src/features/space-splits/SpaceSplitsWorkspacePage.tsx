@@ -29,15 +29,6 @@ import {
 	type SplitMemberSummary,
 } from "./components/SpaceSplitsRightRail";
 
-type ApprovalReviewItem = {
-	kind: "expense_thread_approval";
-	expense_id: number;
-	space_id: number;
-	label: string;
-	total: number;
-	updated_at: string;
-};
-
 type SplitDecisionRecord = SplitDecisionRow & {
 	expenseId: number;
 	statusLabel: "Needs confirmation" | "Split saved" | "Draft" | "Cancelled";
@@ -48,6 +39,7 @@ type SplitDecisionRecord = SplitDecisionRow & {
 	othersShareLabel: string;
 	reviewTo: string;
 	expenseTo: string;
+	sourceDocumentId?: number;
 	participantsDetailed: Array<{
 		id: string;
 		name: string;
@@ -56,17 +48,19 @@ type SplitDecisionRecord = SplitDecisionRow & {
 	}>;
 };
 
-const isApprovalItem = (it: unknown): it is ApprovalReviewItem =>
-	it != null &&
-	typeof it === "object" &&
-	"kind" in it &&
-	(it as { kind: string }).kind === "expense_thread_approval";
-
 const toNumericId = (value: string | number | undefined): number | null => {
 	if (value == null) return null;
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? parsed : null;
 };
+
+const buildReviewCaptureHref = (
+	spaceId: string,
+	sourceDocumentId?: number | null,
+): string =>
+	sourceDocumentId != null
+		? `/console/review?spaceId=${encodeURIComponent(spaceId)}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`
+		: `/console/review?spaceId=${encodeURIComponent(spaceId)}`;
 
 const formatRelative = (iso?: string): string => {
 	if (!iso) return "—";
@@ -108,7 +102,7 @@ const toDisplayCategory = (tag: string): string => {
 	const t = tag.trim().toLowerCase();
 	if (!t || t === "uncategorized") return "General";
 	if (t.includes("grocery") || t.includes("groceries")) return "Groceries";
-	if (t.includes("receipt")) return "Receipt";
+	if (t.includes("receipt")) return "Receipt capture";
 	if (t.includes("subscription") || t.includes("streaming"))
 		return "Subscription";
 	return toTitleCase(tag.replace(/_/g, " "));
@@ -262,7 +256,7 @@ const toHumanSplitTitle = ({
 	if (cat.includes("receipt") || sourceStatus === "draft") {
 		if (mappedStatus === "Draft" || sourceStatus === "draft")
 			return "Receipt draft";
-		return "Receipt";
+		return "Receipt capture";
 	}
 
 	if (
@@ -291,7 +285,7 @@ const toHumanSplitTitle = ({
 		sourceStatus !== "cancelled" &&
 		mappedStatus !== "Draft"
 	) {
-		return "Manual expense";
+		return "Text capture expense";
 	}
 
 	if (mappedStatus === "Draft" || sourceStatus === "draft") {
@@ -363,23 +357,14 @@ export const SpaceSplitsWorkspacePage = () => {
 						}),
 						apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
 						apiClient.spaces.listParticipants(numericSpaceId).catch(() => null),
-						apiClient.spaces.listTransactions(numericSpaceId, { limit: 60 }),
+						apiClient.spaces.expenses.list(numericSpaceId, { limit: 60 }),
 						apiClient.spaces.activity
 							.list(numericSpaceId, { limit: 40 })
 							.catch(() => ({ items: [] })),
 					]);
 
-				const reviewExpenseIds = (dashRes.review_queue?.items ?? [])
-					.flatMap((item) => (isApprovalItem(item) ? [item] : []))
-					.filter((item) => Number(item.space_id) === Number(numericSpaceId))
-					.map((item) => Number(item.expense_id))
-					.filter((id) => Number.isFinite(id));
-
 				const expenseIds = Array.from(
-					new Set([
-						...txRes.map((tx) => toNumericId(tx.id)),
-						...reviewExpenseIds,
-					]),
+					new Set(txRes.map((tx) => toNumericId(tx.id))),
 				)
 					.filter((id): id is number => id != null)
 					.slice(0, 36);
@@ -387,14 +372,19 @@ export const SpaceSplitsWorkspacePage = () => {
 				const [splitSettled, detailSettled] = await Promise.all([
 					Promise.allSettled(
 						expenseIds.map(async (expenseId) => {
-							const data =
-								await apiClient.finances.expenses.listSplits(expenseId);
+							const data = await apiClient.spaces.expenses.listSplits(
+								numericSpaceId,
+								expenseId,
+							);
 							return { expenseId, rows: data.splits ?? [] };
 						}),
 					),
 					Promise.allSettled(
 						expenseIds.map(async (expenseId) => {
-							const detail = await apiClient.finances.expenses.get(expenseId);
+							const detail = await apiClient.spaces.expenses.get(
+								numericSpaceId,
+								expenseId,
+							);
 							return { expenseId, detail };
 						}),
 					),
@@ -455,9 +445,6 @@ export const SpaceSplitsWorkspacePage = () => {
 	}
 
 	const sidStr = String(numericSpaceId);
-	const reviewItems = (dashboardData?.review_queue?.items ?? [])
-		.flatMap((item) => (isApprovalItem(item) ? [item] : []))
-		.filter((item) => Number(item.space_id) === Number(numericSpaceId));
 	const pendingDrafts = (dashboardData?.pending_drafts ?? []).filter(
 		(item) => Number(item.space_id) === Number(numericSpaceId),
 	);
@@ -466,9 +453,6 @@ export const SpaceSplitsWorkspacePage = () => {
 		transactions
 			.map((transaction) => [toNumericId(transaction.id), transaction] as const)
 			.filter((entry): entry is [number, Transaction] => entry[0] != null),
-	);
-	const reviewByExpenseId = new Map<number, ApprovalReviewItem>(
-		reviewItems.map((item) => [Number(item.expense_id), item]),
 	);
 	const currentUserParticipantIds = new Set(
 		participants
@@ -481,21 +465,18 @@ export const SpaceSplitsWorkspacePage = () => {
 			...Object.keys(splitRows).map((id) => Number(id)),
 			...Object.keys(expenseDetails).map((id) => Number(id)),
 			...Array.from(transactionByExpenseId.keys()),
-			...Array.from(reviewByExpenseId.keys()),
 		]),
 	).filter((id) => Number.isFinite(id));
 
 	const splitDecisionRecords: SplitDecisionRecord[] = coverageIds.flatMap(
 		(expenseId) => {
 			const transaction = transactionByExpenseId.get(expenseId);
-			const review = reviewByExpenseId.get(expenseId);
 			const rows = splitRows[expenseId] ?? [];
 			const detail = expenseDetails[expenseId];
-			const statusLabel = review
-				? "Needs confirmation"
-				: rows.length > 0
-					? "Split saved"
-					: "Missing splits";
+			const sourceDocumentId =
+				rows.find((row) => row.source_document_id != null)
+					?.source_document_id ?? detail?.source_document_id;
+			const statusLabel = rows.length > 0 ? "Split saved" : "Missing splits";
 			if (statusLabel === "Missing splits") return [];
 
 			const participantsDetailed = rows.map((row) => {
@@ -520,11 +501,10 @@ export const SpaceSplitsWorkspacePage = () => {
 						!splitRowBelongsToUser(row, user?.id, currentUserParticipantIds),
 				)
 				.reduce((sum, row) => sum + row.amount, 0);
-			const total = detail?.amount ?? transaction?.total ?? review?.total ?? 0;
+			const total = detail?.amount ?? transaction?.total ?? 0;
 			const rawTitle =
 				detail?.title?.trim() ||
 				transaction?.title?.trim() ||
-				review?.label?.trim() ||
 				detail?.payee_text?.trim() ||
 				transaction?.description?.trim() ||
 				`Expense #${expenseId}`;
@@ -534,10 +514,10 @@ export const SpaceSplitsWorkspacePage = () => {
 			const dateLabel =
 				detail?.txn_date ||
 				transaction?.txn_date ||
-				formatRelative(transaction?.created_at || review?.updated_at);
+				formatRelative(transaction?.created_at);
 			const splitMethod =
 				rows.length <= 1
-					? "Manual"
+					? "Text capture"
 					: rows.every((row) => Math.abs(row.amount - rows[0].amount) < 0.0001)
 						? "Equal"
 						: "Custom";
@@ -566,7 +546,7 @@ export const SpaceSplitsWorkspacePage = () => {
 					: undefined);
 			const dateDisplayLabel = dateForDisplay
 				? formatShortDate(dateForDisplay)
-				: formatRelative(transaction?.created_at || review?.updated_at);
+				: formatRelative(transaction?.created_at);
 			const contextLine = buildSplitRowContextLine(
 				mappedStatusLabel,
 				sourceStatus,
@@ -589,10 +569,7 @@ export const SpaceSplitsWorkspacePage = () => {
 						name: participant.name,
 					})),
 					participantsCount: participantsDetailed.length,
-					participantsFallback:
-						review != null
-							? "Participants pending confirmation"
-							: "No splits saved",
+					participantsFallback: "No splits saved",
 					myShareLabel: formatMoney(myShare),
 					totalLabel: formatMoney(total),
 					statusLabel: mappedStatusLabel,
@@ -601,8 +578,9 @@ export const SpaceSplitsWorkspacePage = () => {
 					dateDisplayLabel,
 					splitMethod,
 					othersShareLabel: formatMoney(othersShareAmount),
-					reviewTo: `/console/review?spaceId=${encodeURIComponent(sidStr)}`,
+					reviewTo: buildReviewCaptureHref(sidStr, sourceDocumentId),
 					expenseTo: buildExpenseDetailHref(sidStr, expenseId),
+					sourceDocumentId,
 					participantsDetailed,
 				},
 			];
@@ -705,6 +683,7 @@ export const SpaceSplitsWorkspacePage = () => {
 				currentUserId: user?.id ?? null,
 				reviewTo: selectedDecision.reviewTo,
 				expenseTo: selectedDecision.expenseTo,
+				sourceDocumentId: selectedDecision.sourceDocumentId,
 			}
 		: null;
 
@@ -770,7 +749,7 @@ export const SpaceSplitsWorkspacePage = () => {
 						key: "drafts",
 						label: "Drafts pending",
 						value: String(pendingDrafts.length),
-						note: "Draft expenses likely to become split decisions.",
+						note: "Expense records created by captures and waiting for split review.",
 					},
 					{
 						key: "coverage",

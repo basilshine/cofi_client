@@ -11,6 +11,7 @@ type SpaceExpensesWorkspaceProps = {
 	expenseRightPanel: ReactNode;
 	listError: string | null;
 	listLoading: boolean;
+	onExpenseDeleted?: (expenseId: string | number) => void;
 	onReload: () => void;
 	onSelectExpense: (expenseId: string | number) => void;
 	selectedExpenseId: string | number | null;
@@ -27,6 +28,7 @@ export const SpaceExpensesWorkspace = ({
 	expenseRightPanel,
 	listError,
 	listLoading,
+	onExpenseDeleted,
 	onReload,
 	onSelectExpense,
 	selectedExpenseId,
@@ -61,6 +63,7 @@ export const SpaceExpensesWorkspace = ({
 						currentUserId={currentUserId}
 						listError={listError}
 						listLoading={listLoading}
+						onExpenseDeleted={onExpenseDeleted}
 						onReload={onReload}
 						onSelectExpense={onSelectExpense}
 						selectedExpenseId={selectedExpenseId}

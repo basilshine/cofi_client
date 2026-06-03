@@ -1,8 +1,15 @@
 import { Fragment, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { isAllowedLocalAppPath } from "./discussionLocalLinks";
 
-const parseThreadDeepLink = (
+/** In-app paths only: absolute on this origin, not protocol-relative or http(s) URLs. */
+const isAllowedLocalAppPath = (href: string): boolean => {
+	const t = href.trim();
+	if (!t.startsWith("/")) return false;
+	if (t.startsWith("//")) return false;
+	return true;
+};
+
+const parseLegacyReviewDeepLink = (
 	raw: string,
 ): { spaceId: string; expenseId: string; line: number | null } | null => {
 	try {
@@ -26,13 +33,13 @@ const parseThreadDeepLink = (
 	}
 };
 
-export type ThreadDeepLink = {
+export type LegacyReviewDeepLink = {
 	spaceId: string;
 	expenseId: string;
 	line: number | null;
 };
 
-const isSameThread = (
+const isSameExpenseLink = (
 	parsed: { spaceId: string; expenseId: string; line: number | null },
 	spaceId: string | number,
 	expenseId: string | number | null | undefined,
@@ -47,21 +54,21 @@ const MD_LINK = /^\[([^\]]+)\]\(([^)]+)\)$/;
 const TOKEN = /\[\[line:(\d+)\]\]|\[[^\]]+\]\([^)]+\)|\/console\/[^\s]+/g;
 
 /**
- * Renders discussion text: `[[line:N]]`, markdown `[label](/console/…)`, bare `/console/…` paths.
- * Only local app paths are linked; `http(s)://…` is never turned into a hyperlink.
+ * Renders chat text: `[[line:N]]`, markdown `[label](/console/...)`, and local `/console/...` paths.
+ * Old `/console/chat/thread` links are treated as compatibility review links.
  */
-export const ThreadDiscussionRichText = ({
+export const ChatMessageRichText = ({
 	body,
 	spaceId,
 	expenseId,
 	onJumpToLine,
-	onOpenThreadLink,
+	onOpenLegacyReviewLink,
 }: {
 	body: string;
 	spaceId: string | number;
 	expenseId: string | number | null | undefined;
 	onJumpToLine: (lineOneBased: number) => void;
-	onOpenThreadLink?: (link: ThreadDeepLink) => void;
+	onOpenLegacyReviewLink?: (link: LegacyReviewDeepLink) => void;
 }): ReactNode => {
 	const nodes: ReactNode[] = [];
 	let lastIndex = 0;
@@ -105,10 +112,10 @@ export const ThreadDiscussionRichText = ({
 				if (!isAllowedLocalAppPath(url)) {
 					nodes.push(<Fragment key={`mdx-${key++}`}>{match}</Fragment>);
 				} else {
-					const parsed = parseThreadDeepLink(url);
+					const parsed = parseLegacyReviewDeepLink(url);
 					if (
 						parsed?.line != null &&
-						isSameThread(parsed, spaceId, expenseId)
+						isSameExpenseLink(parsed, spaceId, expenseId)
 					) {
 						nodes.push(
 							<button
@@ -120,12 +127,12 @@ export const ThreadDiscussionRichText = ({
 								{label}
 							</button>,
 						);
-					} else if (parsed && onOpenThreadLink) {
+					} else if (parsed && onOpenLegacyReviewLink) {
 						nodes.push(
 							<button
 								className="inline font-medium text-primary underline decoration-primary/60 underline-offset-2 hover:decoration-primary"
 								key={`mdo-${key++}`}
-								onClick={() => onOpenThreadLink(parsed)}
+								onClick={() => onOpenLegacyReviewLink(parsed)}
 								type="button"
 							>
 								{label}
@@ -147,8 +154,11 @@ export const ThreadDiscussionRichText = ({
 				nodes.push(<Fragment key={`mdu-${key++}`}>{match}</Fragment>);
 			}
 		} else if (match.startsWith("/console")) {
-			const parsed = parseThreadDeepLink(match);
-			if (parsed?.line != null && isSameThread(parsed, spaceId, expenseId)) {
+			const parsed = parseLegacyReviewDeepLink(match);
+			if (
+				parsed?.line != null &&
+				isSameExpenseLink(parsed, spaceId, expenseId)
+			) {
 				nodes.push(
 					<button
 						className="inline font-medium text-primary underline decoration-primary/60 underline-offset-2 hover:decoration-primary"
@@ -159,15 +169,15 @@ export const ThreadDiscussionRichText = ({
 						Line {parsed.line}
 					</button>,
 				);
-			} else if (parsed && onOpenThreadLink) {
+			} else if (parsed && onOpenLegacyReviewLink) {
 				nodes.push(
 					<button
 						className="break-all font-medium text-primary underline decoration-primary/60 underline-offset-2 hover:decoration-primary"
 						key={`bro-${key++}`}
-						onClick={() => onOpenThreadLink(parsed)}
+						onClick={() => onOpenLegacyReviewLink(parsed)}
 						type="button"
 					>
-						Line {parsed.line ?? 1}
+						Review capture
 					</button>,
 				);
 			} else if (isAllowedLocalAppPath(match)) {

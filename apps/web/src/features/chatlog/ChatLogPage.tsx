@@ -12,7 +12,12 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import {
+	useLocation,
+	useNavigate,
+	useParams,
+	useSearchParams,
+} from "react-router-dom";
 import { useSetChatBreadcrumb } from "../../app/layout/ChatBreadcrumbContext";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
@@ -26,13 +31,14 @@ import {
 	touchRecentSpaceId,
 } from "../../shared/lib/recentSpaceIds";
 import { wsClient } from "../../shared/lib/wsClient";
+import { ChatCaptureProgressShelf } from "./components/ChatCaptureProgressShelf";
 import { ChatCaptureReviewEvents } from "./components/ChatCaptureReviewEvents";
-import type { ChatComposerMode } from "./components/ChatComposerDock";
 import {
 	ChatComposerOrientation,
 	type ChatComposerPurpose,
 } from "./components/ChatComposerOrientation";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
+import type { LegacyReviewDeepLink } from "./components/ChatMessageRichText";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
 import { ChatToastPortal } from "./components/ChatToastPortal";
 import { DeleteChatMessageDialog } from "./components/DeleteChatMessageDialog";
@@ -50,8 +56,10 @@ import {
 	type SmartTextareaComposerHandle,
 } from "./components/SmartTextareaComposer";
 import { SpaceExpensesWorkspace } from "./components/SpaceExpensesWorkspace";
-import type { ThreadDeepLink } from "./components/ThreadDiscussionRichText";
-import { useNativeChatComposerActions } from "./hooks/useNativeChatComposerActions";
+import {
+	type CaptureProgressEvent,
+	useNativeChatComposerActions,
+} from "./hooks/useNativeChatComposerActions";
 import { useNativeChatVoiceRecorder } from "./hooks/useNativeChatVoiceRecorder";
 import { useSpaceExpensesWorkspaceState } from "./hooks/useSpaceExpensesWorkspaceState";
 import {
@@ -66,9 +74,39 @@ import type {
 	ChatLogLocationState,
 	SelectSpaceOptions,
 } from "./model/chatLogLocation";
-import { PARSE_DUMMY_TEST_SNIPPETS } from "./parseDummySnippets";
 
 const DEFAULT_LIMIT = 50;
+type NativeComposerMode = "message" | "capture";
+
+const spaceReviewHref = (spaceId: string | number) =>
+	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`;
+
+const expenseReviewHref = (
+	spaceId: string | number,
+	expenseId: string | number,
+) =>
+	`${spaceReviewHref(spaceId)}&expenseId=${encodeURIComponent(String(expenseId))}`;
+
+const sourceCaptureReviewHref = (
+	spaceId: string | number,
+	sourceDocumentId: string | number,
+) =>
+	`${spaceReviewHref(spaceId)}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`;
+
+const reviewHrefForSpaceExpense = async (
+	spaceId: string | number,
+	expenseId: string | number,
+) => {
+	try {
+		const expense = await apiClient.spaces.expenses.get(spaceId, expenseId);
+		if (expense.source_document_id != null) {
+			return sourceCaptureReviewHref(spaceId, expense.source_document_id);
+		}
+	} catch {
+		// Keep older links usable even when the expense has no capture provenance or is unavailable.
+	}
+	return expenseReviewHref(spaceId, expenseId);
+};
 
 export const ChatLogPage = () => {
 	const { formatMoney, formatDateTime } = useUserFormat();
@@ -137,7 +175,8 @@ export const ChatLogPage = () => {
 	);
 	const [acceptInviteToken, setAcceptInviteToken] = useState("");
 
-	const [composerMode, setComposerMode] = useState<ChatComposerMode>("message");
+	const [composerMode, setComposerMode] =
+		useState<NativeComposerMode>("message");
 	const [composerPurpose, setComposerPurpose] =
 		useState<ChatComposerPurpose>("message");
 	const setNativeComposerPurpose = useCallback(
@@ -160,6 +199,10 @@ export const ChatLogPage = () => {
 		Record<string, string>
 	>({});
 	const [toastMessage, setToastMessage] = useState<string | null>(null);
+	const [captureProgressEvents, setCaptureProgressEvents] = useState<
+		CaptureProgressEvent[]
+	>([]);
+	const [captureReviewRefreshKey, setCaptureReviewRefreshKey] = useState(0);
 	const allSpaceUnsubsRef = useRef<(() => void)[]>([]);
 	const spacesRef = useRef(spaces);
 	const selectedSpaceIdRef = useRef(selectedSpaceId);
@@ -185,10 +228,15 @@ export const ChatLogPage = () => {
 
 	const navigate = useNavigate();
 	const location = useLocation();
+	const routeParams = useParams();
 	const [searchParams, setSearchParams] = useSearchParams();
-	const isExpensesRoute = location.pathname.startsWith(
+	const routeSpaceId = routeParams.spaceId?.trim();
+	const isCanonicalExpensesRoute =
+		/^\/console\/spaces\/[^/]+\/expenses\/?$/.test(location.pathname);
+	const isLegacyExpensesRoute = location.pathname.startsWith(
 		"/console/chat/expenses",
 	);
+	const isExpensesRoute = isCanonicalExpensesRoute || isLegacyExpensesRoute;
 	/** Dedupe processing the same `?invite=` token from the URL in one session. */
 	const lastUrlInviteTokenProcessedRef = useRef<string | null>(null);
 	/** Dedupe opening the same expense detail deep link from the Expenses URL. */
@@ -202,20 +250,15 @@ export const ChatLogPage = () => {
 	}, [setRightSidebarExpanded]);
 
 	const {
-		clearDraftLineScroll,
-		clearExpenseThread,
-		closeExpenseThread,
+		clearSelectedExpense,
 		expenseInspectorWorkspaceEditing,
-		expenseThreadCtrl,
 		loadSpaceTransactions,
-		openExpenseThread,
+		openExpenseDetail,
 		selectExpense,
-		setExpenseInspectorWorkspaceEditing,
-		sidebarThreadExpenseId,
+		selectedExpenseId,
 		spaceTransactions,
 		spaceTransactionsError,
 		spaceTransactionsLoading,
-		threadDraftLineScroll,
 	} = useSpaceExpensesWorkspaceState({
 		isExpensesRoute,
 		onOpenInspector: openExpenseInspectorPanel,
@@ -225,6 +268,19 @@ export const ChatLogPage = () => {
 	const { handleComposerSubmit, parseVoiceBlob, sendVoiceBlobAsChatMessage } =
 		useNativeChatComposerActions({
 			loadSpaceTransactions,
+			onCaptureProgress: (event) => {
+				setCaptureProgressEvents((prev) =>
+					[event, ...prev.filter((item) => item.id !== event.id)].slice(0, 5),
+				);
+			},
+			onCaptureSettled: () => {
+				setCaptureReviewRefreshKey((key) => key + 1);
+				window.setTimeout(() => {
+					setCaptureProgressEvents((prev) =>
+						prev.filter((item) => item.stage !== "ready"),
+					);
+				}, 4500);
+			},
 			patchSpaces,
 			selectedSpaceId,
 			setComposerPurpose: setNativeComposerPurpose,
@@ -272,10 +328,10 @@ export const ChatLogPage = () => {
 		setMessages(null);
 		setOldestMessageId(null);
 		setHasMore(true);
-		clearExpenseThread();
+		clearSelectedExpense();
 		setLatestMainMessageIdBySpace({});
 		setErrorMessage(null);
-	}, [workspaceScope, clearExpenseThread]);
+	}, [workspaceScope, clearSelectedExpense]);
 
 	useEffect(() => {
 		spacesRef.current = spaces;
@@ -284,14 +340,16 @@ export const ChatLogPage = () => {
 		selectedSpaceIdRef.current = selectedSpaceId;
 	}, [selectedSpaceId]);
 
-	/** Deep links and sub-nav use `?spaceId=` (same idea as dashboard overview). */
+	/** Deep links and sub-nav use path `:spaceId` first, with `?spaceId=` as compatibility fallback. */
 	useEffect(() => {
 		if (!scopeResolutionDone || !workspaceScope) return;
 		if (!spaces?.length) return;
 		const p = location.pathname;
-		if (!p.startsWith("/console/chat")) return;
+		if (!p.startsWith("/console/chat") && !isCanonicalExpensesRoute) return;
 		if (p.startsWith("/console/chat/thread")) return;
-		const raw = searchParams.get("spaceId")?.trim();
+		const raw = isCanonicalExpensesRoute
+			? routeSpaceId
+			: searchParams.get("spaceId")?.trim();
 		if (!raw) return;
 		const space = spaces.find((s) => String(s.id) === String(raw));
 		if (!space) return;
@@ -302,6 +360,8 @@ export const ChatLogPage = () => {
 		workspaceScope,
 		spaces,
 		location.pathname,
+		isCanonicalExpensesRoute,
+		routeSpaceId,
 		searchParams,
 		selectedSpaceId,
 		setSelectedSpaceId,
@@ -358,11 +418,7 @@ export const ChatLogPage = () => {
 		return spaces.find((s) => String(s.id) === String(selectedSpaceId)) ?? null;
 	}, [selectedSpaceId, spaces]);
 
-	const chatHeaderPageLabel = location.pathname.startsWith(
-		"/console/chat/expenses",
-	)
-		? "Expenses"
-		: "Chat";
+	const chatHeaderPageLabel = isExpensesRoute ? "Expenses" : "Chat";
 	useConsoleHeaderTitle(chatHeaderPageLabel, selectedSpace?.name ?? null);
 
 	/** Newest real activity first (API); ties use local recent touches then name. */
@@ -471,7 +527,14 @@ export const ChatLogPage = () => {
 	const handleRelatedResourceGone = useCallback(
 		(messageId: string | number) => {
 			setMessages((prev) =>
-				(prev ?? []).filter((x) => String(x.id) !== String(messageId)),
+				(prev ?? []).map((x) =>
+					String(x.id) === String(messageId)
+						? {
+								...x,
+								related_expense_status: "gone",
+							}
+						: x,
+				),
 			);
 		},
 		[],
@@ -520,9 +583,10 @@ export const ChatLogPage = () => {
 		setMemberRoleError(null);
 		setOldestMessageId(null);
 		setHasMore(true);
+		setCaptureProgressEvents([]);
 
-		if (opts?.openThreadExpenseId == null) {
-			clearExpenseThread();
+		if (opts?.openExpenseId == null) {
+			clearSelectedExpense();
 		}
 
 		setIsLoading(true);
@@ -553,19 +617,14 @@ export const ChatLogPage = () => {
 							: existing;
 					return { ...prev, [sidKey]: best };
 				});
-				if (opts?.openThreadExpenseId == null) {
+				if (opts?.openExpenseId == null) {
 					writeLastReadMain(spaceId, maxFromList);
 				}
 			}
 
-			if (opts?.openThreadExpenseId != null) {
+			if (opts?.openExpenseId != null) {
 				setNativeComposerPurpose("message");
-				openExpenseThread(opts.openThreadExpenseId, {
-					draftLine:
-						opts.openThreadDraftLine != null && opts.openThreadDraftLine >= 1
-							? opts.openThreadDraftLine
-							: null,
-				});
+				openExpenseDetail(opts.openExpenseId);
 			}
 			const sidNum = Number(spaceId);
 			if (Number.isFinite(sidNum) && sidNum > 0) touchRecentSpaceId(sidNum);
@@ -574,7 +633,7 @@ export const ChatLogPage = () => {
 			setMembers(null);
 			setCanManageMemberRoles(false);
 			setMessages(null);
-			clearExpenseThread();
+			clearSelectedExpense();
 			setErrorMessage(
 				err instanceof Error ? err.message : "Failed to load space",
 			);
@@ -635,26 +694,23 @@ export const ChatLogPage = () => {
 
 	const openExpenseInSidebar = useCallback(
 		(expenseId: string | number) => {
+			if (selectedSpaceId == null) return;
 			setNativeComposerPurpose("message");
-			openExpenseThread(expenseId);
+			clearSelectedExpense();
+			void reviewHrefForSpaceExpense(selectedSpaceId, expenseId).then((href) =>
+				navigate(href),
+			);
 		},
-		[openExpenseThread, setNativeComposerPurpose],
+		[clearSelectedExpense, navigate, selectedSpaceId, setNativeComposerPurpose],
 	);
-
-	const handleDraftLineScrollConsumed = useCallback(() => {
-		clearDraftLineScroll();
-	}, [clearDraftLineScroll]);
 
 	useEffect(() => {
 		const st = location.state as ChatLogLocationState | null;
-		if (st?.openThreadExpenseId == null) return;
-		const eid = st.openThreadExpenseId;
-		const sid = st.openThreadSpaceId;
-		const draftLine =
-			st.openThreadDraftLine != null && st.openThreadDraftLine >= 1
-				? st.openThreadDraftLine
-				: undefined;
+		if (st?.openExpenseId == null) return;
+		const sid = st.openExpenseSpaceId;
+		const targetExpenseId = st.openExpenseId;
 		const scope = workspaceScopeRef.current;
+		let cancelled = false;
 		navigate(
 			{
 				pathname: location.pathname,
@@ -666,22 +722,32 @@ export const ChatLogPage = () => {
 				state: scope ? { chatWorkspace: scope } : {},
 			},
 		);
-		if (sid != null) {
-			void handleSelectSpace(sid, {
-				openThreadExpenseId: eid,
-				...(draftLine != null ? { openThreadDraftLine: draftLine } : {}),
-			});
-			return;
-		}
-		setNativeComposerPurpose("message");
-		openExpenseThread(eid, { draftLine: draftLine ?? null });
+		const targetSpaceId = sid ?? selectedSpaceId;
+		if (targetSpaceId == null) return;
+		void (async () => {
+			if (sid != null) {
+				await handleSelectSpace(sid);
+			}
+			setNativeComposerPurpose("message");
+			clearSelectedExpense();
+			const href = await reviewHrefForSpaceExpense(
+				targetSpaceId,
+				targetExpenseId,
+			);
+			if (!cancelled) navigate(href);
+		})();
+		return () => {
+			cancelled = true;
+		};
 	}, [
+		clearSelectedExpense,
+		handleSelectSpace,
 		location.hash,
 		location.pathname,
 		location.search,
 		location.state,
 		navigate,
-		openExpenseThread,
+		selectedSpaceId,
 		setNativeComposerPurpose,
 	]);
 
@@ -702,15 +768,11 @@ export const ChatLogPage = () => {
 		const targetSpaceId = rawSpaceId || selectedSpaceId;
 		if (targetSpaceId == null) return;
 
-		const rawLine = searchParams.get("line")?.trim();
-		const parsedLine = rawLine ? Number.parseInt(rawLine, 10) : Number.NaN;
-		const draftLine =
-			Number.isFinite(parsedLine) && parsedLine >= 1 ? parsedLine : undefined;
-		const linkKey = `${String(targetSpaceId)}:${expenseId}:${draftLine ?? ""}`;
+		const linkKey = `${String(targetSpaceId)}:${expenseId}`;
 		if (
 			lastExpenseDetailLinkProcessedRef.current === linkKey &&
-			sidebarThreadExpenseId != null &&
-			String(sidebarThreadExpenseId) === String(expenseId)
+			selectedExpenseId != null &&
+			String(selectedExpenseId) === String(expenseId)
 		) {
 			return;
 		}
@@ -718,28 +780,27 @@ export const ChatLogPage = () => {
 
 		if (rawSpaceId && String(selectedSpaceId) !== String(rawSpaceId)) {
 			void handleSelectSpace(rawSpaceId, {
-				openThreadExpenseId: expenseId,
-				...(draftLine != null ? { openThreadDraftLine: draftLine } : {}),
+				openExpenseId: expenseId,
 			});
 			return;
 		}
 
 		setNativeComposerPurpose("message");
-		openExpenseThread(expenseId, { draftLine: draftLine ?? null });
+		openExpenseDetail(expenseId);
 	}, [
 		isExpensesRoute,
 		scopeResolutionDone,
 		workspaceScope,
 		searchParams,
 		selectedSpaceId,
-		sidebarThreadExpenseId,
-		openExpenseThread,
+		selectedExpenseId,
+		openExpenseDetail,
 		setNativeComposerPurpose,
 	]);
 
 	useEffect(() => {
 		const st = location.state as ChatLogLocationState | null;
-		if (st?.openThreadExpenseId != null) return;
+		if (st?.openExpenseId != null) return;
 		const sid = st?.selectSpaceId;
 		if (sid == null) return;
 		const scope = workspaceScopeRef.current;
@@ -1001,7 +1062,7 @@ export const ChatLogPage = () => {
 	const handleHardPurgeAllMessages = useCallback(async () => {
 		if (selectedSpaceId == null) return;
 		const ok = window.confirm(
-			"Clear ALL chat messages in this space?\n\nThis cannot be undone. Expenses, transactions, and recurring schedules are not deleted — only chat lines.\n\nContinue?",
+			"Clear ALL chat messages in this space?\n\nThis cannot be undone. Expense records and recurring schedules are not deleted — only chat lines.\n\nContinue?",
 		);
 		if (!ok) return;
 		setHardPurgeFeedback(null);
@@ -1216,10 +1277,10 @@ export const ChatLogPage = () => {
 			spaces: spacesSortedForSidebar,
 			selectedSpaceId,
 			onSelectSpace: (id: string | number) => {
-				clearExpenseThread();
+				clearSelectedExpense();
 				setSelectedSpaceId(id);
 			},
-			onClearThread: clearExpenseThread,
+			onClearSelectedExpense: clearSelectedExpense,
 			spaceHasUnread: (spaceId) =>
 				isMainChatUnread(
 					readLastReadMain(spaceId),
@@ -1291,7 +1352,7 @@ export const ChatLogPage = () => {
 		inviteSuggestionsNonce,
 		incomingInvitesRefreshKey,
 		latestMainMessageIdBySpace,
-		clearExpenseThread,
+		clearSelectedExpense,
 	]);
 
 	useEffect(() => {
@@ -1300,9 +1361,10 @@ export const ChatLogPage = () => {
 
 	useEffect(() => () => setChatSidebarProps(null), [setChatSidebarProps]);
 
-	const handleCloseSidebarThread = useCallback(() => {
-		closeExpenseThread();
-	}, [closeExpenseThread]);
+	const handleCloseExpenseDetail = useCallback(() => {
+		clearSelectedExpense();
+		void loadSpaceTransactions();
+	}, [clearSelectedExpense, loadSpaceTransactions]);
 
 	const handleSelectExpenseFromPanel = useCallback(
 		(expenseId: string | number) => {
@@ -1311,28 +1373,33 @@ export const ChatLogPage = () => {
 		[selectExpense],
 	);
 
-	const handleInsertLineLinkToMainChat = useCallback((markdown: string) => {
-		smartComposerRef.current?.insertMessage(markdown);
-	}, []);
-
-	const handleOpenThreadLinkFromMainChat = useCallback(
-		(link: ThreadDeepLink) => {
-			const draftLine =
-				link.line != null && link.line >= 1 ? link.line : undefined;
+	const handleOpenLegacyReviewLinkFromMainChat = useCallback(
+		(link: LegacyReviewDeepLink) => {
+			const openReview = async () => {
+				const href = await reviewHrefForSpaceExpense(
+					link.spaceId,
+					link.expenseId,
+				);
+				navigate(href);
+			};
 			if (
 				selectedSpaceId != null &&
 				String(selectedSpaceId) !== String(link.spaceId)
 			) {
-				void handleSelectSpace(link.spaceId, {
-					openThreadExpenseId: link.expenseId,
-					...(draftLine != null ? { openThreadDraftLine: draftLine } : {}),
-				});
+				void handleSelectSpace(link.spaceId).then(() => void openReview());
 				return;
 			}
 			setNativeComposerPurpose("message");
-			openExpenseThread(link.expenseId, { draftLine: draftLine ?? null });
+			clearSelectedExpense();
+			void openReview();
 		},
-		[selectedSpaceId, openExpenseThread, setNativeComposerPurpose],
+		[
+			clearSelectedExpense,
+			handleSelectSpace,
+			navigate,
+			selectedSpaceId,
+			setNativeComposerPurpose,
+		],
 	);
 
 	useEffect(() => {
@@ -1341,56 +1408,55 @@ export const ChatLogPage = () => {
 			return;
 		}
 		if (!selectedSpace) {
-			setChatBreadcrumb({ spaceName: null, thread: null });
+			setChatBreadcrumb({
+				spaceId: null,
+				spaceName: null,
+				selectedExpense: null,
+			});
 			return () => setChatBreadcrumb(null);
 		}
-		if (sidebarThreadExpenseId != null) {
-			const loading = expenseThreadCtrl.loading;
-			const exp = expenseThreadCtrl.expense;
-			const total = expenseThreadCtrl.total;
-			const status = expenseThreadCtrl.summary?.thread?.status;
-			const finalized = expenseThreadCtrl.finalized;
+		if (selectedExpenseId != null) {
+			const selectedExpense =
+				spaceTransactions?.find(
+					(tx) => String(tx.id) === String(selectedExpenseId),
+				) ?? null;
 			let label: string;
-			if (loading && !exp) {
-				label = "Expense thread";
-			} else if (exp) {
+			if (selectedExpense) {
 				const raw =
-					exp.description?.trim() || `Expense #${sidebarThreadExpenseId}`;
+					selectedExpense.title?.trim() ||
+					selectedExpense.description?.trim() ||
+					`Expense #${selectedExpenseId}`;
 				label = raw.length > 56 ? `${raw.slice(0, 53)}…` : raw;
 			} else {
-				label = `Expense #${sidebarThreadExpenseId}`;
+				label = `Expense #${selectedExpenseId}`;
 			}
 			const detailParts: string[] = [];
-			if (Number.isFinite(total) && total > 0) {
-				detailParts.push(formatMoney(total));
+			if (selectedExpense && Number.isFinite(Number(selectedExpense.total))) {
+				detailParts.push(formatMoney(Number(selectedExpense.total)));
 			}
-			if (finalized) {
-				detailParts.push("Finalized");
-			} else if (status) {
-				detailParts.push(status);
+			if (selectedExpense?.status) {
+				detailParts.push(selectedExpense.status);
 			}
 			const detail = detailParts.length > 0 ? detailParts.join(" · ") : null;
 			setChatBreadcrumb({
+				spaceId: selectedSpace.id,
 				spaceName: selectedSpace.name,
-				thread: { label, detail },
+				selectedExpense: { label, detail },
 			});
 			return () => setChatBreadcrumb(null);
 		}
 		setChatBreadcrumb({
+			spaceId: selectedSpace.id,
 			spaceName: selectedSpace.name,
-			thread: null,
+			selectedExpense: null,
 		});
 		return () => setChatBreadcrumb(null);
 	}, [
 		scopeResolutionDone,
 		workspaceScope,
 		selectedSpace,
-		sidebarThreadExpenseId,
-		expenseThreadCtrl.loading,
-		expenseThreadCtrl.expense,
-		expenseThreadCtrl.total,
-		expenseThreadCtrl.summary,
-		expenseThreadCtrl.finalized,
+		selectedExpenseId,
+		spaceTransactions,
 		formatMoney,
 		setChatBreadcrumb,
 	]);
@@ -1420,34 +1486,20 @@ export const ChatLogPage = () => {
 	const expenseRightPanel =
 		selectedSpaceId == null ? (
 			<div className="px-4 py-6 text-sm text-muted-foreground">
-				Select a space to browse expenses and threads.
+				Select a space to browse captures and expenses.
 			</div>
 		) : (
 			<ChatExpenseRightPanelContent
-				currentUserId={currentUserId}
-				draftLineScrollRequest={threadDraftLineScroll}
-				expenseThreadCtrl={expenseThreadCtrl}
 				expensesWorkspaceRoute={isExpensesRoute}
 				listError={spaceTransactionsError}
 				listLoading={spaceTransactionsLoading}
-				onCloseThread={handleCloseSidebarThread}
-				onDraftLineScrollConsumed={handleDraftLineScrollConsumed}
-				onInsertLineLinkToMainChat={handleInsertLineLinkToMainChat}
+				onCloseExpense={handleCloseExpenseDetail}
 				onReloadList={() => void loadSpaceTransactions()}
 				onSelectExpense={handleSelectExpenseFromPanel}
-				onWorkspaceEditModeChange={
-					isExpensesRoute ? setExpenseInspectorWorkspaceEditing : undefined
-				}
-				parseTestSnippets={PARSE_DUMMY_TEST_SNIPPETS}
-				sidebarThreadExpenseId={sidebarThreadExpenseId}
+				selectedExpenseId={selectedExpenseId}
 				spaceId={selectedSpaceId}
 				spaceName={selectedSpace?.name ?? null}
 				spaceTransactions={spaceTransactions}
-				workspaceEditSurfaceActive={
-					isExpensesRoute &&
-					sidebarThreadExpenseId != null &&
-					expenseInspectorWorkspaceEditing
-				}
 			/>
 		);
 
@@ -1460,9 +1512,14 @@ export const ChatLogPage = () => {
 				expenseRightPanel={expenseRightPanel}
 				listError={spaceTransactionsError}
 				listLoading={spaceTransactionsLoading}
+				onExpenseDeleted={(expenseId) => {
+					if (String(selectedExpenseId) === String(expenseId)) {
+						clearSelectedExpense();
+					}
+				}}
 				onReload={() => void loadSpaceTransactions()}
 				onSelectExpense={handleSelectExpenseFromPanel}
-				selectedExpenseId={sidebarThreadExpenseId}
+				selectedExpenseId={selectedExpenseId}
 				selectedSpaceId={selectedSpaceId}
 				spaceName={selectedSpace?.name ?? null}
 				spaceTransactions={spaceTransactions}
@@ -1492,7 +1549,7 @@ export const ChatLogPage = () => {
 			onRightSidebarExpandedChange={setRightSidebarExpanded}
 			rightRail={expenseRightPanel}
 			rightSidebarExpanded={rightSidebarExpanded}
-			rightSidebarTitle="Expenses"
+			rightSidebarTitle={isExpensesRoute ? "Expenses" : "Captures"}
 			rightSidebarWorkSurfaceActive={false}
 		>
 			{selectedSpaceId ? (
@@ -1500,9 +1557,13 @@ export const ChatLogPage = () => {
 					composerSlot={
 						<>
 							<ChatCaptureReviewEvents
-								refreshKey={messages?.length ?? 0}
+								refreshKey={`${messages?.length ?? 0}:${captureReviewRefreshKey}`}
 								spaceId={selectedSpaceId}
 								spaceName={selectedSpace?.name ?? null}
+							/>
+							<ChatCaptureProgressShelf
+								events={captureProgressEvents}
+								spaceId={selectedSpaceId}
 							/>
 							<ChatComposerOrientation
 								composerPurpose={composerPurpose}
@@ -1566,8 +1627,8 @@ export const ChatLogPage = () => {
 						onCancelEditMessage={handleCancelEditMessage}
 						onDeleteMessageRequest={setPendingDeleteMessage}
 						onEditMessageTextChange={setEditingMessageText}
-						onOpenExpenseThread={openExpenseInSidebar}
-						onOpenThreadLink={handleOpenThreadLinkFromMainChat}
+						onOpenExpenseDetail={openExpenseInSidebar}
+						onOpenLegacyReviewLink={handleOpenLegacyReviewLinkFromMainChat}
 						onRelatedResourceGone={handleRelatedResourceGone}
 						onSaveEditMessage={() => void handleSaveEditMessage()}
 						onStartEditMessage={(message) => {
@@ -1575,7 +1636,7 @@ export const ChatLogPage = () => {
 							setEditingMessageText(message.text ?? "");
 						}}
 						selectedSpaceId={selectedSpaceId}
-						sidebarThreadExpenseId={sidebarThreadExpenseId}
+						selectedExpenseId={selectedExpenseId}
 					/>
 				</NativeChatSpaceSurface>
 			) : (

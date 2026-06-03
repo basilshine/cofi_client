@@ -5,13 +5,9 @@ import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSp
 import { RecurringSchedulesPage } from "../../widgets/recurring-schedules-page";
 
 /**
- * Space-scoped wrapper around the global Recurring page so the in-space
- * shell (header + 5-tab nav) stays consistent with Overview / Chat /
- * Expenses / Splits.
- *
- * The underlying list is currently global per tenant; future work can
- * server-filter by `space_id` once the API supports it. Today the wrapper
- * makes the navigation correct even if the list itself is shared.
+ * Space-scoped wrapper around the Recurring page. Recurring is a record
+ * projection inside a space; the global page remains a cross-space management
+ * surface.
  */
 export const SpaceRecurringPage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
@@ -45,5 +41,7 @@ export const SpaceRecurringPage = () => {
 		return <Navigate replace to="/console/home" />;
 	}
 
-	return <RecurringSchedulesPage />;
+	return (
+		<RecurringSchedulesPage spaceId={numericSpaceId} spaceName={spaceName} />
+	);
 };

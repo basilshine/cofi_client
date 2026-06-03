@@ -36,25 +36,25 @@ const permissionsForRole = (role: SpaceRole): readonly string[] => {
 		case "owner":
 			return [
 				"Full control in this space (when also a tenant admin: invites and member roles).",
-				"Post in chat, capture expenses, and use expense threads.",
-				"Finalize threads and manage splits where applicable.",
+				"Post in chat, capture expenses, and review capture outcomes.",
+				"Manage splits and approvals where applicable.",
 				"Delete any message in the main chat (per product rules).",
 			];
 		case "admin":
 			return [
-				"Post in chat, capture expenses, and participate in expense threads.",
-				"Approve on threads and collaborate on drafts like other members.",
+				"Post in chat, capture expenses, and review capture outcomes.",
+				"Approve split decisions and collaborate on drafts like other members.",
 				"Same baseline as editor/member unless additional rules are added later.",
 			];
 		case "editor":
 			return [
 				"Post in chat and capture expenses.",
-				"Participate in expense threads and approvals.",
+				"Participate in capture review and approvals.",
 			];
 		case "member":
 			return [
 				"Post in chat and capture expenses.",
-				"Participate in expense threads and record approvals.",
+				"Participate in capture review and record approvals.",
 			];
 		case "viewer":
 			return [

@@ -11,25 +11,23 @@ const tabClass = (isActive: boolean) =>
 			: "font-medium text-muted-foreground hover:bg-card/60 hover:text-foreground",
 	].join(" ");
 
-const compactContextInitial = (name: string | null) => {
-	const t = (name ?? "").trim();
-	if (!t) return "?";
-	return t.charAt(0).toUpperCase();
-};
-
 type TabKey =
 	| "overview"
 	| "chat"
+	| "review"
 	| "expenses"
 	| "benefits"
+	| "members"
 	| "splits"
 	| "recurring";
 
 const tabsOrder: { key: TabKey; label: string }[] = [
 	{ key: "overview", label: "Overview" },
 	{ key: "chat", label: "Chat" },
+	{ key: "review", label: "Captures" },
 	{ key: "expenses", label: "Expenses" },
 	{ key: "benefits", label: "Benefits" },
+	{ key: "members", label: "Members" },
 	{ key: "splits", label: "Splits" },
 	{ key: "recurring", label: "Recurring" },
 ];
@@ -67,6 +65,24 @@ const TabIcon = ({ tab }: { tab: TabKey }) => {
 				>
 					<title>Chat</title>
 					<path d="M4 5h16v11H8l-4 3V5z" />
+				</svg>
+			);
+		case "review":
+			return (
+				<svg
+					aria-hidden
+					className="h-3.5 w-3.5"
+					fill="none"
+					stroke="currentColor"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeWidth="1.8"
+					viewBox="0 0 24 24"
+				>
+					<title>Captures</title>
+					<path d="M7 4h10l2 2v14H5V4z" />
+					<path d="M9 9h6M9 13h6M9 17h4" />
+					<path d="M17 4v4h4" />
 				</svg>
 			);
 		case "expenses":
@@ -119,6 +135,25 @@ const TabIcon = ({ tab }: { tab: TabKey }) => {
 					<path d="M12 7v13M12 7H8.5A2.5 2.5 0 1 1 11 4.5L12 7zM12 7h3.5A2.5 2.5 0 1 0 13 4.5L12 7z" />
 				</svg>
 			);
+		case "members":
+			return (
+				<svg
+					aria-hidden
+					className="h-3.5 w-3.5"
+					fill="none"
+					stroke="currentColor"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeWidth="1.8"
+					viewBox="0 0 24 24"
+				>
+					<title>Members</title>
+					<path d="M8.5 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+					<path d="M15.5 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+					<path d="M3.5 19a5 5 0 0 1 10 0" />
+					<path d="M13.5 19a4 4 0 0 1 7 0" />
+				</svg>
+			);
 		case "recurring":
 			return (
 				<svg
@@ -143,9 +178,12 @@ const TabIcon = ({ tab }: { tab: TabKey }) => {
 
 const matchActiveTab = (pathname: string): TabKey | null => {
 	if (/^\/console\/spaces\/[^/]+\/overview/.test(pathname)) return "overview";
+	if (/^\/console\/spaces\/[^/]+\/expenses/.test(pathname)) return "expenses";
 	if (/^\/console\/spaces\/[^/]+\/splits/.test(pathname)) return "splits";
 	if (/^\/console\/spaces\/[^/]+\/benefits/.test(pathname)) return "benefits";
+	if (/^\/console\/spaces\/[^/]+\/members/.test(pathname)) return "members";
 	if (/^\/console\/spaces\/[^/]+\/recurring/.test(pathname)) return "recurring";
+	if (pathname.startsWith("/console/review")) return "review";
 	if (pathname.startsWith("/console/chat/expenses")) return "expenses";
 	if (pathname.startsWith("/console/chat")) return "chat";
 	if (pathname.startsWith("/console/dashboard")) return "overview";
@@ -168,13 +206,8 @@ export type SpaceTabsProps = {
  */
 export const SpaceTabs = ({ className = "" }: SpaceTabsProps) => {
 	const location = useLocation();
-	const {
-		workspaceScope,
-		selectedSpaceId,
-		setSelectedSpaceId,
-		spaces,
-		chatSidebarProps,
-	} = useWorkspaceSpaces();
+	const { workspaceScope, selectedSpaceId, setSelectedSpaceId, spaces } =
+		useWorkspaceSpaces();
 
 	const sid = selectedSpaceId != null ? String(selectedSpaceId) : null;
 
@@ -203,15 +236,14 @@ export const SpaceTabs = ({ className = "" }: SpaceTabsProps) => {
 	}
 
 	const active = matchActiveTab(location.pathname);
-	const membersCount = chatSidebarProps?.members?.length ?? null;
-	const contextSpaceName =
-		chatSidebarProps?.selectedSpace?.name?.trim() || spaceName || "Space";
 
 	const hrefByKey: Record<TabKey, string> = {
 		overview: `/console/spaces/${encodeURIComponent(sid)}/overview`,
 		chat: `/console/chat?spaceId=${encodeURIComponent(sid)}`,
-		expenses: `/console/chat/expenses?spaceId=${encodeURIComponent(sid)}`,
+		review: `/console/review?spaceId=${encodeURIComponent(sid)}`,
+		expenses: `/console/spaces/${encodeURIComponent(sid)}/expenses`,
 		benefits: `/console/spaces/${encodeURIComponent(sid)}/benefits`,
+		members: `/console/spaces/${encodeURIComponent(sid)}/members`,
 		splits: `/console/spaces/${encodeURIComponent(sid)}/splits`,
 		recurring: `/console/spaces/${encodeURIComponent(sid)}/recurring`,
 	};
@@ -244,32 +276,6 @@ export const SpaceTabs = ({ className = "" }: SpaceTabsProps) => {
 						</Link>
 					);
 				})}
-			</div>
-			<div className="hidden shrink-0 items-center gap-2 rounded-lg border border-border/70 bg-muted/20 px-2.5 py-1.5 lg:flex">
-				<div
-					aria-hidden
-					className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-card bg-gradient-to-br from-muted to-muted/60 text-[10px] font-semibold text-foreground"
-				>
-					{compactContextInitial(contextSpaceName)}
-				</div>
-				<div className="min-w-0">
-					<p className="max-w-[8.5rem] truncate text-xs font-medium text-foreground">
-						{contextSpaceName}
-					</p>
-					<p className="text-[10px] text-muted-foreground">
-						{membersCount == null
-							? "…"
-							: `${membersCount} member${membersCount === 1 ? "" : "s"}`}
-					</p>
-				</div>
-				<Link
-					aria-label={`Members and invites — open in space settings, ${contextSpaceName}`}
-					className="shrink-0 rounded-md border border-border bg-background px-2.5 py-1.5 text-[11px] font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					onClick={() => setSelectedSpaceId(selectedSpaceId)}
-					to={`/console/settings/spaces/${encodeURIComponent(sid)}#space-settings-members`}
-				>
-					Manage
-				</Link>
 			</div>
 		</nav>
 	);

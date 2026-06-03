@@ -65,7 +65,7 @@ const promoStatusOptions: { value: PromoStatusFilter; label: string }[] = [
 const promoSourceOptions: { value: PromoSourceFilter; label: string }[] = [
 	{ value: "all", label: "All sources" },
 	{ value: "receipts", label: "Receipts" },
-	{ value: "manual", label: "Manual" },
+	{ value: "manual", label: "Text captures" },
 	{ value: "messages", label: "Messages" },
 	{ value: "other", label: "Other" },
 ];
@@ -120,6 +120,12 @@ const promoSearchText = (promo: PromoBenefit): string =>
 		.join(" ")
 		.toLowerCase();
 
+const captureReviewHref = (
+	spaceId: string | number,
+	sourceDocumentId: string | number,
+): string =>
+	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`;
+
 const toRecord = (value: unknown): Record<string, unknown> => {
 	if (value && typeof value === "object" && !Array.isArray(value)) {
 		return value as Record<string, unknown>;
@@ -149,8 +155,8 @@ const firstText = (
 };
 
 const candidateTypeLabel = (type: string): string => {
-	if (type === "promo_code_candidate") return "Promo candidate";
-	if (type === "loyalty_event_candidate") return "Loyalty candidate";
+	if (type === "promo_code_candidate") return "Promo finding";
+	if (type === "loyalty_event_candidate") return "Loyalty finding";
 	return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
@@ -310,6 +316,11 @@ export const SpaceBenefitsPage = () => {
 	);
 	const [promoEditBusyId, setPromoEditBusyId] = useState<number | null>(null);
 	const [promoEditError, setPromoEditError] = useState<string | null>(null);
+	const [deletePromoTarget, setDeletePromoTarget] =
+		useState<PromoBenefit | null>(null);
+	const [deletePromoBusyId, setDeletePromoBusyId] = useState<number | null>(
+		null,
+	);
 
 	const numericSpaceId = useMemo(() => toNumericId(spaceId), [spaceId]);
 	const space = useMemo(() => {
@@ -337,7 +348,9 @@ export const SpaceBenefitsPage = () => {
 		try {
 			const [promoData, candidateData] = await Promise.all([
 				apiClient.spaces.listPromos(numericSpaceId),
-				apiClient.spaces.listBenefitCandidates(numericSpaceId, { limit: 20 }),
+				apiClient.spaces.review.listBenefitCandidates(numericSpaceId, {
+					limit: 20,
+				}),
 			]);
 			setPromos(promoData.promos ?? []);
 			setCandidates(candidateData.candidates ?? []);
@@ -435,6 +448,31 @@ export const SpaceBenefitsPage = () => {
 			);
 		} finally {
 			setSavingPromoId(null);
+		}
+	};
+
+	const deletePromo = async (promo: PromoBenefit) => {
+		if (numericSpaceId == null) return;
+		setDeletePromoBusyId(promo.id);
+		setLoadError(null);
+		try {
+			await apiClient.spaces.deletePromo(numericSpaceId, promo.id);
+			setPromos((current) =>
+				current.filter((item) => Number(item.id) !== promo.id),
+			);
+			if (selectedPromoId === promo.id) {
+				setSelectedPromoId(null);
+				setEditingPromoId(null);
+				setPromoEditDraft(null);
+				setPromoEditError(null);
+			}
+			setDeletePromoTarget(null);
+		} catch (error) {
+			setLoadError(
+				error instanceof Error ? error.message : "Failed to delete promo",
+			);
+		} finally {
+			setDeletePromoBusyId(null);
 		}
 	};
 
@@ -546,7 +584,7 @@ export const SpaceBenefitsPage = () => {
 		setCandidateBusyId(candidate.id);
 		setLoadError(null);
 		try {
-			const result = await apiClient.spaces.saveBenefitCandidatePromo(
+			const result = await apiClient.spaces.review.saveBenefitCandidatePromo(
 				numericSpaceId,
 				candidate.id,
 			);
@@ -568,7 +606,7 @@ export const SpaceBenefitsPage = () => {
 		setCandidateBusyId(candidate.id);
 		setLoadError(null);
 		try {
-			await apiClient.spaces.ignoreBenefitCandidate(
+			await apiClient.spaces.review.ignoreBenefitCandidate(
 				numericSpaceId,
 				candidate.id,
 			);
@@ -664,13 +702,23 @@ export const SpaceBenefitsPage = () => {
 						</h2>
 					</div>
 					{selectedPromo ? (
-						<button
-							className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground"
-							onClick={() => startPromoEdit(selectedPromo)}
-							type="button"
-						>
-							Edit
-						</button>
+						<div className="flex flex-wrap gap-2">
+							<button
+								className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground"
+								onClick={() => startPromoEdit(selectedPromo)}
+								type="button"
+							>
+								Edit
+							</button>
+							<button
+								className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-red-50/80 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+								disabled={deletePromoBusyId === selectedPromo.id}
+								onClick={() => setDeletePromoTarget(selectedPromo)}
+								type="button"
+							>
+								Delete
+							</button>
+						</div>
 					) : null}
 				</div>
 
@@ -817,6 +865,17 @@ export const SpaceBenefitsPage = () => {
 										</p>
 									</div>
 								</div>
+								{selectedPromo.sourceDocumentId != null ? (
+									<Link
+										className="inline-flex items-center rounded-lg border border-[rgba(48,83,120,0.2)] bg-[rgba(239,247,255,0.72)] px-2.5 py-1 text-xs font-semibold text-[rgba(34,72,108,0.92)] transition hover:bg-[rgba(232,242,255,0.95)]"
+										to={captureReviewHref(
+											numericSpaceId,
+											selectedPromo.sourceDocumentId,
+										)}
+									>
+										Source capture #{selectedPromo.sourceDocumentId}
+									</Link>
+								) : null}
 								<p className="text-xs leading-relaxed text-muted-foreground">
 									Code, platform, and conditions are read-only until the promo
 									edit API supports those fields.
@@ -834,15 +893,15 @@ export const SpaceBenefitsPage = () => {
 
 			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-					Decision queue
+					Capture queue
 				</p>
 				<h2 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
-					Benefits to review
+					Captures with benefits
 				</h2>
 				<p className="mt-2 text-sm leading-relaxed text-muted-foreground">
 					{candidateCount === 0
-						? "Nothing waiting right now."
-						: `${candidateCount} detected item${candidateCount === 1 ? "" : "s"} need review.`}
+						? "No captures with benefit candidates are waiting right now."
+						: `${candidateCount} benefit candidate${candidateCount === 1 ? "" : "s"} need review inside their source capture${candidateCount === 1 ? "" : "s"}.`}
 				</p>
 				{candidateViews.length ? (
 					<ul className="mt-4 space-y-2">
@@ -872,19 +931,19 @@ export const SpaceBenefitsPage = () => {
 				</p>
 				<dl className="mt-3 space-y-3 text-sm">
 					<div className="flex items-baseline justify-between gap-3">
-						<dt className="text-muted-foreground">Receipts</dt>
+						<dt className="text-muted-foreground">Receipt captures</dt>
 						<dd className="font-semibold tabular-nums text-foreground">
 							{sourceCounts.receipts}
 						</dd>
 					</div>
 					<div className="flex items-baseline justify-between gap-3">
-						<dt className="text-muted-foreground">Manual</dt>
+						<dt className="text-muted-foreground">Text captures</dt>
 						<dd className="font-semibold tabular-nums text-foreground">
 							{sourceCounts.manual}
 						</dd>
 					</div>
 					<div className="flex items-baseline justify-between gap-3">
-						<dt className="text-muted-foreground">Messages</dt>
+						<dt className="text-muted-foreground">Message captures</dt>
 						<dd className="font-semibold tabular-nums text-foreground">
 							{sourceCounts.messages}
 						</dd>
@@ -906,6 +965,48 @@ export const SpaceBenefitsPage = () => {
 					({ id: numericSpaceId, name: "Space", tenant_id: 0 } as Space)
 				}
 			/>
+
+			{deletePromoTarget ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(42,34,24,0.28)] px-4 backdrop-blur-sm">
+					<div className="w-full max-w-md rounded-2xl border border-red-200 bg-[#fffdf9] p-5 shadow-[0_24px_80px_-36px_rgba(60,40,20,0.55)]">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-red-700">
+							Delete benefit
+						</p>
+						<h2 className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground">
+							Delete{" "}
+							{deletePromoTarget.code !== "No code"
+								? deletePromoTarget.code
+								: deletePromoTarget.title}
+							?
+						</h2>
+						<p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+							This removes the saved promo from {spaceName}. Its original
+							capture stays available, but this benefit record and projection
+							link will be deleted.
+						</p>
+						<div className="mt-5 flex flex-wrap justify-end gap-2">
+							<button
+								className="inline-flex h-10 items-center rounded-lg border border-border/70 bg-white px-4 text-sm font-semibold text-muted-foreground transition hover:text-foreground disabled:opacity-50"
+								disabled={deletePromoBusyId === deletePromoTarget.id}
+								onClick={() => setDeletePromoTarget(null)}
+								type="button"
+							>
+								Cancel
+							</button>
+							<button
+								className="inline-flex h-10 items-center rounded-lg bg-red-700 px-4 text-sm font-semibold text-white transition hover:bg-red-800 disabled:opacity-50"
+								disabled={deletePromoBusyId === deletePromoTarget.id}
+								onClick={() => void deletePromo(deletePromoTarget)}
+								type="button"
+							>
+								{deletePromoBusyId === deletePromoTarget.id
+									? "Deleting..."
+									: "Delete benefit"}
+							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
 
 			<section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				{[
@@ -931,7 +1032,7 @@ export const SpaceBenefitsPage = () => {
 						key: "candidates",
 						label: "Needs review",
 						value: String(candidateCount),
-						note: "Detected benefits waiting for a decision.",
+						note: "Benefit findings still inside capture review.",
 					},
 				].map((widget) => (
 					<div
@@ -1134,17 +1235,29 @@ export const SpaceBenefitsPage = () => {
 									<ul className="space-y-3">
 										{filteredPromoBenefits.map((promo) => (
 											<PromoBenefitCard
-												busy={savingPromoId === promo.id}
+												busy={
+													savingPromoId === promo.id ||
+													deletePromoBusyId === promo.id
+												}
 												isSelected={selectedPromoId === promo.id}
 												key={promo.id}
 												onArchive={(item) =>
 													void patchPromoStatus(item, "archived")
 												}
+												onDelete={(item) => setDeletePromoTarget(item)}
 												onMarkUsed={(item) =>
 													void patchPromoStatus(item, "used")
 												}
 												onOpen={openPromoDetail}
 												promo={promo}
+												reviewHref={
+													promo.sourceDocumentId != null
+														? captureReviewHref(
+																numericSpaceId,
+																promo.sourceDocumentId,
+															)
+														: undefined
+												}
 											/>
 										))}
 									</ul>

@@ -183,7 +183,7 @@ export const entityVisuals: Record<EntityVisualKey, EntityVisual> = {
 	},
 	reviewPacket: {
 		key: "reviewPacket",
-		label: "Review packets",
+		label: "Captures",
 		icon: ClipboardList,
 		toneClass:
 			"border-[rgba(172,124,35,0.24)] bg-[rgba(255,247,223,0.94)] text-[#715016]",

@@ -48,6 +48,8 @@ export type GlobalComposerCandidateBundle = {
 	spaceId?: string | number;
 	sourceDocumentId?: number;
 	candidates: GlobalComposerCandidateSummary[];
+	createdRecordCount?: number;
+	createdRecordLabels?: string[];
 	requiresReview: boolean;
 	requiresDeepParse: boolean;
 	clarificationMessage?: string;
@@ -190,6 +192,7 @@ export const summarizeCaptureIntentPreview = (
 		inputKind: input.inputKind,
 		intent: preview.intent?.trim() || input.fallbackIntent || "unknown",
 		spaceId: preview.target_context?.space_id ?? input.spaceId,
+		sourceDocumentId: preview.source_document_id,
 		candidates,
 		requiresReview: preview.requires_review === true || candidates.length > 0,
 		requiresDeepParse: false,
@@ -361,6 +364,12 @@ export const candidateBundleNotice = (
 	if (bundle.clarificationMessage?.trim()) {
 		return bundle.clarificationMessage.trim();
 	}
+	if ((bundle.createdRecordCount ?? 0) > 0 && !bundle.requiresReview) {
+		const labels = bundle.createdRecordLabels?.length
+			? bundle.createdRecordLabels.slice(0, 3).join(", ")
+			: `${bundle.createdRecordCount} records`;
+		return `Records created from this capture: ${labels}.`;
+	}
 	if (!bundle.candidates.length) {
 		return "Ceits parsed the input, but needs a clearer amount, item, promo, or instruction.";
 	}
@@ -383,7 +392,7 @@ export const candidateBundleNotice = (
 	const policyHint = bundle.modelProfile
 		? ` ${bundle.modelProfile} parse.`
 		: "";
-	return `Found ${summary}.${policyHint}${reviewHint}`;
+	return `Found ${summary} from this capture.${policyHint}${reviewHint}`;
 };
 
 const objectRecord = (value: unknown): Record<string, unknown> => {

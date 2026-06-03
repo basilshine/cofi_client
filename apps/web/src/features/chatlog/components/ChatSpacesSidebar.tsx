@@ -18,7 +18,7 @@ export type ChatSpacesSidebarProps = {
 	spaces: Space[] | null;
 	selectedSpaceId: string | number | null;
 	onSelectSpace: (id: string | number) => void;
-	onClearThread: () => void;
+	onClearSelectedExpense: () => void;
 	spaceHasUnread: (spaceId: string | number) => boolean;
 	selectedSpace: Space | null;
 	members: SpaceMember[] | null;
@@ -91,7 +91,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 		spaces,
 		selectedSpaceId,
 		onSelectSpace,
-		onClearThread,
+		onClearSelectedExpense,
 		spaceHasUnread,
 		selectedSpace,
 		members,
@@ -166,6 +166,8 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 			handleRemoveSpaceMember={onRemoveSpaceMember}
 			incomingInvitesRefreshKey={incomingInvitesRefreshKey}
 			inviteEmail={inviteEmail}
+			inviteError={null}
+			inviteFeedback={null}
 			inviteSuggestionsNonce={inviteSuggestionsNonce}
 			inviteToken={inviteToken}
 			isLoading={isLoading}
@@ -173,7 +175,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 			members={members}
 			memberRoleError={memberRoleError}
 			memberRoleSaving={memberRoleSaving}
-			onClearThread={onClearThread}
+			onClearSelectedExpense={onClearSelectedExpense}
 			removeMemberSaving={removeMemberSaving}
 			selectedSpace={selectedSpace}
 			selectedSpaceId={selectedSpaceId}
@@ -303,7 +305,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 															: "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
 													].join(" ")}
 													onClick={() => {
-														onClearThread();
+														onClearSelectedExpense();
 														onSelectSpace(s.id);
 													}}
 													type="button"
@@ -394,7 +396,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 										].join(" ")}
 										key={String(s.id)}
 										onClick={() => {
-											onClearThread();
+											onClearSelectedExpense();
 											onSelectSpace(s.id);
 										}}
 										title={s.name}

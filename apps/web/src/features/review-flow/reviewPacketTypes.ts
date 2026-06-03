@@ -1,4 +1,8 @@
-import type { BenefitCandidate, DocumentCandidate } from "@cofi/api";
+import type {
+	BenefitCandidate,
+	CapturePacketRecords,
+	DocumentCandidate,
+} from "@cofi/api";
 
 export type CandidateReviewSource = "benefit" | "document";
 
@@ -14,6 +18,7 @@ export type CandidateReviewItem = {
 	sourceDocumentId: number;
 	source: CandidateReviewSource;
 	candidateType: string;
+	status: string;
 	label: string;
 	title: string;
 	meta: string;
@@ -24,6 +29,7 @@ export type CandidateReviewItem = {
 	projectedExpenseId?: number | null;
 	detail: string;
 	fields: Array<{ label: string; value: string }>;
+	itemLabels: string[];
 	tone: CandidateReviewTone;
 	confidenceLabel: string;
 	canMarkReviewed: boolean;
@@ -38,10 +44,17 @@ export type CandidateReviewItem = {
 
 export type CapturePacket = {
 	sourceDocumentId: number;
+	createdByUserId?: number | null;
+	createdByLabel?: string | null;
 	title: string;
 	meta: string;
 	createdAt: string;
 	candidates: CandidateReviewItem[];
+	candidateCount?: number;
+	pendingCount?: number;
+	projectedCount?: number;
+	ignoredCount?: number;
+	records?: CapturePacketRecords;
 	primaryActionLabel: string;
 	summary: string;
 	counts: {

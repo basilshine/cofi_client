@@ -50,6 +50,7 @@ export type SpaceExpensesMainProps = {
 	listLoading: boolean;
 	listError: string | null;
 	onReload: () => void;
+	onExpenseDeleted?: (expenseId: string | number) => void;
 	onSelectExpense: (expenseId: string | number) => void;
 	selectedExpenseId?: string | number | null;
 	currentUserId: number | null;
@@ -86,11 +87,18 @@ const parseTxnDate = (tx: Transaction): number | null => {
 const compactSelectClass =
 	"h-9 rounded-lg border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.85)] px-2.5 text-sm text-foreground shadow-sm transition-colors duration-150 hover:border-[rgba(120,100,80,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
+const buildReviewCaptureHref = (
+	spaceId: string | number,
+	sourceDocumentId: string | number,
+): string =>
+	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`;
+
 export const SpaceExpensesMain = ({
 	transactions,
 	listLoading,
 	listError,
 	onReload,
+	onExpenseDeleted,
 	onSelectExpense,
 	selectedExpenseId = null,
 	currentUserId,
@@ -121,6 +129,9 @@ export const SpaceExpensesMain = ({
 		Record<string, boolean>
 	>({});
 	const [pendingCancelTx, setPendingCancelTx] = useState<Transaction | null>(
+		null,
+	);
+	const [pendingDeleteTx, setPendingDeleteTx] = useState<Transaction | null>(
 		null,
 	);
 	const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
@@ -291,15 +302,13 @@ export const SpaceExpensesMain = ({
 
 	const handleDeleteExpense = async (tx: Transaction) => {
 		const id = tx.id;
-		if (id == null) return;
-		const heading = expenseListHeading(tx);
-		if (!window.confirm(`Delete "${heading}"? This cannot be undone.`)) {
-			return;
-		}
+		if (id == null || spaceId == null) return;
 		setDeletingId(id);
 		setActionError(null);
 		try {
-			await apiClient.finances.expenses.delete(id);
+			await apiClient.spaces.expenses.delete(spaceId, id);
+			setPendingDeleteTx(null);
+			onExpenseDeleted?.(id);
 			onReload();
 		} catch (err) {
 			setActionError(
@@ -313,11 +322,13 @@ export const SpaceExpensesMain = ({
 
 	const handleCancelDraftExpense = async (tx: Transaction) => {
 		const id = tx.id;
-		if (id == null) return;
+		if (id == null || spaceId == null) return;
 		setCancellingId(id);
 		setActionError(null);
 		try {
-			await apiClient.finances.expenses.update(id, { status: "cancelled" });
+			await apiClient.spaces.expenses.update(spaceId, id, {
+				status: "cancelled",
+			});
 			setPendingCancelTx(null);
 			onReload();
 		} catch (err) {
@@ -571,7 +582,7 @@ export const SpaceExpensesMain = ({
 								? "Loading…"
 								: `${filteredSorted.length} shown${
 										transactions?.length != null
-											? ` · ${transactions.length} in space`
+											? ` · ${transactions.length} expenses in space`
 											: ""
 									}`}
 						</p>
@@ -636,13 +647,17 @@ export const SpaceExpensesMain = ({
 								expenseStatusTone(tx.status) === "needs_review";
 							const kind = expenseSourceKind(tx);
 							const menuOpen = openMenuExpenseId === tx.id;
-							const threadHref =
+							const detailHref =
 								spaceId != null && tx.id != null
 									? buildExpenseDetailHref(spaceId, tx.id)
 									: null;
+							const sourceCaptureHref =
+								spaceId != null && tx.source_document_id != null
+									? buildReviewCaptureHref(spaceId, tx.source_document_id)
+									: null;
 							const entity = toTransactionExpenseEntity(tx, {
 								amountLabel: formatMoney(tx.total),
-								href: threadHref ?? undefined,
+								href: detailHref ?? undefined,
 								selected: isSelected,
 							});
 
@@ -774,6 +789,20 @@ export const SpaceExpensesMain = ({
 
 										<div className="flex items-center justify-between gap-2 border-t border-[rgba(120,100,80,0.08)] bg-[rgba(255,252,246,0.55)] px-3 py-2 sm:px-4">
 											<div className="flex flex-wrap items-center gap-2">
+												{tx.source_document_id != null ? (
+													<span className="inline-flex h-9 items-center rounded-lg border border-[rgba(48,83,120,0.18)] bg-[rgba(239,247,255,0.72)] px-3 text-sm font-semibold text-[rgba(34,72,108,0.92)]">
+														Source capture #{tx.source_document_id}
+													</span>
+												) : null}
+												{sourceCaptureHref ? (
+													<Link
+														className="inline-flex h-9 items-center rounded-lg border border-[rgba(48,83,120,0.22)] bg-white/85 px-3 text-sm font-semibold text-[rgba(34,72,108,0.92)] transition hover:bg-[rgba(232,242,255,0.95)]"
+														onClick={(e) => e.stopPropagation()}
+														to={sourceCaptureHref}
+													>
+														Review capture
+													</Link>
+												) : null}
 												{isDraft || needsReview ? (
 													<button
 														className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3.5 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
@@ -833,12 +862,12 @@ export const SpaceExpensesMain = ({
 														>
 															Edit in panel
 														</button>
-														{threadHref ? (
+														{detailHref ? (
 															<Link
 																className="flex w-full items-center gap-2 px-3 py-2 text-sm hover:bg-[rgba(120,100,80,0.06)]"
 																onClick={() => setOpenMenuExpenseId(null)}
 																role="menuitem"
-																to={threadHref}
+																to={detailHref}
 															>
 																Open detail page
 															</Link>
@@ -863,7 +892,8 @@ export const SpaceExpensesMain = ({
 															disabled={deletingId === tx.id}
 															onClick={(e) => {
 																e.stopPropagation();
-																void handleDeleteExpense(tx);
+																setOpenMenuExpenseId(null);
+																setPendingDeleteTx(tx);
 															}}
 															role="menuitem"
 															type="button"
@@ -893,7 +923,7 @@ export const SpaceExpensesMain = ({
 							Cancel draft expense?
 						</h3>
 						<p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-							This draft will be marked as cancelled. Line items and thread
+							This draft will be marked as cancelled. Line items and capture
 							history are kept.
 						</p>
 						<div className="mt-5 flex items-center justify-end gap-2">
@@ -913,6 +943,57 @@ export const SpaceExpensesMain = ({
 							>
 								{cancellingId != null ? "Cancelling…" : "Cancel draft"}
 							</button>
+						</div>
+					</div>
+				</div>
+			) : null}
+
+			{pendingDeleteTx ? (
+				<div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 px-4">
+					<div
+						aria-modal="true"
+						className="w-full max-w-md overflow-hidden rounded-2xl border border-[rgba(130,70,70,0.24)] bg-[rgba(255,252,246,0.98)] shadow-[0_24px_70px_-30px_rgba(50,30,20,0.5)]"
+						role="dialog"
+					>
+						<div className="border-b border-[rgba(130,70,70,0.12)] bg-[linear-gradient(180deg,rgba(255,248,240,0.96)_0%,rgba(255,241,232,0.82)_100%)] px-5 py-4">
+							<p className="text-xs font-semibold uppercase tracking-[0.14em] text-[rgba(130,70,70,0.8)]">
+								Destructive action
+							</p>
+							<h3 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+								Delete this expense?
+							</h3>
+							<p className="mt-1 text-sm font-medium text-foreground/80">
+								{expenseListHeading(pendingDeleteTx)}
+							</p>
+						</div>
+						<div className="px-5 py-4">
+							<p className="text-sm leading-relaxed text-muted-foreground">
+								This permanently removes the expense record, its line items,
+								item tags, member splits, participant splits, and review
+								projections tied to this record. Capture history stays separate.
+							</p>
+							<div className="mt-4 rounded-xl border border-[rgba(130,70,70,0.18)] bg-[rgba(130,70,70,0.06)] px-3 py-2 text-xs leading-relaxed text-[rgba(100,48,48,0.95)]">
+								Use this only for duplicate or wrong records. For an unfinished
+								draft, cancelling is safer because it preserves review context.
+							</div>
+							<div className="mt-5 flex items-center justify-end gap-2">
+								<button
+									className="inline-flex h-10 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/70 px-4 text-sm font-medium text-foreground/85 transition hover:bg-white disabled:opacity-50"
+									disabled={deletingId != null}
+									onClick={() => setPendingDeleteTx(null)}
+									type="button"
+								>
+									Keep expense
+								</button>
+								<button
+									className="inline-flex h-10 items-center rounded-lg bg-[rgba(130,70,70,0.92)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[rgba(110,55,55,0.98)] disabled:opacity-50"
+									disabled={deletingId != null}
+									onClick={() => void handleDeleteExpense(pendingDeleteTx)}
+									type="button"
+								>
+									{deletingId != null ? "Deleting..." : "Delete expense"}
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>

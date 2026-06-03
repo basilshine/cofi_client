@@ -91,11 +91,11 @@ export const ConsoleOverviewPage = () => {
 
 				<Link
 					className="rounded-lg border border-border bg-card p-4 hover:bg-accent"
-					to="/console/transactions"
+					to="/console/spaces"
 				>
-					<div className="text-sm font-medium">Transactions</div>
+					<div className="text-sm font-medium">Expenses</div>
 					<div className="mt-1 text-xs text-muted-foreground">
-						View recent confirmed transactions.
+						Open a space to view its saved expense records.
 					</div>
 				</Link>
 
@@ -136,7 +136,7 @@ export const ConsoleOverviewPage = () => {
 				>
 					<div className="text-sm font-medium">ChatLog</div>
 					<div className="mt-1 text-xs text-muted-foreground">
-						Space-scoped discussion about expenses/transactions.
+						Space-scoped chat for messages, captures, and expense review.
 					</div>
 				</Link>
 

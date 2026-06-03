@@ -1,4 +1,8 @@
-import type { ExpenseSplitRow, StandardRecurringInterval } from "@cofi/api";
+import type {
+	ExpenseDetail,
+	ExpenseSplitRow,
+	StandardRecurringInterval,
+} from "@cofi/api";
 import { ConfirmIcon, ReviewIcon, SplitExpenseIcon } from "@cofi/ceits-icons";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -28,7 +32,7 @@ type ItemRecurringConfig = {
 	interval: StandardRecurringInterval;
 };
 
-type ExpenseTag = { id: number; name: string };
+type ExpenseTag = { id?: number; name: string };
 
 type ExpenseItem = {
 	id: number;
@@ -43,11 +47,17 @@ type Expense = {
 	user_id?: number;
 	description?: string;
 	status?: string;
+	source_document_id?: number | null;
 	items?: ExpenseItem[];
 	created_at?: string;
 	recurring_id?: number;
 	recurring_paused?: boolean;
 };
+
+const normalizeDraftExpense = (expense: Expense | ExpenseDetail): Expense => ({
+	...expense,
+	items: expense.items?.filter((item): item is ExpenseItem => item.id != null),
+});
 
 const splitRowBelongsToUser = (
 	row: ExpenseSplitRow,
@@ -63,32 +73,78 @@ const splitRowBelongsToUser = (
 	);
 };
 
+const loadExpenseDetail = async (
+	expenseId: string | number,
+	spaceId?: string | number,
+): Promise<Expense> => {
+	if (spaceId != null) {
+		return normalizeDraftExpense(
+			await apiClient.spaces.expenses.get(spaceId, expenseId),
+		);
+	}
+	return normalizeDraftExpense(
+		(
+			await httpClient.get<Expense>(
+				`/api/v1/finances/expenses/${String(expenseId)}`,
+			)
+		).data,
+	);
+};
+
+const confirmExpenseDraft = async (
+	expenseId: string | number,
+	spaceId?: string | number,
+) => {
+	if (spaceId != null) {
+		await apiClient.spaces.expenses.confirm(spaceId, expenseId);
+		return;
+	}
+	await httpClient.post(
+		`/api/v1/finances/expenses/${String(expenseId)}/confirm`,
+	);
+};
+
+const cancelExpenseDraft = async (
+	expenseId: string | number,
+	spaceId?: string | number,
+) => {
+	if (spaceId != null) {
+		await apiClient.spaces.expenses.cancel(spaceId, expenseId);
+		return;
+	}
+	await httpClient.post(
+		`/api/v1/finances/expenses/${String(expenseId)}/cancel`,
+	);
+};
+
 export const DraftExpenseCard = ({
 	expenseId,
 	spaceId,
+	sourceDocumentId,
 	chatWorkspace,
 	originMessageId,
 	onExpenseOrphaned,
-	onOpenExpenseThread,
+	onOpenExpenseDetail,
 	relatedExpenseStatusHint,
 	compact = false,
 	isSelected = false,
-	inspectorOpen = false,
 }: {
 	expenseId: string | number;
 	/** Required to attach web Chat context when saving a recurring schedule. */
 	spaceId?: string | number;
-	/** Active chat workspace (passed through thread deep links). */
+	/** Capture parent for review navigation when this draft came from parsing. */
+	sourceDocumentId?: string | number | null;
+	/** Active chat workspace. */
 	chatWorkspace?: ChatWorkspaceScope;
 	/** Chat message containing this draft (for server validation). */
 	originMessageId?: string | number;
 	/** When the expense no longer exists (404) after delete or on load; parent may remove the chat row. */
 	onExpenseOrphaned?: () => void;
-	/** When set (e.g. ChatLogPage), opens the expense review thread inline instead of navigating. */
-	onOpenExpenseThread?: (expenseId: string | number) => void;
+	/** When set (e.g. ChatLogPage), opens the expense detail panel instead of navigating. */
+	onOpenExpenseDetail?: (expenseId: string | number) => void;
 	/** From chat list: `gone` / `inaccessible` skips GET (deleted or not yours). */
 	relatedExpenseStatusHint?: string;
-	/** Narrow summary; tap opens the workspace expense thread panel. */
+	/** Narrow summary; tap opens the workspace expense panel. */
 	compact?: boolean;
 	/** Chat-selected visual state when inspector is open for this expense. */
 	isSelected?: boolean;
@@ -122,18 +178,33 @@ export const DraftExpenseCard = ({
 	const isDraft = expense?.status === "draft";
 	const isCancelled = expense?.status === "cancelled";
 	const itemCount = expense?.items?.length ?? 0;
+	const effectiveSourceDocumentId =
+		sourceDocumentId ?? expense?.source_document_id ?? null;
+	const reviewHref =
+		spaceId == null
+			? null
+			: effectiveSourceDocumentId != null
+				? `/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(effectiveSourceDocumentId))}`
+				: `/console/review?spaceId=${encodeURIComponent(String(spaceId))}&expenseId=${encodeURIComponent(String(expense?.id ?? expenseId))}`;
+	const navigateToReview = () => {
+		if (!reviewHref) return;
+		navigate(reviewHref, {
+			state: chatWorkspace ? { chatWorkspace } : undefined,
+		});
+	};
 
 	const handleLoad = async () => {
 		setIsLoading(true);
 		setError(null);
 		setOrphanNotice(null);
 		try {
-			const res = await httpClient.get<Expense>(
-				`/api/v1/finances/expenses/${String(expenseId)}`,
-			);
-			setExpense(res.data);
+			const loadedExpense = await loadExpenseDetail(expenseId, spaceId);
+			setExpense(loadedExpense);
 			try {
-				const sr = await apiClient.finances.expenses.listSplits(expenseId);
+				const sr =
+					spaceId != null
+						? await apiClient.spaces.expenses.listSplits(spaceId, expenseId)
+						: await apiClient.finances.expenses.listSplits(expenseId);
 				setSplitRows(sr.splits ?? []);
 			} catch {
 				setSplitRows(null);
@@ -141,7 +212,9 @@ export const DraftExpenseCard = ({
 		} catch (e) {
 			setExpense(null);
 			if (isNotFoundHttpError(e)) {
-				setOrphanNotice("This expense was removed or is no longer available.");
+				setOrphanNotice(
+					"The saved expense is no longer attached to this chat entry.",
+				);
 			} else {
 				setError(e instanceof Error ? e.message : "Failed to load draft");
 			}
@@ -211,9 +284,7 @@ export const DraftExpenseCard = ({
 				setError("Draft is still loading.");
 				return;
 			}
-			await httpClient.post(
-				`/api/v1/finances/expenses/${String(expenseId)}/confirm`,
-			);
+			await confirmExpenseDraft(expenseId, spaceId);
 			let recurringCreated = 0;
 			if (spaceId != null && expense.items?.length) {
 				for (const it of expense.items) {
@@ -221,7 +292,7 @@ export const DraftExpenseCard = ({
 					if (!cfg?.enabled) continue;
 					if (!(it.name ?? "").trim() || Number(it.amount) === 0) continue;
 					const tagLabel = it.tags?.[0]?.name ?? "recurring";
-					await apiClient.finances.recurring.create({
+					await apiClient.spaces.recurring.create(spaceId, {
 						name: it.name,
 						amount: it.amount,
 						interval: cfg.interval,
@@ -254,9 +325,7 @@ export const DraftExpenseCard = ({
 		setError(null);
 		setSuccessMessage(null);
 		try {
-			await httpClient.post(
-				`/api/v1/finances/expenses/${String(expenseId)}/cancel`,
-			);
+			await cancelExpenseDraft(expenseId, spaceId);
 			await handleLoad();
 			setSuccessMessage("Draft cancelled.");
 		} catch (e) {
@@ -284,8 +353,8 @@ export const DraftExpenseCard = ({
 			setError(null);
 			setOrphanNotice(
 				relatedExpenseStatusHint === "inaccessible"
-					? "This expense is not available to your account."
-					: "This expense was removed or is no longer available.",
+					? "The saved expense is not available to your account."
+					: "The saved expense is no longer attached to this chat entry.",
 			);
 			return;
 		}
@@ -307,7 +376,8 @@ export const DraftExpenseCard = ({
 				{orphanNotice}
 				{onExpenseOrphaned ? (
 					<span className="mt-1 block text-[10px] text-muted-foreground">
-						This chat line will be removed in a moment.
+						The message stays here as capture history; open review if the
+						original capture still exists.
 					</span>
 				) : null}
 			</output>
@@ -388,7 +458,7 @@ export const DraftExpenseCard = ({
 							</span>
 						</div>
 						<div className="mt-0.5 truncate text-sm font-medium text-muted-foreground">
-							{expense?.description || "Draft transaction"}
+							{expense?.description || "Draft expense"}
 						</div>
 						<div className="mt-0.5 text-xs text-muted-foreground">
 							Total{" "}
@@ -412,9 +482,9 @@ export const DraftExpenseCard = ({
 		);
 	}
 
-	if (compact && expense && onOpenExpenseThread && spaceId != null) {
+	if (compact && expense && onOpenExpenseDetail && spaceId != null) {
 		const handleOpenPanel = () => {
-			onOpenExpenseThread(expense.id);
+			onOpenExpenseDetail(expense.id);
 		};
 		const previewRows = items.slice(0, 3);
 		const moreCount = items.length - previewRows.length;
@@ -439,13 +509,10 @@ export const DraftExpenseCard = ({
 			: isNeedsReview
 				? "Needs agreement"
 				: "Ceits saved this";
-		const selectedInInspector = inspectorOpen && isSelected;
 		const canReviewFlow = isDraft || isNeedsReview;
 		const handleReview = () => {
 			if (canReviewFlow) {
-				window.location.assign(
-					`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`,
-				);
+				navigateToReview();
 				return;
 			}
 			handleOpenPanel();
@@ -474,7 +541,7 @@ export const DraftExpenseCard = ({
 							</div>
 							<div className="mt-1 flex items-start justify-between gap-3">
 								<div className="line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug text-foreground">
-									{expense.description?.trim() || "Draft transaction"}
+									{expense.description?.trim() || "Draft expense"}
 								</div>
 								<div className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
 									{formatMoney(total)}
@@ -531,103 +598,14 @@ export const DraftExpenseCard = ({
 					role="group"
 				>
 					<button
-						aria-label={
-							canReviewFlow && !selectedInInspector
-								? "Open review flow for this expense"
-								: "Open expense inspector"
-						}
+						aria-label="Open capture review"
 						className={`${chatToolbarBtn} inline-flex items-center gap-1 border-border bg-background hover:bg-accent`}
-						onClick={selectedInInspector ? handleOpenPanel : handleReview}
+						onClick={handleReview}
 						type="button"
 					>
 						<ReviewIcon className="h-3.5 w-3.5 shrink-0 opacity-90" size={14} />
-						{canReviewFlow && !selectedInInspector ? "Review" : "View"}
+						Open review
 					</button>
-					{isDraft && !selectedInInspector ? (
-						<>
-							<button
-								aria-label="Split expense between space members"
-								className={`${chatToolbarBtn} inline-flex items-center gap-1 border-border bg-background hover:bg-accent`}
-								disabled={isActing}
-								onClick={() => setSplitDialogOpen(true)}
-								type="button"
-							>
-								<SplitExpenseIcon
-									className="h-3.5 w-3.5 shrink-0 opacity-90"
-									size={14}
-								/>
-								Split
-							</button>
-							<button
-								aria-label="Confirm draft expense"
-								className={`${chatToolbarBtn} inline-flex items-center gap-1 border-primary bg-primary text-primary-foreground hover:bg-primary/90`}
-								disabled={isActing}
-								onClick={() => void handleConfirm()}
-								type="button"
-							>
-								{isActing ? (
-									"…"
-								) : (
-									<>
-										<ConfirmIcon
-											className="h-3.5 w-3.5 shrink-0 text-primary-foreground"
-											positiveColor="hsl(var(--primary-foreground))"
-											size={14}
-										/>
-										Confirm
-									</>
-								)}
-							</button>
-							<button
-								aria-expanded={showDangerActions}
-								aria-label="Toggle more actions"
-								className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-								onClick={() => setShowDangerActions((v) => !v)}
-								type="button"
-							>
-								More
-							</button>
-							{showDangerActions ? (
-								<button
-									aria-label="Cancel draft expense"
-									className={`${chatToolbarBtn} border-destructive/35 bg-background text-destructive hover:bg-destructive/10`}
-									disabled={isActing}
-									onClick={() => setConfirmCancelOpen(true)}
-									type="button"
-								>
-									{isActing ? "…" : "Cancel"}
-								</button>
-							) : null}
-						</>
-					) : !selectedInInspector ? (
-						<>
-							<button
-								aria-label="Review split details"
-								className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-								onClick={handleOpenPanel}
-								type="button"
-							>
-								Split
-							</button>
-							<button
-								aria-label="Open more expense options"
-								className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-								onClick={handleOpenPanel}
-								type="button"
-							>
-								More
-							</button>
-						</>
-					) : (
-						<button
-							aria-label="Open more expense options"
-							className={`${chatToolbarBtn} border-border bg-background hover:bg-accent`}
-							onClick={handleOpenPanel}
-							type="button"
-						>
-							More
-						</button>
-					)}
 				</div>
 
 				{successMessage ? (
@@ -674,7 +652,7 @@ export const DraftExpenseCard = ({
 						) : null}
 					</div>
 					<div className="mt-1 truncate text-sm font-medium">
-						{expense?.description || "Draft transaction"}
+						{expense?.description || "Draft expense"}
 					</div>
 					<div className="mt-1 text-xs text-muted-foreground">
 						Total:{" "}
@@ -711,24 +689,17 @@ export const DraftExpenseCard = ({
 					{spaceId != null && expense ? (
 						<button
 							aria-label={
-								isDraft
-									? "Review and edit expense in thread"
-									: "Open expense discussion thread"
+								isDraft ? "Review and edit expense" : "Open expense review"
 							}
 							className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-semibold hover:bg-accent"
 							onClick={() =>
-								onOpenExpenseThread
-									? onOpenExpenseThread(expense.id)
-									: navigate(
-											`/console/chat/thread?spaceId=${encodeURIComponent(String(spaceId))}&expenseId=${encodeURIComponent(String(expense.id))}`,
-											{
-												state: chatWorkspace ? { chatWorkspace } : undefined,
-											},
-										)
+								onOpenExpenseDetail
+									? onOpenExpenseDetail(expense.id)
+									: navigateToReview()
 							}
 							type="button"
 						>
-							{isDraft ? "Review & edit" : "Discuss"}
+							{isDraft ? "Review & edit" : "Open review"}
 						</button>
 					) : null}
 					{isDraft ? (

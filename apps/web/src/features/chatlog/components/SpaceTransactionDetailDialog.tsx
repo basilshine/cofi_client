@@ -1,5 +1,6 @@
 import type { ExpenseDetail, Transaction } from "@cofi/api";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
 import {
@@ -15,7 +16,7 @@ import {
 	expenseStatusLabel,
 	toTransactionExpenseEntity,
 } from "../../../shared/lib/expensePresentation";
-import { TransactionInlineActions } from "../../transactions/components/RecurringScheduleInlineActions";
+import { ExpenseInlineActions } from "../../transactions/components/RecurringScheduleInlineActions";
 import { parseTags } from "./transactionBuilderTypes";
 
 type Props = {
@@ -52,6 +53,15 @@ const expenseToEditRows = (exp: ExpenseDetail | null): EditRow[] => {
 		tagsInput: tagNamesFromItem(it.tags).join(", "),
 	}));
 };
+
+const loadSpaceExpense = (transaction: Transaction): Promise<ExpenseDetail> =>
+	apiClient.spaces.expenses.get(transaction.space_id, transaction.id);
+
+const updateSpaceExpense = (
+	transaction: Transaction,
+	body: Parameters<typeof apiClient.spaces.expenses.update>[2],
+): Promise<ExpenseDetail> =>
+	apiClient.spaces.expenses.update(transaction.space_id, transaction.id, body);
 
 export const SpaceTransactionDetailDialog = ({
 	open,
@@ -95,7 +105,7 @@ export const SpaceTransactionDetailDialog = ({
 			setLoadError(null);
 			setSaveError(null);
 			try {
-				const data = await apiClient.finances.expenses.get(transaction.id);
+				const data = await loadSpaceExpense(transaction);
 				if (cancelled) return;
 				setExpense(data);
 				setEditDescription(data.description ?? "");
@@ -118,7 +128,7 @@ export const SpaceTransactionDetailDialog = ({
 
 	const handleChangeClick = () => {
 		const ok = window.confirm(
-			"Copy this expense into the workspace as editable line items? Your current workspace content will be replaced. Saved (confirmed) transactions are not edited in place — you are creating a new draft from this copy.",
+			"Copy this expense into the workspace as editable line items? Your current workspace content will be replaced. Saved expense records are not edited in place — you are creating a new draft from this copy.",
 		);
 		if (!ok) return;
 		onRequestCopyToWorkspace();
@@ -188,11 +198,11 @@ export const SpaceTransactionDetailDialog = ({
 					tags: tags.map((name) => ({ name })),
 				};
 			});
-			await apiClient.finances.expenses.update(transaction.id, {
+			await updateSpaceExpense(transaction, {
 				description: editDescription.trim(),
 				items: itemsPayload,
 			});
-			const fresh = await apiClient.finances.expenses.get(transaction.id);
+			const fresh = await loadSpaceExpense(transaction);
 			setExpense(fresh);
 			setIsEditing(false);
 			if (onMutated) await onMutated();
@@ -215,6 +225,12 @@ export const SpaceTransactionDetailDialog = ({
 		recurring_paused: expense?.recurring_paused ?? transaction.recurring_paused,
 	};
 	const entityStatus = expense?.status ?? transaction.status;
+	const sourceDocumentId =
+		expense?.source_document_id ?? transaction.source_document_id ?? null;
+	const sourceCaptureHref =
+		sourceDocumentId != null && Number(sourceDocumentId) > 0
+			? `/console/review?spaceId=${encodeURIComponent(String(transaction.space_id))}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`
+			: null;
 	const expenseEntity = toTransactionExpenseEntity(
 		{ ...transaction, status: entityStatus },
 		{
@@ -267,6 +283,19 @@ export const SpaceTransactionDetailDialog = ({
 						{transaction.created_at ? (
 							<div className="text-xs text-muted-foreground">
 								{formatDateTime(transaction.created_at)}
+							</div>
+						) : null}
+						{sourceCaptureHref ? (
+							<div className="rounded-lg border border-[rgba(48,83,120,0.18)] bg-[rgba(239,247,255,0.68)] px-3 py-2 text-xs text-[rgba(34,72,108,0.92)]">
+								<div className="font-semibold">
+									Source capture #{sourceDocumentId}
+								</div>
+								<Link
+									className="mt-1 inline-flex font-semibold underline-offset-2 hover:underline"
+									to={sourceCaptureHref}
+								>
+									Review capture
+								</Link>
 							</div>
 						) : null}
 						<ul className="space-y-2 border-t border-border pt-3">
@@ -381,17 +410,15 @@ export const SpaceTransactionDetailDialog = ({
 				{expense && !isEditing ? (
 					<div className="border-t border-border pt-3">
 						<div className="mb-2 text-[10px] font-medium text-muted-foreground">
-							Schedule &amp; transaction
+							Schedule &amp; expense record
 						</div>
-						<TransactionInlineActions
+						<ExpenseInlineActions
 							expenseId={transaction.id}
 							onAfterChange={async () => {
 								if (onMutated) await onMutated();
 								if (!transaction) return;
 								try {
-									const data = await apiClient.finances.expenses.get(
-										transaction.id,
-									);
+									const data = await loadSpaceExpense(transaction);
 									setExpense(data);
 								} catch {
 									onOpenChange(false);
@@ -404,6 +431,7 @@ export const SpaceTransactionDetailDialog = ({
 									: undefined
 							}
 							recurringPaused={txForActions.recurring_paused}
+							spaceId={transaction.space_id}
 						/>
 					</div>
 				) : null}

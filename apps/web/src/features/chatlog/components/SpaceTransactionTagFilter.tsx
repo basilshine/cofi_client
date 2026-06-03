@@ -89,7 +89,7 @@ export const SpaceTransactionTagFilter = ({
 				Filter by tags
 			</span>
 			<p className="text-[10px] text-muted-foreground">
-				Transactions must include every selected tag (on any line item). Type to
+				Expenses must include every selected tag (on any line item). Type to
 				search tags used in this space.
 			</p>
 			<div className="relative z-20" ref={wrapRef}>

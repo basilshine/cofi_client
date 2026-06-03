@@ -1,12 +1,15 @@
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useLocation, useSearchParams } from "react-router-dom";
 
 /**
  * Legacy `/console/transactions` — redirects to the space expenses list at
- * `/console/chat/expenses`, preserving `spaceId` when present.
+ * `/console/spaces/:spaceId/expenses`, preserving `spaceId` when present.
  */
 export const TransactionsPage = () => {
+	const location = useLocation();
 	const [searchParams] = useSearchParams();
-	const spaceIdRaw = searchParams.get("spaceId");
+	const locationSearchParams = new URLSearchParams(location.search);
+	const spaceIdRaw =
+		searchParams.get("spaceId") ?? locationSearchParams.get("spaceId");
 	const selectSpaceId =
 		spaceIdRaw != null && Number.isFinite(Number(spaceIdRaw))
 			? Number(spaceIdRaw)
@@ -14,8 +17,8 @@ export const TransactionsPage = () => {
 
 	const to =
 		selectSpaceId != null
-			? `/console/chat/expenses?spaceId=${encodeURIComponent(String(selectSpaceId))}`
-			: "/console/chat/expenses";
+			? `/console/spaces/${encodeURIComponent(String(selectSpaceId))}/expenses`
+			: "/console/spaces";
 
 	return (
 		<Navigate

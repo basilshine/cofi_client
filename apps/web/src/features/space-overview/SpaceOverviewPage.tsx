@@ -1,4 +1,5 @@
 import type {
+	CapturePacket as ApiCapturePacket,
 	DashboardResponse,
 	Space,
 	SpaceMember,
@@ -20,8 +21,11 @@ import { openGlobalComposerIntent } from "../../app/layout/workspaceSpaces/globa
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
+import {
+	capturePacketSummaryFromApi,
+	capturePacketSummaryLine,
+} from "../../shared/lib/capturePacketSummary";
 import type { ChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
-import { buildExpenseDetailHref } from "../../shared/lib/expenseLinks";
 import { ActivityListCard } from "../../widgets/activity-list-card";
 import { OverviewRightRail } from "../../widgets/overview-right-rail";
 import { SpaceParticipantsPanel } from "../../widgets/space-participants-panel";
@@ -32,23 +36,21 @@ const sectionHeading =
 const ghostButton =
 	"inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 bg-background/40 backdrop-blur-sm px-3.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-all duration-150 ease-out hover:-translate-y-px hover:bg-card hover:text-foreground hover:shadow-sm active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-const formatMemberRole = (role: string | undefined): string => {
-	const r = (role ?? "").trim().toLowerCase();
-	if (!r) return "Member";
-	if (r.includes("owner")) return "Owner";
-	if (r.includes("admin")) return "Admin";
-	if (r.includes("editor")) return "Editor";
-	if (r.includes("viewer")) return "Viewer";
-	if (r === "member") return "Member";
-	return r.charAt(0).toUpperCase() + r.slice(1);
+const capturePacketRecordCount = (packet: ApiCapturePacket): number => {
+	const records = packet.records;
+	if (!records) return 0;
+	return (
+		(records.expenses?.length ?? 0) +
+		(records.expenses ?? []).reduce(
+			(total, expense) => total + (expense.items?.length ?? 0),
+			0,
+		) +
+		(records.benefits?.length ?? 0) +
+		(records.participants?.length ?? 0) +
+		(records.splits?.length ?? 0) +
+		(records.recurring?.length ?? 0)
+	);
 };
-
-const memberAvatarPalettes = [
-	"bg-[rgba(92,108,128,0.22)] text-[#2a3142]",
-	"bg-[rgba(138,118,98,0.24)] text-[#453a30]",
-	"bg-[rgba(108,128,108,0.24)] text-[#2d3a2d]",
-	"bg-[rgba(108,118,148,0.22)] text-[#323a4d]",
-];
 
 const formatRelative = (iso?: string | null): string => {
 	if (!iso) return "—";
@@ -125,16 +127,6 @@ const detectActivityType = (
 	return "expense";
 };
 
-const humanizeStatus = (
-	value?: string | null,
-	fallback = "Confirmed",
-): string => {
-	const raw = (value ?? "").trim();
-	if (!raw) return fallback;
-	const withSpaces = raw.replace(/_/g, " ");
-	return withSpaces.charAt(0).toUpperCase() + withSpaces.slice(1);
-};
-
 export const SpaceOverviewPage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
 	const location = useLocation();
@@ -173,6 +165,9 @@ export const SpaceOverviewPage = () => {
 	const [participants, setParticipants] = useState<SpaceParticipant[] | null>(
 		null,
 	);
+	const [spaceCapturePackets, setSpaceCapturePackets] = useState<
+		ApiCapturePacket[]
+	>([]);
 	const [canManageMemberRoles, setCanManageMemberRoles] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -185,9 +180,10 @@ export const SpaceOverviewPage = () => {
 		setLoadError(null);
 		setCanManageMemberRoles(false);
 		setParticipants(null);
+		setSpaceCapturePackets([]);
 		void (async () => {
 			try {
-				const [res, mem, participantRes] = await Promise.all([
+				const [res, mem, participantRes, captureRes] = await Promise.all([
 					apiClient.dashboard.get({
 						variant: "personal",
 						period: "month",
@@ -195,11 +191,18 @@ export const SpaceOverviewPage = () => {
 					}),
 					apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
 					apiClient.spaces.listParticipants(numericSpaceId).catch(() => null),
+					apiClient.spaces
+						.listCapturePackets(numericSpaceId, {
+							includeRecords: true,
+							limit: 40,
+						})
+						.catch(() => null),
 				]);
 				if (!cancelled) {
 					setDashboardData(res);
 					setMembers(mem?.members ?? null);
 					setParticipants(participantRes?.participants ?? null);
+					setSpaceCapturePackets(captureRes?.captures ?? []);
 					setCanManageMemberRoles(Boolean(mem?.can_manage_member_roles));
 				}
 			} catch (e) {
@@ -247,37 +250,6 @@ export const SpaceOverviewPage = () => {
 	const pendingDrafts = (dashboardData?.pending_drafts ?? []).filter(
 		(d) => Number(d.space_id) === Number(numericSpaceId),
 	);
-	const recentTx = (dashboardData?.recent_transactions ?? []).filter(
-		(t) => Number(t.space_id) === Number(numericSpaceId),
-	);
-	const reviewItems = (dashboardData?.review_queue?.items ?? []).flatMap(
-		(it) => {
-			if (
-				it &&
-				typeof it === "object" &&
-				"kind" in it &&
-				it.kind === "expense_thread_approval" &&
-				"space_id" in it &&
-				Number((it as { space_id: number }).space_id) === Number(numericSpaceId)
-			) {
-				return [
-					it as {
-						kind: string;
-						thread_id: number;
-						expense_id: number;
-						space_id: number;
-						space_name: string;
-						label: string;
-						my_share: number;
-						currency: string;
-						updated_at: string;
-					},
-				];
-			}
-			return [];
-		},
-	);
-
 	const sidStr = String(numericSpaceId);
 
 	const handleOpenAddExpense = () => {
@@ -304,101 +276,153 @@ export const SpaceOverviewPage = () => {
 			? `+${formatMoney(spacePositionPlaceholder.net)}`
 			: formatMoney(spacePositionPlaceholder.net);
 
-	const confirmExpenseCount = reviewItems.length;
+	const capturePackets = useMemo(() => {
+		return spaceCapturePackets
+			.filter(
+				(packet) =>
+					Number(packet.pending_count ?? 0) > 0 ||
+					Number(packet.candidate_count ?? 0) > 0 ||
+					capturePacketRecordCount(packet) > 0,
+			)
+			.map((packet) => {
+				const summary = capturePacketSummaryFromApi(packet);
+				const createdRecordCount = capturePacketRecordCount(packet);
+				const pendingCount = Number(packet.pending_count ?? 0);
+				return {
+					...summary,
+					createdRecordCount,
+					needsReview:
+						pendingCount > 0 ||
+						(Number(packet.candidate_count ?? 0) > 0 &&
+							createdRecordCount === 0),
+				};
+			});
+	}, [spaceCapturePackets]);
+
+	const pendingCapturePackets = useMemo(
+		() => capturePackets.filter((packet) => packet.needsReview),
+		[capturePackets],
+	);
+
+	const capturePacketCounts = useMemo(
+		() =>
+			pendingCapturePackets.reduce(
+				(acc, packet) => ({
+					expenses: acc.expenses + packet.counts.expenses,
+					benefits: acc.benefits + packet.counts.benefits,
+					people: acc.people + packet.counts.people,
+					splits: acc.splits + packet.counts.splits,
+					future: acc.future + packet.counts.future,
+					documents: acc.documents + packet.counts.documents,
+				}),
+				{
+					expenses: 0,
+					benefits: 0,
+					people: 0,
+					splits: 0,
+					future: 0,
+					documents: 0,
+				},
+			),
+		[pendingCapturePackets],
+	);
+
+	const captureReviewCount =
+		pendingCapturePackets.length + pendingDrafts.length;
 	const draftPendingCount = pendingDrafts.length;
-	const balancesUnsettled = confirmExpenseCount > 0 || draftPendingCount > 0;
+	const balancesUnsettled = captureReviewCount > 0 || draftPendingCount > 0;
 	const spaceDisplayName = space?.name?.trim() || "this space";
+	const captureBreakdown = [
+		{
+			count: capturePacketCounts.expenses + pendingDrafts.length,
+			label: "expense",
+		},
+		{ count: capturePacketCounts.benefits, label: "benefit" },
+		{ count: capturePacketCounts.people, label: "person" },
+		{ count: capturePacketCounts.splits, label: "split" },
+		{ count: capturePacketCounts.future, label: "future hint" },
+		{ count: capturePacketCounts.documents, label: "document signal" },
+	]
+		.filter((item) => item.count > 0)
+		.map((item) => `${item.count} ${item.label}${item.count === 1 ? "" : "s"}`)
+		.join(", ");
 
 	const decisionRailHighlightMode = useMemo(() => {
-		if (reviewItems.length > 0) return "splits" as const;
+		if (capturePacketCounts.splits > 0) return "splits" as const;
 		if (pendingDrafts.length > 0) return "drafts" as const;
 		return "none" as const;
-	}, [reviewItems.length, pendingDrafts.length]);
+	}, [capturePacketCounts.splits, pendingDrafts.length]);
 
 	const recentActivityItems = useMemo(() => {
 		const name = space?.name ?? "Space";
-		const meaningForTransaction = (
-			status: string | null | undefined,
-			spaceName: string,
-		): string => {
-			const s = (status ?? "").toLowerCase();
-			if (s.includes("draft") || s.includes("pending")) {
-				return `Won’t affect ${spaceName} balances until confirmed.`;
-			}
-			if (s.includes("review") || s.includes("question")) {
-				return "Needs review before it affects shared balances in this space.";
-			}
-			return `Included in ${spaceName} — your share follows the current split.`;
-		};
-		const txItems = recentTx.map((t) => ({
-			amountLabel: formatMoney(t.amount),
-			eventType: detectActivityType(t.label, t.status),
-			id: `tx-${t.id}`,
-			meaningLine: meaningForTransaction(t.status, name),
-			occurredAt: t.occurred_at,
-			spaceName: name,
-			statusLabel: humanizeStatus(t.status, "Confirmed"),
-			statusPillLabel: ["draft", "pending", "question", "review"].some(
-				(token) => (t.status ?? "").toLowerCase().includes(token),
-			)
-				? humanizeStatus(t.status)
-				: undefined,
-			timeLabel: formatRelative(t.occurred_at),
-			title: t.label,
-			to: buildExpenseDetailHref(sidStr, t.id),
-		}));
+		const packetItems = capturePackets.map((packet) => {
+			const reviewHref = `/console/review?spaceId=${encodeURIComponent(sidStr)}&sourceDocumentId=${encodeURIComponent(String(packet.sourceDocumentId))}`;
+			const createdRecordText =
+				packet.createdRecordCount > 0
+					? `${packet.createdRecordCount} ${packet.createdRecordCount === 1 ? "record" : "records"} created`
+					: null;
+			return {
+				eventType: "capture" as const,
+				id: `capture-${packet.sourceDocumentId}`,
+				meaningLine: packet.needsReview
+					? `Ceits found ${capturePacketSummaryLine(packet.counts)}. Review this capture before it becomes records in ${spaceDisplayName}.`
+					: `Records created from this capture in ${spaceDisplayName}. Open the source to inspect provenance.`,
+				occurredAt: packet.createdAt,
+				spaceName: name,
+				statusLabel: packet.needsReview ? "Capture review" : "Confirmed",
+				statusPillLabel: packet.needsReview
+					? packet.summary
+					: (createdRecordText ?? "Records created"),
+				sourceCaptureTo: reviewHref,
+				sourceDocumentId: packet.sourceDocumentId,
+				timeLabel: formatRelative(packet.createdAt),
+				title: packet.title,
+				to: reviewHref,
+			};
+		});
 
 		const draftItems = pendingDrafts.map((draft) => {
 			const detectedEventType = detectActivityType(draft.label, "draft");
-			const draftEventType =
-				detectedEventType === "receipt" ? "receipt" : "draft";
-			const humanDraftStatus =
-				draftEventType === "receipt" ? "Needs review" : "Not saved yet";
+			const captureSource =
+				detectedEventType === "receipt" ? "Receipt capture" : "Text capture";
 			const lineMeaning =
-				draftEventType === "receipt"
-					? "Receipt imported — needs review before affecting balances."
-					: "Draft in this space — not recorded until you confirm.";
+				detectedEventType === "receipt"
+					? "Receipt capture needs review before affecting balances."
+					: "Capture produced an expense draft that is not recorded until you confirm.";
 			return {
 				amountLabel: formatMoney(
 					typeof draft.my_share === "number" ? draft.my_share : draft.total,
 				),
-				eventType: draftEventType as "draft" | "receipt",
+				eventType: "capture" as const,
 				id: `draft-${draft.id}`,
 				meaningLine: lineMeaning,
 				occurredAt: draft.updated_at,
 				spaceName: draft.space_name || space?.name || "Space",
-				statusLabel: humanDraftStatus,
-				statusPillLabel: humanDraftStatus,
+				statusLabel: captureSource,
+				statusPillLabel: "Expense draft",
+				sourceCaptureTo:
+					draft.source_document_id != null
+						? `/console/review?spaceId=${encodeURIComponent(sidStr)}&sourceDocumentId=${encodeURIComponent(String(draft.source_document_id))}`
+						: `/console/review?spaceId=${encodeURIComponent(sidStr)}`,
+				sourceDocumentId: draft.source_document_id ?? null,
 				timeLabel: formatRelative(draft.updated_at),
-				title: draft.label || "Expense draft",
-				to: `/console/chat?spaceId=${encodeURIComponent(sidStr)}&view=activity`,
+				title: draft.label || "Capture with expense draft",
+				to:
+					draft.source_document_id != null
+						? `/console/review?spaceId=${encodeURIComponent(sidStr)}&sourceDocumentId=${encodeURIComponent(String(draft.source_document_id))}`
+						: `/console/review?spaceId=${encodeURIComponent(sidStr)}`,
 			};
 		});
 
-		const approvalItems = reviewItems.map((review) => ({
-			amountLabel: formatMoney(review.my_share),
-			eventType: "split-assigned" as const,
-			id: `review-${review.expense_id}`,
-			meaningLine: `Needs your approval before balances update in ${spaceDisplayName}.`,
-			occurredAt: review.updated_at,
-			spaceName: review.space_name || space?.name || "Space",
-			statusLabel: "Split review",
-			statusPillLabel: "Review",
-			timeLabel: "Needs action",
-			title: review.label || "Split approval",
-			to: buildExpenseDetailHref(sidStr, review.expense_id),
-		}));
-
-		return [...txItems, ...draftItems, ...approvalItems]
+		return [...packetItems, ...draftItems]
 			.sort(
 				(a, b) =>
 					Date.parse(b.occurredAt ?? "") - Date.parse(a.occurredAt ?? ""),
 			)
 			.slice(0, 6);
 	}, [
-		recentTx,
+		capturePackets,
 		pendingDrafts,
-		reviewItems,
 		formatMoney,
 		space?.name,
 		sidStr,
@@ -563,13 +587,13 @@ export const SpaceOverviewPage = () => {
 						<li
 							className={[
 								"flex gap-3 rounded-xl px-2 py-3.5 sm:px-3",
-								confirmExpenseCount > 0
+								captureReviewCount > 0
 									? "border border-[rgba(200,130,55,0.48)] bg-[linear-gradient(90deg,rgba(255,244,220,0.98)_0%,rgba(255,250,242,0.72)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.92),0_10px_26px_-12px_rgba(150,88,32,0.18)] ring-1 ring-[rgba(200,130,60,0.22)]"
 									: "",
 							].join(" ")}
 						>
 							<div className="mt-0.5 flex shrink-0 flex-col items-center gap-1.5">
-								{confirmExpenseCount > 0 ? (
+								{captureReviewCount > 0 ? (
 									<span className="rounded-full bg-[rgba(185,95,28,0.16)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#7a420e]">
 										Next
 									</span>
@@ -578,7 +602,7 @@ export const SpaceOverviewPage = () => {
 									aria-hidden
 									className={[
 										"inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full ring-2",
-										confirmExpenseCount > 0
+										captureReviewCount > 0
 											? "bg-[rgba(200,120,45,0.18)] ring-[rgba(200,130,55,0.35)]"
 											: "bg-[rgba(189,143,64,0.12)] ring-[rgba(189,143,64,0.15)]",
 									].join(" ")}
@@ -586,9 +610,7 @@ export const SpaceOverviewPage = () => {
 									<span
 										className={[
 											"h-2 w-2 rounded-full bg-[rgba(175,105,35,0.95)]",
-											confirmExpenseCount > 0
-												? "motion-safe:animate-pulse"
-												: "",
+											captureReviewCount > 0 ? "motion-safe:animate-pulse" : "",
 										].join(" ")}
 									/>
 								</span>
@@ -596,34 +618,32 @@ export const SpaceOverviewPage = () => {
 							<span
 								className={[
 									"min-w-0 text-sm leading-relaxed",
-									confirmExpenseCount > 0
+									captureReviewCount > 0
 										? "font-semibold text-foreground"
 										: "font-medium text-foreground/92",
 								].join(" ")}
 							>
-								{confirmExpenseCount === 0 ? (
-									<>
-										Nothing waiting for your split confirmation in{" "}
-										{spaceDisplayName}.
-									</>
+								{captureReviewCount === 0 ? (
+									<>No captures waiting for review in {spaceDisplayName}.</>
 								) : (
 									<>
 										<span className="text-base font-extrabold tabular-nums text-[#5a3008]">
-											{confirmExpenseCount}
+											{captureReviewCount}
 										</span>{" "}
 										<span className="font-bold text-foreground">
-											{confirmExpenseCount === 1
-												? "expense needs"
-												: "expenses need"}
+											{captureReviewCount === 1
+												? "capture needs"
+												: "captures need"}
 										</span>{" "}
 										<Link
 											className="font-bold text-[#5e2f00] underline decoration-[rgba(150,80,20,0.75)] decoration-2 underline-offset-[3px] transition-colors duration-150 hover:text-[#441f00] hover:decoration-[rgba(110,55,12,0.9)]"
 											to={`/console/review?spaceId=${encodeURIComponent(sidStr)}`}
 										>
-											your confirmation
+											review
 										</Link>{" "}
 										<span className="font-semibold text-foreground/90">
-											before shared balances change.
+											before their expense, split, and benefit candidates become
+											records.
 										</span>
 									</>
 								)}
@@ -635,22 +655,22 @@ export const SpaceOverviewPage = () => {
 								className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[rgba(189,143,64,0.55)] ring-4 ring-[rgba(189,143,64,0.1)]"
 							/>
 							<span className="text-sm font-medium leading-relaxed text-foreground/88">
-								{draftPendingCount === 0 ? (
-									<>No drafts waiting in {spaceDisplayName}.</>
+								{captureReviewCount === 0 ? (
+									<>Ceits has no unresolved capture candidates in this space.</>
 								) : (
 									<>
+										Inside those captures:{" "}
 										<strong className="font-semibold text-foreground">
-											{draftPendingCount}
-										</strong>{" "}
-										{draftPendingCount === 1 ? "draft" : "drafts"} still in this
-										space —{" "}
+											{captureBreakdown || "review candidates"}
+										</strong>
+										.{" "}
 										<Link
 											className="font-semibold text-[#6a3d0a] underline decoration-[rgba(160,95,28,0.55)] decoration-2 underline-offset-[3px] transition-colors duration-150 hover:text-[#482608] hover:decoration-[rgba(120,70,18,0.85)]"
-											to={`/console/chat?spaceId=${encodeURIComponent(sidStr)}&view=activity`}
+											to={`/console/review?spaceId=${encodeURIComponent(sidStr)}`}
 										>
-											review
+											Open captures
 										</Link>{" "}
-										when you are ready.
+										to decide what becomes records.
 									</>
 								)}
 							</span>
@@ -662,8 +682,8 @@ export const SpaceOverviewPage = () => {
 							/>
 							<span className="text-sm leading-relaxed">
 								{balancesUnsettled
-									? "Balances here are not fully settled until the items above are finished."
-									: "No confirmations blocking balances in this space right now."}
+									? "Balances here are not fully settled until the captures above are finished."
+									: "No capture decisions are blocking balances in this space right now."}
 							</span>
 						</li>
 					</ul>
@@ -674,8 +694,8 @@ export const SpaceOverviewPage = () => {
 				<div className="lg:col-span-2">
 					<ActivityListCard
 						activityAnchorId="space-overview-activity"
-						ctaLabel="All items"
-						ctaTo={`/console/chat/expenses?spaceId=${encodeURIComponent(sidStr)}`}
+						ctaLabel="Review captures"
+						ctaTo={`/console/review?spaceId=${encodeURIComponent(sidStr)}`}
 						eyebrow="In this space"
 						emptySubtext="Capture something or invite people to see shared activity here."
 						emptyText="No recent moves in this space"
@@ -683,6 +703,7 @@ export const SpaceOverviewPage = () => {
 						linkState={chatWorkspace ? { chatWorkspace } : undefined}
 						railHighlightActive={decisionCtaHovered}
 						railHighlightMode={decisionRailHighlightMode}
+						scope="space"
 						streamGroupByAttention
 						surfaceVariant="spaceWarm"
 						title="What’s happening"
@@ -702,85 +723,29 @@ export const SpaceOverviewPage = () => {
 								className="mt-1 font-display text-xl font-bold tracking-tight text-foreground"
 								id="space-members"
 							>
-								Members
+								Participants
 							</h2>
 						</div>
 						{canManageMemberRoles ? (
 							<Link
 								className={ghostButton}
-								to={`/console/settings/spaces/${encodeURIComponent(sidStr)}#space-settings-members`}
+								to={`/console/spaces/${encodeURIComponent(sidStr)}/members`}
 							>
-								Invite users
+								View all
 							</Link>
 						) : null}
 					</div>
-					<ul className="divide-y divide-[rgba(95,105,125,0.1)] px-1 pb-2 pt-1">
-						{(members ?? []).length === 0 ? (
-							<li className="p-6 text-sm text-muted-foreground">
-								Just you for now.
-							</li>
-						) : null}
-						{(members ?? []).slice(0, 8).map((m) => {
-							const isMe =
-								user?.id != null && Number(m.user_id) === Number(user.id);
-							const roleLabel = formatMemberRole(m.role);
-							const isOwner = (m.role ?? "").toLowerCase().includes("owner");
-							const label =
-								m.name?.trim() || m.email?.trim() || `Member ${m.user_id}`;
-							const initial = label.charAt(0).toUpperCase();
-							const paletteClass =
-								memberAvatarPalettes[
-									Math.abs(Number(m.user_id)) % memberAvatarPalettes.length
-								];
-							return (
-								<li
-									className={[
-										"group mx-1.5 flex items-center gap-5 rounded-xl px-4 py-4 text-sm transition-[background-color,box-shadow,transform] duration-150 ease-out sm:px-5 sm:py-4",
-										isMe
-											? "bg-[rgba(120,154,124,0.1)] ring-1 ring-inset ring-[rgba(120,154,124,0.18)]"
-											: isOwner
-												? "bg-[rgba(125,105,85,0.07)] ring-1 ring-inset ring-[rgba(125,105,85,0.12)]"
-												: "bg-transparent",
-										"hover:-translate-y-px hover:bg-[rgba(255,255,255,0.65)] hover:shadow-sm",
-									].join(" ")}
-									key={m.user_id}
-								>
-									<span
-										aria-hidden
-										className={[
-											"inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold uppercase tracking-tight shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] transition-transform duration-150 group-hover:scale-[1.02]",
-											isMe
-												? "bg-[rgba(120,154,124,0.32)] text-[#1f3d26] ring-2 ring-[rgba(120,154,124,0.28)]"
-												: paletteClass,
-										].join(" ")}
-									>
-										{initial}
-									</span>
-									<div className="min-w-0 flex-1">
-										<p className="truncate text-base font-semibold tracking-tight text-foreground">
-											{label}
-											{isMe ? (
-												<span className="ml-2 inline-flex rounded-full bg-[rgba(120,154,124,0.28)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#1f3d26] ring-1 ring-[rgba(90,130,98,0.25)]">
-													You
-												</span>
-											) : null}
-											{isOwner ? (
-												<span className="ml-2 inline-flex rounded-full bg-[rgba(125,95,70,0.18)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#4a3220] ring-1 ring-[rgba(110,80,55,0.2)]">
-													Owner
-												</span>
-											) : null}
-										</p>
-										<p className="mt-1 truncate text-sm font-medium text-muted-foreground">
-											{roleLabel}
-										</p>
-									</div>
-								</li>
-							);
-						})}
-					</ul>
 					<SpaceParticipantsPanel
+						description="Registered users, pending invites, and placeholders Ceits can use for captures and splits."
+						emptyText="No participants yet. Capture something, review a split, or invite someone to start the people list."
+						maxVisible={6}
 						onParticipantSaved={handleParticipantSaved}
 						participants={participants}
+						readOnly
+						registeredFirst
+						showAliases={false}
+						showHeader={false}
+						stateOnly
 						spaceId={numericSpaceId}
 					/>
 				</section>

@@ -56,6 +56,12 @@ const recurringIntervalChoices = (): StandardRecurringInterval[] =>
 		? [...STANDARD_RECURRING_INTERVALS, ...TEST_RECURRING_INTERVALS]
 		: [...STANDARD_RECURRING_INTERVALS];
 
+const sourceCaptureReviewHref = (
+	spaceId: string | number,
+	sourceDocumentId: number,
+) =>
+	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(sourceDocumentId))}`;
+
 type PeriodPreset = "day" | "week" | "month" | "year";
 
 const periodOptions: { key: PeriodPreset; label: string; hint: string }[] = [
@@ -253,8 +259,14 @@ const annualRunsMultiplier = (intervalRaw?: string) => {
 	}
 };
 
-export const RecurringSchedulesPage = () => {
-	useConsoleHeaderTitle("Recurring", null);
+export const RecurringSchedulesPage = ({
+	spaceId,
+	spaceName,
+}: {
+	spaceId?: string | number;
+	spaceName?: string | null;
+}) => {
+	useConsoleHeaderTitle("Recurring", spaceName ?? null);
 	const { formatMoney, formatDateTime } = useUserFormat();
 	const [items, setItems] = useState<RecurringExpense[] | null>(null);
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -289,7 +301,10 @@ export const RecurringSchedulesPage = () => {
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
-			const data = await apiClient.finances.recurring.list();
+			const data =
+				spaceId != null
+					? await apiClient.spaces.recurring.list(spaceId)
+					: await apiClient.finances.recurring.list();
 			setItems(data);
 		} catch (err) {
 			setItems(null);
@@ -301,7 +316,7 @@ export const RecurringSchedulesPage = () => {
 		} finally {
 			setIsLoading(false);
 		}
-	}, []);
+	}, [spaceId]);
 
 	const upsertRecurringLocal = useCallback((nextRow: RecurringExpense) => {
 		setItems((prev) => {
@@ -337,7 +352,10 @@ export const RecurringSchedulesPage = () => {
 		setSuccessMessage(null);
 		setErrorMessage(null);
 		try {
-			const updated = await apiClient.finances.recurring.pause(id);
+			const updated =
+				spaceId != null
+					? await apiClient.spaces.recurring.pause(spaceId, id)
+					: await apiClient.finances.recurring.pause(id);
 			upsertRecurringLocal(updated);
 			setSuccessMessage(`Paused "${name}".`);
 			await load();
@@ -357,7 +375,10 @@ export const RecurringSchedulesPage = () => {
 		setSuccessMessage(null);
 		setErrorMessage(null);
 		try {
-			const updated = await apiClient.finances.recurring.resume(id);
+			const updated =
+				spaceId != null
+					? await apiClient.spaces.recurring.resume(spaceId, id)
+					: await apiClient.finances.recurring.resume(id);
 			upsertRecurringLocal(updated);
 			setSuccessMessage(
 				row.name?.trim()
@@ -389,7 +410,11 @@ export const RecurringSchedulesPage = () => {
 		setSuccessMessage(null);
 		setErrorMessage(null);
 		try {
-			await apiClient.finances.recurring.remove(id);
+			if (spaceId != null) {
+				await apiClient.spaces.recurring.remove(spaceId, id);
+			} else {
+				await apiClient.finances.recurring.remove(id);
+			}
 			removeRecurringLocal(id);
 			setSuccessMessage(`Deleted "${name}".`);
 			await load();
@@ -450,13 +475,17 @@ export const RecurringSchedulesPage = () => {
 		setErrorMessage(null);
 		setSuccessMessage(null);
 		try {
-			const updated = await apiClient.finances.recurring.update(id, {
+			const payload = {
 				...row,
 				name: trimmedName,
 				amount: editDraft.amount,
 				interval: editDraft.interval,
 				tag_label: editDraft.tagLabel.trim() || undefined,
-			});
+			};
+			const updated =
+				spaceId != null
+					? await apiClient.spaces.recurring.update(spaceId, id, payload)
+					: await apiClient.finances.recurring.update(id, payload);
 			upsertRecurringLocal(updated);
 			setEditingId(null);
 			setEditDraft(null);
@@ -501,12 +530,20 @@ export const RecurringSchedulesPage = () => {
 		setSuccessMessage(null);
 		setErrorMessage(null);
 		try {
-			const created = await apiClient.finances.recurring.create({
+			const payload = {
 				name: trimmedName,
 				amount: createDraft.amount,
 				interval: createDraft.interval,
 				tag_label: createDraft.tagLabel.trim() || "recurring",
-			});
+				space_id:
+					spaceId != null && Number.isFinite(Number(spaceId))
+						? Number(spaceId)
+						: undefined,
+			};
+			const created =
+				spaceId != null
+					? await apiClient.spaces.recurring.create(spaceId, payload)
+					: await apiClient.finances.recurring.create(payload);
 			upsertRecurringLocal(created);
 			setCreateDraft(createEmptyRecurringDraft());
 			setCreateOpen(false);
@@ -1416,6 +1453,7 @@ export const RecurringSchedulesPage = () => {
 							const label = row.name?.trim() || "Schedule";
 							const tag = row.tag_label ?? row.tagLabel;
 							const cadence = recurringIntervalLabel(row.interval);
+							const sourceDocumentId = row.source_document_id;
 							const projectedInPeriod =
 								id != null ? (upcomingCountByRecurringId.get(id) ?? 0) : 0;
 							const recurringEntity = toRecurringScheduleEntity(row, {
@@ -1481,6 +1519,34 @@ export const RecurringSchedulesPage = () => {
 														<Tag aria-hidden className={miniIconClass} />
 														{tag}
 													</span>
+												) : null}
+												{spaceId != null && sourceDocumentId != null ? (
+													<>
+														<a
+															className={[
+																metaPillClass,
+																"border-blue-200/80 bg-blue-50/70 text-blue-900 hover:bg-blue-100",
+															].join(" ")}
+															href={sourceCaptureReviewHref(
+																spaceId,
+																sourceDocumentId,
+															)}
+														>
+															Source capture #{sourceDocumentId}
+														</a>
+														<a
+															className={[
+																metaPillClass,
+																"border-blue-200/80 bg-white/85 text-blue-900 hover:bg-blue-50",
+															].join(" ")}
+															href={sourceCaptureReviewHref(
+																spaceId,
+																sourceDocumentId,
+															)}
+														>
+															Review capture
+														</a>
+													</>
 												) : null}
 											</div>
 											<div className="space-y-1.5 text-xs text-muted-foreground">

@@ -39,6 +39,7 @@ export const SpacePendingInvitesBlock = ({
 	const titleId = useId();
 	const [shareToken, setShareToken] = useState<string | null>(null);
 	const [resendBusyId, setResendBusyId] = useState<number | null>(null);
+	const [cancelBusyId, setCancelBusyId] = useState<number | null>(null);
 
 	const closeShare = useCallback(() => {
 		setShareToken(null);
@@ -78,6 +79,19 @@ export const SpacePendingInvitesBlock = ({
 			await onListChanged();
 		} finally {
 			setResendBusyId(null);
+		}
+	};
+
+	const handleCancel = async (inviteId: number) => {
+		if (spaceId == null || tenantId == null) return;
+		setCancelBusyId(inviteId);
+		try {
+			await apiClient.spaces.cancelSpaceInvite(spaceId, inviteId, {
+				tenantId,
+			});
+			await onListChanged();
+		} finally {
+			setCancelBusyId(null);
 		}
 	};
 
@@ -137,7 +151,9 @@ export const SpacePendingInvitesBlock = ({
 							<div className="flex shrink-0 flex-wrap gap-1">
 								<button
 									className="inline-flex h-7 items-center rounded-md border border-border px-2 text-[10px] font-medium hover:bg-accent disabled:opacity-50"
-									disabled={disabled || resendBusyId === p.id}
+									disabled={
+										disabled || resendBusyId === p.id || cancelBusyId === p.id
+									}
 									onClick={() => setShareToken(p.token)}
 									type="button"
 								>
@@ -145,11 +161,23 @@ export const SpacePendingInvitesBlock = ({
 								</button>
 								<button
 									className="inline-flex h-7 items-center rounded-md border border-border px-2 text-[10px] font-medium hover:bg-accent disabled:opacity-50"
-									disabled={disabled || resendBusyId === p.id}
+									disabled={
+										disabled || resendBusyId === p.id || cancelBusyId === p.id
+									}
 									onClick={() => void handleResend(p.id)}
 									type="button"
 								>
 									{resendBusyId === p.id ? "…" : "Resend"}
+								</button>
+								<button
+									className="inline-flex h-7 items-center rounded-md border border-destructive/30 px-2 text-[10px] font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+									disabled={
+										disabled || resendBusyId === p.id || cancelBusyId === p.id
+									}
+									onClick={() => void handleCancel(p.id)}
+									type="button"
+								>
+									{cancelBusyId === p.id ? "…" : "Cancel"}
 								</button>
 							</div>
 						</div>

@@ -173,7 +173,7 @@ export const RegisterPage = () => {
 			return;
 		}
 		if (inviteOnly) {
-			navigate(`/console/chat?invite=${encodeURIComponent(inviteOnly)}`, {
+			navigate(`/join?token=${encodeURIComponent(inviteOnly)}`, {
 				replace: true,
 			});
 			return;

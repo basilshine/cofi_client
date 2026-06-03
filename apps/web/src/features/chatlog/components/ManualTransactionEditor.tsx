@@ -186,7 +186,7 @@ export const ManualTransactionEditor = ({
 	onSaveDraft,
 	variant = "default",
 	anchorExpenseId,
-	onInsertLineInDiscussion,
+	onInsertLineInChat,
 	addLineToChatDisabled,
 	showBottomActions = true,
 	currencyCode = "USD",
@@ -201,12 +201,12 @@ export const ManualTransactionEditor = ({
 	onAddItem: () => void;
 	onRemoveItem: (id: string) => void;
 	onSaveDraft: () => void;
-	/** Expense thread sidebar: single column, remove at top */
-	variant?: "default" | "thread";
+	/** Compact side panel: single column, remove at top */
+	variant?: "default" | "panel";
 	/** When set with `anchorExpenseId`, each line gets a stable DOM id for deep links. */
 	anchorExpenseId?: string | number;
-	/** Thread: insert a markdown line link into discussion and focus chat (parent handles mode switch). */
-	onInsertLineInDiscussion?: (lineOneBased: number) => void;
+	/** Insert a line reference into chat and focus the composer (parent handles mode switch). */
+	onInsertLineInChat?: (lineOneBased: number) => void;
 	/**
 	 * When set, applies only to “Add to chat” (not other fields). Defaults to `disabled`.
 	 * Use when draft editing is owner-only but line links should be allowed for other space roles.
@@ -217,15 +217,15 @@ export const ManualTransactionEditor = ({
 	tagSuggestions?: string[];
 	highlightedLineId?: string | null;
 }) => {
-	const isThread = variant === "thread";
-	const threadInputClass =
+	const isPanel = variant === "panel";
+	const panelInputClass =
 		"h-10 w-full min-w-0 rounded-md border border-border bg-white dark:bg-background px-3 text-sm text-foreground shadow-sm transition placeholder:text-muted-foreground/70 hover:border-border/80 focus:border-primary/45 focus:ring-2 focus:ring-primary/20 focus:outline-none";
-	const threadAmountInputClass =
+	const panelAmountInputClass =
 		"h-10 w-full min-w-0 rounded-md border border-border bg-white dark:bg-background px-3 pr-14 text-sm tabular-nums text-foreground shadow-sm transition placeholder:text-muted-foreground/70 hover:border-border/80 focus:border-primary/45 focus:ring-2 focus:ring-primary/20 focus:outline-none";
 
 	return (
 		<div className="space-y-3">
-			{!isThread ? (
+			{!isPanel ? (
 				<label className="grid gap-1">
 					<span className="text-xs font-medium text-muted-foreground">
 						Description (optional)
@@ -258,7 +258,7 @@ export const ManualTransactionEditor = ({
 							return (
 								<div
 									className={
-										isThread
+										isPanel
 											? [
 													"scroll-mt-28 rounded-xl border bg-background p-3.5 shadow-sm transition",
 													isHighlighted
@@ -270,19 +270,19 @@ export const ManualTransactionEditor = ({
 									id={lineId}
 									key={it.id}
 								>
-									{isThread ? (
+									{isPanel ? (
 										<div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
 											<span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
 												Line {idx + 1}
 											</span>
 											<div className="flex flex-wrap items-center justify-end gap-1.5">
-												{onInsertLineInDiscussion != null &&
+												{onInsertLineInChat != null &&
 												anchorExpenseId != null ? (
 													<button
-														aria-label={`Add line ${idx + 1} link to discussion`}
+														aria-label={`Add line ${idx + 1} link to chat`}
 														className="shrink-0 rounded-md border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:opacity-50"
 														disabled={addLineToChatDisabled ?? disabled}
-														onClick={() => onInsertLineInDiscussion(idx + 1)}
+														onClick={() => onInsertLineInChat(idx + 1)}
 														type="button"
 													>
 														Add to chat
@@ -304,8 +304,8 @@ export const ManualTransactionEditor = ({
 										<input
 											aria-label={`Item ${idx + 1} name`}
 											className={
-												isThread
-													? threadInputClass
+												isPanel
+													? panelInputClass
 													: "h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm text-foreground"
 											}
 											disabled={disabled}
@@ -316,14 +316,14 @@ export const ManualTransactionEditor = ({
 											type="text"
 											value={it.name}
 										/>
-										{isThread ? (
+										{isPanel ? (
 											<>
 												<div className="relative">
 													<input
 														aria-label={`Item ${idx + 1} amount`}
 														className={
-															isThread
-																? threadAmountInputClass
+															isPanel
+																? panelAmountInputClass
 																: "h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 pr-14 text-sm tabular-nums text-foreground"
 														}
 														disabled={disabled}
@@ -359,8 +359,8 @@ export const ManualTransactionEditor = ({
 												<input
 													aria-label={`Item ${idx + 1} line note`}
 													className={
-														isThread
-															? threadInputClass
+														isPanel
+															? panelInputClass
 															: "h-10 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm text-foreground"
 													}
 													disabled={disabled}
@@ -446,7 +446,7 @@ export const ManualTransactionEditor = ({
 										onIntervalChange={(v) =>
 											onChangeItem(it.id, { recurring_interval: v })
 										}
-										variant={isThread ? "thread" : "default"}
+										variant={isPanel ? "panel" : "default"}
 									/>
 								</div>
 							);
@@ -457,7 +457,7 @@ export const ManualTransactionEditor = ({
 				{showBottomActions ? (
 					<div
 						className={
-							isThread
+							isPanel
 								? "mt-3 flex flex-col gap-2"
 								: "mt-3 flex flex-wrap items-center gap-2"
 						}
@@ -465,7 +465,7 @@ export const ManualTransactionEditor = ({
 						<button
 							aria-label="Add expense item"
 							className={
-								isThread
+								isPanel
 									? "inline-flex h-10 w-full items-center justify-center rounded-md border border-border px-4 text-sm font-medium hover:bg-accent disabled:opacity-50"
 									: "inline-flex h-10 items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-accent disabled:opacity-50"
 							}
@@ -478,7 +478,7 @@ export const ManualTransactionEditor = ({
 						<button
 							aria-label="Save manual draft"
 							className={
-								isThread
+								isPanel
 									? "inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
 									: "inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
 							}

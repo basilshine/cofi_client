@@ -1,5 +1,14 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Camera, Mic, Square, Upload, X } from "lucide-react";
+import {
+	Camera,
+	Clipboard,
+	Image,
+	Mic,
+	Send,
+	Square,
+	Upload,
+	X,
+} from "lucide-react";
 import {
 	forwardRef,
 	useCallback,
@@ -102,6 +111,12 @@ type Props = {
 	onStopRecording: () => void | Promise<void>;
 	onCancelRecording?: () => void;
 	surface?: "chat" | "dock";
+};
+
+type PhotoDraft = {
+	file: File;
+	objectUrl: string;
+	source: "paste" | "picker";
 };
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -211,9 +226,12 @@ export const SmartTextareaComposer = forwardRef<
 		const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
 		const [selectedChip, setSelectedChip] = useState<string | null>(null);
 		const [isStoppingVoice, setIsStoppingVoice] = useState(false);
+		const [photoDraft, setPhotoDraft] = useState<PhotoDraft | null>(null);
+		const [photoError, setPhotoError] = useState<string | null>(null);
 
 		const textareaRef = useRef<HTMLTextAreaElement>(null);
 		const photoInputRef = useRef<HTMLInputElement>(null);
+		const photoDraftUrlRef = useRef<string | null>(null);
 		const previousHomeStateRef = useRef(homeState);
 
 		const spring = reduceMotion
@@ -226,11 +244,23 @@ export const SmartTextareaComposer = forwardRef<
 
 		// ── Internal navigation ──────────────────────────────────────────────
 
+		const clearPhotoDraft = useCallback(() => {
+			if (photoDraftUrlRef.current) {
+				URL.revokeObjectURL(photoDraftUrlRef.current);
+				photoDraftUrlRef.current = null;
+			}
+			setPhotoDraft(null);
+			setPhotoError(null);
+		}, []);
+
 		const resetDraft = useCallback(() => {
 			setTextInput("");
 			setSelectedPeriod(null);
 			setSelectedChip(null);
-		}, []);
+			clearPhotoDraft();
+		}, [clearPhotoDraft]);
+
+		useEffect(() => clearPhotoDraft, [clearPhotoDraft]);
 
 		useEffect(() => {
 			const previousHomeState = previousHomeStateRef.current;
@@ -359,12 +389,54 @@ export const SmartTextareaComposer = forwardRef<
 
 		// ── Submit handlers ──────────────────────────────────────────────────
 
+		const setPhotoFileDraft = useCallback(
+			(file: File, source: PhotoDraft["source"]) => {
+				if (!file.type.startsWith("image/")) {
+					setPhotoError("Paste or choose an image file.");
+					return;
+				}
+				const objectUrl = URL.createObjectURL(file);
+				if (photoDraftUrlRef.current) {
+					URL.revokeObjectURL(photoDraftUrlRef.current);
+				}
+				photoDraftUrlRef.current = objectUrl;
+				setPhotoError(null);
+				setPhotoDraft({ file, objectUrl, source });
+				setNavStack((prev) =>
+					state === "expense_photo" ? prev : [...prev, state],
+				);
+				setState("expense_photo");
+				onPurposeChange?.("capture");
+			},
+			[onPurposeChange, state],
+		);
+
+		const handleComposerPaste = useCallback(
+			(e: React.ClipboardEvent<HTMLDivElement | HTMLTextAreaElement>) => {
+				if (disabled) return;
+				const items = Array.from(e.clipboardData.items ?? []);
+				const imageItem = items.find((item) => item.type.startsWith("image/"));
+				if (!imageItem) return;
+				const file = imageItem.getAsFile();
+				if (!file) return;
+				e.preventDefault();
+				e.stopPropagation();
+				setPhotoFileDraft(file, "paste");
+			},
+			[disabled, setPhotoFileDraft],
+		);
+
 		const handlePhotoFile = (file: File) => {
+			setPhotoFileDraft(file, "picker");
+		};
+
+		const handlePhotoSubmit = () => {
+			if (!photoDraft) return;
 			onComposerSubmit({
 				composer_mode: "expense",
 				expense_input_type: "photo",
 				space_id: spaceId,
-				file,
+				file: photoDraft.file,
 			});
 			cancelToIdle();
 		};
@@ -517,6 +589,7 @@ export const SmartTextareaComposer = forwardRef<
 				disabled={disabled}
 				onChange={(e) => setTextInput(e.target.value)}
 				onKeyDown={(e) => handleTextKeyDown(e, onSubmit)}
+				onPaste={handleComposerPaste}
 				placeholder={placeholder}
 				rows={2}
 				value={textInput}
@@ -741,17 +814,87 @@ export const SmartTextareaComposer = forwardRef<
 							</p>
 						</div>
 					</div>
-					<button
-						aria-label="Upload receipt photo"
-						className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-						disabled={disabled}
-						onClick={() => photoInputRef.current?.click()}
-						tabIndex={0}
-						type="button"
-					>
-						<Upload className="h-3.5 w-3.5" />
-						Choose image
-					</button>
+					{photoDraft ? (
+						<div className="space-y-3">
+							<div className="overflow-hidden rounded-xl border border-[rgba(64,91,118,0.18)] bg-white/78 shadow-sm">
+								<div className="relative aspect-[16/9] max-h-48 w-full bg-[rgba(236,244,249,0.72)]">
+									<img
+										alt="Selected receipt preview"
+										className="h-full w-full object-contain"
+										src={photoDraft.objectUrl}
+									/>
+								</div>
+								<div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
+									<div className="min-w-0">
+										<p className="truncate text-xs font-semibold text-foreground">
+											{photoDraft.file.name || "Pasted image"}
+										</p>
+										<p className="text-[11px] text-muted-foreground">
+											{photoDraft.source === "paste"
+												? "Pasted from clipboard"
+												: "Selected file"}{" "}
+											· {(photoDraft.file.size / 1024).toFixed(0)} KB
+										</p>
+									</div>
+									<button
+										aria-label="Remove selected receipt image"
+										className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/80 px-2.5 text-[11px] font-semibold text-muted-foreground shadow-sm transition hover:bg-white hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										disabled={disabled}
+										onClick={clearPhotoDraft}
+										type="button"
+									>
+										<X className="h-3.5 w-3.5" />
+										Remove
+									</button>
+								</div>
+							</div>
+							<div className="flex flex-wrap justify-between gap-2">
+								<button
+									aria-label="Choose another receipt image"
+									className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(64,91,118,0.18)] bg-white/80 px-3.5 text-xs font-semibold text-[#34556f] shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									disabled={disabled}
+									onClick={() => photoInputRef.current?.click()}
+									type="button"
+								>
+									<Image className="h-3.5 w-3.5" />
+									Replace
+								</button>
+								<button
+									aria-label="Send receipt image to review"
+									className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									disabled={disabled}
+									onClick={handlePhotoSubmit}
+									type="button"
+								>
+									<Send className="h-3.5 w-3.5" />
+									Send to review
+								</button>
+							</div>
+						</div>
+					) : (
+						<div className="flex flex-wrap gap-2">
+							<button
+								aria-label="Upload receipt photo"
+								className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+								disabled={disabled}
+								onClick={() => photoInputRef.current?.click()}
+								tabIndex={0}
+								type="button"
+							>
+								<Upload className="h-3.5 w-3.5" />
+								Choose image
+							</button>
+							<span className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(64,91,118,0.16)] bg-white/62 px-3 text-xs font-medium text-muted-foreground">
+								<Clipboard className="h-3.5 w-3.5" />
+								or paste a screenshot
+							</span>
+						</div>
+					)}
+					{photoError ? (
+						<p className="mt-2 rounded-lg border border-destructive/25 bg-destructive/10 px-2.5 py-1.5 text-xs text-destructive">
+							{photoError}
+						</p>
+					) : null}
 				</div>
 				<input
 					ref={photoInputRef}
@@ -998,6 +1141,7 @@ export const SmartTextareaComposer = forwardRef<
 					}
 				>
 					<div
+						onPaste={handleComposerPaste}
 						className={
 							surface === "dock"
 								? "rounded-[1rem] bg-card/96 p-3 shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08),inset_0_1px_2px_rgba(44,32,18,0.04)] ring-1 ring-white/25 dark:bg-card/95 dark:ring-white/5"

@@ -50,25 +50,6 @@ const normalizeRecurringLabel = (
 	return trimmed;
 };
 
-type ApprovalReviewItem = {
-	kind: "expense_thread_approval";
-	thread_id: number;
-	expense_id: number;
-	space_id: number;
-	space_name: string;
-	label: string;
-	total: number;
-	my_share: number;
-	currency: string;
-	updated_at: string;
-};
-
-const isApprovalItem = (it: unknown): it is ApprovalReviewItem =>
-	it != null &&
-	typeof it === "object" &&
-	"kind" in it &&
-	(it as { kind: string }).kind === "expense_thread_approval";
-
 export type OverviewRightRailProps = {
 	dashboardData: DashboardResponse | null;
 	chatWorkspace: ChatWorkspaceScope | null;
@@ -102,23 +83,6 @@ const IconBell = ({ className }: { className?: string }) => (
 	>
 		<title>Bell</title>
 		<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21a2 2 0 0 0 4 0" />
-	</svg>
-);
-
-const IconClock = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-	>
-		<title>Clock</title>
-		<circle cx="12" cy="12" r="9" />
-		<path d="M12 7v5l3 2" />
 	</svg>
 );
 
@@ -179,9 +143,6 @@ export const OverviewRightRail = ({
 	const pendingDrafts = (dashboardData?.pending_drafts ?? []).filter(
 		(d) => spaceId == null || Number(d.space_id) === Number(spaceId),
 	);
-	const reviewItems = (dashboardData?.review_queue?.items ?? [])
-		.flatMap((it) => (isApprovalItem(it) ? [it] : []))
-		.filter((it) => spaceId == null || Number(it.space_id) === Number(spaceId));
 
 	const upcomingSoonCount = recurring.filter((r) => {
 		const d = daysUntil(r.next_due);
@@ -200,21 +161,6 @@ export const OverviewRightRail = ({
 	const deltaRatio =
 		monthly?.delta_ratio_my_share ?? monthly?.delta_ratio ?? null;
 
-	const splitsHref =
-		spaceId != null
-			? `/console/spaces/${encodeURIComponent(String(spaceId))}/splits`
-			: "/console/spaces";
-	const reviewPrimarySpace = reviewItems
-		.slice()
-		.sort(
-			(left, right) =>
-				Date.parse(right.updated_at) - Date.parse(left.updated_at),
-		)[0];
-	const reviewPrimarySplitsHref =
-		reviewPrimarySpace != null
-			? `/console/spaces/${encodeURIComponent(String(reviewPrimarySpace.space_id))}/splits`
-			: splitsHref;
-
 	const recurringHref =
 		spaceId != null
 			? `/console/spaces/${encodeURIComponent(String(spaceId))}/recurring`
@@ -226,10 +172,8 @@ export const OverviewRightRail = ({
 
 	const involvedSpaces = [
 		...new Set(
-			[
-				...reviewItems.map((item) => item.space_name),
-				...pendingDrafts.map((item) => item.space_name),
-			]
+			pendingDrafts
+				.map((item) => item.space_name)
 				.map((value) => (value ?? "").trim())
 				.filter(Boolean),
 		),
@@ -243,10 +187,7 @@ export const OverviewRightRail = ({
 			: spaceName
 				? `Involved space: ${spaceName}`
 				: undefined;
-	const actionUpdatedAt = [
-		...reviewItems.map((item) => item.updated_at),
-		...pendingDrafts.map((item) => item.updated_at),
-	]
+	const actionUpdatedAt = [...pendingDrafts.map((item) => item.updated_at)]
 		.filter(
 			(value): value is string => typeof value === "string" && value.length > 0,
 		)
@@ -271,16 +212,6 @@ export const OverviewRightRail = ({
 			to: recurringHref,
 		});
 	}
-	if (reviewItems.length > 0) {
-		attentionItems.push({
-			key: "splits",
-			label: `${reviewItems.length} split${reviewItems.length === 1 ? "" : "s"} for review`,
-			detail: "Confirm shares and approve pending threads.",
-			tone: "primary",
-			icon: <IconClock className="h-3.5 w-3.5 shrink-0" />,
-			to: reviewPrimarySplitsHref,
-		});
-	}
 	if (pendingDrafts.length > 0) {
 		attentionItems.push({
 			key: "drafts",
@@ -294,60 +225,41 @@ export const OverviewRightRail = ({
 	const attentionPriority = (tone: "warn" | "primary" | "muted"): number =>
 		tone === "primary" ? 0 : tone === "warn" ? 1 : 2;
 	const actionSummary =
-		reviewItems.length > 0
+		pendingDrafts.length > 0
 			? {
-					kind: "splits" as const,
-					title: `${reviewItems.length} split${reviewItems.length === 1 ? "" : "s"} need confirmation`,
+					kind: "drafts" as const,
+					title: `${pendingDrafts.length} draft${pendingDrafts.length === 1 ? "" : "s"} waiting review`,
 					description: isSpaceOverview
-						? `Confirm these so shares and balances in ${spaceName ?? "this space"} stay accurate.`
-						: spaceName != null
-							? `Resolve split approvals in ${spaceName} so expenses can close cleanly.`
-							: "Resolve split approvals to keep household balances accurate.",
-					ctaLabel: isSpaceOverview
-						? "Open decision queue"
-						: spaceName
-							? `Review ${spaceName} splits`
-							: "Review all splits",
-					ctaTo:
-						isSpaceOverview && spaceId != null
-							? `/console/review?spaceId=${encodeURIComponent(String(spaceId))}`
-							: reviewPrimarySplitsHref,
+						? `Finish these in ${spaceName ?? "this space"} so they can post to the ledger.`
+						: "Confirm parsed expenses so they move from draft to recorded.",
+					ctaLabel: isSpaceOverview ? "Review drafts" : "Review drafts",
+					ctaTo: isSpaceOverview
+						? `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}&view=activity`
+						: draftsHref,
 				}
-			: pendingDrafts.length > 0
+			: upcomingSoonCount > 0
 				? {
-						kind: "drafts" as const,
-						title: `${pendingDrafts.length} draft${pendingDrafts.length === 1 ? "" : "s"} waiting review`,
+						kind: "bills" as const,
+						title: `${upcomingSoonCount} bill${upcomingSoonCount === 1 ? "" : "s"} due soon`,
 						description: isSpaceOverview
-							? `Finish these in ${spaceName ?? "this space"} so they can post to the ledger.`
-							: "Confirm parsed expenses so they move from draft to recorded.",
-						ctaLabel: isSpaceOverview ? "Review drafts" : "Review drafts",
-						ctaTo: isSpaceOverview
-							? `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}&view=activity`
-							: draftsHref,
+							? "Recurring charges with dates in the next week."
+							: "Check upcoming recurring payments and avoid late surprises.",
+						ctaLabel: "Open recurring",
+						ctaTo: recurringHref,
 					}
-				: upcomingSoonCount > 0
-					? {
-							kind: "bills" as const,
-							title: `${upcomingSoonCount} bill${upcomingSoonCount === 1 ? "" : "s"} due soon`,
-							description: isSpaceOverview
-								? "Recurring charges with dates in the next week."
-								: "Check upcoming recurring payments and avoid late surprises.",
-							ctaLabel: "Open recurring",
-							ctaTo: recurringHref,
-						}
-					: {
-							kind: "none" as const,
-							title: isSpaceOverview
-								? "Nothing needs you here"
-								: "No urgent actions right now",
-							description: isSpaceOverview
-								? `You’re up to date in ${spaceName ?? "this space"}. Capture new spending anytime.`
-								: "Everything is in good shape. You can still review spaces for context.",
-							ctaLabel: isSpaceOverview ? "Go to chat" : "Open spaces",
-							ctaTo: isSpaceOverview
-								? `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}`
-								: "/console/spaces",
-						};
+				: {
+						kind: "none" as const,
+						title: isSpaceOverview
+							? "Nothing needs you here"
+							: "No urgent actions right now",
+						description: isSpaceOverview
+							? `You’re up to date in ${spaceName ?? "this space"}. Capture new spending anytime.`
+							: "Everything is in good shape. You can still review spaces for context.",
+						ctaLabel: isSpaceOverview ? "Go to chat" : "Open spaces",
+						ctaTo: isSpaceOverview
+							? `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}`
+							: "/console/spaces",
+					};
 	const attentionItemsFiltered = isSpaceOverview
 		? []
 		: attentionItems
@@ -373,6 +285,11 @@ export const OverviewRightRail = ({
 			dueLabel,
 			dueSoonLabel,
 			spaceName: item.space_name ?? null,
+			sourceCaptureTo:
+				item.space_id != null && item.source_document_id != null
+					? `/console/review?spaceId=${encodeURIComponent(String(item.space_id))}&sourceDocumentId=${encodeURIComponent(String(item.source_document_id))}`
+					: null,
+			sourceDocumentId: item.source_document_id ?? null,
 			isUrgent: dueInDays != null && dueInDays >= 0 && dueInDays <= 7,
 		};
 	});
@@ -429,7 +346,7 @@ export const OverviewRightRail = ({
 					onCtaHoverChange={
 						isSpaceOverview ? onSpaceOverviewCtaHover : undefined
 					}
-					sectionLabel={isSpaceOverview ? "Decision queue" : "Action"}
+					sectionLabel={isSpaceOverview ? "Capture queue" : "Action"}
 					title={actionSummary.title}
 				/>
 			</div>

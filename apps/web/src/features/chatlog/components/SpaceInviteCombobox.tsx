@@ -159,6 +159,11 @@ export const SpaceInviteCombobox = ({
 												typing an address below.
 											</span>
 										)}
+										{u.relationship_label ? (
+											<span className="mt-0.5 block text-[10px] text-muted-foreground/80">
+												{u.relationship_label}
+											</span>
+										) : null}
 									</span>
 								</button>
 							</li>

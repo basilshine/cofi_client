@@ -75,7 +75,7 @@ export const SpaceScopedMembersSidebarBridge = () => {
 			spaces,
 			selectedSpaceId,
 			onSelectSpace: (id) => setSelectedSpaceId(id),
-			onClearThread: () => {},
+			onClearSelectedExpense: () => {},
 			spaceHasUnread: () => false,
 			selectedSpace,
 			members: safeMembers,

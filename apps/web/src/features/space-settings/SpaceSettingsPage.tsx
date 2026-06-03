@@ -217,6 +217,16 @@ export const SpaceSettingsPage = ({
 		},
 		[],
 	);
+	const handleParticipantDeleted = useCallback(
+		(participantId: string | number) => {
+			setParticipants((current) =>
+				current
+					? current.filter((item) => String(item.id) !== String(participantId))
+					: current,
+			);
+		},
+		[],
+	);
 
 	useEffect(() => {
 		if (location.hash !== "#space-settings-members") return;
@@ -342,11 +352,17 @@ export const SpaceSettingsPage = ({
 							/>
 							<div className="overflow-hidden rounded-xl border border-border/70 bg-muted/20">
 								<SpaceParticipantsPanel
+									canLinkParticipants={isOwner}
+									canRemoveParticipants={isOwner}
+									description="Registered users, invited people, and placeholders available for captures and splits."
+									maxVisible={null}
+									onParticipantDeleted={handleParticipantDeleted}
 									onParticipantSaved={handleParticipantSaved}
 									participants={participants}
 									selectedParticipantId={selectedParticipantId}
 									showTopBorder={false}
 									spaceId={numericSpaceId}
+									title="Participants"
 								/>
 							</div>
 						</div>

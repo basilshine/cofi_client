@@ -2,9 +2,11 @@ import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { apiClient } from "../../shared/lib/apiClient";
 import { staggerContainer, staggerItem } from "../../shared/lib/appMotion";
 import { marketingUrl } from "../../shared/lib/ceitsMarketingUrl";
 import {
+	clearPendingInviteToken,
 	persistInviteFromSearchParams,
 	writePendingInviteToken,
 } from "../../shared/lib/pendingInviteToken";
@@ -42,6 +44,11 @@ export const InviteJoinPage = () => {
 	const { isAuthenticated, isLoading: authLoading } = useAuth();
 	const [preview, setPreview] = useState<InvitePreviewResponse | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
+	const [acceptError, setAcceptError] = useState<string | null>(null);
+	const [accepting, setAccepting] = useState(false);
+	const [acceptedSpaceName, setAcceptedSpaceName] = useState<string | null>(
+		null,
+	);
 	const [loading, setLoading] = useState(true);
 
 	const token = useMemo(() => {
@@ -50,7 +57,9 @@ export const InviteJoinPage = () => {
 		return t && t.length > 0 ? t : "";
 	}, [searchParams]);
 
-	const inviteQuery = token ? `?invite=${encodeURIComponent(token)}` : "";
+	const inviteQuery = token
+		? `?invite=${encodeURIComponent(token)}&returnTo=${encodeURIComponent(`/join?token=${token}`)}`
+		: "";
 
 	useEffect(() => {
 		persistInviteFromSearchParams(searchParams);
@@ -85,6 +94,48 @@ export const InviteJoinPage = () => {
 			cancelled = true;
 		};
 	}, [token]);
+
+	useEffect(() => {
+		if (!token || authLoading || !isAuthenticated || loading) return;
+		if (preview?.status !== "ready" && preview?.status !== "used") return;
+		let cancelled = false;
+		setAccepting(true);
+		setAcceptError(null);
+		void apiClient.spaces
+			.acceptInvite(token)
+			.then((outcome) => {
+				if (cancelled) return;
+				clearPendingInviteToken();
+				if (outcome.kind === "space") {
+					setAcceptedSpaceName(outcome.space.name ?? "space");
+					window.setTimeout(() => {
+						if (!cancelled) {
+							navigate(
+								`/console/chat?spaceId=${encodeURIComponent(String(outcome.space.id))}`,
+								{ replace: true },
+							);
+						}
+					}, 650);
+					return;
+				}
+				window.setTimeout(() => {
+					if (!cancelled) navigate("/console", { replace: true });
+				}, 650);
+			})
+			.catch((e: unknown) => {
+				if (!cancelled) {
+					setAcceptError(
+						e instanceof Error ? e.message : "Could not accept invite",
+					);
+				}
+			})
+			.finally(() => {
+				if (!cancelled) setAccepting(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [authLoading, isAuthenticated, loading, navigate, preview?.status, token]);
 
 	const headline = useMemo(() => {
 		if (!preview || preview.status !== "ready") return null;
@@ -263,22 +314,48 @@ export const InviteJoinPage = () => {
 							{isAuthenticated ? (
 								<div className="space-y-3">
 									<p className="text-sm text-[hsl(var(--text-secondary))]">
-										You&apos;re signed in — open the app to accept this invite
-										in chat.
+										{accepting
+											? "Accepting this invite..."
+											: acceptedSpaceName
+												? `Joined ${acceptedSpaceName}. Opening the space...`
+												: "You're signed in. Ceits will accept this invite here and open the space."}
 									</p>
+									{acceptError ? (
+										<p
+											className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+											role="alert"
+										>
+											{acceptError}
+										</p>
+									) : null}
 									<button
 										className="flex h-11 w-full items-center justify-center rounded-lg bg-[hsl(var(--accent))] text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
 										onClick={() =>
-											navigate(
-												`/console/chat?invite=${encodeURIComponent(token)}`,
-												{
-													replace: true,
-												},
-											)
+											void apiClient.spaces
+												.acceptInvite(token)
+												.then((outcome) => {
+													clearPendingInviteToken();
+													if (outcome.kind === "space") {
+														navigate(
+															`/console/chat?spaceId=${encodeURIComponent(String(outcome.space.id))}`,
+															{ replace: true },
+														);
+													} else {
+														navigate("/console", { replace: true });
+													}
+												})
+												.catch((e: unknown) =>
+													setAcceptError(
+														e instanceof Error
+															? e.message
+															: "Could not accept invite",
+													),
+												)
 										}
+										disabled={accepting}
 										type="button"
 									>
-										Continue to Ceits
+										{accepting ? "Accepting..." : "Accept invite"}
 									</button>
 								</div>
 							) : (

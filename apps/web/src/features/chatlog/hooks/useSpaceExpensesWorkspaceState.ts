@@ -1,7 +1,6 @@
 import type { Transaction } from "@cofi/api";
 import { useCallback, useEffect, useState } from "react";
 import { apiClient } from "../../../shared/lib/apiClient";
-import { useExpenseThreadState } from "./useExpenseThreadState";
 
 type UseSpaceExpensesWorkspaceStateArgs = {
 	isExpensesRoute: boolean;
@@ -14,7 +13,7 @@ export const useSpaceExpensesWorkspaceState = ({
 	onOpenInspector,
 	selectedSpaceId,
 }: UseSpaceExpensesWorkspaceStateArgs) => {
-	const [sidebarThreadExpenseId, setSidebarThreadExpenseId] = useState<
+	const [selectedExpenseId, setSelectedExpenseId] = useState<
 		string | number | null
 	>(null);
 	const [
@@ -29,14 +28,6 @@ export const useSpaceExpensesWorkspaceState = ({
 	>(null);
 	const [spaceTransactionsLoading, setSpaceTransactionsLoading] =
 		useState(false);
-	const [threadDraftLineScroll, setThreadDraftLineScroll] = useState<
-		number | null
-	>(null);
-
-	const expenseThreadCtrl = useExpenseThreadState(
-		selectedSpaceId,
-		sidebarThreadExpenseId,
-	);
 
 	const loadSpaceTransactions = useCallback(async () => {
 		if (selectedSpaceId == null) {
@@ -46,7 +37,7 @@ export const useSpaceExpensesWorkspaceState = ({
 		setSpaceTransactionsLoading(true);
 		setSpaceTransactionsError(null);
 		try {
-			const data = await apiClient.spaces.listTransactions(selectedSpaceId, {
+			const data = await apiClient.spaces.expenses.list(selectedSpaceId, {
 				limit: 200,
 			});
 			setSpaceTransactions(data ?? []);
@@ -65,58 +56,41 @@ export const useSpaceExpensesWorkspaceState = ({
 	}, [loadSpaceTransactions]);
 
 	useEffect(() => {
-		if (!isExpensesRoute || sidebarThreadExpenseId == null) {
+		if (!isExpensesRoute || selectedExpenseId == null) {
 			setExpenseInspectorWorkspaceEditing(false);
 		}
-	}, [isExpensesRoute, sidebarThreadExpenseId]);
+	}, [isExpensesRoute, selectedExpenseId]);
 
-	const clearExpenseThread = useCallback(() => {
-		setSidebarThreadExpenseId(null);
-		setThreadDraftLineScroll(null);
+	const clearSelectedExpense = useCallback(() => {
+		setSelectedExpenseId(null);
 	}, []);
-
-	const closeExpenseThread = useCallback(() => {
-		clearExpenseThread();
-		void loadSpaceTransactions();
-	}, [clearExpenseThread, loadSpaceTransactions]);
 
 	const selectExpense = useCallback(
 		(expenseId: string | number) => {
-			setSidebarThreadExpenseId(expenseId);
+			setSelectedExpenseId(expenseId);
 			onOpenInspector();
 		},
 		[onOpenInspector],
 	);
 
-	const openExpenseThread = useCallback(
-		(expenseId: string | number, options?: { draftLine?: number | null }) => {
-			setSidebarThreadExpenseId(expenseId);
+	const openExpenseDetail = useCallback(
+		(expenseId: string | number) => {
+			setSelectedExpenseId(expenseId);
 			onOpenInspector();
-			setThreadDraftLineScroll(options?.draftLine ?? null);
 		},
 		[onOpenInspector],
 	);
-
-	const clearDraftLineScroll = useCallback(() => {
-		setThreadDraftLineScroll(null);
-	}, []);
 
 	return {
-		clearDraftLineScroll,
-		clearExpenseThread,
-		closeExpenseThread,
+		clearSelectedExpense,
 		expenseInspectorWorkspaceEditing,
-		expenseThreadCtrl,
 		loadSpaceTransactions,
-		openExpenseThread,
+		openExpenseDetail,
 		selectExpense,
-		setExpenseInspectorWorkspaceEditing,
-		setSidebarThreadExpenseId,
-		setThreadDraftLineScroll,
-		sidebarThreadExpenseId,
+		setSelectedExpenseId,
+		selectedExpenseId,
 		spaceTransactions,
 		spaceTransactionsError,
 		spaceTransactionsLoading,
-		threadDraftLineScroll,
 	};
 };

@@ -1,5 +1,6 @@
 import type { PromoCode } from "@cofi/api";
 import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
 import {
 	EntityCard,
 	EntityDetailHeader,
@@ -26,6 +27,7 @@ export type PromoBenefit = {
 	discountLabel: string;
 	validUntil: string;
 	source: string;
+	sourceDocumentId: number | null;
 	raw: PromoCode;
 };
 
@@ -134,10 +136,24 @@ const formatDiscountLabel = (promo: PromoCode): string => {
 	}
 };
 
+const isTechnicalPromoTitle = (value: string | null | undefined): boolean => {
+	const normalized = value?.trim().toLowerCase();
+	return (
+		!normalized ||
+		normalized === "promo code candidate" ||
+		normalized === "promo candidate" ||
+		normalized === "benefit candidate" ||
+		normalized.endsWith("_candidate") ||
+		normalized.endsWith(" candidate")
+	);
+};
+
 export const formatBenefitSourceLabel = (sourceType?: string): string => {
 	const value = sourceType?.trim().toLowerCase();
-	if (!value) return "Unknown";
-	if (value === "manual_text") return "Manual text";
+	if (!value || value === "unknown") return "Capture";
+	if (value === "manual_text" || value === "text" || value === "manual") {
+		return "Text capture";
+	}
 	return value.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
@@ -147,10 +163,14 @@ export const toPromoBenefit = (promo: PromoCode): PromoBenefit => {
 		promo.redeem_merchant_name?.trim() ||
 		promo.redeem_platform?.trim() ||
 		"Promo";
+	const code = promo.promo_code?.trim();
+	const rawTitle = promo.title?.trim();
 	return {
 		id: Number(promo.id),
-		title: promo.title?.trim() || promo.promo_code?.trim() || "Promo",
-		code: promo.promo_code?.trim() || "No code",
+		title: !isTechnicalPromoTitle(rawTitle)
+			? rawTitle
+			: code || `${merchant} promo`,
+		code: code || "No code",
 		merchant,
 		redeemAt:
 			promo.redeem_platform?.trim() ||
@@ -160,6 +180,10 @@ export const toPromoBenefit = (promo: PromoCode): PromoBenefit => {
 		discountLabel: formatDiscountLabel(promo),
 		validUntil: formatPromoDate(promo.valid_until),
 		source: formatBenefitSourceLabel(promo.source_type),
+		sourceDocumentId:
+			promo.source_document_id != null
+				? Number(promo.source_document_id)
+				: null,
 		raw: promo,
 	};
 };
@@ -246,15 +270,19 @@ export const PromoBenefitCard = ({
 	busy,
 	isSelected = false,
 	onArchive,
+	onDelete,
 	onMarkUsed,
 	onOpen,
+	reviewHref,
 }: {
 	promo: PromoBenefit;
 	busy: boolean;
 	isSelected?: boolean;
 	onArchive: (promo: PromoBenefit) => void;
+	onDelete?: (promo: PromoBenefit) => void;
 	onMarkUsed: (promo: PromoBenefit) => void;
 	onOpen?: (promo: PromoBenefit) => void;
+	reviewHref?: string;
 }) => (
 	<li>
 		<EntityCard
@@ -269,6 +297,14 @@ export const PromoBenefitCard = ({
 						>
 							Details
 						</button>
+					) : null}
+					{reviewHref ? (
+						<Link
+							className="inline-flex h-8 items-center rounded-lg border border-[rgba(48,83,120,0.22)] bg-[rgba(239,247,255,0.72)] px-3 text-xs font-semibold text-[rgba(34,72,108,0.92)] transition hover:bg-[rgba(232,242,255,0.95)]"
+							to={reviewHref}
+						>
+							Review capture
+						</Link>
 					) : null}
 					<button
 						className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-foreground/82 transition hover:bg-white disabled:opacity-50"
@@ -286,6 +322,16 @@ export const PromoBenefitCard = ({
 					>
 						Archive
 					</button>
+					{onDelete ? (
+						<button
+							className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-red-50/80 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+							disabled={busy}
+							onClick={() => onDelete(promo)}
+							type="button"
+						>
+							Delete
+						</button>
+					) : null}
 				</>
 			}
 			entity={toPromoBenefitEntity(promo, { selected: isSelected })}
@@ -306,6 +352,9 @@ export const PromoBenefitCard = ({
 			</div>
 			<p className="mt-3 text-xs text-muted-foreground">
 				Source: {promo.source}
+				{promo.sourceDocumentId != null
+					? ` · Source capture #${promo.sourceDocumentId}`
+					: ""}
 			</p>
 		</EntityCard>
 	</li>

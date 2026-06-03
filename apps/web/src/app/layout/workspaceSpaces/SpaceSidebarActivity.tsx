@@ -2,7 +2,10 @@ import type { SpaceActivityItem, WsEnvelope } from "@cofi/api";
 import { WS_OP_SPACE_ACTIVITY_UPDATED } from "@cofi/api";
 import * as Popover from "@radix-ui/react-popover";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { apiClient } from "../../../shared/lib/apiClient";
+import { EntityIcon } from "../../../shared/lib/entityPresentation";
+import type { EntityVisualKey } from "../../../shared/lib/entityVisual";
 import { wsClient } from "../../../shared/lib/wsClient";
 
 const IconBell = ({ className }: { className?: string }) => (
@@ -40,39 +43,139 @@ const formatRelativeShort = (iso: string): string => {
 	return `${Math.floor(sec / 86400)}d ago`;
 };
 
-type VerbCategory = "create" | "update" | "delete";
-
-const categoryForAction = (action: string): VerbCategory => {
-	if (action === "expense_draft_created") return "create";
-	if (action === "expense_draft_cancelled") return "delete";
-	return "update";
+type ActivityPresentation = {
+	detail: string;
+	label: string;
+	sentence: string;
+	visualKey: EntityVisualKey;
 };
 
-const sentenceForActivity = (item: SpaceActivityItem): string => {
+const presentationForActivity = (
+	item: SpaceActivityItem,
+): ActivityPresentation => {
 	const who = item.actor.display_name || "Someone";
 	switch (item.action) {
 		case "expense_draft_created":
-			return `${who} added a draft expense`;
+			return {
+				detail:
+					"Capture produced an expense draft. Review it before it changes balances.",
+				label: "Capture",
+				sentence: `${who} created a capture with an expense draft`,
+				visualKey: "reviewPacket",
+			};
 		case "expense_draft_cancelled":
-			return `${who} cancelled a draft expense`;
+			return {
+				detail:
+					"Expense draft review was removed. The space history stays visible.",
+				label: "Capture",
+				sentence: `${who} removed expense draft review data`,
+				visualKey: "reviewPacket",
+			};
 		case "expense_confirmed":
-			return `${who} confirmed an expense`;
+			return {
+				detail: "A reviewed capture outcome became a saved expense record.",
+				label: "Expense",
+				sentence: `${who} confirmed an expense record`,
+				visualKey: "expense",
+			};
 		case "expense_splits_updated":
-			return `${who} updated expense splits`;
+			return {
+				detail: "Split records were updated for an expense in this space.",
+				label: "Split",
+				sentence: `${who} updated split records`,
+				visualKey: "split",
+			};
+		case "promo_saved":
+			return {
+				detail: "A reviewed capture outcome became a saved benefit record.",
+				label: "Benefit",
+				sentence: `${who} saved a benefit record`,
+				visualKey: "benefit",
+			};
+		case "participant_created":
+			return {
+				detail: "A reviewed capture outcome became a space participant.",
+				label: "People",
+				sentence: `${who} created a participant record`,
+				visualKey: "people",
+			};
+		case "participant_alias_linked":
+			return {
+				detail:
+					"A duplicate participant name now resolves to one canonical person for splits and stats.",
+				label: "People",
+				sentence: `${who} linked a participant alias`,
+				visualKey: "people",
+			};
+		case "participant_alias_unlinked":
+			return {
+				detail:
+					"A participant alias was restored as a separate person for future splits.",
+				label: "People",
+				sentence: `${who} restored a participant alias`,
+				visualKey: "people",
+			};
+		case "recurring_created":
+			return {
+				detail: "A reviewed capture outcome became a future payment rule.",
+				label: "Future",
+				sentence: `${who} created a recurring rule`,
+				visualKey: "future",
+			};
 		case "recurring_changed":
-			return `${who} updated a recurring expense`;
+			return {
+				detail: "Future payment behavior changed for a saved record.",
+				label: "Future",
+				sentence: `${who} updated a recurring rule`,
+				visualKey: "future",
+			};
+		case "space_created":
+			return {
+				detail: "Space context was created.",
+				label: "Space",
+				sentence: `${who} created this space`,
+				visualKey: "people",
+			};
+		case "invite_accepted":
+			return {
+				detail:
+					"A member joined the access layer. Participants still represent split people.",
+				label: "People",
+				sentence: `${who} accepted an invite`,
+				visualKey: "people",
+			};
 		default:
-			return `${who} ${item.action.replace(/_/g, " ")}`;
+			return {
+				detail: "Space activity changed.",
+				label: "Activity",
+				sentence: `${who} ${item.action.replace(/_/g, " ")}`,
+				visualKey: "unknown",
+			};
 	}
 };
 
-const categoryBarClass: Record<VerbCategory, string> = {
-	create: "border-l-emerald-500",
-	update: "border-l-sky-500",
-	delete: "border-l-destructive",
+const numberFromMetadata = (value: unknown): number | null => {
+	if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+		return Math.floor(value);
+	}
+	if (typeof value === "string") {
+		const n = Number(value);
+		if (Number.isFinite(n) && n > 0) return Math.floor(n);
+	}
+	return null;
 };
 
-const leftBarWidth = "border-l-[3px]";
+const reviewHrefForActivity = (
+	spaceKey: string | null,
+	item: SpaceActivityItem,
+): string | null => {
+	if (spaceKey == null) return null;
+	const sourceDocumentId = numberFromMetadata(
+		item.metadata?.source_document_id,
+	);
+	if (sourceDocumentId == null) return null;
+	return `/console/review?spaceId=${encodeURIComponent(spaceKey)}&sourceDocumentId=${sourceDocumentId}`;
+};
 
 export const SpaceSidebarActivity = ({
 	selectedSpaceId,
@@ -257,29 +360,53 @@ export const SpaceSidebarActivity = ({
 					) : null}
 					<ul className="flex flex-col gap-1">
 						{items.map((item) => {
-							const cat = categoryForAction(item.action);
+							const presentation = presentationForActivity(item);
 							const pending = item.read_state === "pending";
+							const reviewHref = reviewHrefForActivity(spaceKey, item);
 							return (
 								<li key={String(item.id)}>
 									<div
 										className={[
-											"rounded-md border border-border/50 py-2 pl-2.5 pr-2 text-[12px] leading-snug",
-											leftBarWidth,
-											categoryBarClass[cat],
-											pending ? "bg-muted/45" : "bg-card/30",
+											"flex gap-2 rounded-xl border px-2.5 py-2 text-[12px] leading-snug shadow-sm",
+											pending
+												? "border-[rgba(172,124,35,0.26)] bg-[rgba(255,247,229,0.82)]"
+												: "border-border/50 bg-card/35",
 										].join(" ")}
 									>
-										<p className="font-medium text-foreground">
-											{sentenceForActivity(item)}
-										</p>
-										<p className="mt-0.5 text-[10px] text-muted-foreground">
-											{formatRelativeShort(item.created_at)}
-											{pending ? (
-												<span className="ml-1.5 font-semibold text-primary">
-													New
+										<EntityIcon
+											className="mt-0.5"
+											size="xs"
+											visualKey={presentation.visualKey}
+										/>
+										<div className="min-w-0 flex-1">
+											<div className="flex min-w-0 flex-wrap items-center gap-1.5">
+												<span className="rounded-full border border-border/55 bg-background/60 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+													{presentation.label}
 												</span>
+												{pending ? (
+													<span className="rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary-foreground">
+														New
+													</span>
+												) : null}
+											</div>
+											<p className="mt-1 font-medium text-foreground">
+												{presentation.sentence}
+											</p>
+											<p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+												{presentation.detail}
+											</p>
+											<p className="mt-1 text-[10px] text-muted-foreground">
+												{formatRelativeShort(item.created_at)}
+											</p>
+											{reviewHref != null ? (
+												<Link
+													className="mt-2 inline-flex h-7 items-center rounded-full border border-[rgba(82,72,57,0.16)] bg-background/70 px-2 text-[10px] font-bold uppercase tracking-wide text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+													to={reviewHref}
+												>
+													Review capture
+												</Link>
 											) : null}
-										</p>
+										</div>
 									</div>
 								</li>
 							);
