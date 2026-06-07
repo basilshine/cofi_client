@@ -2,12 +2,14 @@ import type {
 	DashboardResponse,
 	ExpenseDetail,
 	ExpenseSplitRow,
+	PaymentLinkSummary,
 	Space,
 	SpaceActivityItem,
 	SpaceMember,
 	SpaceParticipant,
 	Transaction,
 } from "@cofi/api";
+import { Copy, Link2, RefreshCw, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
@@ -46,6 +48,14 @@ type SplitDecisionRecord = SplitDecisionRow & {
 		amountLabel: string;
 		isCurrentUser: boolean;
 	}>;
+};
+
+type PaymentLinkCandidate = {
+	participantId: number;
+	name: string;
+	amount: number;
+	amountLabel: string;
+	splitCount: number;
 };
 
 const toNumericId = (value: string | number | undefined): number | null => {
@@ -313,6 +323,21 @@ export const SpaceSplitsWorkspacePage = () => {
 	const [splitRows, setSplitRows] = useState<Record<number, ExpenseSplitRow[]>>(
 		{},
 	);
+	const [paymentLinks, setPaymentLinks] = useState<PaymentLinkSummary[]>([]);
+	const [paymentLinksError, setPaymentLinksError] = useState<string | null>(
+		null,
+	);
+	const [selectedPaymentParticipantId, setSelectedPaymentParticipantId] =
+		useState<string>("unclaimed");
+	const [selectedPaymentProofPolicy, setSelectedPaymentProofPolicy] = useState<
+		"optional" | "required"
+	>("optional");
+	const [paymentLinkAction, setPaymentLinkAction] = useState<string | null>(
+		null,
+	);
+	const [copiedPaymentLinkId, setCopiedPaymentLinkId] = useState<number | null>(
+		null,
+	);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(
@@ -346,22 +371,39 @@ export const SpaceSplitsWorkspacePage = () => {
 		let cancelled = false;
 		setIsLoading(true);
 		setLoadError(null);
+		setPaymentLinksError(null);
 		void (async () => {
 			try {
-				const [dashRes, membersRes, participantsRes, txRes, activityRes] =
-					await Promise.all([
-						apiClient.dashboard.get({
-							variant: "personal",
-							period: "month",
-							space_id: numericSpaceId,
+				const [
+					dashRes,
+					membersRes,
+					participantsRes,
+					txRes,
+					activityRes,
+					paymentLinksRes,
+				] = await Promise.all([
+					apiClient.dashboard.get({
+						variant: "personal",
+						period: "month",
+						space_id: numericSpaceId,
+					}),
+					apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
+					apiClient.spaces.listParticipants(numericSpaceId).catch(() => null),
+					apiClient.spaces.expenses.list(numericSpaceId, { limit: 60 }),
+					apiClient.spaces.activity
+						.list(numericSpaceId, { limit: 40 })
+						.catch(() => ({ items: [] })),
+					apiClient.paymentLinks
+						.list(numericSpaceId)
+						.catch((error: unknown) => {
+							setPaymentLinksError(
+								error instanceof Error
+									? error.message
+									: "Failed to load payment links",
+							);
+							return { links: [] };
 						}),
-						apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
-						apiClient.spaces.listParticipants(numericSpaceId).catch(() => null),
-						apiClient.spaces.expenses.list(numericSpaceId, { limit: 60 }),
-						apiClient.spaces.activity
-							.list(numericSpaceId, { limit: 40 })
-							.catch(() => ({ items: [] })),
-					]);
+				]);
 
 				const expenseIds = Array.from(
 					new Set(txRes.map((tx) => toNumericId(tx.id))),
@@ -410,6 +452,7 @@ export const SpaceSplitsWorkspacePage = () => {
 					setParticipants(participantsRes?.participants ?? []);
 					setTransactions(txRes);
 					setSpaceActivity(activityRes.items ?? []);
+					setPaymentLinks(paymentLinksRes.links ?? []);
 					setSplitRows(splitMap);
 					setExpenseDetails(detailMap);
 				}
@@ -459,6 +502,76 @@ export const SpaceSplitsWorkspacePage = () => {
 			.filter((participant) => participantBelongsToUser(participant, user?.id))
 			.map((participant) => Number(participant.id)),
 	);
+	const paymentLinkCandidateTotals = Object.values(splitRows)
+		.flat()
+		.filter(
+			(row) =>
+				row.space_participant_id != null &&
+				row.amount > 0 &&
+				!splitRowBelongsToUser(row, user?.id, currentUserParticipantIds),
+		)
+		.reduce<Map<number, { amount: number; rows: ExpenseSplitRow[] }>>(
+			(acc, row) => {
+				const participantId = Number(row.space_participant_id);
+				const current = acc.get(participantId) ?? { amount: 0, rows: [] };
+				current.amount += row.amount;
+				current.rows.push(row);
+				acc.set(participantId, current);
+				return acc;
+			},
+			new Map(),
+		);
+	const paymentLinkCandidateRows: PaymentLinkCandidate[] = Array.from(
+		paymentLinkCandidateTotals.entries(),
+	)
+		.map(([participantId, exposure]) => {
+			const participant = participants.find(
+				(entry) => Number(entry.id) === participantId,
+			);
+			const firstRow = exposure.rows[0];
+			return {
+				participantId,
+				name:
+					participant?.display_name?.trim() ||
+					(firstRow ? splitParticipantName(firstRow, members) : "Participant"),
+				amount: exposure.amount,
+				amountLabel: formatMoney(exposure.amount),
+				splitCount: exposure.rows.length,
+			};
+		})
+		.sort((a, b) => b.amount - a.amount);
+	const activePaymentLinks = paymentLinks.filter(
+		(link) => link.status === "active",
+	);
+	const paymentLinkByParticipantId = new Map(
+		activePaymentLinks
+			.filter((link) => link.bound_participant != null)
+			.map((link) => [Number(link.bound_participant?.id), link] as const),
+	);
+	const coveredPaymentLinkByParticipantId = new Map<
+		number,
+		PaymentLinkSummary
+	>();
+	for (const link of activePaymentLinks) {
+		if (link.bound_participant != null) {
+			coveredPaymentLinkByParticipantId.set(
+				Number(link.bound_participant.id),
+				link,
+			);
+		}
+		for (const obligation of link.obligations ?? []) {
+			coveredPaymentLinkByParticipantId.set(
+				obligation.payer_participant_id,
+				link,
+			);
+			coveredPaymentLinkByParticipantId.set(
+				obligation.recipient_participant_id,
+				link,
+			);
+		}
+	}
+	const unclaimedPaymentLink =
+		activePaymentLinks.find((link) => link.claim_required) ?? null;
 
 	const coverageIds = Array.from(
 		new Set([
@@ -704,6 +817,84 @@ export const SpaceSplitsWorkspacePage = () => {
 					: ("neutral" as const),
 	};
 
+	const refreshPaymentLinks = async () => {
+		if (numericSpaceId == null) return;
+		try {
+			const res = await apiClient.paymentLinks.list(numericSpaceId);
+			setPaymentLinks(res.links ?? []);
+			setPaymentLinksError(null);
+		} catch (error) {
+			setPaymentLinksError(
+				error instanceof Error ? error.message : "Failed to load payment links",
+			);
+		}
+	};
+
+	const createPaymentLink = async () => {
+		if (numericSpaceId == null) return;
+		setPaymentLinkAction("create");
+		setPaymentLinksError(null);
+		try {
+			const participantId =
+				selectedPaymentParticipantId === "unclaimed"
+					? null
+					: Number(selectedPaymentParticipantId);
+			const created = await apiClient.paymentLinks.create(
+				numericSpaceId,
+				participantId == null
+					? {
+							expires_in_hours: 24 * 14,
+							proof_policy: selectedPaymentProofPolicy,
+						}
+					: {
+							space_participant_id: participantId,
+							expires_in_hours: 24 * 14,
+							proof_policy: selectedPaymentProofPolicy,
+						},
+			);
+			await navigator.clipboard?.writeText(created.url);
+			const refreshed = await apiClient.paymentLinks.list(numericSpaceId);
+			setPaymentLinks(refreshed.links ?? []);
+			setCopiedPaymentLinkId(null);
+		} catch (error) {
+			setPaymentLinksError(
+				error instanceof Error
+					? error.message
+					: "Failed to create payment link",
+			);
+		} finally {
+			setPaymentLinkAction(null);
+		}
+	};
+
+	const revokePaymentLink = async (linkId: number) => {
+		if (numericSpaceId == null) return;
+		setPaymentLinkAction(`revoke:${linkId}`);
+		setPaymentLinksError(null);
+		try {
+			const revoked = await apiClient.paymentLinks.revoke(
+				numericSpaceId,
+				linkId,
+			);
+			setPaymentLinks((current) =>
+				current.map((link) => (link.id === linkId ? revoked : link)),
+			);
+		} catch (error) {
+			setPaymentLinksError(
+				error instanceof Error
+					? error.message
+					: "Failed to revoke payment link",
+			);
+		} finally {
+			setPaymentLinkAction(null);
+		}
+	};
+
+	const copyPaymentLink = async (link: PaymentLinkSummary) => {
+		await navigator.clipboard?.writeText(link.url);
+		setCopiedPaymentLinkId(link.id);
+	};
+
 	return (
 		<SpaceWorkspaceLayout
 			rightRail={
@@ -785,6 +976,25 @@ export const SpaceSplitsWorkspacePage = () => {
 				</section>
 			) : null}
 
+			<SpacePaymentLinksPanel
+				action={paymentLinkAction}
+				candidates={paymentLinkCandidateRows}
+				coveredPaymentLinkByParticipantId={coveredPaymentLinkByParticipantId}
+				copiedLinkId={copiedPaymentLinkId}
+				error={paymentLinksError}
+				links={activePaymentLinks}
+				onCopy={(link) => void copyPaymentLink(link)}
+				onCreate={() => void createPaymentLink()}
+				onRefresh={() => void refreshPaymentLinks()}
+				onRevoke={(linkId) => void revokePaymentLink(linkId)}
+				onSelectParticipant={setSelectedPaymentParticipantId}
+				onSelectProofPolicy={setSelectedPaymentProofPolicy}
+				paymentLinkByParticipantId={paymentLinkByParticipantId}
+				proofPolicy={selectedPaymentProofPolicy}
+				selectedParticipantId={selectedPaymentParticipantId}
+				unclaimedLink={unclaimedPaymentLink}
+			/>
+
 			<SpaceSplitDecisionList
 				description="Actionable split decisions that still need confirmation."
 				emptySubtitle="New split reviews will appear here."
@@ -808,5 +1018,389 @@ export const SpaceSplitsWorkspacePage = () => {
 				variant="confirmed"
 			/>
 		</SpaceWorkspaceLayout>
+	);
+};
+
+const formatPaymentLinkExpiry = (value: string): string => {
+	const date = new Date(value);
+	if (!Number.isFinite(date.getTime())) return "Expires later";
+	return date.toLocaleDateString("en-US", {
+		month: "short",
+		day: "numeric",
+		hour: "numeric",
+		minute: "2-digit",
+	});
+};
+
+const paymentLinkParticipantLabel = (link: PaymentLinkSummary): string => {
+	if (link.bound_participant) return link.bound_participant.display_name;
+	if (link.claimed_participant) return link.claimed_participant.display_name;
+	return "Unclaimed";
+};
+
+const formatPaymentLinkMoney = (amount: number, currency = "USD"): string =>
+	new Intl.NumberFormat("en-US", {
+		style: "currency",
+		currency: currency === "MIXED" ? "USD" : currency || "USD",
+	}).format(amount);
+
+const paymentLinkCoverageLabel = (link: PaymentLinkSummary): string => {
+	const count = link.obligation_count ?? link.obligations?.length ?? 0;
+	const total = formatPaymentLinkMoney(link.snapshot_total ?? 0, link.currency);
+	return `${total} · ${count} split${count === 1 ? "" : "s"}`;
+};
+
+const paymentLinkLifecycleChips = (link: PaymentLinkSummary) =>
+	[
+		link.missing_required_proof_count > 0
+			? {
+					key: "missing-proof",
+					label: `Missing proof ${link.missing_required_proof_count}`,
+					className: "bg-amber-100 text-amber-800",
+				}
+			: null,
+		link.needs_confirmation_count > 0
+			? {
+					key: "needs-confirmation",
+					label: `Needs confirmation ${link.needs_confirmation_count}`,
+					className: "bg-blue-100 text-blue-800",
+				}
+			: null,
+		link.sent_with_proof_count > 0
+			? {
+					key: "sent-proof",
+					label: `Sent + proof ${link.sent_with_proof_count}`,
+					className: "bg-emerald-100 text-emerald-800",
+				}
+			: null,
+		link.sent_count > 0 && link.sent_with_proof_count < link.sent_count
+			? {
+					key: "sent",
+					label: `Sent ${link.sent_count}`,
+					className: "bg-muted text-muted-foreground",
+				}
+			: null,
+		link.confirmed_count > 0
+			? {
+					key: "confirmed",
+					label: `Confirmed ${link.confirmed_count}`,
+					className: "bg-foreground text-background",
+				}
+			: null,
+		link.unpaid_count > 0
+			? {
+					key: "unpaid",
+					label: `Unpaid ${link.unpaid_count}`,
+					className: "bg-muted text-muted-foreground",
+				}
+			: null,
+		link.proof_count > 0
+			? {
+					key: "proofs",
+					label: `Proofs ${link.proof_count}`,
+					className: "bg-sky-100 text-sky-800",
+				}
+			: null,
+	].filter(
+		(chip): chip is { key: string; label: string; className: string } =>
+			chip != null,
+	);
+
+const SpacePaymentLinksPanel = ({
+	action,
+	candidates,
+	coveredPaymentLinkByParticipantId,
+	copiedLinkId,
+	error,
+	links,
+	onCopy,
+	onCreate,
+	onRefresh,
+	onRevoke,
+	onSelectParticipant,
+	onSelectProofPolicy,
+	paymentLinkByParticipantId,
+	proofPolicy,
+	selectedParticipantId,
+	unclaimedLink,
+}: {
+	action: string | null;
+	candidates: PaymentLinkCandidate[];
+	coveredPaymentLinkByParticipantId: Map<number, PaymentLinkSummary>;
+	copiedLinkId: number | null;
+	error: string | null;
+	links: PaymentLinkSummary[];
+	onCopy: (link: PaymentLinkSummary) => void;
+	onCreate: () => void;
+	onRefresh: () => void;
+	onRevoke: (linkId: number) => void;
+	onSelectParticipant: (id: string) => void;
+	onSelectProofPolicy: (policy: "optional" | "required") => void;
+	paymentLinkByParticipantId: Map<number, PaymentLinkSummary>;
+	proofPolicy: "optional" | "required";
+	selectedParticipantId: string;
+	unclaimedLink: PaymentLinkSummary | null;
+}) => {
+	const selectedCandidate =
+		selectedParticipantId === "unclaimed"
+			? null
+			: (candidates.find(
+					(candidate) =>
+						String(candidate.participantId) === selectedParticipantId,
+				) ?? null);
+	const existingSelectedLink =
+		selectedCandidate == null
+			? unclaimedLink
+			: (coveredPaymentLinkByParticipantId.get(
+					selectedCandidate.participantId,
+				) ??
+				paymentLinkByParticipantId.get(selectedCandidate.participantId) ??
+				null);
+	const existingSelectedLinkIsCurrent =
+		existingSelectedLink != null && !existingSelectedLink.is_outdated;
+	const createDisabled =
+		action === "create" ||
+		existingSelectedLinkIsCurrent ||
+		(selectedParticipantId !== "unclaimed" && selectedCandidate == null) ||
+		(selectedParticipantId === "unclaimed" && candidates.length === 0);
+	const proofAttentionCount = links.reduce(
+		(sum, link) =>
+			sum +
+			(link.needs_confirmation_count ?? 0) +
+			(link.missing_required_proof_count ?? 0),
+		0,
+	);
+
+	return (
+		<section className="rounded-xl border border-border/60 bg-card p-4 soft-shadow">
+			<div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+				<div>
+					<p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+						Payment links
+					</p>
+					<h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground">
+						Send split-backed links
+					</h2>
+				</div>
+				<button
+					className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+					disabled={action === "refresh"}
+					onClick={onRefresh}
+					type="button"
+				>
+					<RefreshCw className="h-4 w-4" />
+					Refresh
+				</button>
+			</div>
+
+			{error ? (
+				<p className="mt-3 rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+					{error}
+				</p>
+			) : null}
+
+			<div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+				<div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+					<label
+						className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+						htmlFor="payment-link-participant"
+					>
+						Split candidate
+					</label>
+					<select
+						className="mt-2 min-h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+						id="payment-link-participant"
+						onChange={(event) => onSelectParticipant(event.target.value)}
+						value={selectedParticipantId}
+					>
+						<option value="unclaimed">Unclaimed picker</option>
+						{candidates.map((candidate) => (
+							<option
+								key={candidate.participantId}
+								value={String(candidate.participantId)}
+							>
+								{candidate.name} · {candidate.amountLabel}
+							</option>
+						))}
+					</select>
+					<div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-background p-1">
+						{(["optional", "required"] as const).map((policy) => (
+							<button
+								className={`min-h-10 rounded-md px-3 text-xs font-semibold transition ${
+									proofPolicy === policy
+										? "bg-foreground text-background"
+										: "text-muted-foreground hover:bg-muted"
+								}`}
+								key={policy}
+								onClick={() => onSelectProofPolicy(policy)}
+								type="button"
+							>
+								{policy === "required" ? "Proof required" : "Proof optional"}
+							</button>
+						))}
+					</div>
+					<div className="mt-3 grid gap-2">
+						{candidates.length === 0 ? (
+							<div className="rounded-lg border border-dashed border-border bg-background/70 p-3 text-sm text-muted-foreground">
+								No confirmed split obligations are ready.
+							</div>
+						) : (
+							candidates.slice(0, 4).map((candidate) => {
+								const existing =
+									coveredPaymentLinkByParticipantId.get(
+										candidate.participantId,
+									) ?? paymentLinkByParticipantId.get(candidate.participantId);
+								return (
+									<div
+										className="flex items-center justify-between gap-3 rounded-lg bg-background px-3 py-2"
+										key={candidate.participantId}
+									>
+										<div className="min-w-0">
+											<p className="truncate text-sm font-semibold text-foreground">
+												{candidate.name}
+											</p>
+											<p className="text-xs text-muted-foreground">
+												{candidate.amountLabel} · {candidate.splitCount} split
+												{candidate.splitCount === 1 ? "" : "s"}
+											</p>
+											{existing ? (
+												<p
+													className={`mt-1 text-xs font-medium ${
+														existing.is_outdated
+															? "text-amber-700"
+															: "text-emerald-700"
+													}`}
+												>
+													{existing.is_outdated ? "Outdated" : "Covered"} by{" "}
+													{paymentLinkCoverageLabel(existing)}
+												</p>
+											) : null}
+										</div>
+										<span className="shrink-0 rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+											{existing
+												? existing.is_outdated
+													? "Outdated"
+													: "Covered"
+												: "Ready"}
+										</span>
+									</div>
+								);
+							})
+						)}
+					</div>
+					<button
+						className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-foreground px-4 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+						disabled={createDisabled}
+						onClick={onCreate}
+						type="button"
+					>
+						<Link2 className="h-4 w-4" />
+						{action === "create"
+							? "Creating"
+							: existingSelectedLink
+								? existingSelectedLink.is_outdated
+									? "Create fresh link"
+									: "Already covered"
+								: "Create and copy link"}
+					</button>
+					{existingSelectedLink ? (
+						<p className="mt-2 text-xs text-muted-foreground">
+							{existingSelectedLink.is_outdated
+								? "The active link still opens with its old frozen amount. Create a fresh token for the current split set, then revoke the stale one."
+								: "Use the active link below, or revoke it before creating a fresh token for this split set."}
+						</p>
+					) : null}
+				</div>
+
+				<div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+					<div className="flex items-center justify-between gap-3">
+						<p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+							Active links
+						</p>
+						<span className="rounded-full bg-background px-2 py-1 text-[11px] font-semibold text-muted-foreground">
+							{proofAttentionCount > 0
+								? `${proofAttentionCount} to review`
+								: links.length}
+						</span>
+					</div>
+					<div className="mt-3 grid gap-2">
+						{links.length === 0 ? (
+							<div className="rounded-lg border border-dashed border-border bg-background/70 p-3 text-sm text-muted-foreground">
+								No active payment links.
+							</div>
+						) : (
+							links.slice(0, 5).map((link) => (
+								<div
+									className="rounded-lg border border-border/50 bg-background px-3 py-2"
+									key={link.id}
+								>
+									<div className="flex items-start justify-between gap-3">
+										<div className="min-w-0">
+											<p className="truncate text-sm font-semibold text-foreground">
+												{paymentLinkParticipantLabel(link)}
+											</p>
+											<p className="truncate text-xs text-muted-foreground">
+												{formatPaymentLinkExpiry(link.expires_at)}
+											</p>
+											<p className="mt-1 text-xs font-medium text-muted-foreground">
+												Proof{" "}
+												{link.proof_policy === "required"
+													? "required"
+													: "optional"}
+											</p>
+											<p className="mt-1 text-xs font-medium text-muted-foreground">
+												{paymentLinkCoverageLabel(link)}
+											</p>
+											{link.is_outdated ? (
+												<p className="mt-1 text-xs font-semibold text-amber-700">
+													Outdated · {link.outdated_count} changed split
+													{link.outdated_count === 1 ? "" : "s"}
+												</p>
+											) : null}
+											{paymentLinkLifecycleChips(link).length > 0 ? (
+												<div className="mt-2 flex flex-wrap gap-1.5">
+													{paymentLinkLifecycleChips(link).map((chip) => (
+														<span
+															className={`rounded-full px-2 py-1 text-[11px] font-semibold ${chip.className}`}
+															key={chip.key}
+														>
+															{chip.label}
+														</span>
+													))}
+												</div>
+											) : null}
+										</div>
+										<div className="flex shrink-0 items-center gap-1">
+											<button
+												className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted"
+												onClick={() => onCopy(link)}
+												title="Copy link"
+												type="button"
+											>
+												<Copy className="h-4 w-4" />
+											</button>
+											<button
+												className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+												disabled={action === `revoke:${link.id}`}
+												onClick={() => onRevoke(link.id)}
+												title="Revoke link"
+												type="button"
+											>
+												<X className="h-4 w-4" />
+											</button>
+										</div>
+									</div>
+									{copiedLinkId === link.id ? (
+										<p className="mt-2 text-xs font-semibold text-emerald-700">
+											Link copied
+										</p>
+									) : null}
+								</div>
+							))
+						)}
+					</div>
+				</div>
+			</div>
+		</section>
 	);
 };

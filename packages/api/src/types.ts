@@ -165,6 +165,155 @@ export type SpaceParticipantsListResponse = {
 	participants: SpaceParticipant[];
 };
 
+export type PaymentMethodType =
+	| "venmo"
+	| "cash_app"
+	| "paypal"
+	| "zelle"
+	| "manual";
+
+export type PaymentObligationStatus =
+	| "unpaid"
+	| "sent"
+	| "received"
+	| "confirmed"
+	| "disputed";
+
+export type PaymentResolutionParticipant = {
+	id: number;
+	display_name: string;
+	participant_type: string;
+	status: string;
+	detail?: string;
+	payment_methods?: PaymentMethod[];
+};
+
+export type PaymentMethod = {
+	type: PaymentMethodType | string;
+	label: string;
+	value: string;
+	url?: string;
+};
+
+export type PaymentResolutionSummary = {
+	you_owe: number;
+	owed_to_you: number;
+	pending_sent_payments: number;
+	needs_confirmation: number;
+};
+
+export type PaymentObligation = {
+	id: string;
+	payer_participant: PaymentResolutionParticipant;
+	recipient_participant: PaymentResolutionParticipant;
+	amount: number;
+	currency: string;
+	source_expense_id: number;
+	source_split_id: number;
+	source_document_id?: number | null;
+	source_label: string;
+	source_detail: string;
+	note: string;
+	status: PaymentObligationStatus | string;
+	payment_methods?: PaymentMethod[];
+	proof_required: boolean;
+	proofs: PaymentProofRef[];
+};
+
+export type PaymentProofRef = {
+	id: number;
+	media_id: number;
+	actor_participant: PaymentResolutionParticipant;
+	note?: string;
+	original_filename?: string;
+	content_type?: string;
+	byte_size: number;
+	created_at: string;
+};
+
+export type PaymentLinkContext = {
+	token: string;
+	token_status: string;
+	proof_policy: "optional" | "required" | string;
+	space_id: number;
+	space_name: string;
+	expires_at: string;
+	claim_required: boolean;
+	selected_participant?: PaymentResolutionParticipant | null;
+	eligible_participants?: PaymentResolutionParticipant[];
+	summary: PaymentResolutionSummary;
+	obligations: PaymentObligation[];
+};
+
+export type CreatePaymentLinkRequest = {
+	space_participant_id?: number | null;
+	expires_in_hours?: number | null;
+	proof_policy?: "optional" | "required" | string;
+};
+
+export type CreatePaymentLinkResponse = {
+	token: string;
+	url: string;
+	space_id: number;
+	space_participant_id?: number | null;
+	expires_at: string;
+	proof_policy: string;
+	claim_required: boolean;
+	context: PaymentLinkContext;
+};
+
+export type PaymentLinkSummary = {
+	id: number;
+	token: string;
+	url: string;
+	space_id: number;
+	status: string;
+	proof_policy: string;
+	claim_required: boolean;
+	bound_participant?: PaymentResolutionParticipant | null;
+	claimed_participant?: PaymentResolutionParticipant | null;
+	obligation_count: number;
+	snapshot_total: number;
+	currency: string;
+	unpaid_count: number;
+	sent_count: number;
+	confirmed_count: number;
+	proof_count: number;
+	sent_with_proof_count: number;
+	needs_confirmation_count: number;
+	missing_required_proof_count: number;
+	obligations: PaymentLinkObligationRef[];
+	is_outdated: boolean;
+	outdated_reason?: string;
+	outdated_count: number;
+	expires_at: string;
+	revoked_at?: string | null;
+	created_at: string;
+};
+
+export type PaymentLinkObligationRef = {
+	obligation_id: string;
+	source_split_id: number;
+	payer_participant_id: number;
+	recipient_participant_id: number;
+	amount: number;
+	currency: string;
+	status: PaymentObligationStatus | string;
+	proof_required: boolean;
+	proof_count: number;
+	has_payer_proof: boolean;
+	proofs: PaymentProofRef[];
+};
+
+export type PaymentLinkListResponse = {
+	links: PaymentLinkSummary[];
+};
+
+export type UploadPaymentProofResponse = {
+	context: PaymentLinkContext;
+	proof: PaymentProofRef;
+};
+
 export type SpaceParticipantPatch = {
 	display_name?: string;
 	email?: string;

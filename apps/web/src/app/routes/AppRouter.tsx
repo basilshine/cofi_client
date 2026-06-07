@@ -46,6 +46,13 @@ const QuotaPage = lazy(() =>
 		default: module.QuotaPage,
 	})),
 );
+const PaymentResolutionPage = lazy(() =>
+	import("../../features/payment-resolution/PaymentResolutionPage").then(
+		(module) => ({
+			default: module.PaymentResolutionPage,
+		}),
+	),
+);
 const RecurringSchedulesPage = lazy(() =>
 	import("../../features/recurring/RecurringSchedulesPage").then((module) => ({
 		default: module.RecurringSchedulesPage,
@@ -163,6 +170,10 @@ export const AppRouter = () => {
 			<Route element={<InviteJoinPage />} path="/join" />
 			<Route element={<LoginPage />} path="/login" />
 			<Route element={<RegisterPage />} path="/register" />
+			<Route
+				element={lazyRoute(<PaymentResolutionPage />)}
+				path="/pay/:token"
+			/>
 
 			<Route element={<ProtectedRoute />}>
 				<Route element={<OnboardingPage />} path="/onboarding" />

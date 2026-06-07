@@ -5,6 +5,8 @@ import {
 	type CapturePacketListResponse,
 	type ChatMessage,
 	type CreateParticipantCandidateResponse,
+	type CreatePaymentLinkRequest,
+	type CreatePaymentLinkResponse,
 	type CreatePromoCodeRequest,
 	type CreateRecurringCandidateResponse,
 	type DeleteSourceDocumentReviewResponse,
@@ -20,6 +22,9 @@ import {
 	type NotificationChannelsPutBody,
 	type NotificationChannelsResponse,
 	type PatchPromoCodeRequest,
+	type PaymentLinkContext,
+	type PaymentLinkListResponse,
+	type PaymentLinkSummary,
 	type ProfileUpdateRequest,
 	type PromoCode,
 	type QuotaStatus,
@@ -46,6 +51,7 @@ import {
 	type TenantInvitesListResponse,
 	type TenantMembersPage,
 	type Transaction,
+	type UploadPaymentProofResponse,
 	type User,
 	type Vendor,
 	parseInviteAcceptResponse,
@@ -76,6 +82,23 @@ const fetchJson = async <T>(
 	}
 
 	if (res.status === 204) return undefined as T;
+	return (await res.json()) as T;
+};
+
+const fetchFormJson = async <T>(
+	url: string,
+	formData: FormData,
+	headers?: Record<string, string>,
+): Promise<T> => {
+	const res = await fetch(url, {
+		method: "POST",
+		headers: headers ?? {},
+		body: formData,
+	});
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		throw new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
+	}
 	return (await res.json()) as T;
 };
 
@@ -177,6 +200,78 @@ export const createApiClient = (config: ApiClientConfig) => {
 					headers: quotaHeaders(),
 				});
 			},
+		},
+
+		paymentLinks: {
+			list: (spaceId: string | number) =>
+				fetchJson<PaymentLinkListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/payment-links`),
+					{
+						method: "GET",
+						headers: authHeaders(),
+					},
+				),
+			verify: (token: string) =>
+				fetchJson<PaymentLinkContext>(
+					withBase(
+						`/api/v1/payment-links/${encodeURIComponent(String(token))}`,
+					),
+					{ method: "GET" },
+				),
+			claimParticipant: (token: string, spaceParticipantId: number) =>
+				fetchJson<PaymentLinkContext>(
+					withBase(
+						`/api/v1/payment-links/${encodeURIComponent(String(token))}/claim-participant`,
+					),
+					{
+						method: "POST",
+						body: { space_participant_id: spaceParticipantId },
+					},
+				),
+			markSent: (token: string, obligationId: string) =>
+				fetchJson<PaymentLinkContext>(
+					withBase(
+						`/api/v1/payment-links/${encodeURIComponent(String(token))}/mark-sent`,
+					),
+					{
+						method: "POST",
+						body: { obligation_id: obligationId },
+					},
+				),
+			markReceived: (token: string, obligationId: string) =>
+				fetchJson<PaymentLinkContext>(
+					withBase(
+						`/api/v1/payment-links/${encodeURIComponent(String(token))}/mark-received`,
+					),
+					{
+						method: "POST",
+						body: { obligation_id: obligationId },
+					},
+				),
+			uploadProof: (token: string, formData: FormData) =>
+				fetchFormJson<UploadPaymentProofResponse>(
+					withBase(
+						`/api/v1/payment-links/${encodeURIComponent(String(token))}/proofs`,
+					),
+					formData,
+				),
+			create: (spaceId: string | number, payload?: CreatePaymentLinkRequest) =>
+				fetchJson<CreatePaymentLinkResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/payment-links`),
+					{
+						method: "POST",
+						headers: authHeaders(),
+						body: payload ?? {},
+					},
+				),
+			revoke: (spaceId: string | number, linkId: string | number) =>
+				fetchJson<PaymentLinkSummary>(
+					withBase(`/api/v1/spaces/${spaceId}/payment-links/${linkId}`),
+					{
+						method: "DELETE",
+						headers: authHeaders(),
+					},
+				),
 		},
 
 		auth: {
