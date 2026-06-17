@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { GlobalComposerDock } from "./GlobalComposerDock";
+import { useGlobalComposerDock } from "./GlobalComposerDockContext";
 import { SpaceTabs } from "./SpaceTabs";
 
 const joinClassNames = (...parts: Array<string | false | null | undefined>) =>
@@ -31,6 +33,15 @@ export const SpaceWorkspaceLayout = ({
 	rightRailLabel = "Space utility rail",
 	tabsClassName,
 }: SpaceWorkspaceLayoutProps) => {
+	const globalComposerDock = useGlobalComposerDock();
+	const composerDock = globalComposerDock?.shouldShow ? (
+		<GlobalComposerDock
+			isCollapsed={globalComposerDock.isCollapsed}
+			onCollapsedChange={globalComposerDock.onCollapsedChange}
+			variant="inline"
+		/>
+	) : null;
+
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
 			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
@@ -39,11 +50,22 @@ export const SpaceWorkspaceLayout = ({
 			<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
 				<main
 					className={joinClassNames(
-						"min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden",
+						composerDock
+							? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+							: "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden",
 						mainClassName,
 					)}
 				>
-					<div className={contentClassName}>{children}</div>
+					{composerDock ? (
+						<>
+							<div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+								<div className={contentClassName}>{children}</div>
+							</div>
+							{composerDock}
+						</>
+					) : (
+						<div className={contentClassName}>{children}</div>
+					)}
 				</main>
 				{rightRail ? (
 					<aside

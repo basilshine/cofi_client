@@ -164,7 +164,6 @@ const buildCrumbs = (
 	const sectionLabel: Record<string, string> = {
 		account: "Account",
 		spaces: "Spaces",
-		drafts: "Drafts",
 		transactions: "Expenses",
 		recurring: "Recurring",
 		quota: "Quota",

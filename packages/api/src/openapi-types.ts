@@ -476,8 +476,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create capture draft
-         * @description Canonical draft capture entrypoint for text, receipt image, voice, and reviewed manual line items. `space_id` is currently required for persistence; future routing can make it optional after parser suggestions and user confirmation.
+         * Create capture candidates
+         * @description Canonical capture entrypoint for text, receipt image, voice, and manual line items. Captures persist a source document and draft candidates; records are created only by explicit review projection.
          */
         post: {
             parameters: {
@@ -488,70 +488,12 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["CaptureDraftJSONRequest"];
-                    "multipart/form-data": components["schemas"]["CaptureDraftMultipartRequest"];
+                    "application/json": components["schemas"]["CaptureJSONRequest"];
+                    "multipart/form-data": components["schemas"]["CaptureMultipartRequest"];
                 };
             };
             responses: {
-                /** @description Draft expense and chat message created */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SpaceCaptureResponse"];
-                    };
-                };
-                /** @description Invalid request or missing routing context */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden space context */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/capture/parse": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Parse capture input
-         * @description Canonical parser entrypoint for text, receipt image, and voice capture. `space_id` is optional but common; when provided, it is treated as explicit routing context after membership validation. This endpoint previews parser output and does not persist draft expenses.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CaptureParseJSONRequest"];
-                    "multipart/form-data": components["schemas"]["CaptureParseMultipartRequest"];
-                };
-            };
-            responses: {
-                /** @description Capture parse preview */
+                /** @description Source document and review candidates created */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -560,7 +502,7 @@ export interface paths {
                         "application/json": components["schemas"]["CaptureParsePreview"];
                     };
                 };
-                /** @description Invalid request */
+                /** @description Invalid request or missing routing context */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -593,7 +535,7 @@ export interface paths {
         put?: never;
         /**
          * Parse composer intent
-         * @description Experimental composer intent endpoint. It returns the validated `ceits_capture_v1` contract for text, image, or voice input and, when a valid space context is provided, persists a source document and review candidates without creating draft expenses. Existing capture parse and capture draft endpoints remain unchanged.
+         * @description Experimental composer intent endpoint. It returns the validated `ceits_capture_v1` contract for text, image, or voice input and, when a valid space context is provided, persists a source document and review candidates without creating records.
          */
         post: {
             parameters: {
@@ -760,31 +702,7 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a new expense */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Expense"];
-                };
-            };
-            responses: {
-                /** @description Expense created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Expense"];
-                    };
-                };
-            };
-        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -934,7 +852,7 @@ export interface paths {
         /**
          * List expense records in a shared space (deprecated transaction alias)
          * @deprecated
-         * @description Compatibility alias for older clients. Prefer `GET /api/v1/spaces/{spaceId}/expenses` for space-scoped expense records. Includes draft and approved expense-backed records linked to the space.
+         * @description Compatibility alias for older clients. Prefer `GET /api/v1/spaces/{spaceId}/expenses` for space-scoped saved expense records. Capture candidates stay in Review until projected and approved.
          */
         get: {
             parameters: {
@@ -1100,7 +1018,12 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Maximum number of saved promos to return. */
+                    limit?: number;
+                    /** @description Zero-based saved promo offset for pagination. */
+                    offset?: number;
+                };
                 header?: never;
                 path: {
                     /** @description Space ID */
@@ -1414,6 +1337,8 @@ export interface paths {
                 query?: {
                     /** @description Maximum number of capture packets to return. */
                     limit?: number;
+                    /** @description Zero-based capture packet offset for server-backed list pagination. */
+                    offset?: number;
                     /** @description Include compact records that were projected from each capture, for capture-centered review screens. */
                     include_records?: boolean;
                     /** @description When provided, include this capture/source document even if it is outside the newest capture limit. */
@@ -1598,6 +1523,71 @@ export interface paths {
                     content: {
                         "application/json": components["schemas"]["DocumentCandidateState"];
                     };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/candidates/{candidateId}/create-expense": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create an expense record from an expense candidate
+         * @description Canonical capture-review projection for turning a draft `expense_candidate` into an approved expense record. The source document and candidates remain the capture root; this endpoint records candidate resolutions and projections.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                    /** @description Expense candidate ID */
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Expense record created from the candidate. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreateExpenseCandidateResponse"];
+                    };
+                };
+                /** @description Candidate cannot be projected into an expense */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
                 /** @description Forbidden */
                 403: {
@@ -2995,6 +2985,149 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/telegram/group-bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Bind a Telegram group chat to an existing Space
+         * @description Persists a Telegram group or supergroup as an input-channel binding. Telegram does not become a product Space; captures still flow into the bound Ceits Space.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TelegramGroupBindingUpsertRequest"];
+                };
+            };
+            responses: {
+                /** @description Current Telegram chat binding */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelegramGroupBinding"];
+                    };
+                };
+                /** @description Invalid Telegram chat binding payload */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot post in the target Space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/telegram/group-bindings/{telegramChatID}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a Telegram group chat binding */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    telegramChatID: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Telegram chat binding for the authenticated user if they are the binder or can access the bound Space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelegramGroupBinding"];
+                    };
+                };
+                /** @description Current user cannot access this binding */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Telegram chat is not bound */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Unbind a Telegram group chat */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    telegramChatID: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Telegram chat binding removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is neither the binder nor allowed to post in the bound Space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Telegram chat is not bound */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/expenses": {
         parameters: {
             query?: never;
@@ -3004,13 +3137,15 @@ export interface paths {
         };
         /**
          * List expense records in a space
-         * @description Canonical shared-space expense record list for Chat, Expenses, Review, and space views. Returns draft, approved, and cancelled expense-backed records linked to the requested space through captures, chat messages, or historical expense links.
+         * @description Canonical shared-space saved expense record list for Chat, Expenses, and space views. Returns approved expense records linked to the requested space through captures, chat messages, or historical expense links. Capture candidates stay in Review/Captures until projected and approved.
          */
         get: {
             parameters: {
                 query?: {
                     /** @description Maximum number of expense records to return. */
                     limit?: number;
+                    /** @description Zero-based expense record offset for server-backed list pagination. */
+                    offset?: number;
                 };
                 header?: never;
                 path: {
@@ -3027,7 +3162,61 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["Transaction"][];
+                        "application/json": components["schemas"]["SpaceExpenseListResponse"];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/split-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List split decisions in a space
+         * @description Server-backed read model for saved participant split rows grouped by source expense, ordered newest first for the Splits workspace page.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Maximum number of split-backed expense decisions to return. */
+                    limit?: number;
+                    /** @description Zero-based split decision offset for server-backed list pagination. */
+                    offset?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Split decisions ordered by newest source expense first */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SpaceSplitDecisionListResponse"];
                     };
                 };
                 /** @description Current user is not a member of the space */
@@ -3192,122 +3381,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/confirm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Confirm a draft expense in a space
-         * @description Canonical shared-space draft confirmation route. The expense must be linked to the requested space; only the expense owner may confirm it in this compatibility slice.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: number;
-                    expenseId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Expense approved */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            message?: string;
-                        };
-                    };
-                };
-                /** @description Current user cannot confirm this expense */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Expense is not linked to this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Cancel a draft expense in a space
-         * @description Canonical shared-space draft cancellation route. The expense must be linked to the requested space; only the expense owner may cancel it in this compatibility slice.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: number;
-                    expenseId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Expense cancelled */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            message?: string;
-                        };
-                    };
-                };
-                /** @description Current user cannot cancel this expense */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Expense is not linked to this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/spaces/{spaceId}/expenses/{expenseId}/splits": {
         parameters: {
             query?: never;
@@ -3432,7 +3505,12 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Maximum number of recurring records to return. */
+                    limit?: number;
+                    /** @description Zero-based recurring record offset for pagination. */
+                    offset?: number;
+                };
                 header?: never;
                 path: {
                     /** @description Space ID */
@@ -3448,7 +3526,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["RecurringExpense"][];
+                        "application/json": components["schemas"]["SpaceRecurringListResponse"];
                     };
                 };
                 /** @description Current user is not a member of the space */
@@ -4271,98 +4349,6 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/expenses/{id}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create finances expenses cancel */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            responses: {
-                /** @description Successful response */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/expenses/{id}/confirm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create finances expenses confirm */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
                 cookie?: never;
             };
             requestBody?: {
@@ -5491,7 +5477,12 @@ export interface paths {
         /** List financial participants for a space */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Maximum number of participants to return. */
+                    limit?: number;
+                    /** @description Zero-based participant offset for pagination. */
+                    offset?: number;
+                };
                 header?: never;
                 path: {
                     spaceId: string;
@@ -5508,6 +5499,10 @@ export interface paths {
                     content: {
                         "application/json": {
                             participants?: components["schemas"]["SpaceParticipant"][];
+                            limit?: number;
+                            offset?: number;
+                            has_more?: boolean;
+                            next_offset?: number | null;
                         };
                     };
                 };
@@ -5515,6 +5510,501 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/payment-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List owner-managed payment-resolution links for a space
+         * @description Owner-only. Lists active and historical token links created for split-backed payment resolution.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Payment-resolution links for this space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaymentLinkListResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create a limited payment-resolution link for a space
+         * @description Owner-only. Returns an opaque token link for a bound participant or an unclaimed participant picker. Bound participants must have split-backed obligations. The token link does not grant space membership or full console access.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreatePaymentLinkRequest"];
+                };
+            };
+            responses: {
+                /** @description Created payment-resolution link */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreatePaymentLinkResponse"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/payment-links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an owner-managed payment-resolution link */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    linkId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Revoked payment-resolution link */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaymentLinkSummary"];
+                    };
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Link not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/payment-obligations/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm a sent payment obligation
+         * @description Owner-only. Marks a sent split-backed payment obligation as confirmed after reviewing external payment proof or other evidence. No real payment processing is performed.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmPaymentObligationRequest"];
+                };
+            };
+            responses: {
+                /** @description Refreshed payment-resolution links for this space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaymentLinkListResponse"];
+                    };
+                };
+                /** @description Obligation is not ready for confirmation */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Obligation not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-links/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Verify a payment-resolution token and return its scoped context */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Scoped payment-resolution context */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaymentLinkContext"];
+                    };
+                };
+                /** @description Invalid or expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-links/{token}/claim-participant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Claim an unclaimed payment-resolution link as a participant */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ClaimPaymentLinkParticipantRequest"];
+                };
+            };
+            responses: {
+                /** @description Scoped payment-resolution context after claim */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaymentLinkContext"];
+                    };
+                };
+                /** @description Invalid or expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Link is bound or action is forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-links/{token}/proofs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Upload payment proof for a visible obligation
+         * @description Stores private proof media for a token-scoped obligation. No real payment processing is performed.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": components["schemas"]["UploadPaymentProofRequest"];
+                };
+            };
+            responses: {
+                /** @description Proof uploaded and scoped context refreshed */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UploadPaymentProofResponse"];
+                    };
+                };
+                /** @description Invalid or missing proof upload */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid or expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Selected participant is not the payer for this obligation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-links/{token}/mark-sent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark a visible obligation as sent
+         * @description Records Ceits-side settlement state only. No real payment processing is performed.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MarkPaymentSentRequest"];
+                };
+            };
+            responses: {
+                /** @description Scoped payment-resolution context after status update */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaymentLinkContext"];
+                    };
+                };
+                /** @description Invalid or expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Selected participant is not the payer for this obligation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/payment-links/{token}/mark-received": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm a sent obligation as received
+         * @description Records Ceits-side recipient confirmation only. No real payment processing is performed.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["MarkPaymentSentRequest"];
+                };
+            };
+            responses: {
+                /** @description Scoped payment-resolution context after recipient confirmation */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PaymentLinkContext"];
+                    };
+                };
+                /** @description Obligation has not been marked sent */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Invalid or expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Selected participant is not the recipient for this obligation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -6352,6 +6842,182 @@ export interface components {
             /** Format: date-time */
             updated_at?: string;
         };
+        CreatePaymentLinkRequest: {
+            /**
+             * Format: int64
+             * @description Optional participant to bind the token to. Omit for an unclaimed participant-picker link.
+             */
+            space_participant_id?: number | null;
+            /** @description Optional token lifetime. Defaults to 168 hours. */
+            expires_in_hours?: number;
+            /**
+             * @description Whether payer proof is optional or required before Mark sent.
+             * @enum {string}
+             */
+            proof_policy?: "optional" | "required";
+        };
+        CreatePaymentLinkResponse: {
+            token?: string;
+            url?: string;
+            /** Format: int64 */
+            space_id?: number;
+            /** Format: int64 */
+            space_participant_id?: number | null;
+            /** Format: date-time */
+            expires_at?: string;
+            proof_policy?: string;
+            claim_required?: boolean;
+            context?: components["schemas"]["PaymentLinkContext"];
+        };
+        PaymentLinkListResponse: {
+            links?: components["schemas"]["PaymentLinkSummary"][];
+        };
+        PaymentLinkSummary: {
+            /** Format: int64 */
+            id?: number;
+            token?: string;
+            url?: string;
+            /** Format: int64 */
+            space_id?: number;
+            /** @enum {string} */
+            status?: "active" | "revoked";
+            /** @enum {string} */
+            proof_policy?: "optional" | "required";
+            claim_required?: boolean;
+            bound_participant?: components["schemas"]["PaymentResolutionParticipant"];
+            claimed_participant?: components["schemas"]["PaymentResolutionParticipant"];
+            obligation_count?: number;
+            snapshot_total?: number;
+            currency?: string;
+            unpaid_count?: number;
+            sent_count?: number;
+            confirmed_count?: number;
+            proof_count?: number;
+            sent_with_proof_count?: number;
+            needs_confirmation_count?: number;
+            missing_required_proof_count?: number;
+            obligations?: components["schemas"]["PaymentLinkObligationRef"][];
+            is_outdated?: boolean;
+            outdated_reason?: string;
+            outdated_count?: number;
+            /** Format: date-time */
+            expires_at?: string;
+            /** Format: date-time */
+            revoked_at?: string | null;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        PaymentLinkObligationRef: {
+            obligation_id?: string;
+            /** Format: int64 */
+            source_split_id?: number;
+            /** Format: int64 */
+            payer_participant_id?: number;
+            /** Format: int64 */
+            recipient_participant_id?: number;
+            amount?: number;
+            currency?: string;
+            /** @enum {string} */
+            status?: "unpaid" | "sent" | "received" | "confirmed" | "disputed";
+            proof_required?: boolean;
+            proof_count?: number;
+            has_payer_proof?: boolean;
+            proofs?: components["schemas"]["PaymentProofRef"][];
+        };
+        PaymentLinkContext: {
+            token?: string;
+            token_status?: string;
+            /** @enum {string} */
+            proof_policy?: "optional" | "required";
+            /** Format: int64 */
+            space_id?: number;
+            space_name?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            claim_required?: boolean;
+            selected_participant?: components["schemas"]["PaymentResolutionParticipant"];
+            eligible_participants?: components["schemas"]["PaymentResolutionParticipant"][];
+            summary?: components["schemas"]["PaymentResolutionSummary"];
+            obligations?: components["schemas"]["PaymentObligation"][];
+        };
+        PaymentResolutionSummary: {
+            you_owe?: number;
+            owed_to_you?: number;
+            pending_sent_payments?: number;
+            needs_confirmation?: number;
+        };
+        PaymentResolutionParticipant: {
+            /** Format: int64 */
+            id?: number;
+            display_name?: string;
+            participant_type?: string;
+            status?: string;
+            detail?: string;
+            payment_methods?: components["schemas"]["PaymentMethod"][];
+        };
+        PaymentMethod: {
+            /** @enum {string} */
+            type?: "venmo" | "cash_app" | "paypal" | "zelle" | "manual";
+            label?: string;
+            value?: string;
+            url?: string;
+        };
+        PaymentObligation: {
+            /** @description Stable derived obligation id, currently split:{expense_participant_splits.id}. */
+            id?: string;
+            payer_participant?: components["schemas"]["PaymentResolutionParticipant"];
+            recipient_participant?: components["schemas"]["PaymentResolutionParticipant"];
+            amount?: number;
+            currency?: string;
+            /** Format: int64 */
+            source_expense_id?: number;
+            /** Format: int64 */
+            source_split_id?: number;
+            /** Format: int64 */
+            source_document_id?: number | null;
+            source_label?: string;
+            source_detail?: string;
+            note?: string;
+            /** @enum {string} */
+            status?: "unpaid" | "sent" | "received" | "confirmed" | "disputed";
+            payment_methods?: components["schemas"]["PaymentMethod"][];
+            proof_required?: boolean;
+            proofs?: components["schemas"]["PaymentProofRef"][];
+        };
+        PaymentProofRef: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            media_id?: number;
+            actor_participant?: components["schemas"]["PaymentResolutionParticipant"];
+            note?: string;
+            original_filename?: string;
+            content_type?: string;
+            /** Format: int64 */
+            byte_size?: number;
+            /** Format: date-time */
+            created_at?: string;
+        };
+        UploadPaymentProofRequest: {
+            obligation_id: string;
+            note?: string;
+            /** Format: binary */
+            proof: string;
+        };
+        UploadPaymentProofResponse: {
+            context?: components["schemas"]["PaymentLinkContext"];
+            proof?: components["schemas"]["PaymentProofRef"];
+        };
+        ClaimPaymentLinkParticipantRequest: {
+            /** Format: int64 */
+            space_participant_id: number;
+        };
+        MarkPaymentSentRequest: {
+            obligation_id: string;
+        };
+        ConfirmPaymentObligationRequest: {
+            obligation_id: string;
+        };
         PatchSpaceParticipantRequest: {
             display_name?: string;
             email?: string;
@@ -6499,7 +7165,7 @@ export interface components {
             currency?: string;
             /** @description YYYY-MM-DD; empty string resets txn_date to today (UTC date). */
             txn_date?: string;
-            /** @description Allowed transitions from draft — approved or cancelled. */
+            /** @description Allowed saved-record statuses are approved or cancelled. */
             status?: string;
             /** Format: int64 */
             vendor_id?: number;
@@ -6598,6 +7264,13 @@ export interface components {
             /** @description When true, the scheduler skips this schedule until resumed. */
             paused?: boolean;
         };
+        SpaceRecurringListResponse: {
+            recurring?: components["schemas"]["RecurringExpense"][];
+            limit?: number;
+            offset?: number;
+            has_more?: boolean;
+            next_offset?: number | null;
+        };
         Notification: {
             /** Format: int64 */
             id?: number;
@@ -6628,6 +7301,35 @@ export interface components {
         };
         /** @enum {string} */
         ReactionType: "like" | "dislike" | "happy" | "sad" | "regret" | "joy" | "neutral";
+        TelegramGroupBindingUpsertRequest: {
+            /** Format: int64 */
+            telegram_chat_id: number;
+            /**
+             * @default group
+             * @enum {string}
+             */
+            telegram_chat_type: "group" | "supergroup";
+            telegram_chat_title?: string;
+            /** Format: int64 */
+            space_id: number;
+        };
+        TelegramGroupBinding: {
+            /** Format: int64 */
+            telegram_chat_id?: number;
+            /** @enum {string} */
+            telegram_chat_type?: "group" | "supergroup";
+            telegram_chat_title?: string;
+            /** Format: int64 */
+            space_id?: number;
+            space_name?: string;
+            /** Format: int64 */
+            bound_by_user_id?: number;
+            bound_by_name?: string;
+            /** Format: date-time */
+            bound_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
         TelegramLoginRequest: {
             /** Format: int64 */
             telegramId?: number;
@@ -6665,8 +7367,8 @@ export interface components {
             token?: string;
             password?: string;
         };
-        /** @description JSON request for canonical draft capture. Text input parses the text before draft creation; manual input creates a draft from reviewed line items. */
-        CaptureDraftJSONRequest: {
+        /** @description JSON request for canonical candidate-first capture. Text input is parsed by the capture pipeline; manual input is normalized into the same source-document and candidate pipeline without creating records. */
+        CaptureJSONRequest: {
             /**
              * @default text
              * @enum {string}
@@ -6674,22 +7376,21 @@ export interface components {
             input_kind: "text" | "manual";
             /** @description Required explicit space context until autonomous capture routing is implemented. */
             space_id: number;
-            /**
-             * Format: int64
-             * @description Optional source document id from a prior parse preview. When provided for manual drafts, the server links the parsed expense candidate to the created draft expense for later review/projection flows.
-             */
-            source_document_id?: number;
             /** @description Required when input_kind is text. */
             text?: string;
-            /** @description Manual draft description. */
+            /** @description Manual capture description. */
             description?: string;
             /** @description Required when input_kind is manual. */
             items?: components["schemas"]["SpaceManualCaptureItem"][];
             /** @description Client channel such as web, bot, or mobile. */
             channel?: string;
+            /** @description Optional client/source provenance metadata. For Telegram group capture this can include source, telegram_chat_id, telegram_chat_title, telegram_message_id, telegram_sender_id, telegram_sender_name, and telegram_reply_to_message_id. */
+            source_context?: {
+                [key: string]: unknown;
+            };
         };
-        /** @description Multipart request for canonical image or voice draft capture. */
-        CaptureDraftMultipartRequest: {
+        /** @description Multipart request for canonical image or voice capture. The server creates a source document and review candidates. */
+        CaptureMultipartRequest: {
             /** @enum {string} */
             input_kind: "image" | "voice";
             /** @description Required explicit space context until autonomous capture routing is implemented. */
@@ -6701,6 +7402,8 @@ export interface components {
             file: string;
             /** @description Client channel such as web, bot, or mobile. */
             channel?: string;
+            /** @description Optional JSON object string containing client/source provenance metadata. */
+            source_context?: string;
         };
         /** @description JSON request for canonical text capture parsing. */
         CaptureParseJSONRequest: {
@@ -6716,6 +7419,10 @@ export interface components {
             channel?: string;
             /** @description Optional parser hint. */
             prompt?: string;
+            /** @description Optional client/source provenance metadata persisted with the resulting source document. */
+            source_context?: {
+                [key: string]: unknown;
+            };
         };
         /** @description Multipart request for canonical image or voice capture parsing. */
         CaptureParseMultipartRequest: {
@@ -6732,6 +7439,8 @@ export interface components {
             channel?: string;
             /** @description Optional parser hint. */
             prompt?: string;
+            /** @description Optional JSON object string containing client/source provenance metadata. */
+            source_context?: string;
         };
         CaptureParsePreview: components["schemas"]["SpaceParsePreview"] & {
             /** @description Echoed explicit space context when provided. */
@@ -6756,7 +7465,7 @@ export interface components {
             candidates: components["schemas"]["CaptureIntentCandidate"][];
             model_policy: components["schemas"]["CaptureModelPolicy"];
             /** @enum {string} */
-            next_action: "review" | "ask_clarification" | "save_draft" | "open_chat" | "select_space";
+            next_action: "review" | "ask_clarification" | "open_chat" | "select_space";
             metadata?: {
                 [key: string]: string;
             };
@@ -6815,7 +7524,7 @@ export interface components {
              * @description Persisted source document id for this parse preview when capture review recording succeeded.
              */
             source_document_id?: number;
-            /** @description Lightweight draft candidates created from this parse preview for later review. */
+            /** @description Lightweight capture candidates created from this parse preview for later review. */
             candidates?: components["schemas"]["CaptureParseCandidate"][];
             complexity?: string;
             confidence?: number;
@@ -6825,9 +7534,6 @@ export interface components {
             clarification_message?: string;
             intent?: string;
             data?: {
-                [key: string]: unknown;
-            };
-            draft?: {
                 [key: string]: unknown;
             };
             split_draft?: {
@@ -6905,6 +7611,10 @@ export interface components {
         };
         SpacePromoListResponse: {
             promos?: components["schemas"]["PromoCode"][];
+            limit?: number;
+            offset?: number;
+            has_more?: boolean;
+            next_offset?: number | null;
             summary?: components["schemas"]["PromoBenefitsSummary"];
         };
         /** @description Manual promo creation request. */
@@ -7004,6 +7714,10 @@ export interface components {
             document_date?: string;
             total_amount?: number;
             currency?: string;
+            /** @description Persisted client/source provenance metadata for this capture. */
+            source_context?: {
+                [key: string]: unknown;
+            };
             confidence?: number;
             candidate_count?: number;
             pending_count?: number;
@@ -7118,6 +7832,40 @@ export interface components {
         };
         CapturePacketListResponse: {
             captures?: components["schemas"]["CapturePacket"][];
+            limit?: number;
+            offset?: number;
+            has_more?: boolean;
+            next_offset?: number | null;
+        };
+        SpaceExpenseListResponse: {
+            expenses?: components["schemas"]["Transaction"][];
+            limit?: number;
+            offset?: number;
+            has_more?: boolean;
+            next_offset?: number | null;
+        };
+        SpaceSplitDecisionRow: {
+            /** Format: int64 */
+            user_id?: number | null;
+            /** Format: int64 */
+            space_participant_id?: number | null;
+            participant?: components["schemas"]["SpaceParticipant"];
+            /** Format: int64 */
+            source_document_id?: number | null;
+            amount?: number;
+        };
+        SpaceSplitDecision: {
+            expense?: components["schemas"]["Transaction"];
+            splits?: components["schemas"]["SpaceSplitDecisionRow"][];
+            /** Format: int64 */
+            source_document_id?: number | null;
+        };
+        SpaceSplitDecisionListResponse: {
+            decisions?: components["schemas"]["SpaceSplitDecision"][];
+            limit?: number;
+            offset?: number;
+            has_more?: boolean;
+            next_offset?: number | null;
         };
         /** @description Reviewable document-level signal extracted from a source document. */
         DocumentCandidate: {
@@ -7129,7 +7877,7 @@ export interface components {
             source_document_id?: number;
             /**
              * Format: int64
-             * @description Expense projected from this candidate's source document, when the capture has already created a reviewable draft.
+             * @description Expense record projected from this candidate's source document, when review has created a saved record.
              */
             projected_expense_id?: number;
             /** @enum {string} */
@@ -7166,6 +7914,10 @@ export interface components {
             /** Format: int64 */
             source_document_id?: number;
             deleted?: boolean;
+        };
+        CreateExpenseCandidateResponse: {
+            expense?: components["schemas"]["Expense"];
+            candidate?: components["schemas"]["DocumentCandidateState"];
         };
         CreateParticipantCandidateResponse: {
             participant?: components["schemas"]["SpaceParticipant"];
@@ -7228,7 +7980,7 @@ export interface components {
             media_id?: number;
             /**
              * Format: int64
-             * @description Source document linked to the created draft expense, either created by this direct text/photo/voice capture or supplied from a prior parse preview.
+             * @description Source document linked to the created capture record, either created by this direct text/photo/voice capture or supplied from a prior parse preview.
              */
             source_document_id?: number;
         };

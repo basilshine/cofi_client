@@ -128,7 +128,7 @@ export const SpaceTransactionDetailDialog = ({
 
 	const handleChangeClick = () => {
 		const ok = window.confirm(
-			"Copy this expense into the workspace as editable line items? Your current workspace content will be replaced. Saved expense records are not edited in place — you are creating a new draft from this copy.",
+			"Copy this expense into the workspace as editable line items? Your current workspace content will be replaced. Saved expense records are not edited in place — you are creating a new candidate from this copy.",
 		);
 		if (!ok) return;
 		onRequestCopyToWorkspace();

@@ -1,7 +1,6 @@
 import type { CapturePacket as ApiCapturePacket, Transaction } from "@cofi/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { openGlobalComposerIntent } from "../../../app/layout/workspaceSpaces/globalComposerIntent";
+import { Link } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
 import { apiClient } from "../../../shared/lib/apiClient";
 import {
@@ -101,17 +100,12 @@ export const ChatExpenseRightPanelContent = ({
 	expensesWorkspaceRoute = false,
 	spaceName = null,
 }: Props) => {
-	const location = useLocation();
-	const navigate = useNavigate();
 	const { formatMoney, formatDateTime } = useUserFormat();
 	const [capturePackets, setCapturePackets] = useState<ApiCapturePacket[]>([]);
 	const [captureLoading, setCaptureLoading] = useState(false);
 	const [captureError, setCaptureError] = useState<string | null>(null);
 	const spaceLabel = spaceName?.trim() || "this space";
 	const reviewHref = `/console/review?spaceId=${encodeURIComponent(String(spaceId))}`;
-	const handleOpenAddExpense = () => {
-		openGlobalComposerIntent(navigate, location, "expense");
-	};
 
 	const loadCapturePackets = useCallback(async () => {
 		if (expensesWorkspaceRoute) return;
@@ -144,17 +138,22 @@ export const ChatExpenseRightPanelContent = ({
 
 	const stats = useMemo(() => {
 		const list = spaceTransactions ?? [];
-		let draft = 0;
+		let recorded = 0;
 		let needsReview = 0;
 		let approved = 0;
+		let linkedCaptures = 0;
 		for (const tx of list) {
 			const tone = expenseStatusTone(tx.status);
-			if (tone === "draft") draft += 1;
-			else if (tone === "needs_review") needsReview += 1;
+			if (tx.source_document_id != null) linkedCaptures += 1;
+			if (tone === "needs_review") needsReview += 1;
 			else if (tone === "approved") approved += 1;
+			else if (tone !== "cancelled") recorded += 1;
 		}
-		const approvedRecent = list
-			.filter((tx) => expenseStatusTone(tx.status) === "approved")
+		const recentRecords = list
+			.filter((tx) => {
+				const tone = expenseStatusTone(tx.status);
+				return tone !== "needs_review" && tone !== "cancelled";
+			})
 			.slice()
 			.sort((a, b) => {
 				const ta = a.created_at ? Date.parse(a.created_at) : 0;
@@ -162,7 +161,14 @@ export const ChatExpenseRightPanelContent = ({
 				return tb - ta;
 			})
 			.slice(0, 4);
-		return { total: list.length, draft, needsReview, approved, approvedRecent };
+		return {
+			total: list.length,
+			recorded,
+			needsReview,
+			approved,
+			linkedCaptures,
+			recentRecords,
+		};
 	}, [spaceTransactions]);
 
 	const captureSummaries = useMemo(
@@ -338,13 +344,11 @@ export const ChatExpenseRightPanelContent = ({
 			<div className="mx-auto w-full max-w-md space-y-5">
 				<div>
 					<h2 className="font-display text-lg font-bold tracking-tight text-foreground">
-						{expensesWorkspaceRoute
-							? `Expenses in ${spaceLabel}`
-							: "Space captures"}
+						{expensesWorkspaceRoute ? "Expense context" : "Space captures"}
 					</h2>
 					<p className="mt-1 text-sm leading-relaxed text-muted-foreground">
 						{expensesWorkspaceRoute
-							? "Select an expense from the list to inspect line items and saved splits in this panel."
+							? `Select a saved expense record from ${spaceLabel} to inspect line items, source capture, and saved splits.`
 							: `Review what Ceits found from chat, receipts, voice, and text in ${spaceLabel}. Expense records are one possible outcome of a capture.`}
 					</p>
 				</div>
@@ -364,7 +368,7 @@ export const ChatExpenseRightPanelContent = ({
 				{!listLoading && spaceTransactions && spaceTransactions.length === 0 ? (
 					<p className="text-sm leading-relaxed text-muted-foreground">
 						{expensesWorkspaceRoute
-							? "No expenses in this space yet. Capture from chat or add one below."
+							? "No saved expense records yet. New spending starts in Captures review or from the global Add expense action."
 							: "No capture results in this space yet. Send text, voice, or a receipt from chat."}
 					</p>
 				) : null}
@@ -379,7 +383,7 @@ export const ChatExpenseRightPanelContent = ({
 							id="exp-rail-summary"
 						>
 							{expensesWorkspaceRoute
-								? "Summary"
+								? "Records"
 								: "Saved outcomes from captures"}
 						</h3>
 						<dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
@@ -392,36 +396,36 @@ export const ChatExpenseRightPanelContent = ({
 								</dd>
 							</div>
 							<div>
-								<dt className="text-xs font-medium text-[#7a4510]">
-									Need review
+								<dt className="text-xs font-medium text-[#7a4510]">Recorded</dt>
+								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#5a3008]">
+									{stats.recorded}
+								</dd>
+							</div>
+							<div>
+								<dt className="text-xs font-medium text-[#7a5210]">
+									Needs review
 								</dt>
 								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#5a3008]">
 									{stats.needsReview}
 								</dd>
 							</div>
 							<div>
-								<dt className="text-xs font-medium text-[#7a5210]">
-									Draft expenses
+								<dt className="text-xs font-medium text-[#355a3c]">
+									Linked captures
 								</dt>
-								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#5a3008]">
-									{stats.draft}
-								</dd>
-							</div>
-							<div>
-								<dt className="text-xs font-medium text-[#355a3c]">Approved</dt>
 								<dd className="mt-0.5 text-lg font-bold tabular-nums text-[#2d4a32]">
-									{stats.approved}
+									{stats.linkedCaptures}
 								</dd>
 							</div>
 						</dl>
 
-						{stats.approvedRecent.length > 0 ? (
+						{stats.recentRecords.length > 0 ? (
 							<div className="mt-4 border-t border-[rgba(120,100,80,0.12)] pt-3">
 								<h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-									Recently approved
+									Recent records
 								</h4>
 								<ul className="mt-2 space-y-2">
-									{stats.approvedRecent.map((tx) => {
+									{stats.recentRecords.map((tx) => {
 										const entity = toTransactionExpenseEntity(tx, {
 											amountLabel: formatMoney(tx.total),
 										});
@@ -460,23 +464,13 @@ export const ChatExpenseRightPanelContent = ({
 						) : null}
 
 						<div className="mt-4 flex flex-wrap items-center gap-2 border-t border-[rgba(120,100,80,0.12)] pt-3">
-							<button
-								aria-label="Reload expense list"
-								className="inline-flex h-10 items-center rounded-lg border border-[rgba(120,100,80,0.22)] bg-white/90 px-4 text-sm font-medium text-foreground transition hover:bg-white disabled:opacity-50"
-								disabled={listLoading}
-								onClick={() => onReloadList()}
-								type="button"
-							>
-								{listLoading ? "Refreshing…" : "Refresh list"}
-							</button>
 							{expensesWorkspaceRoute ? (
-								<button
-									className="inline-flex h-10 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
-									onClick={handleOpenAddExpense}
-									type="button"
+								<Link
+									className="inline-flex h-10 items-center rounded-lg border border-[rgba(120,100,80,0.22)] bg-white/90 px-4 text-sm font-medium text-foreground transition hover:bg-white"
+									to={reviewHref}
 								>
-									Add expense
-								</button>
+									Open captures
+								</Link>
 							) : (
 								<Link
 									className="inline-flex h-10 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"

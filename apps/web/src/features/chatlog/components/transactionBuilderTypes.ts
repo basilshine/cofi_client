@@ -7,7 +7,7 @@ export type BuilderItem = {
 	tags: string; // comma separated
 	/** Optional per-line memo (not expense-level business notes). */
 	notes?: string;
-	/** Per line: create a recurring schedule for this item only when the draft is approved */
+	/** Per line: create a recurring schedule for this item only when the record is approved */
 	recurring_enabled?: boolean;
 	recurring_interval?: StandardRecurringInterval;
 };

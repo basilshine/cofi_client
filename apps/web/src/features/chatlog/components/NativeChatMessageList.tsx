@@ -9,12 +9,10 @@ import {
 	ChatMessageRichText,
 	type LegacyReviewDeepLink,
 } from "./ChatMessageRichText";
-import {
-	isDraftExpenseSystemMessage,
-	isRecurringExpenseChatMessage,
-} from "./DraftExpenseBoilerplateCaption";
-import { DraftExpenseCard } from "./DraftExpenseCard";
 import { ExpenseMessageCard } from "./ExpenseMessageCard";
+
+const isRecurringExpenseChatMessage = (message: ChatMessage): boolean =>
+	message.message_type === "recurring_expense";
 
 type NativeChatMessageListProps = {
 	canDeleteMessage: (message: ChatMessage) => boolean;
@@ -64,7 +62,7 @@ export const NativeChatMessageList = ({
 		const updatesByKey = new Map<
 			string,
 			Array<{
-				state: "draft" | "approved" | "needs_review";
+				state: "approved" | "needs_review";
 				timestamp?: string | null;
 				note?: string | null;
 			}>
@@ -77,14 +75,12 @@ export const NativeChatMessageList = ({
 			const key = String(relatedId);
 			latestIndexByKey.set(key, i);
 			const raw = (m.related_expense_status ?? "").toLowerCase();
-			const state: "draft" | "approved" | "needs_review" =
+			const state: "approved" | "needs_review" =
 				m.related_transaction_id != null || raw === "approved"
 					? "approved"
-					: raw === "draft"
-						? "draft"
-						: raw.includes("pending") || raw.includes("review")
-							? "needs_review"
-							: "draft";
+					: raw.includes("pending") || raw.includes("review")
+						? "needs_review"
+						: "approved";
 			const note =
 				state === "approved" && (updatesByKey.get(key)?.length ?? 0) > 0
 					? "Updated after confirmation"
@@ -106,11 +102,11 @@ export const NativeChatMessageList = ({
 		return messages.map((m, idx) => {
 			const isUser = m.sender_type === "user";
 			const accent = isUser ? userMessageAccent(m.user_id) : null;
+			const relatedExpenseId = m.related_transaction_id ?? m.related_expense_id;
 			const showCaptionAboveExpense =
-				Boolean(m.related_transaction_id || m.related_expense_id) &&
+				relatedExpenseId != null &&
 				Boolean(m.text?.trim()) &&
 				!isRecurringExpenseChatMessage(m) &&
-				!isDraftExpenseSystemMessage(m) &&
 				!(
 					editingMessageId != null && String(editingMessageId) === String(m.id)
 				);
@@ -125,8 +121,7 @@ export const NativeChatMessageList = ({
 			).toLowerCase();
 			const hasGoneRelatedResource = relatedExpenseStatus === "gone";
 			const hasExpenseAttachment =
-				!hasGoneRelatedResource &&
-				Boolean(m.related_expense_id || m.related_transaction_id);
+				!hasGoneRelatedResource && relatedExpenseId != null;
 			const hasMediaAttachment = Boolean(
 				m.media_id &&
 					(m.media_kind === "image" ||
@@ -163,11 +158,9 @@ export const NativeChatMessageList = ({
 			})();
 			const currentRelatedId = hasGoneRelatedResource
 				? null
-				: m.related_expense_id != null
-					? String(m.related_expense_id)
-					: m.related_transaction_id != null
-						? String(m.related_transaction_id)
-						: null;
+				: relatedExpenseId != null
+					? String(relatedExpenseId)
+					: null;
 			const reviewCaptureUrl =
 				m.source_document_id != null
 					? `/console/review?spaceId=${encodeURIComponent(String(selectedSpaceId))}&sourceDocumentId=${encodeURIComponent(String(m.source_document_id))}`
@@ -346,8 +339,8 @@ export const NativeChatMessageList = ({
 							) : null}
 
 							{hasExpenseAttachment &&
-							m.related_transaction_id &&
-							isLatestForExpense ? (
+							isLatestForExpense &&
+							relatedExpenseId != null ? (
 								<ExpenseMessageCard
 									chatWorkspace={chatWorkspace}
 									compact
@@ -357,26 +350,8 @@ export const NativeChatMessageList = ({
 									onTransactionOrphaned={() => onRelatedResourceGone(m.id)}
 									spaceId={selectedSpaceId}
 									sourceDocumentId={m.source_document_id}
-									transactionId={m.related_transaction_id}
+									transactionId={relatedExpenseId}
 									updates={groupedUpdates}
-								/>
-							) : null}
-
-							{hasExpenseAttachment &&
-							m.related_expense_id &&
-							isLatestForExpense ? (
-								<DraftExpenseCard
-									chatWorkspace={chatWorkspace}
-									compact
-									expenseId={m.related_expense_id}
-									inspectorOpen={inspectorOpen}
-									isSelected={isRelatedSelected}
-									onExpenseOrphaned={() => onRelatedResourceGone(m.id)}
-									onOpenExpenseDetail={onOpenExpenseDetail}
-									originMessageId={m.id}
-									relatedExpenseStatusHint={m.related_expense_status}
-									spaceId={selectedSpaceId}
-									sourceDocumentId={m.source_document_id}
 								/>
 							) : null}
 
@@ -426,9 +401,7 @@ export const NativeChatMessageList = ({
 										/>
 									</div>
 								</div>
-							) : isDraftExpenseSystemMessage(
-									m,
-								) ? null : showCaptionAboveExpense ? null : (
+							) : showCaptionAboveExpense ? null : (
 								<div className="whitespace-pre-wrap text-sm text-foreground">
 									<ChatMessageRichText
 										body={m.text ?? ""}

@@ -31,7 +31,6 @@ export const expenseDisplayMerchant = (tx: Transaction): string => {
 };
 
 export type ExpenseStatusTone =
-	| "draft"
 	| "approved"
 	| "cancelled"
 	| "needs_review"
@@ -41,12 +40,7 @@ export const expenseStatusTone = (raw?: string): ExpenseStatusTone => {
 	const s = (raw ?? "").toLowerCase();
 	if (s === "approved") return "approved";
 	if (s === "cancelled" || s === "canceled") return "cancelled";
-	if (s === "draft") return "draft";
-	if (
-		s.includes("review") ||
-		s.includes("question") ||
-		(s.includes("pending") && !s.includes("draft"))
-	) {
+	if (s.includes("review") || s.includes("question") || s.includes("pending")) {
 		return "needs_review";
 	}
 	return "other";
@@ -62,9 +56,6 @@ export const expenseStatusClass = (statusRaw?: string): string => {
 	const tone = expenseStatusTone(statusRaw);
 	if (tone === "approved") {
 		return "border-[rgba(95,130,102,0.35)] bg-[rgba(120,154,124,0.14)] text-[#2d4a32]";
-	}
-	if (tone === "draft") {
-		return "border-[rgba(200,155,80,0.4)] bg-[rgba(255,236,200,0.55)] text-[#6b4510]";
 	}
 	if (tone === "cancelled") {
 		return "border-[rgba(160,90,90,0.28)] bg-[rgba(180,100,100,0.1)] text-[rgba(110,55,55,0.95)]";
@@ -154,7 +145,7 @@ export const expenseDetailToTransaction = (
 		space_id: spaceId,
 		user_id: expense.user_id,
 		type: "expense",
-		status: expense.status ?? "draft",
+		status: expense.status ?? "approved",
 		title: expense.title,
 		description: expense.description,
 		payee_text: expense.payee_text,

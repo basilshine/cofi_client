@@ -1,6 +1,5 @@
 import type { CapturePacket as ApiCapturePacket } from "@cofi/api";
 import {
-	Activity,
 	ArrowRight,
 	CheckCircle2,
 	ChevronDown,
@@ -13,18 +12,9 @@ import {
 	Mic,
 	Plus,
 	ScanSearch,
-	Settings2,
 	Sparkles,
-	UserRound,
 } from "lucide-react";
-import {
-	type CSSProperties,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../contexts/AuthContext";
 import {
@@ -99,19 +89,6 @@ const isPromoCapabilityGate = (bundle?: GlobalComposerCandidateBundle) =>
 	!bundleHasAny(bundle, ["promo"]) &&
 	bundle.capabilityNotice != null;
 
-const dockRightRailWidth = (pathname: string): string => {
-	if (/^\/console\/chat\/expenses(?:\/|$)/.test(pathname)) return "22rem";
-	if (/^\/console\/review(?:\/|$)/.test(pathname)) return "21rem";
-	return "20rem";
-};
-
-const routeHasRightRail = (pathname: string): boolean =>
-	/^\/console\/spaces\/[^/]+\/(?:overview|benefits|splits|recurring|members)(?:\/|$)/.test(
-		pathname,
-	) ||
-	/^\/console\/review(?:\/|$)/.test(pathname) ||
-	/^\/console\/chat\/expenses(?:\/|$)/.test(pathname);
-
 const candidateOnlyStatus = (
 	bundle: GlobalComposerCandidateBundle,
 	spaceName: string,
@@ -139,7 +116,7 @@ const candidateOnlyStatus = (
 	if (bundle.capabilityNotice) {
 		return `Basic parse finished in ${spaceName}; smart candidates are gated by plan.`;
 	}
-	return "Ceits parsed the input, but needs clearer expense details before creating a draft.";
+	return "Ceits parsed the input, but needs clearer expense details before creating a candidate.";
 };
 
 const withReviewParams = (
@@ -289,7 +266,7 @@ const candidateActionText = (
 	label: string,
 ): string => {
 	const prefix = count > 1 ? `${count} ${label}` : label;
-	if (kind === "expense") return "Expense draft prepared for review";
+	if (kind === "expense") return "Expense candidate prepared for review";
 	if (kind === "expense_item") return `${prefix} extracted from the capture`;
 	if (kind === "promo") return "Promo found separately from the expense";
 	if (kind === "loyalty") return "Loyalty or bonus signal detected";
@@ -593,9 +570,9 @@ const DockReviewDrawer = ({
 		{
 			key: "expense",
 			title: "Expense",
-			description: "Merchant, amount, date, category, and draft status.",
+			description: "Merchant, amount, date, category, and review status.",
 			addLabel: "Add expense",
-			foundLabel: "Expense draft",
+			foundLabel: "Expense candidate",
 			kinds: ["expense"],
 			reviewSection: "expenses",
 		},
@@ -971,6 +948,8 @@ const ClarificationActionsPanel = ({
 type GlobalComposerDockProps = {
 	isCollapsed: boolean;
 	onCollapsedChange: (isCollapsed: boolean) => void;
+	rightInsetClassName?: string;
+	variant?: "overlay" | "inline";
 };
 
 type PendingComposerTarget = {
@@ -981,6 +960,8 @@ type PendingComposerTarget = {
 export const GlobalComposerDock = ({
 	isCollapsed,
 	onCollapsedChange,
+	rightInsetClassName = "right-0",
+	variant = "overlay",
 }: GlobalComposerDockProps) => {
 	const location = useLocation();
 	const navigate = useNavigate();
@@ -1057,11 +1038,6 @@ export const GlobalComposerDock = ({
 		activeSpaceId == null
 			? "/console/review"
 			: `/console/review?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
-	const activeSpaceActivityHref =
-		activeSpaceId == null
-			? "/console/home"
-			: `/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}&view=activity`;
-
 	const disabled = busy || isLoading || !hasSpaceContext;
 	const composerNotice =
 		errorText ??
@@ -1069,21 +1045,15 @@ export const GlobalComposerDock = ({
 		(!hasSpaceContext
 			? "Choose a space before capturing expenses or posting messages."
 			: (composerFlow.message ?? null));
-	const reserveSpaceRail = routeHasRightRail(location.pathname);
-	const dockReservedRailWidth = dockRightRailWidth(location.pathname);
-	const dockShellClass = [
-		"pointer-events-none absolute bottom-0 left-0 z-40 flex justify-center border-t border-border/35 bg-[linear-gradient(180deg,rgba(250,247,240,0.56),rgba(250,247,240,0.92))] px-4 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.42)] backdrop-blur-xl lg:px-6 xl:px-8",
-		reserveSpaceRail
-			? "right-0 xl:right-[var(--dock-right-rail-width)]"
-			: "right-0",
-	].join(" ");
-	const dockShellStyle = reserveSpaceRail
-		? ({
-				"--dock-right-rail-width": dockReservedRailWidth,
-			} as CSSProperties)
-		: undefined;
+	const dockShellClass =
+		variant === "inline"
+			? "shrink-0 border-t border-border/35 bg-[linear-gradient(180deg,rgba(250,247,240,0.56),rgba(250,247,240,0.92))] px-4 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.26)] backdrop-blur-xl lg:px-6 xl:px-8"
+			: [
+					"pointer-events-none absolute bottom-0 left-0 z-40 flex justify-center border-t border-border/35 bg-[linear-gradient(180deg,rgba(250,247,240,0.56),rgba(250,247,240,0.92))] px-4 pb-3 pt-2 shadow-[0_-18px_44px_-36px_rgba(44,32,18,0.42)] backdrop-blur-xl lg:px-6 xl:px-8",
+					rightInsetClassName,
+				].join(" ");
 	const dockCardClass =
-		"pointer-events-auto w-full max-w-[72rem] overflow-hidden rounded-[1.35rem] bg-background/96 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65";
+		"mx-auto w-full max-w-[72rem] overflow-hidden rounded-[1.35rem] bg-background/96 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65";
 
 	const showTransientStatus = useCallback((message: string) => {
 		setStatusText(message);
@@ -1377,10 +1347,6 @@ export const GlobalComposerDock = ({
 
 	const actionButtonClass =
 		"inline-flex min-h-9 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3.5 text-xs font-semibold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_12px_28px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
-	const utilityGroupClass =
-		"flex min-w-0 flex-wrap items-center gap-1 rounded-full border border-[rgba(87,70,49,0.08)] bg-background/72 p-1 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.72)]";
-	const utilityLinkClass =
-		"inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold text-muted-foreground transition-[background-color,color,transform] hover:bg-card hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	const utilityButtonClass =
 		"inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold text-muted-foreground transition-[background-color,color,transform] hover:bg-card hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	const userLinkClass =
@@ -1389,11 +1355,7 @@ export const GlobalComposerDock = ({
 		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.44)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 	if (settingsActionDock) {
 		return (
-			<div
-				className={dockShellClass}
-				data-testid="global-composer-dock"
-				style={dockShellStyle}
-			>
+			<div className={dockShellClass} data-testid="global-composer-dock">
 				<div
 					className="pointer-events-auto flex w-full max-w-[72rem] flex-col gap-2 rounded-[1.35rem] bg-background/96 p-2.5 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_18px_52px_-34px_rgba(44,32,18,0.5),0_2px_8px_-6px_rgba(44,32,18,0.32)] ring-1 ring-white/65 sm:flex-row sm:items-center sm:justify-between"
 					data-testid="settings-action-dock"
@@ -1457,98 +1419,39 @@ export const GlobalComposerDock = ({
 	}
 
 	return (
-		<div
-			className={dockShellClass}
-			data-testid="global-composer-dock"
-			style={dockShellStyle}
-		>
+		<div className={dockShellClass} data-testid="global-composer-dock">
 			<div className={dockCardClass}>
 				{isCollapsed ? (
-					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(11rem,15rem)_minmax(18rem,1fr)_auto] xl:items-center">
-						<div className="min-w-0 rounded-[0.85rem] bg-muted/35 px-3 py-2 shadow-[inset_0_0_0_1px_rgba(87,70,49,0.06)]">
-							<p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/88">
-								Context
-							</p>
-							<p className="mt-0.5 truncate text-sm font-semibold text-foreground">
-								{activeSpaceName}
-							</p>
-							{contextSource ? (
-								<p className="truncate text-[11px] text-muted-foreground/72">
-									{contextSource}
-								</p>
-							) : null}
-						</div>
+					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(18rem,1fr)_auto] xl:items-center">
 						<button
 							aria-label="Expand global composer"
-							className="flex min-h-14 min-w-0 items-center justify-between gap-3 rounded-[1rem] bg-card/95 px-4 text-left shadow-[inset_0_0_0_1px_rgba(87,70,49,0.12),0_12px_28px_-24px_rgba(44,32,18,0.56)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[inset_0_0_0_1px_rgba(87,70,49,0.2),0_14px_32px_-24px_rgba(44,32,18,0.62)] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+							className="flex min-h-12 min-w-0 items-center justify-between gap-3 rounded-[1rem] bg-card/95 px-4 py-2 text-left shadow-[inset_0_0_0_1px_rgba(87,70,49,0.12),0_12px_28px_-24px_rgba(44,32,18,0.56)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[inset_0_0_0_1px_rgba(87,70,49,0.2),0_14px_32px_-24px_rgba(44,32,18,0.62)] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
 							disabled={disabled}
 							onClick={() => expandTo("message_text")}
 							type="button"
 						>
 							<span className="min-w-0">
-								<span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-[#8b651f]">
-									Tell Ceits
+								<span className="flex min-w-0 items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#8b651f]">
+									<span className="shrink-0">Tell Ceits</span>
+									<span className="min-w-0 truncate normal-case tracking-normal text-muted-foreground/78">
+										{activeSpaceName}
+										{contextSource ? ` · ${contextSource}` : ""}
+									</span>
 								</span>
 								<span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
 									What happened? Add a receipt, expense, promo, or question.
 								</span>
 							</span>
-							<span className="hidden rounded-full bg-[rgba(68,58,42,0.08)] px-2.5 py-1 text-[11px] font-semibold text-muted-foreground sm:inline">
-								Start here
-							</span>
 						</button>
-						<div className="flex min-w-0 flex-col gap-2 lg:items-end">
-							<div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
-								<button
-									className={actionButtonClass}
-									disabled={disabled}
-									onClick={() => expandTo("expense_method_select")}
-									type="button"
-								>
-									Add expense
-								</button>
-								<button
-									className={actionButtonClass}
-									disabled={disabled}
-									onClick={() => expandTo("ask_topic_select")}
-									type="button"
-								>
-									Ask Ceits
-								</button>
-								{hasSpaceContext ? (
-									<Link
-										className={actionButtonClass}
-										to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
-									>
-										Message
-									</Link>
-								) : null}
-							</div>
-							<nav
-								aria-label="Composer utility links"
-								className={utilityGroupClass}
+						<div className="flex min-w-0 flex-wrap items-center gap-2 lg:justify-end">
+							<button
+								className={actionButtonClass}
+								disabled={disabled}
+								onClick={() => expandTo("expense_method_select")}
+								type="button"
 							>
-								<Link className={utilityLinkClass} to={activeSpaceActivityHref}>
-									<Activity aria-hidden className="h-3.5 w-3.5" />
-									Activity
-								</Link>
-								<Link className={utilityLinkClass} to={spaceSettingsHref}>
-									<Settings2 aria-hidden className="h-3.5 w-3.5" />
-									Manage
-								</Link>
-								<Link
-									className={utilityLinkClass}
-									to="/console/settings/account"
-								>
-									<UserRound aria-hidden className="h-3.5 w-3.5" />
-									Account
-								</Link>
-								<Link className={userLinkClass} to="/console/settings/account">
-									<span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-bold uppercase text-secondary-foreground">
-										{userInitial}
-									</span>
-								</Link>
-							</nav>
+								Add expense
+							</button>
 						</div>
 					</div>
 				) : (
@@ -1561,60 +1464,16 @@ export const GlobalComposerDock = ({
 									{contextSource ? ` · ${contextSource}` : ""}
 								</p>
 							</div>
-							<nav
-								aria-label="Composer utility links"
-								className={utilityGroupClass}
+							<button
+								aria-label="Collapse global composer"
+								aria-pressed={isCollapsed}
+								className={utilityButtonClass}
+								onClick={handleCollapseToggle}
+								type="button"
 							>
-								<button
-									aria-label="Collapse global composer"
-									aria-pressed={isCollapsed}
-									className={utilityButtonClass}
-									onClick={handleCollapseToggle}
-									type="button"
-								>
-									<ChevronDown aria-hidden className="h-3.5 w-3.5" />
-									Collapse
-								</button>
-								{hasSpaceContext ? (
-									<Link className={utilityLinkClass} to={spaceSettingsHref}>
-										<Settings2 aria-hidden className="h-3.5 w-3.5" />
-										Manage
-									</Link>
-								) : (
-									<Link
-										className={utilityLinkClass}
-										to="/console/settings/spaces"
-									>
-										<ListChecks aria-hidden className="h-3.5 w-3.5" />
-										Spaces
-									</Link>
-								)}
-								<Link
-									className={utilityLinkClass}
-									to="/console/settings/account"
-								>
-									<UserRound aria-hidden className="h-3.5 w-3.5" />
-									Account
-								</Link>
-								<Link className={utilityLinkClass} to={activeSpaceActivityHref}>
-									<Activity aria-hidden className="h-3.5 w-3.5" />
-									Activity
-								</Link>
-								{hasSpaceContext ? (
-									<Link
-										className={utilityLinkClass}
-										to={`/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`}
-									>
-										<MessageSquareText aria-hidden className="h-3.5 w-3.5" />
-										Open chat
-									</Link>
-								) : (
-									<Link className={utilityLinkClass} to="/console/spaces">
-										<ListChecks aria-hidden className="h-3.5 w-3.5" />
-										Choose space
-									</Link>
-								)}
-							</nav>
+								<ChevronDown aria-hidden className="h-3.5 w-3.5" />
+								Collapse
+							</button>
 						</div>
 						<SmartTextareaComposer
 							ref={composerRef}

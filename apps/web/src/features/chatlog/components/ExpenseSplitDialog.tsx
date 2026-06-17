@@ -20,7 +20,7 @@ import {
 	userCanManageExpenseSplits,
 } from "../lib/spaceExpenseSplits";
 
-/** 50% draft owner, remaining 50% split equally among everyone else in the space. */
+/** 50% expense owner, remaining 50% split equally among everyone else in the space. */
 const ownerHalfRestEqualPercents = (
 	rows: SplitPercentRow[],
 	ownerUserId: number,
@@ -54,7 +54,7 @@ export type ExpenseSplitDialogProps = {
 	spaceId: string | number;
 	expenseId: string | number;
 	expenseTotal: number;
-	/** Draft / expense owner. */
+	/** Expense owner. */
 	expenseOwnerUserId: number;
 	currentUserId: number | null;
 	formatMoney: (n: number) => string;
@@ -103,7 +103,7 @@ export const ExpenseSplitDialog = ({
 		setLoadError(null);
 		setActionError(null);
 		if (expenseOwnerUserId <= 0) {
-			setLoadError("Missing expense owner — reload the draft and try again.");
+			setLoadError("Missing expense owner — reload the expense and try again.");
 			setLoading(false);
 			return;
 		}

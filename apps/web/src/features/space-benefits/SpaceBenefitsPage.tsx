@@ -2,15 +2,12 @@ import type {
 	BenefitCandidate,
 	PatchPromoCodeRequest,
 	PromoCode,
-	Space,
 } from "@cofi/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
-import { SpaceHeader } from "../../app/layout/workspaceSpaces/SpaceHeader";
 import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
-import { useAuth } from "../../contexts/AuthContext";
 import { apiClient } from "../../shared/lib/apiClient";
 import {
 	LoyaltyBenefitCard,
@@ -23,6 +20,14 @@ import {
 	toPromoBenefitEntity,
 } from "../../shared/lib/benefitPresentation";
 import { EntityMini } from "../../shared/lib/entityPresentation";
+import {
+	WorkspaceFilterBar,
+	WorkspaceListingPage,
+	WorkspacePagedList,
+	WorkspaceSummaryChip,
+	workspaceControlClass,
+	workspaceSearchInputClass,
+} from "../../shared/ui/WorkspaceListingPage";
 
 type CandidateView = {
 	id: number;
@@ -69,6 +74,8 @@ const promoSourceOptions: { value: PromoSourceFilter; label: string }[] = [
 	{ value: "messages", label: "Messages" },
 	{ value: "other", label: "Other" },
 ];
+
+const PROMO_PAGE_SIZE = 50;
 
 const promoEditDraftFrom = (promo: PromoBenefit): PromoEditDraft => ({
 	title: promo.raw.title ?? "",
@@ -288,11 +295,13 @@ const CandidateCard = ({
 
 export const SpaceBenefitsPage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
-	const { user } = useAuth();
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
 	const [promos, setPromos] = useState<PromoCode[]>([]);
 	const [candidates, setCandidates] = useState<BenefitCandidate[]>([]);
 	const [candidateCount, setCandidateCount] = useState(0);
+	const [promosHasMore, setPromosHasMore] = useState(false);
+	const [promosNextOffset, setPromosNextOffset] = useState<number | null>(null);
+	const [isLoadingMorePromos, setIsLoadingMorePromos] = useState(false);
 	const [isLoading, setIsLoading] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [savingPromoId, setSavingPromoId] = useState<number | null>(null);
@@ -347,12 +356,17 @@ export const SpaceBenefitsPage = () => {
 		setLoadError(null);
 		try {
 			const [promoData, candidateData] = await Promise.all([
-				apiClient.spaces.listPromos(numericSpaceId),
+				apiClient.spaces.listPromos(numericSpaceId, {
+					limit: PROMO_PAGE_SIZE,
+					offset: 0,
+				}),
 				apiClient.spaces.review.listBenefitCandidates(numericSpaceId, {
 					limit: 20,
 				}),
 			]);
 			setPromos(promoData.promos ?? []);
+			setPromosHasMore(Boolean(promoData.has_more));
+			setPromosNextOffset(promoData.next_offset ?? null);
 			setCandidates(candidateData.candidates ?? []);
 			setCandidateCount(
 				(candidateData.candidates ?? []).length ||
@@ -371,6 +385,39 @@ export const SpaceBenefitsPage = () => {
 	useEffect(() => {
 		void loadPromos();
 	}, [loadPromos]);
+
+	const loadMorePromos = useCallback(async () => {
+		if (numericSpaceId == null || promosNextOffset == null) return;
+		setIsLoadingMorePromos(true);
+		setLoadError(null);
+		try {
+			const promoData = await apiClient.spaces.listPromos(numericSpaceId, {
+				limit: PROMO_PAGE_SIZE,
+				offset: promosNextOffset,
+			});
+			setPromos((current) => {
+				const seen = new Set(current.map((promo) => Number(promo.id)));
+				const nextPromos = (promoData.promos ?? []).filter(
+					(promo) => !seen.has(Number(promo.id)),
+				);
+				return [...current, ...nextPromos];
+			});
+			setPromosHasMore(Boolean(promoData.has_more));
+			setPromosNextOffset(promoData.next_offset ?? null);
+			if (promoData.summary?.candidate_count != null) {
+				setCandidateCount(
+					(current) =>
+						current || Number(promoData.summary?.candidate_count ?? 0),
+				);
+			}
+		} catch (error) {
+			setLoadError(
+				error instanceof Error ? error.message : "Failed to load more benefits",
+			);
+		} finally {
+			setIsLoadingMorePromos(false);
+		}
+	}, [numericSpaceId, promosNextOffset]);
 
 	const promoBenefits = useMemo(
 		() => promos.map((promo): PromoBenefit => toPromoBenefit(promo)),
@@ -918,9 +965,9 @@ export const SpaceBenefitsPage = () => {
 				) : (
 					<Link
 						className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[rgba(55,45,30,0.92)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
-						to={`/console/chat?spaceId=${encodeURIComponent(String(numericSpaceId))}`}
+						to={`/console/review?spaceId=${encodeURIComponent(String(numericSpaceId))}`}
 					>
-						Open chat
+						Open captures
 					</Link>
 				)}
 			</section>
@@ -955,17 +1002,10 @@ export const SpaceBenefitsPage = () => {
 
 	return (
 		<SpaceWorkspaceLayout
+			contentClassName="flex min-h-0 flex-1 flex-col p-0"
 			rightRail={benefitsRightRail}
 			rightRailLabel={`${spaceName} benefits rail`}
 		>
-			<SpaceHeader
-				currentUserId={user?.id ?? null}
-				space={
-					space ??
-					({ id: numericSpaceId, name: "Space", tenant_id: 0 } as Space)
-				}
-			/>
-
 			{deletePromoTarget ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(42,34,24,0.28)] px-4 backdrop-blur-sm">
 					<div className="w-full max-w-md rounded-2xl border border-red-200 bg-[#fffdf9] p-5 shadow-[0_24px_80px_-36px_rgba(60,40,20,0.55)]">
@@ -1008,311 +1048,299 @@ export const SpaceBenefitsPage = () => {
 				</div>
 			) : null}
 
-			<section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				{[
-					{
-						key: "active-promos",
-						label: "Active promos",
-						value: String(activePromos.length + expiringPromos.length),
-						note: "Saved codes ready to use.",
-					},
-					{
-						key: "expiring",
-						label: "Expiring soon",
-						value: String(expiringPromos.length),
-						note: "Worth using before they disappear.",
-					},
-					{
-						key: "loyalty",
-						label: "Loyalty programs",
-						value: String(totalLoyaltyBalance),
-						note: "Bonus accounts linked to this space.",
-					},
-					{
-						key: "candidates",
-						label: "Needs review",
-						value: String(candidateCount),
-						note: "Benefit findings still inside capture review.",
-					},
-				].map((widget) => (
-					<div
-						className="rounded-xl border border-border/60 bg-card px-4 py-3 soft-shadow"
-						key={widget.key}
-					>
-						<p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-							{widget.label}
-						</p>
-						<p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-							{isLoading ? "…" : widget.value}
-						</p>
-						<p className="mt-1 text-xs text-muted-foreground">{widget.note}</p>
-					</div>
-				))}
-			</section>
-
-			{loadError ? (
-				<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-					{loadError}
-				</div>
-			) : null}
-
-			<section className="space-y-6">
-				<section
-					aria-labelledby="space-promos"
-					className="rounded-2xl border border-[rgba(200,160,95,0.26)] bg-gradient-to-b from-[#fffdfb] via-[#fffaf4] to-[#f8f3eb] shadow-[0_10px_32px_-28px_rgba(120,88,48,0.16)]"
+			<WorkspaceListingPage
+				description={
+					<>
+						Saved promos and loyalty records in {spaceName}. Benefit candidates
+						stay inside Captures until they are saved.
+					</>
+				}
+				stats={
+					<>
+						<WorkspaceSummaryChip
+							accent="attention"
+							label="Active promos"
+							value={
+								isLoading ? "..." : activePromos.length + expiringPromos.length
+							}
+						/>
+						<WorkspaceSummaryChip
+							accent="attention"
+							label="Expiring soon"
+							value={isLoading ? "..." : expiringPromos.length}
+						/>
+						<WorkspaceSummaryChip
+							accent="positive"
+							label="Loyalty programs"
+							value={isLoading ? "..." : totalLoyaltyBalance}
+						/>
+						<WorkspaceSummaryChip
+							accent={candidateCount > 0 ? "attention" : "default"}
+							label="Capture review"
+							value={isLoading ? "..." : candidateCount}
+						/>
+					</>
+				}
+				title="Benefits"
+			>
+				<WorkspaceFilterBar
+					resultLabel={
+						isLoading
+							? "Loading..."
+							: `${filteredPromoBenefits.length} shown · ${promoBenefits.length} saved promos`
+					}
+					search={
+						<input
+							aria-label="Search benefits"
+							className={workspaceSearchInputClass}
+							onChange={(event) => setPromoQuery(event.target.value)}
+							placeholder="Search code, merchant, condition..."
+							type="search"
+							value={promoQuery}
+						/>
+					}
 				>
-					<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(200,160,95,0.18)] bg-[rgba(255,255,255,0.36)] px-5 py-4">
-						<div className="min-w-0">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
-								Promos
-							</p>
-							<h2
-								className="mt-1 font-display text-xl font-bold tracking-tight text-foreground"
-								id="space-promos"
-							>
-								Saved promo codes
-							</h2>
+					<select
+						aria-label="Filter benefit status"
+						className={`${workspaceControlClass} min-w-36`}
+						onChange={(event) =>
+							setPromoStatusFilter(event.target.value as PromoStatusFilter)
+						}
+						value={promoStatusFilter}
+					>
+						{promoStatusOptions.map((option) => (
+							<option key={option.value} value={option.value}>
+								{option.label}
+							</option>
+						))}
+					</select>
+					<select
+						aria-label="Filter benefit source"
+						className={`${workspaceControlClass} min-w-32`}
+						onChange={(event) =>
+							setPromoSourceFilter(event.target.value as PromoSourceFilter)
+						}
+						value={promoSourceFilter}
+					>
+						{promoSourceOptions.map((option) => (
+							<option key={option.value} value={option.value}>
+								{option.label}
+							</option>
+						))}
+					</select>
+					<button
+						className="inline-flex h-10 items-center justify-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
+						disabled={!promoFiltersActive}
+						onClick={() => {
+							setPromoQuery("");
+							setPromoStatusFilter("all");
+							setPromoSourceFilter("all");
+						}}
+						type="button"
+					>
+						Clear
+					</button>
+				</WorkspaceFilterBar>
+				{loadError ? (
+					<div className="mx-auto mt-4 max-w-5xl px-4 sm:px-5">
+						<div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+							{loadError}
 						</div>
-						<button
-							className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-sm transition-all duration-150 hover:bg-white disabled:opacity-50"
-							onClick={() => setManualOpen((open) => !open)}
-							type="button"
-						>
-							{manualOpen ? "Close" : "Add manually"}
-						</button>
 					</div>
-					<div className="p-4 sm:p-5">
-						{manualOpen ? (
-							<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4">
-								<div className="grid gap-3 sm:grid-cols-2">
-									<label className="space-y-1 text-sm">
-										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-											Title
-										</span>
-										<input
-											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-											onChange={(event) => setManualTitle(event.target.value)}
-											placeholder="Yandex Food discount"
-											value={manualTitle}
-										/>
-									</label>
-									<label className="space-y-1 text-sm">
-										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-											Code
-										</span>
-										<input
-											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 font-mono text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-											onChange={(event) => setManualCode(event.target.value)}
-											placeholder="MINUS400"
-											value={manualCode}
-										/>
-									</label>
-									<label className="space-y-1 text-sm">
-										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-											Redeem at
-										</span>
-										<input
-											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-											onChange={(event) =>
-												setManualRedeemAt(event.target.value)
-											}
-											placeholder="Ozon, Yandex Food..."
-											value={manualRedeemAt}
-										/>
-									</label>
-									<label className="space-y-1 text-sm">
-										<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-											Valid until
-										</span>
-										<input
-											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-											onChange={(event) =>
-												setManualValidUntil(event.target.value)
-											}
-											placeholder="2026-06-30"
-											value={manualValidUntil}
-										/>
-									</label>
-								</div>
-								{manualError ? (
-									<p className="mt-3 text-sm text-red-700">{manualError}</p>
-								) : null}
-								<div className="mt-4 flex flex-wrap justify-end gap-2">
-									<button
-										className="inline-flex h-9 items-center rounded-lg border border-border/70 bg-white px-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
-										onClick={() => setManualOpen(false)}
-										type="button"
-									>
-										Cancel
-									</button>
-									<button
-										className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
-										disabled={manualBusy}
-										onClick={submitManualPromo}
-										type="button"
-									>
-										{manualBusy ? "Saving…" : "Save promo"}
-									</button>
-								</div>
-							</div>
-						) : null}
+				) : null}
 
-						{promoBenefits.length ? (
-							<>
-								<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/58 p-3">
-									<div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto] lg:items-end">
+				<section className="mx-auto max-w-5xl space-y-6 overflow-y-auto px-4 py-4 sm:px-5">
+					<section
+						aria-labelledby="space-promos"
+						className="rounded-2xl border border-[rgba(200,160,95,0.26)] bg-gradient-to-b from-[#fffdfb] via-[#fffaf4] to-[#f8f3eb] shadow-[0_10px_32px_-28px_rgba(120,88,48,0.16)]"
+					>
+						<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(200,160,95,0.18)] bg-[rgba(255,255,255,0.36)] px-5 py-4">
+							<div className="min-w-0">
+								<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
+									Promos
+								</p>
+								<h2
+									className="mt-1 font-display text-xl font-bold tracking-tight text-foreground"
+									id="space-promos"
+								>
+									Saved promo codes
+								</h2>
+							</div>
+							<button
+								className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-sm transition-all duration-150 hover:bg-white disabled:opacity-50"
+								onClick={() => setManualOpen((open) => !open)}
+								type="button"
+							>
+								{manualOpen ? "Close" : "Add manually"}
+							</button>
+						</div>
+						<div className="p-4 sm:p-5">
+							{manualOpen ? (
+								<div className="mb-4 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4">
+									<div className="grid gap-3 sm:grid-cols-2">
 										<label className="space-y-1 text-sm">
 											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Search
+												Title
 											</span>
 											<input
 												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-												onChange={(event) => setPromoQuery(event.target.value)}
-												placeholder="Code, merchant, condition..."
-												value={promoQuery}
+												onChange={(event) => setManualTitle(event.target.value)}
+												placeholder="Yandex Food discount"
+												value={manualTitle}
 											/>
 										</label>
 										<label className="space-y-1 text-sm">
 											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Status
+												Code
 											</span>
-											<select
-												className="h-10 min-w-36 rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
-												onChange={(event) =>
-													setPromoStatusFilter(
-														event.target.value as PromoStatusFilter,
-													)
-												}
-												value={promoStatusFilter}
-											>
-												{promoStatusOptions.map((option) => (
-													<option key={option.value} value={option.value}>
-														{option.label}
-													</option>
-												))}
-											</select>
+											<input
+												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 font-mono text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												onChange={(event) => setManualCode(event.target.value)}
+												placeholder="MINUS400"
+												value={manualCode}
+											/>
 										</label>
 										<label className="space-y-1 text-sm">
 											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-												Source
+												Redeem at
 											</span>
-											<select
-												className="h-10 min-w-32 rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											<input
+												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
 												onChange={(event) =>
-													setPromoSourceFilter(
-														event.target.value as PromoSourceFilter,
-													)
+													setManualRedeemAt(event.target.value)
 												}
-												value={promoSourceFilter}
-											>
-												{promoSourceOptions.map((option) => (
-													<option key={option.value} value={option.value}>
-														{option.label}
-													</option>
-												))}
-											</select>
+												placeholder="Ozon, Yandex Food..."
+												value={manualRedeemAt}
+											/>
 										</label>
+										<label className="space-y-1 text-sm">
+											<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+												Valid until
+											</span>
+											<input
+												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												onChange={(event) =>
+													setManualValidUntil(event.target.value)
+												}
+												placeholder="2026-06-30"
+												value={manualValidUntil}
+											/>
+										</label>
+									</div>
+									{manualError ? (
+										<p className="mt-3 text-sm text-red-700">{manualError}</p>
+									) : null}
+									<div className="mt-4 flex flex-wrap justify-end gap-2">
 										<button
-											className="inline-flex h-10 items-center justify-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
-											disabled={!promoFiltersActive}
-											onClick={() => {
-												setPromoQuery("");
-												setPromoStatusFilter("all");
-												setPromoSourceFilter("all");
-											}}
+											className="inline-flex h-9 items-center rounded-lg border border-border/70 bg-white px-3 text-sm font-semibold text-muted-foreground transition hover:text-foreground"
+											onClick={() => setManualOpen(false)}
 											type="button"
 										>
-											Clear
+											Cancel
+										</button>
+										<button
+											className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3 text-sm font-semibold text-[#fffaf0] transition hover:bg-[rgba(45,38,28,0.95)] disabled:opacity-50"
+											disabled={manualBusy}
+											onClick={submitManualPromo}
+											type="button"
+										>
+											{manualBusy ? "Saving…" : "Save promo"}
 										</button>
 									</div>
-									<p className="mt-2 text-xs text-muted-foreground">
-										{filteredPromoBenefits.length} of {promoBenefits.length}{" "}
-										promo{promoBenefits.length === 1 ? "" : "s"} shown
-									</p>
 								</div>
+							) : null}
 
-								{filteredPromoBenefits.length ? (
-									<ul className="space-y-3">
-										{filteredPromoBenefits.map((promo) => (
-											<PromoBenefitCard
-												busy={
-													savingPromoId === promo.id ||
-													deletePromoBusyId === promo.id
-												}
-												isSelected={selectedPromoId === promo.id}
-												key={promo.id}
-												onArchive={(item) =>
-													void patchPromoStatus(item, "archived")
-												}
-												onDelete={(item) => setDeletePromoTarget(item)}
-												onMarkUsed={(item) =>
-													void patchPromoStatus(item, "used")
-												}
-												onOpen={openPromoDetail}
-												promo={promo}
-												reviewHref={
-													promo.sourceDocumentId != null
-														? captureReviewHref(
-																numericSpaceId,
-																promo.sourceDocumentId,
-															)
-														: undefined
-												}
-											/>
-										))}
-									</ul>
-								) : (
-									<EmptyPanel
-										body="Try another code, merchant, status, or source."
-										title="No promos match filters"
-									/>
-								)}
-							</>
-						) : isLoading ? (
-							<EmptyPanel
-								body="Loading saved promo codes from this space."
-								title="Loading promos"
-							/>
-						) : (
-							<EmptyPanel
-								body={`Saved promo codes for ${spaceName} will appear here after review.`}
-								title="No saved promos yet"
-							/>
-						)}
-					</div>
-				</section>
+							{promoBenefits.length ? (
+								<>
+									{filteredPromoBenefits.length ? (
+										<WorkspacePagedList
+											hasMore={promosHasMore}
+											isLoadingMore={isLoadingMorePromos}
+											items={filteredPromoBenefits}
+											loadMoreLabel="Load more benefits"
+											loadingMoreLabel="Loading benefits"
+											onLoadMore={() => void loadMorePromos()}
+											renderItem={(promo) => (
+												<PromoBenefitCard
+													busy={
+														savingPromoId === promo.id ||
+														deletePromoBusyId === promo.id
+													}
+													isSelected={selectedPromoId === promo.id}
+													key={promo.id}
+													onArchive={(item) =>
+														void patchPromoStatus(item, "archived")
+													}
+													onDelete={(item) => setDeletePromoTarget(item)}
+													onMarkUsed={(item) =>
+														void patchPromoStatus(item, "used")
+													}
+													onOpen={openPromoDetail}
+													promo={promo}
+													reviewHref={
+														promo.sourceDocumentId != null
+															? captureReviewHref(
+																	numericSpaceId,
+																	promo.sourceDocumentId,
+																)
+															: undefined
+													}
+												/>
+											)}
+										/>
+									) : (
+										<EmptyPanel
+											body="Try another code, merchant, status, or source."
+											title="No promos match filters"
+										/>
+									)}
+								</>
+							) : isLoading ? (
+								<EmptyPanel
+									body="Loading saved promo codes from this space."
+									title="Loading promos"
+								/>
+							) : (
+								<EmptyPanel
+									body={`Saved promo codes for ${spaceName} will appear here after review.`}
+									title="No saved promos yet"
+								/>
+							)}
+						</div>
+					</section>
 
-				<section
-					aria-labelledby="space-loyalty"
-					className="rounded-2xl border border-[rgba(95,125,102,0.24)] bg-gradient-to-br from-[#f0f8f2] via-[#fefdfb] to-[#e8f2ea] shadow-[0_20px_48px_-28px_rgba(48,72,52,0.2)]"
-				>
-					<div className="border-b border-[rgba(105,135,112,0.15)] bg-[rgba(255,255,255,0.35)] px-5 py-4">
-						<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d6651]">
-							Loyalty
-						</p>
-						<h2
-							className="mt-1 font-display text-xl font-bold tracking-tight text-foreground"
-							id="space-loyalty"
-						>
-							Bonus programs
-						</h2>
-					</div>
-					<div className="p-4 sm:p-5">
-						{loyaltyBenefits.length ? (
-							<ul className="space-y-3">
-								{loyaltyBenefits.map((loyalty) => (
-									<LoyaltyBenefitCard key={loyalty.id} loyalty={loyalty} />
-								))}
-							</ul>
-						) : (
-							<EmptyPanel
-								body={`Loyalty balances and bonus events for ${spaceName} will appear here after review.`}
-								title="No loyalty programs yet"
-							/>
-						)}
-					</div>
+					<section
+						aria-labelledby="space-loyalty"
+						className="rounded-2xl border border-[rgba(95,125,102,0.24)] bg-gradient-to-br from-[#f0f8f2] via-[#fefdfb] to-[#e8f2ea] shadow-[0_20px_48px_-28px_rgba(48,72,52,0.2)]"
+					>
+						<div className="border-b border-[rgba(105,135,112,0.15)] bg-[rgba(255,255,255,0.35)] px-5 py-4">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d6651]">
+								Loyalty
+							</p>
+							<h2
+								className="mt-1 font-display text-xl font-bold tracking-tight text-foreground"
+								id="space-loyalty"
+							>
+								Bonus programs
+							</h2>
+						</div>
+						<div className="p-4 sm:p-5">
+							{loyaltyBenefits.length ? (
+								<ul className="space-y-3">
+									{loyaltyBenefits.map((loyalty) => (
+										<LoyaltyBenefitCard key={loyalty.id} loyalty={loyalty} />
+									))}
+								</ul>
+							) : (
+								<EmptyPanel
+									body={`Loyalty balances and bonus events for ${spaceName} will appear here after review.`}
+									title="No loyalty programs yet"
+								/>
+							)}
+						</div>
+					</section>
 				</section>
-			</section>
+			</WorkspaceListingPage>
 		</SpaceWorkspaceLayout>
 	);
 };

@@ -55,7 +55,7 @@ export const ExpenseItemRecurringControls = ({
 						Recurring for this line
 					</p>
 					<p className="text-[10px] text-muted-foreground">
-						Create schedule after draft confirmation.
+						Create schedule after record confirmation.
 					</p>
 				</div>
 				<button
@@ -74,7 +74,7 @@ export const ExpenseItemRecurringControls = ({
 			</div>
 			<p className="sr-only" id={`${idPrefix}-recurring-hint`}>
 				When checked, a repeating schedule is created for this line only after
-				you confirm the draft.
+				you confirm the record.
 			</p>
 			{enabled ? (
 				<div

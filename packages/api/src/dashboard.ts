@@ -27,7 +27,6 @@ export type DashboardQuickCapture = {
 export type DashboardContinue = {
 	space_id: number;
 	space_name: string;
-	draft_id: number | null;
 };
 
 export type DashboardSpaceRow = {
@@ -39,8 +38,6 @@ export type DashboardSpaceRow = {
 	member_count?: number | null;
 	/** Confirmed approved spend: user's share this calendar month (txn_date). */
 	period_spent_preview?: number | null;
-	/** User's share of draft expenses in this space (open drafts). */
-	draft_my_share_preview?: number | null;
 };
 
 export type DashboardMonthlyPeriod = {
@@ -115,22 +112,6 @@ export type DashboardRecentTransaction = {
 	label: string;
 };
 
-/** Draft expense rows awaiting confirm/cancel (from `expenses.status = draft`). */
-export type DashboardPendingDraft = {
-	id: number;
-	tenant_id: number;
-	space_id: number;
-	space_name: string;
-	label: string;
-	total: number;
-	/** User's share (split rows when present; else full total for owner). */
-	my_share?: number;
-	currency: string;
-	/** Capture/source document that created this draft, when available. */
-	source_document_id?: number | null;
-	updated_at: string;
-};
-
 export type DashboardSpendTagRow = {
 	tag: string;
 	amount: number;
@@ -168,7 +149,6 @@ export type DashboardResponse = {
 	review_queue?: DashboardReviewQueue | null;
 	recurring_upcoming?: DashboardRecurringUpcomingItem[] | null;
 	recent_transactions?: DashboardRecentTransaction[] | null;
-	pending_drafts?: DashboardPendingDraft[] | null;
 	spend_overview?: DashboardSpendOverview;
 	recent_activity?: DashboardRecentActivity;
 };

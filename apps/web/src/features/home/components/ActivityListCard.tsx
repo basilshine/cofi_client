@@ -299,7 +299,7 @@ const rowMatchesRailHighlight = (
 			item.eventType === "capture" ||
 			item.eventType === "draft" ||
 			item.eventType === "receipt" ||
-			/\bexpense draft\b/i.test(labels) ||
+			/\bexpense candidate\b/i.test(labels) ||
 			/\bdraft\b/i.test(labels) ||
 			/\bneeds review\b/i.test(labels.toLowerCase()) ||
 			/\bpending\b/i.test(labels.toLowerCase())

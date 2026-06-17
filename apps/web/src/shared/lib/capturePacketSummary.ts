@@ -221,7 +221,7 @@ const fallbackCaptureTitle = (
 	if (counts.expenses > 0 && counts.benefits > 0) {
 		return "Capture with expense and benefits";
 	}
-	if (counts.expenses > 0) return "Capture with expense draft";
+	if (counts.expenses > 0) return "Capture with expense candidate";
 	if (counts.benefits > 0) return "Capture with benefits";
 	if (counts.people > 0) return "Capture with people";
 	if (counts.splits > 0) return "Capture with split";

@@ -388,7 +388,7 @@ export const candidateBundleNotice = (
 			: labels.join(", ");
 	const reviewHint = bundle.requiresReview
 		? " Review before final save."
-		: " Ready for draft save.";
+		: " Ready for candidate save.";
 	const policyHint = bundle.modelProfile
 		? ` ${bundle.modelProfile} parse.`
 		: "";

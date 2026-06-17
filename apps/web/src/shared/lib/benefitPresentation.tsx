@@ -1,10 +1,12 @@
 import type { PromoCode } from "@cofi/api";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { WorkspaceEntityCard } from "../ui/WorkspaceListingPage";
 import {
-	EntityCard,
 	EntityDetailHeader,
+	EntityIcon,
 	EntityListItem,
+	EntityMicro,
 	type EntityViewModel,
 } from "./entityPresentation";
 
@@ -283,108 +285,224 @@ export const PromoBenefitCard = ({
 	onMarkUsed: (promo: PromoBenefit) => void;
 	onOpen?: (promo: PromoBenefit) => void;
 	reviewHref?: string;
-}) => (
-	<li>
-		<EntityCard
-			actions={
-				<>
-					{onOpen ? (
-						<button
-							className="inline-flex h-8 items-center rounded-lg border border-[rgba(95,125,102,0.22)] bg-[rgba(237,247,239,0.78)] px-3 text-xs font-semibold text-[#37543b] transition hover:bg-[rgba(237,247,239,0.94)] disabled:opacity-50"
-							disabled={busy}
-							onClick={() => onOpen(promo)}
-							type="button"
-						>
-							Details
-						</button>
-					) : null}
-					{reviewHref ? (
-						<Link
-							className="inline-flex h-8 items-center rounded-lg border border-[rgba(48,83,120,0.22)] bg-[rgba(239,247,255,0.72)] px-3 text-xs font-semibold text-[rgba(34,72,108,0.92)] transition hover:bg-[rgba(232,242,255,0.95)]"
-							to={reviewHref}
-						>
-							Review capture
-						</Link>
-					) : null}
-					<button
-						className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-foreground/82 transition hover:bg-white disabled:opacity-50"
-						disabled={busy || promo.raw.status === "used"}
-						onClick={() => onMarkUsed(promo)}
-						type="button"
-					>
-						Mark used
-					</button>
-					<button
-						className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
-						disabled={busy || promo.raw.status === "archived"}
-						onClick={() => onArchive(promo)}
-						type="button"
-					>
-						Archive
-					</button>
-					{onDelete ? (
-						<button
-							className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-red-50/80 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
-							disabled={busy}
-							onClick={() => onDelete(promo)}
-							type="button"
-						>
-							Delete
-						</button>
-					) : null}
-				</>
-			}
-			entity={toPromoBenefitEntity(promo, { selected: isSelected })}
-		>
-			<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-				<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/70 px-3 py-2.5">
-					<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-						Code
-					</p>
-					<p className="mt-1 font-mono text-lg font-bold tracking-[0.08em] text-foreground">
-						{promo.code}
-					</p>
+}) => {
+	const entity = toPromoBenefitEntity(promo, { selected: isSelected });
+	const muted =
+		promo.status === "archived" ||
+		promo.status === "expired" ||
+		promo.status === "ignored" ||
+		promo.status === "used";
+	const attention = promo.status === "expires_soon" || promo.status === "draft";
+
+	return (
+		<li>
+			<WorkspaceEntityCard
+				selected={isSelected}
+				summary={
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<div className="flex min-w-0 items-start gap-3">
+							<EntityIcon
+								className="mt-0.5 h-11 w-11 rounded-xl shadow-inner"
+								size="md"
+								visualKey={entity.visualKey}
+							/>
+							<div className="min-w-0">
+								<div className="flex flex-wrap items-center gap-2">
+									<EntityMicro
+										entity={{
+											label: entity.label,
+											visualKey: entity.visualKey,
+										}}
+									/>
+									<span
+										className={[
+											"rounded-full border px-2 py-0.5 text-xs font-semibold",
+											entity.statusClassName,
+										].join(" ")}
+									>
+										{entity.status}
+									</span>
+								</div>
+								<p className="mt-1 line-clamp-2 text-base font-semibold leading-snug tracking-tight text-foreground">
+									{entity.title}
+								</p>
+								{entity.subtitle ? (
+									<p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+										{entity.subtitle}
+									</p>
+								) : null}
+							</div>
+						</div>
+						<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/72 px-3 py-2 text-left sm:text-right">
+							<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+								Code
+							</p>
+							<p className="mt-1 font-mono text-lg font-bold tracking-[0.08em] text-foreground">
+								{promo.code}
+							</p>
+						</div>
+					</div>
+				}
+				tone={muted ? "muted" : attention ? "attention" : "default"}
+				footer={
+					<div className="flex flex-wrap items-center justify-between gap-2">
+						<div className="flex flex-wrap items-center gap-2">
+							{reviewHref ? (
+								<Link
+									className="inline-flex h-8 items-center rounded-lg border border-[rgba(48,83,120,0.22)] bg-[rgba(239,247,255,0.72)] px-3 text-xs font-semibold text-[rgba(34,72,108,0.92)] transition hover:bg-[rgba(232,242,255,0.95)]"
+									to={reviewHref}
+								>
+									Review capture
+								</Link>
+							) : null}
+							{promo.sourceDocumentId != null ? (
+								<span className="inline-flex h-8 items-center rounded-lg border border-[rgba(48,83,120,0.18)] bg-white/70 px-3 text-xs font-semibold text-[rgba(34,72,108,0.88)]">
+									Source capture #{promo.sourceDocumentId}
+								</span>
+							) : null}
+						</div>
+						<div className="flex flex-wrap items-center gap-2">
+							{onOpen ? (
+								<button
+									className="inline-flex h-8 items-center rounded-lg border border-[rgba(95,125,102,0.22)] bg-[rgba(237,247,239,0.78)] px-3 text-xs font-semibold text-[#37543b] transition hover:bg-[rgba(237,247,239,0.94)] disabled:opacity-50"
+									disabled={busy}
+									onClick={() => onOpen(promo)}
+									type="button"
+								>
+									Details
+								</button>
+							) : null}
+							<button
+								className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-foreground/82 transition hover:bg-white disabled:opacity-50"
+								disabled={busy || promo.raw.status === "used"}
+								onClick={() => onMarkUsed(promo)}
+								type="button"
+							>
+								Mark used
+							</button>
+							<button
+								className="inline-flex h-8 items-center rounded-lg border border-[rgba(120,100,80,0.18)] bg-white/70 px-3 text-xs font-semibold text-muted-foreground transition hover:bg-white hover:text-foreground disabled:opacity-50"
+								disabled={busy || promo.raw.status === "archived"}
+								onClick={() => onArchive(promo)}
+								type="button"
+							>
+								Archive
+							</button>
+							{onDelete ? (
+								<button
+									className="inline-flex h-8 items-center rounded-lg border border-red-200 bg-red-50/80 px-3 text-xs font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+									disabled={busy}
+									onClick={() => onDelete(promo)}
+									type="button"
+								>
+									Delete
+								</button>
+							) : null}
+						</div>
+					</div>
+				}
+			>
+				<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+					<div className="rounded-xl border border-[rgba(120,100,80,0.12)] bg-white/70 px-3 py-2.5">
+						<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+							Redeem at
+						</p>
+						<p className="mt-1 text-sm font-semibold text-foreground">
+							{promo.redeemAt}
+						</p>
+					</div>
+					<div className="text-sm sm:text-right">
+						<p className="font-semibold text-foreground">
+							{promo.discountLabel}
+						</p>
+						<p className="mt-1 text-muted-foreground">
+							Until {promo.validUntil}
+						</p>
+					</div>
 				</div>
-				<div className="text-sm sm:text-right">
-					<p className="font-semibold text-foreground">{promo.discountLabel}</p>
-					<p className="mt-1 text-muted-foreground">Until {promo.validUntil}</p>
-				</div>
-			</div>
-			<p className="mt-3 text-xs text-muted-foreground">
-				Source: {promo.source}
-				{promo.sourceDocumentId != null
-					? ` · Source capture #${promo.sourceDocumentId}`
-					: ""}
-			</p>
-		</EntityCard>
-	</li>
-);
+				<p className="mt-3 text-xs text-muted-foreground">
+					Source: {promo.source}
+				</p>
+			</WorkspaceEntityCard>
+		</li>
+	);
+};
 
 export const LoyaltyBenefitCard = ({
 	loyalty,
 }: {
 	loyalty: LoyaltyBenefit;
-}) => (
-	<li>
-		<EntityCard entity={toLoyaltyBenefitEntity(loyalty)}>
-			<div className="grid gap-3 sm:grid-cols-2">
-				<div className="rounded-xl border border-[rgba(95,125,102,0.16)] bg-white/62 px-3 py-2.5">
-					<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-						Available
-					</p>
-					<p className="mt-1 text-xl font-bold tabular-nums text-[#355a3c]">
-						{loyalty.balanceLabel}
-					</p>
+}) => {
+	const entity = toLoyaltyBenefitEntity(loyalty);
+	return (
+		<li>
+			<WorkspaceEntityCard
+				summary={
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+						<div className="flex min-w-0 items-start gap-3">
+							<EntityIcon
+								className="mt-0.5 h-11 w-11 rounded-xl shadow-inner"
+								size="md"
+								visualKey={entity.visualKey}
+							/>
+							<div className="min-w-0">
+								<div className="flex flex-wrap items-center gap-2">
+									<EntityMicro
+										entity={{
+											label: entity.label,
+											visualKey: entity.visualKey,
+										}}
+									/>
+									<span
+										className={[
+											"rounded-full border px-2 py-0.5 text-xs font-semibold",
+											entity.statusClassName,
+										].join(" ")}
+									>
+										{entity.status}
+									</span>
+								</div>
+								<p className="mt-1 line-clamp-2 text-base font-semibold leading-snug tracking-tight text-foreground">
+									{entity.title}
+								</p>
+								{entity.subtitle ? (
+									<p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+										{entity.subtitle}
+									</p>
+								) : null}
+							</div>
+						</div>
+						<div className="text-left sm:text-right">
+							<p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#355a3c]">
+								Available
+							</p>
+							<p className="mt-1 text-xl font-bold tabular-nums text-[#355a3c]">
+								{loyalty.balanceLabel}
+							</p>
+						</div>
+					</div>
+				}
+				tone="complete"
+			>
+				<div className="grid gap-3 sm:grid-cols-2">
+					<div className="rounded-xl border border-[rgba(95,125,102,0.16)] bg-white/62 px-3 py-2.5">
+						<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+							Available
+						</p>
+						<p className="mt-1 text-xl font-bold tabular-nums text-[#355a3c]">
+							{loyalty.balanceLabel}
+						</p>
+					</div>
+					<div className="rounded-xl border border-[rgba(95,125,102,0.16)] bg-white/62 px-3 py-2.5">
+						<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+							Pending
+						</p>
+						<p className="mt-1 text-xl font-bold tabular-nums text-foreground">
+							{loyalty.pendingLabel}
+						</p>
+					</div>
 				</div>
-				<div className="rounded-xl border border-[rgba(95,125,102,0.16)] bg-white/62 px-3 py-2.5">
-					<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-						Pending
-					</p>
-					<p className="mt-1 text-xl font-bold tabular-nums text-foreground">
-						{loyalty.pendingLabel}
-					</p>
-				</div>
-			</div>
-		</EntityCard>
-	</li>
-);
+			</WorkspaceEntityCard>
+		</li>
+	);
+};

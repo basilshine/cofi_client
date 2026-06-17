@@ -19,11 +19,6 @@ const ChatPage = lazy(() =>
 		default: module.ChatPage,
 	})),
 );
-const DraftsPage = lazy(() =>
-	import("../../features/drafts/DraftsPage").then((module) => ({
-		default: module.DraftsPage,
-	})),
-);
 const LegacyReviewRedirectPage = lazy(() =>
 	import("../../features/legacy-review-redirect/LegacyReviewRedirectPage").then(
 		(module) => ({
@@ -227,7 +222,6 @@ export const AppRouter = () => {
 								element={lazyRoute(<SpaceSettingsPage />)}
 								path="spaces/:spaceId/settings"
 							/>
-							<Route element={lazyRoute(<DraftsPage />)} path="drafts" />
 							<Route element={lazyRoute(<GlobalSearchPage />)} path="search" />
 							<Route
 								element={lazyRoute(<CeitsReviewFlowPage />)}

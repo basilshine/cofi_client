@@ -55,20 +55,20 @@ const presentationForActivity = (
 ): ActivityPresentation => {
 	const who = item.actor.display_name || "Someone";
 	switch (item.action) {
-		case "expense_draft_created":
+		case "capture_candidate_created":
 			return {
 				detail:
-					"Capture produced an expense draft. Review it before it changes balances.",
+					"Capture produced an expense candidate. Review it before it changes balances.",
 				label: "Capture",
-				sentence: `${who} created a capture with an expense draft`,
+				sentence: `${who} created a capture with an expense candidate`,
 				visualKey: "reviewPacket",
 			};
-		case "expense_draft_cancelled":
+		case "capture_candidate_ignored":
 			return {
 				detail:
-					"Expense draft review was removed. The space history stays visible.",
+					"Expense candidate review was removed. The space history stays visible.",
 				label: "Capture",
-				sentence: `${who} removed expense draft review data`,
+				sentence: `${who} removed expense candidate review data`,
 				visualKey: "reviewPacket",
 			};
 		case "expense_confirmed":

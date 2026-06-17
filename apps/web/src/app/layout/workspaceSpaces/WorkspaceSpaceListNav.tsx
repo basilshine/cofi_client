@@ -75,6 +75,15 @@ const spaceInitial = (name: string) => {
 	return t.charAt(0).toUpperCase();
 };
 
+const userInitials = (name?: string | null, email?: string | null) => {
+	const source = name?.trim() || email?.trim() || "Account";
+	const parts = source.replace(/@.*/, "").split(/\s+/).filter(Boolean);
+	if (parts.length >= 2) {
+		return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+	}
+	return source.slice(0, 2).toUpperCase();
+};
+
 const IconPlusSmall = ({ className }: { className?: string }) => (
 	<svg
 		aria-hidden
@@ -232,6 +241,31 @@ const IconUser = ({ className }: { className?: string }) => (
 	</svg>
 );
 
+const IconLogout = ({ className }: { className?: string }) => (
+	<svg
+		aria-hidden
+		className={className}
+		fill="none"
+		height="16"
+		stroke="currentColor"
+		strokeWidth="1.8"
+		viewBox="0 0 24 24"
+		width="16"
+	>
+		<title>Logout</title>
+		<path
+			d="M10 5H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h4"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		/>
+		<path
+			d="M15 8l4 4-4 4M19 12H9"
+			strokeLinecap="round"
+			strokeLinejoin="round"
+		/>
+	</svg>
+);
+
 const IconSpark = ({ className }: { className?: string }) => (
 	<svg
 		aria-hidden
@@ -335,7 +369,7 @@ export const WorkspaceSpaceListNav = ({
 	/** When no chat panel is stacked below, let the space list use remaining sidebar height. */
 	soloNav?: boolean;
 }) => {
-	const { user } = useAuth();
+	const { user, logout } = useAuth();
 	const navigate = useNavigate();
 	const location = useLocation();
 	const {
@@ -353,6 +387,7 @@ export const WorkspaceSpaceListNav = ({
 		setCreateSpaceDialogOpen,
 	} = useWorkspaceSpaces();
 	const [openSpaceMenuId, setOpenSpaceMenuId] = useState<string | null>(null);
+	const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 	const [pendingSpaceDestructive, setPendingSpaceDestructive] =
 		useState<PendingSpaceDestructive | null>(null);
 	const [destructiveBusy, setDestructiveBusy] = useState(false);
@@ -372,6 +407,10 @@ export const WorkspaceSpaceListNav = ({
 	const inSpaceShell = /^\/console\/spaces\/[^/]+/.test(location.pathname);
 	const inChatShell = location.pathname.startsWith("/console/chat");
 	const inSettingsShell = location.pathname.startsWith("/console/settings");
+	const accountDisplayName =
+		user?.name?.trim() || user?.email?.split("@")[0] || "Account";
+	const accountSecondaryLabel = user?.email?.trim() || "Account settings";
+	const accountInitials = userInitials(user?.name, user?.email);
 	const settingsLinks = [
 		{
 			to: "/console/settings/account",
@@ -480,6 +519,12 @@ export const WorkspaceSpaceListNav = ({
 		selectedSpaceId,
 		setSelectedSpaceId,
 	]);
+
+	const handleLogout = useCallback(() => {
+		setAccountMenuOpen(false);
+		logout();
+		navigate("/login");
+	}, [logout, navigate]);
 
 	if (!workspaceScope) {
 		return (
@@ -621,6 +666,37 @@ export const WorkspaceSpaceListNav = ({
 				>
 					<IconShield className="h-4 w-4" />
 				</Link>
+				<div className="relative">
+					<button
+						aria-expanded={accountMenuOpen}
+						aria-label="Account menu"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-foreground text-[11px] font-bold text-background shadow-sm transition-colors hover:bg-foreground/88 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onClick={() => setAccountMenuOpen((open) => !open)}
+						type="button"
+					>
+						{accountInitials}
+					</button>
+					{accountMenuOpen ? (
+						<div className="absolute bottom-0 left-[calc(100%+0.5rem)] z-40 w-48 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur">
+							<Link
+								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								onClick={() => setAccountMenuOpen(false)}
+								to="/console/settings/account"
+							>
+								<IconUser className="h-4 w-4" />
+								Account
+							</Link>
+							<button
+								className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								onClick={handleLogout}
+								type="button"
+							>
+								<IconLogout className="h-4 w-4" />
+								Logout
+							</button>
+						</div>
+					) : null}
+				</div>
 			</div>
 		</div>
 	);
@@ -907,6 +983,76 @@ export const WorkspaceSpaceListNav = ({
 					<span>Support</span>
 				</a>
 				<SpaceSidebarActivity selectedSpaceId={selectedSpaceId} />
+				<div className="relative pt-2">
+					<button
+						aria-expanded={accountMenuOpen}
+						aria-label="Account menu"
+						className="flex w-full min-w-0 items-center gap-3 rounded-xl border border-border/70 bg-card/55 px-2.5 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						onClick={() => setAccountMenuOpen((open) => !open)}
+						type="button"
+					>
+						<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-bold uppercase text-background shadow-sm">
+							{accountInitials}
+						</span>
+						<span className="min-w-0 flex-1">
+							<span className="block truncate text-sm font-semibold text-foreground">
+								{accountDisplayName}
+							</span>
+							<span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+								{accountSecondaryLabel}
+							</span>
+						</span>
+					</button>
+					{accountMenuOpen ? (
+						<div className="absolute bottom-[calc(100%+0.35rem)] left-0 right-0 z-40 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur">
+							<div className="flex min-w-0 items-center gap-3 border-b border-border/60 px-3 py-2.5">
+								<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-bold uppercase text-background shadow-sm">
+									{accountInitials}
+								</span>
+								<span className="min-w-0">
+									<span className="block truncate text-sm font-semibold text-foreground">
+										{accountDisplayName}
+									</span>
+									<span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+										{accountSecondaryLabel}
+									</span>
+								</span>
+							</div>
+							<Link
+								className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								onClick={() => setAccountMenuOpen(false)}
+								to="/console/settings/account"
+							>
+								<IconUser className="h-4 w-4" />
+								Account settings
+							</Link>
+							<Link
+								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								onClick={() => setAccountMenuOpen(false)}
+								to="/console/settings"
+							>
+								<IconShield className="h-4 w-4" />
+								Settings
+							</Link>
+							<a
+								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								href="mailto:support@ceits.app"
+								rel="noopener noreferrer"
+							>
+								<IconHelp className="h-4 w-4" />
+								Support
+							</a>
+							<button
+								className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								onClick={handleLogout}
+								type="button"
+							>
+								<IconLogout className="h-4 w-4" />
+								Logout
+							</button>
+						</div>
+					) : null}
+				</div>
 			</div>
 		</div>
 	);

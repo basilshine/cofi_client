@@ -11,12 +11,6 @@ export type SplitMemberSummary = {
 	directionLabel: string;
 };
 
-export type SplitActivitySummary = {
-	id: string;
-	label: string;
-	timeLabel: string;
-};
-
 export type SplitDetailParticipant = {
 	id: string;
 	name: string;
@@ -50,13 +44,10 @@ export type SelectedSplitDetail = {
 type SpaceSplitsRightRailProps = {
 	spaceId: number;
 	reviewCount: number;
-	draftCount: number;
 	splitCoveragePercent: number;
-	splitActivityCount: number;
 	memberExposureCount: number;
 	unconfirmedAmountLabel: string;
 	membersSummary: SplitMemberSummary[];
-	recentActivity: SplitActivitySummary[];
 	selectedDetail: SelectedSplitDetail | null;
 	moneyFlow: {
 		youOweLabel: string;
@@ -93,13 +84,10 @@ const toSplitMemberSummaryEntity = (
 export const SpaceSplitsRightRail = ({
 	spaceId,
 	reviewCount,
-	draftCount,
 	splitCoveragePercent,
-	splitActivityCount,
 	memberExposureCount,
 	unconfirmedAmountLabel,
 	membersSummary,
-	recentActivity,
 	selectedDetail,
 	moneyFlow,
 	onCloseDetail,
@@ -107,19 +95,17 @@ export const SpaceSplitsRightRail = ({
 	const detailStatusLabel =
 		selectedDetail?.sourceStatus === "cancelled"
 			? "Cancelled"
-			: selectedDetail?.sourceStatus === "draft"
-				? "Draft"
+			: selectedDetail?.sourceStatus === "needs_review"
+				? "Needs confirmation"
 				: selectedDetail?.statusLabel === "Needs confirmation"
 					? "Needs confirmation"
 					: "Confirmed";
 	const detailStatusClass =
 		detailStatusLabel === "Cancelled"
 			? "border-destructive/35 bg-destructive/10 text-destructive"
-			: detailStatusLabel === "Draft"
-				? "border-[rgba(120,117,132,0.34)] bg-[rgba(120,117,132,0.16)] text-[rgba(70,68,82,0.92)]"
-				: detailStatusLabel === "Needs confirmation"
-					? "border-[rgba(189,143,64,0.42)] bg-[rgba(189,143,64,0.18)] text-[rgba(111,78,22,0.95)]"
-					: "border-[rgba(120,154,124,0.42)] bg-[rgba(120,154,124,0.18)] text-[#4d6e53]";
+			: detailStatusLabel === "Needs confirmation"
+				? "border-[rgba(189,143,64,0.42)] bg-[rgba(189,143,64,0.18)] text-[rgba(111,78,22,0.95)]"
+				: "border-[rgba(120,154,124,0.42)] bg-[rgba(120,154,124,0.18)] text-[#4d6e53]";
 
 	const isCancelled = detailStatusLabel === "Cancelled";
 
@@ -130,13 +116,11 @@ export const SpaceSplitsRightRail = ({
 				? "Waiting for your approval."
 				: detailStatusLabel === "Cancelled"
 					? "This will not affect balances."
-					: detailStatusLabel === "Draft"
-						? "Not applied to balances until confirmed."
-						: detailStatusLabel === "Confirmed" &&
-								selectedDetail.statusLabel === "Split saved" &&
-								selectedDetail.sourceStatus !== "draft"
-							? `Already included in ${selectedDetail.spaceLabel} balances.`
-							: null;
+					: detailStatusLabel === "Confirmed" &&
+							selectedDetail.statusLabel === "Split saved" &&
+							selectedDetail.sourceStatus !== "needs_review"
+						? `Already included in ${selectedDetail.spaceLabel} balances.`
+						: null;
 
 	/** Shown only when it adds context beyond Status + subtitle (no duplicate balance messaging). */
 	const decisionHintText =
@@ -155,7 +139,7 @@ export const SpaceSplitsRightRail = ({
 				? null
 				: selectedDetail.statusLabel === "Split saved" &&
 						detailStatusLabel === "Confirmed" &&
-						selectedDetail.sourceStatus !== "draft"
+						selectedDetail.sourceStatus !== "needs_review"
 					? null
 					: selectedDetail.participantCount <= 1
 						? "After confirmation, balances in this space will update."
@@ -356,8 +340,8 @@ export const SpaceSplitsRightRail = ({
 							: `${reviewCount} captures include split candidates`}
 				</p>
 				<p className="mt-1 text-xs text-foreground/75">
-					{draftCount} expense draft{draftCount === 1 ? "" : "s"} can become
-					split records after capture review.
+					New split candidates stay with their source capture until review
+					creates saved split records.
 				</p>
 				<Link
 					className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary px-3 text-xs font-semibold uppercase tracking-[0.1em] text-primary-foreground"
@@ -412,14 +396,6 @@ export const SpaceSplitsRightRail = ({
 					</li>
 					<li className="rounded-lg bg-background/50 px-3 py-2">
 						<p className="text-xs text-muted-foreground">
-							Split activity events
-						</p>
-						<p className="text-lg font-semibold text-foreground">
-							{splitActivityCount}
-						</p>
-					</li>
-					<li className="rounded-lg bg-background/50 px-3 py-2">
-						<p className="text-xs text-muted-foreground">
 							Members with exposure
 						</p>
 						<p className="text-lg font-semibold text-foreground">
@@ -446,29 +422,6 @@ export const SpaceSplitsRightRail = ({
 						{membersSummary.map((member) => (
 							<li key={member.id}>
 								<EntityMini entity={toSplitMemberSummaryEntity(member)} />
-							</li>
-						))}
-					</ul>
-				)}
-			</section>
-
-			<section className="rounded-2xl border border-border/70 bg-card p-4 soft-shadow inner-glow">
-				<p className="eyebrow">Recent split activity</p>
-				{recentActivity.length === 0 ? (
-					<p className="mt-2 text-xs text-muted-foreground">
-						No split activity events yet.
-					</p>
-				) : (
-					<ul className="mt-2 space-y-1.5">
-						{recentActivity.map((entry) => (
-							<li
-								className="rounded-lg bg-background/45 px-3 py-2"
-								key={entry.id}
-							>
-								<p className="text-sm text-foreground/90">{entry.label}</p>
-								<p className="text-[11px] text-muted-foreground">
-									{entry.timeLabel}
-								</p>
 							</li>
 						))}
 					</ul>

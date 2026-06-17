@@ -86,23 +86,6 @@ const IconBell = ({ className }: { className?: string }) => (
 	</svg>
 );
 
-const IconReceipt = ({ className }: { className?: string }) => (
-	<svg
-		aria-hidden
-		className={className}
-		fill="none"
-		stroke="currentColor"
-		strokeLinecap="round"
-		strokeLinejoin="round"
-		strokeWidth="1.8"
-		viewBox="0 0 24 24"
-	>
-		<title>Receipt</title>
-		<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" />
-		<path d="M9 8h6M9 12h6M9 16h4" />
-	</svg>
-);
-
 /**
  * Editorial right utility rail used on Home and Space Overview.
  *
@@ -140,9 +123,6 @@ export const OverviewRightRail = ({
 			r.space_id == null ||
 			Number(r.space_id) === Number(spaceId),
 	);
-	const pendingDrafts = (dashboardData?.pending_drafts ?? []).filter(
-		(d) => spaceId == null || Number(d.space_id) === Number(spaceId),
-	);
 
 	const upcomingSoonCount = recurring.filter((r) => {
 		const d = daysUntil(r.next_due);
@@ -166,33 +146,16 @@ export const OverviewRightRail = ({
 			? `/console/spaces/${encodeURIComponent(String(spaceId))}/recurring`
 			: "/console/recurring";
 
-	const draftsHref = "/console/drafts";
-
 	const linkState = chatWorkspace ? { chatWorkspace } : undefined;
 
-	const involvedSpaces = [
-		...new Set(
-			pendingDrafts
-				.map((item) => item.space_name)
-				.map((value) => (value ?? "").trim())
-				.filter(Boolean),
-		),
-	];
 	const actionContextLine = isSpaceOverview
 		? spaceName
 			? `Everything here is in ${spaceName} only.`
 			: undefined
-		: involvedSpaces.length > 0
-			? `Involved spaces: ${involvedSpaces.slice(0, 2).join(", ")}${involvedSpaces.length > 2 ? " +" : ""}`
-			: spaceName
-				? `Involved space: ${spaceName}`
-				: undefined;
-	const actionUpdatedAt = [...pendingDrafts.map((item) => item.updated_at)]
-		.filter(
-			(value): value is string => typeof value === "string" && value.length > 0,
-		)
-		.sort((left, right) => Date.parse(right) - Date.parse(left))[0];
-	const actionLiveHint = formatRelativeUpdate(actionUpdatedAt);
+		: spaceName
+			? `Involved space: ${spaceName}`
+			: undefined;
+	const actionLiveHint = formatRelativeUpdate(null);
 
 	const attentionItems: {
 		key: string;
@@ -212,54 +175,32 @@ export const OverviewRightRail = ({
 			to: recurringHref,
 		});
 	}
-	if (pendingDrafts.length > 0) {
-		attentionItems.push({
-			key: "drafts",
-			label: `${pendingDrafts.length} expense${pendingDrafts.length === 1 ? "" : "s"} waiting review`,
-			detail: "Parsed drafts are ready for final confirmation.",
-			tone: "muted",
-			icon: <IconReceipt className="h-3.5 w-3.5 shrink-0" />,
-			to: draftsHref,
-		});
-	}
 	const attentionPriority = (tone: "warn" | "primary" | "muted"): number =>
 		tone === "primary" ? 0 : tone === "warn" ? 1 : 2;
 	const actionSummary =
-		pendingDrafts.length > 0
+		upcomingSoonCount > 0
 			? {
-					kind: "drafts" as const,
-					title: `${pendingDrafts.length} draft${pendingDrafts.length === 1 ? "" : "s"} waiting review`,
+					kind: "bills" as const,
+					title: `${upcomingSoonCount} bill${upcomingSoonCount === 1 ? "" : "s"} due soon`,
 					description: isSpaceOverview
-						? `Finish these in ${spaceName ?? "this space"} so they can post to the ledger.`
-						: "Confirm parsed expenses so they move from draft to recorded.",
-					ctaLabel: isSpaceOverview ? "Review drafts" : "Review drafts",
-					ctaTo: isSpaceOverview
-						? `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}&view=activity`
-						: draftsHref,
+						? "Recurring charges with dates in the next week."
+						: "Check upcoming recurring payments and avoid late surprises.",
+					ctaLabel: "Open recurring",
+					ctaTo: recurringHref,
 				}
-			: upcomingSoonCount > 0
-				? {
-						kind: "bills" as const,
-						title: `${upcomingSoonCount} bill${upcomingSoonCount === 1 ? "" : "s"} due soon`,
-						description: isSpaceOverview
-							? "Recurring charges with dates in the next week."
-							: "Check upcoming recurring payments and avoid late surprises.",
-						ctaLabel: "Open recurring",
-						ctaTo: recurringHref,
-					}
-				: {
-						kind: "none" as const,
-						title: isSpaceOverview
-							? "Nothing needs you here"
-							: "No urgent actions right now",
-						description: isSpaceOverview
-							? `You’re up to date in ${spaceName ?? "this space"}. Capture new spending anytime.`
-							: "Everything is in good shape. You can still review spaces for context.",
-						ctaLabel: isSpaceOverview ? "Go to chat" : "Open spaces",
-						ctaTo: isSpaceOverview
-							? `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}`
-							: "/console/spaces",
-					};
+			: {
+					kind: "none" as const,
+					title: isSpaceOverview
+						? "Nothing needs you here"
+						: "No urgent actions right now",
+					description: isSpaceOverview
+						? `You’re up to date in ${spaceName ?? "this space"}. Capture new spending anytime.`
+						: "Everything is in good shape. You can still review spaces for context.",
+					ctaLabel: isSpaceOverview ? "Go to chat" : "Open spaces",
+					ctaTo: isSpaceOverview
+						? `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}`
+						: "/console/spaces",
+				};
 	const attentionItemsFiltered = isSpaceOverview
 		? []
 		: attentionItems
@@ -311,6 +252,7 @@ export const OverviewRightRail = ({
 		<div
 			className={[
 				"flex flex-col",
+				isSpaceOverview ? "min-h-full" : "",
 				isSpaceOverview ? "gap-8" : "gap-7",
 				className,
 			]
@@ -320,7 +262,7 @@ export const OverviewRightRail = ({
 			<div
 				className={
 					isSpaceOverview
-						? "sticky top-0 z-10 border-b border-[rgba(190,170,130,0.22)] bg-[linear-gradient(180deg,rgba(255,251,244,0.97)_0%,rgba(247,243,235,0.88)_55%,rgba(247,243,235,0)_100%)] pb-3 pt-1 backdrop-blur-[3px]"
+						? "shrink-0"
 						: "sticky top-0 z-10 bg-[linear-gradient(180deg,rgba(248,248,248,0.94)_0%,rgba(248,248,248,0.72)_70%,rgba(248,248,248,0)_100%)] pb-2 pt-1 backdrop-blur-[2px]"
 				}
 			>
@@ -353,7 +295,7 @@ export const OverviewRightRail = ({
 			<div
 				className={
 					isSpaceOverview
-						? "space-y-4 border-t border-[rgba(140,120,95,0.12)] pt-5"
+						? "min-h-0 flex-1 space-y-4 border-t border-[rgba(140,120,95,0.12)] pt-5"
 						: "space-y-3"
 				}
 			>

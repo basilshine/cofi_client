@@ -43,8 +43,8 @@ export const ConsoleOverviewPage = () => {
 			<div className="space-y-2">
 				<h1 className="text-2xl font-semibold">Dashboard</h1>
 				<p className="text-sm text-muted-foreground">
-					Signed-in MVP surfaces: drafts, spaces, confirmed history, quota, and
-					space chat. Use{" "}
+					Signed-in MVP surfaces: spaces, capture review, confirmed history,
+					quota, and space chat. Use{" "}
 					<Link className="underline" to="/console/account">
 						Account
 					</Link>{" "}
@@ -76,16 +76,6 @@ export const ConsoleOverviewPage = () => {
 					<div className="text-sm font-medium">Account</div>
 					<div className="mt-1 text-xs text-muted-foreground">
 						Session, optional saved profiles, token preview.
-					</div>
-				</Link>
-
-				<Link
-					className="rounded-lg border border-border bg-card p-4 hover:bg-accent"
-					to="/console/drafts"
-				>
-					<div className="text-sm font-medium">Drafts</div>
-					<div className="mt-1 text-xs text-muted-foreground">
-						Create draft from text/photo/voice; confirm/edit/cancel.
 					</div>
 				</Link>
 

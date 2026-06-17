@@ -2,7 +2,6 @@ import type { Space, SpaceMember, SpaceParticipant } from "@cofi/api";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
-import { SpaceHeader } from "../../app/layout/workspaceSpaces/SpaceHeader";
 import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
@@ -10,7 +9,17 @@ import { apiClient } from "../../shared/lib/apiClient";
 import {
 	isPlaceholderParticipant,
 	participantContactSummary,
+	participantDisplayName,
 } from "../../shared/lib/participantPresentation";
+import {
+	WorkspaceFilterBar,
+	WorkspaceListBody,
+	WorkspaceListingPage,
+	WorkspacePagedList,
+	WorkspaceSummaryChip,
+	workspaceControlClass,
+	workspaceSearchInputClass,
+} from "../../shared/ui/WorkspaceListingPage";
 import { SpaceParticipantsPanel } from "../../widgets/space-participants-panel";
 
 const toNumericId = (value: string | number | undefined): number | null => {
@@ -37,6 +46,16 @@ const needsContact = (participant: SpaceParticipant): boolean =>
 
 const isAliasParticipant = (participant: SpaceParticipant): boolean =>
 	participant.canonical_participant_id != null;
+
+type MemberStatusFilter =
+	| "all"
+	| "registered"
+	| "invited"
+	| "placeholders"
+	| "needs_contact"
+	| "aliases";
+
+const PARTICIPANT_PAGE_SIZE = 50;
 
 const memberRoleLabel = (members: SpaceMember[] | null): string => {
 	if (!members?.length) return "No registered members loaded";
@@ -78,10 +97,18 @@ export const SpaceMembersPage = () => {
 	const [participants, setParticipants] = useState<SpaceParticipant[] | null>(
 		null,
 	);
+	const [participantsHasMore, setParticipantsHasMore] = useState(false);
+	const [participantsNextOffset, setParticipantsNextOffset] = useState<
+		number | null
+	>(null);
+	const [participantsLoadingMore, setParticipantsLoadingMore] = useState(false);
 	const [members, setMembers] = useState<SpaceMember[] | null>(null);
 	const [canManageMemberRoles, setCanManageMemberRoles] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
+	const [memberQuery, setMemberQuery] = useState("");
+	const [memberStatusFilter, setMemberStatusFilter] =
+		useState<MemberStatusFilter>("all");
 
 	useEffect(() => {
 		if (numericSpaceId == null) return;
@@ -103,11 +130,16 @@ export const SpaceMembersPage = () => {
 		void (async () => {
 			try {
 				const [participantRes, memberRes] = await Promise.all([
-					apiClient.spaces.listParticipants(numericSpaceId),
+					apiClient.spaces.listParticipants(numericSpaceId, {
+						limit: PARTICIPANT_PAGE_SIZE,
+						offset: 0,
+					}),
 					apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
 				]);
 				if (cancelled) return;
 				setParticipants(participantRes.participants ?? []);
+				setParticipantsHasMore(Boolean(participantRes.has_more));
+				setParticipantsNextOffset(participantRes.next_offset ?? null);
 				setMembers(memberRes?.members ?? null);
 				setCanManageMemberRoles(Boolean(memberRes?.can_manage_member_roles));
 			} catch (error) {
@@ -126,6 +158,39 @@ export const SpaceMembersPage = () => {
 			cancelled = true;
 		};
 	}, [numericSpaceId]);
+
+	const loadMoreParticipants = async () => {
+		if (numericSpaceId == null || participantsNextOffset == null) return;
+		setParticipantsLoadingMore(true);
+		setLoadError(null);
+		try {
+			const participantRes = await apiClient.spaces.listParticipants(
+				numericSpaceId,
+				{
+					limit: PARTICIPANT_PAGE_SIZE,
+					offset: participantsNextOffset,
+				},
+			);
+			setParticipants((current) => {
+				const previous = current ?? [];
+				const seen = new Set(previous.map((participant) => participant.id));
+				const nextRows = (participantRes.participants ?? []).filter(
+					(participant) => !seen.has(participant.id),
+				);
+				return [...previous, ...nextRows];
+			});
+			setParticipantsHasMore(Boolean(participantRes.has_more));
+			setParticipantsNextOffset(participantRes.next_offset ?? null);
+		} catch (error) {
+			setLoadError(
+				error instanceof Error
+					? error.message
+					: "Failed to load more participants.",
+			);
+		} finally {
+			setParticipantsLoadingMore(false);
+		}
+	};
 
 	const handleParticipantSaved = (participant: SpaceParticipant) => {
 		setParticipants((current) => {
@@ -166,6 +231,40 @@ export const SpaceMembersPage = () => {
 			!isRegisteredParticipant(participant) &&
 			participant.status !== "invited",
 	).length;
+	const normalizedMemberQuery = memberQuery.trim().toLowerCase();
+	const filteredParticipantRows = participantRows.filter((participant) => {
+		const matchesQuery =
+			!normalizedMemberQuery ||
+			[
+				participantDisplayName(participant),
+				participant.email,
+				participant.telegram_username,
+				participantContactSummary(participant),
+				participant.participant_type,
+				participant.status,
+			]
+				.filter(Boolean)
+				.some((value) =>
+					String(value).toLowerCase().includes(normalizedMemberQuery),
+				);
+		if (!matchesQuery) return false;
+		if (memberStatusFilter === "registered") {
+			return isRegisteredParticipant(participant);
+		}
+		if (memberStatusFilter === "invited") {
+			return isInvitedParticipant(participant);
+		}
+		if (memberStatusFilter === "placeholders") {
+			return isPlaceholderParticipant(participant);
+		}
+		if (memberStatusFilter === "needs_contact") {
+			return needsContact(participant);
+		}
+		if (memberStatusFilter === "aliases") {
+			return isAliasParticipant(participant);
+		}
+		return true;
+	});
 
 	if (numericSpaceId == null) {
 		return <Navigate replace to="/console/home" />;
@@ -174,7 +273,7 @@ export const SpaceMembersPage = () => {
 	const spaceName = space?.name?.trim() || "Space";
 
 	const rightRail = (
-		<div className="space-y-5">
+		<div className="flex min-h-full flex-col gap-5">
 			<section className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-card/88 p-5 shadow-sm">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 					People model
@@ -214,7 +313,7 @@ export const SpaceMembersPage = () => {
 				</dl>
 			</section>
 
-			<section className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-[rgba(255,252,246,0.72)] p-5 shadow-sm">
+			<section className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-[rgba(255,252,246,0.72)] p-5 shadow-sm xl:flex xl:flex-1 xl:flex-col">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 					Registered access
 				</p>
@@ -242,93 +341,102 @@ export const SpaceMembersPage = () => {
 
 	return (
 		<SpaceWorkspaceLayout
+			contentClassName="flex min-h-0 flex-1 flex-col p-0"
 			rightRail={rightRail}
+			rightRailInnerClassName="min-h-0 flex flex-1 flex-col overflow-y-auto px-5 py-8"
 			rightRailLabel={`${spaceName} members rail`}
 		>
-			<SpaceHeader
-				currentUserId={user?.id ?? null}
-				space={
-					space ??
-					({ id: numericSpaceId, name: "Space", tenant_id: 0 } as Space)
+			<WorkspaceListingPage
+				description={`Participants and registered access records in ${spaceName}. Capture aliases, split people, and invite-ready contacts resolve here before balances are assigned.`}
+				stats={
+					<>
+						<WorkspaceSummaryChip
+							label="Participants"
+							value={isLoading ? "…" : activeParticipantRows.length}
+						/>
+						<WorkspaceSummaryChip
+							label="Registered"
+							value={isLoading ? "…" : registeredCount}
+						/>
+						<WorkspaceSummaryChip
+							label="Placeholders"
+							value={isLoading ? "…" : placeholderCount}
+						/>
+						<WorkspaceSummaryChip
+							label="Aliases"
+							value={isLoading ? "…" : aliasCount}
+						/>
+					</>
 				}
-			/>
-
-			<section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				{[
-					{
-						key: "participants",
-						label: "Participants",
-						value: String(activeParticipantRows.length),
-						note: "Visible people after aliases are resolved.",
-					},
-					{
-						key: "registered",
-						label: "Registered",
-						value: String(registeredCount),
-						note: "People with an account linked to this space.",
-					},
-					{
-						key: "placeholders",
-						label: "Placeholders",
-						value: String(placeholderCount),
-						note: "Names found before contact or invite is known.",
-					},
-					{
-						key: "aliases",
-						label: "Aliases",
-						value: String(aliasCount),
-						note: "Merged names kept for provenance and stats.",
-					},
-				].map((metric) => (
-					<div
-						className="rounded-xl border border-border/60 bg-card px-4 py-3 soft-shadow"
-						key={metric.key}
+				title="Members"
+			>
+				<WorkspaceFilterBar
+					resultLabel={`${filteredParticipantRows.length} shown · ${participantRows.length} people in this space`}
+					search={
+						<input
+							aria-label="Search members and participants"
+							className={workspaceSearchInputClass}
+							onChange={(event) => setMemberQuery(event.target.value)}
+							placeholder="Search name, email, handle, contact..."
+							value={memberQuery}
+						/>
+					}
+				>
+					<select
+						aria-label="Filter members by status"
+						className={workspaceControlClass}
+						onChange={(event) =>
+							setMemberStatusFilter(event.target.value as MemberStatusFilter)
+						}
+						value={memberStatusFilter}
 					>
-						<p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-							{metric.label}
-						</p>
-						<p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
-							{isLoading ? "…" : metric.value}
-						</p>
-						<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-							{metric.note}
-						</p>
-					</div>
-				))}
-			</section>
+						<option value="all">All people</option>
+						<option value="registered">Registered</option>
+						<option value="invited">Invited</option>
+						<option value="placeholders">Placeholders</option>
+						<option value="needs_contact">Needs contact</option>
+						<option value="aliases">Aliases</option>
+					</select>
+				</WorkspaceFilterBar>
+				<WorkspaceListBody error={loadError}>
+					<section className="overflow-hidden rounded-2xl border border-[rgba(95,105,125,0.12)] bg-gradient-to-b from-[#faf8f5] to-[#f0ece6] shadow-[0_8px_26px_-22px_rgba(45,48,58,0.1)] ring-1 ring-inset ring-white/50">
+						<WorkspacePagedList
+							hasMore={participantsHasMore}
+							isLoadingMore={participantsLoadingMore}
+							items={participants ? [filteredParticipantRows] : []}
+							loadMoreLabel="Load more people"
+							loadingMoreLabel="Loading people"
+							onLoadMore={() => void loadMoreParticipants()}
+							renderItem={(rows) => (
+								<SpaceParticipantsPanel
+									canLinkParticipants={
+										space?.owner_user_id != null &&
+										user?.id != null &&
+										Number(space.owner_user_id) === Number(user.id)
+									}
+									canRemoveParticipants={
+										space?.owner_user_id != null &&
+										user?.id != null &&
+										Number(space.owner_user_id) === Number(user.id)
+									}
+									description="Registered members, invited people, external participants, and placeholders. Add contacts here so Ceits can send invites and keep split decisions readable."
+									emptyText="No participants yet. Captures, split review, or invites can add people here."
+									maxVisible={null}
+									onParticipantDeleted={handleParticipantDeleted}
+									onParticipantSaved={handleParticipantSaved}
+									participants={rows}
+									selectedParticipantId={selectedParticipantId}
+									showTopBorder={false}
+									spaceId={numericSpaceId}
+									title="Members and participants"
+								/>
+							)}
+						/>
+					</section>
 
-			{loadError ? (
-				<div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-					{loadError}
-				</div>
-			) : null}
-
-			<section className="overflow-hidden rounded-2xl border border-[rgba(95,105,125,0.12)] bg-gradient-to-b from-[#faf8f5] to-[#f0ece6] shadow-[0_8px_26px_-22px_rgba(45,48,58,0.1)] ring-1 ring-inset ring-white/50">
-				<SpaceParticipantsPanel
-					canLinkParticipants={
-						space?.owner_user_id != null &&
-						user?.id != null &&
-						Number(space.owner_user_id) === Number(user.id)
-					}
-					canRemoveParticipants={
-						space?.owner_user_id != null &&
-						user?.id != null &&
-						Number(space.owner_user_id) === Number(user.id)
-					}
-					description="Registered members, invited people, external participants, and placeholders. Add contacts here so Ceits can send invites and keep split decisions readable."
-					emptyText="No participants yet. Captures, split review, or invites can add people here."
-					maxVisible={null}
-					onParticipantDeleted={handleParticipantDeleted}
-					onParticipantSaved={handleParticipantSaved}
-					participants={participants}
-					selectedParticipantId={selectedParticipantId}
-					showTopBorder={false}
-					spaceId={numericSpaceId}
-					title="Members and participants"
-				/>
-			</section>
-
-			<div className="xl:hidden">{rightRail}</div>
+					<div className="xl:hidden">{rightRail}</div>
+				</WorkspaceListBody>
+			</WorkspaceListingPage>
 		</SpaceWorkspaceLayout>
 	);
 };

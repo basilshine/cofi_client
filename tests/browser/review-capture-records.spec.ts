@@ -14,7 +14,6 @@ const dashboardPayload = {
 		tenant_name: "Personal",
 		user_id: 42,
 	},
-	pending_drafts: [],
 	recurring_upcoming: [],
 	summary: {},
 };
@@ -92,7 +91,7 @@ const capturePacketPayload = {
 							{ amount: 1200, id: 1, name: "Groceries" },
 							{ amount: 500, id: 2, name: "Delivery" },
 						],
-						status: "draft",
+						status: "approved",
 						title: "Family receipt",
 						total_amount: 1700,
 						txn_date: "2026-06-01",
@@ -242,25 +241,11 @@ const parseCapturePayload = {
 	vendor_name: "Family Store",
 };
 
-const draftCaptureMessage = {
-	created_at: "2026-06-01T09:06:00.000Z",
-	direction: "out",
-	id: 1002,
-	message_type: "draft_expense",
-	related_expense_id: 201,
-	sender_type: "bot",
-	source_document_id: sourceDocumentId,
-	space_id: spaceId,
-	text: "Draft created from Family receipt",
-	user_id: 42,
-};
-
 const setupReviewMocks = async (page: Page) => {
 	await page.addInitScript(() => {
 		window.localStorage.setItem("cofi_token", "test-token");
 	});
 
-	let expenseConfirmed = false;
 	await page.route("**/api/v1/**", async (route) => {
 		const url = new URL(route.request().url());
 		const path = url.pathname;
@@ -321,9 +306,6 @@ const setupReviewMocks = async (page: Page) => {
 
 		if (path === `/api/v1/spaces/${spaceId}/captures`) {
 			const payload = JSON.parse(JSON.stringify(capturePacketPayload));
-			if (expenseConfirmed) {
-				payload.captures[0].records.expenses[0].status = "approved";
-			}
 			await route.fulfill(json(payload));
 			return;
 		}
@@ -367,25 +349,8 @@ const setupReviewMocks = async (page: Page) => {
 			return;
 		}
 
-		if (path === "/api/v1/capture/parse") {
-			await route.fulfill(json(parseCapturePayload));
-			return;
-		}
-
 		if (path === "/api/v1/capture") {
-			await route.fulfill(
-				json({
-					expense: { id: 201 },
-					message: draftCaptureMessage,
-					source_document_id: sourceDocumentId,
-				}),
-			);
-			return;
-		}
-
-		if (path === `/api/v1/spaces/${spaceId}/expenses/201/confirm`) {
-			expenseConfirmed = true;
-			await route.fulfill(json({ message: "Expense approved successfully" }));
+			await route.fulfill(json(parseCapturePayload));
 			return;
 		}
 
@@ -412,25 +377,19 @@ test("review capture card shows all saved record types from one source capture",
 	await expect(
 		page.getByText(`Capture #${sourceDocumentId}`).first(),
 	).toBeVisible();
-	await expect(page.getByText("Records created").first()).toBeVisible();
-	await expect(page.getByText("Save this review")).toBeVisible();
-	await expect(page.getByRole("button", { name: "Save all" })).toBeVisible();
-	await expect(page.getByText("Created 7 records")).toBeVisible();
-	await expect(page.getByText("Created from this capture")).toBeVisible();
-	await expect(page.getByText("Items saved")).toBeVisible();
+	await expect(page.getByText("Review complete").first()).toBeVisible();
+	await expect(page.getByText("7 created")).toBeVisible();
+	await expect(
+		page.getByText("Created records from this capture"),
+	).toBeVisible();
+	await expect(page.getByText("Expense items")).toBeVisible();
 	await expect(
 		page.getByText(
-			"These are already saved records linked back to this capture.",
+			"This capture is complete, so the records below are shown as saved output.",
 		),
 	).toBeVisible();
 
-	for (const label of [
-		"Items 2",
-		"Benefits 1",
-		"People 1",
-		"Splits 1",
-		"Future 1",
-	]) {
+	for (const label of ["Items 2", "Benefits 1", "People 1", "Splits 1"]) {
 		await expect(page.getByText(label).first()).toBeVisible();
 	}
 
@@ -438,22 +397,14 @@ test("review capture card shows all saved record types from one source capture",
 		"Family receipt",
 		"Groceries",
 		"Delivery",
-		"SAVE20",
 		"Misha",
-		"Split saved",
-		"Alex",
-		"Monthly internet",
 	]) {
 		await expect(page.getByText(recordText).first()).toBeVisible();
 	}
-
-	const confirmRequest = page.waitForRequest(
-		`**/api/v1/spaces/${spaceId}/expenses/201/confirm`,
-	);
-	await page.getByRole("button", { name: "Save all" }).click();
-	await confirmRequest;
+	await expect(page.getByText("Benefit records").first()).toBeVisible();
+	await expect(page.getByText("Future rules").first()).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "Review saved" }),
+		page.getByText("Everything from this capture is resolved"),
 	).toBeVisible();
 
 	expect(pageErrors).toEqual([]);
@@ -463,7 +414,7 @@ test("chat capture submit creates source-backed review feedback", async ({
 	page,
 }) => {
 	const pageErrors: string[] = [];
-	let captureDraftRequests = 0;
+	let captureRequests = 0;
 	page.on("pageerror", (error) => {
 		if (error.message === "WS not connected") return;
 		pageErrors.push(error.message);
@@ -471,7 +422,7 @@ test("chat capture submit creates source-backed review feedback", async ({
 	page.on("request", (request) => {
 		const url = new URL(request.url());
 		if (request.method() === "POST" && url.pathname === "/api/v1/capture") {
-			captureDraftRequests += 1;
+			captureRequests += 1;
 		}
 	});
 
@@ -488,7 +439,7 @@ test("chat capture submit creates source-backed review feedback", async ({
 		.getByLabel("Text input")
 		.fill("Family receipt groceries 1200 delivery 500");
 	await page.getByRole("button", { name: "Add" }).click();
-	await expect.poll(() => captureDraftRequests).toBe(0);
+	await expect.poll(() => captureRequests).toBe(1);
 
 	await expect(page.getByLabel("Capture progress")).toBeVisible();
 	await expect(page.getByText("Text capture")).toBeVisible();
@@ -510,7 +461,7 @@ test("global dock capture submit hydrates created records and links to review", 
 	page,
 }) => {
 	const pageErrors: string[] = [];
-	let captureDraftRequests = 0;
+	let captureRequests = 0;
 	page.on("pageerror", (error) => {
 		if (error.message === "WS not connected") return;
 		pageErrors.push(error.message);
@@ -518,7 +469,7 @@ test("global dock capture submit hydrates created records and links to review", 
 	page.on("request", (request) => {
 		const url = new URL(request.url());
 		if (request.method() === "POST" && url.pathname === "/api/v1/capture") {
-			captureDraftRequests += 1;
+			captureRequests += 1;
 		}
 	});
 
@@ -536,7 +487,7 @@ test("global dock capture submit hydrates created records and links to review", 
 		.getByLabel("Text input")
 		.fill("Family receipt groceries 1200 delivery 500");
 	await dock.getByRole("button", { name: "Add" }).click();
-	await expect.poll(() => captureDraftRequests).toBe(0);
+	await expect.poll(() => captureRequests).toBe(1);
 
 	const summary = page.getByTestId("global-composer-candidate-summary");
 	await expect(summary).toBeVisible();

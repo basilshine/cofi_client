@@ -41,7 +41,7 @@ type Props = {
 	inspectorOpen?: boolean;
 	/** Timeline updates for this expense object (oldest -> latest). */
 	updates?: Array<{
-		state: "draft" | "approved" | "needs_review";
+		state: "approved" | "needs_review";
 		timestamp?: string | null;
 		note?: string | null;
 	}>;
@@ -174,8 +174,7 @@ export const ExpenseMessageCard = ({
 			updates.length > 0
 				? updates
 				: [{ state: "approved" as const, timestamp: tx.created_at ?? null }];
-		const stateLabel = (state: "draft" | "approved" | "needs_review") => {
-			if (state === "draft") return "Draft";
+		const stateLabel = (state: "approved" | "needs_review") => {
 			if (state === "approved") return "Approved";
 			return "Needs review";
 		};

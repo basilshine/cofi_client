@@ -4,6 +4,7 @@ import {
 	type BenefitCandidateListResponse,
 	type CapturePacketListResponse,
 	type ChatMessage,
+	type CreateExpenseCandidateResponse,
 	type CreateParticipantCandidateResponse,
 	type CreatePaymentLinkRequest,
 	type CreatePaymentLinkResponse,
@@ -12,7 +13,6 @@ import {
 	type DeleteSourceDocumentReviewResponse,
 	type DocumentCandidateListResponse,
 	type DocumentCandidateState,
-	type Draft,
 	type ExpenseDetail,
 	type ExpensePatch,
 	type ExpenseSplitRow,
@@ -35,6 +35,7 @@ import {
 	type Space,
 	type SpaceActivityListResponse,
 	type SpaceActivitySummary,
+	type SpaceExpenseListResponse,
 	type SpaceInviteCreateResponse,
 	type SpaceInviteSuggestionsResponse,
 	type SpaceMember,
@@ -45,7 +46,9 @@ import {
 	type SpaceParticipantPatch,
 	type SpaceParticipantsListResponse,
 	type SpacePromoListResponse,
+	type SpaceRecurringListResponse,
 	type SpaceRole,
+	type SpaceSplitDecisionListResponse,
 	type Tenant,
 	type TenantInviteCreateResponse,
 	type TenantInvitesListResponse,
@@ -272,6 +275,15 @@ export const createApiClient = (config: ApiClientConfig) => {
 						headers: authHeaders(),
 					},
 				),
+			confirmObligation: (spaceId: string | number, obligationId: string) =>
+				fetchJson<PaymentLinkListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/payment-obligations/confirm`),
+					{
+						method: "POST",
+						headers: authHeaders(),
+						body: { obligation_id: obligationId },
+					},
+				),
 		},
 
 		auth: {
@@ -379,25 +391,61 @@ export const createApiClient = (config: ApiClientConfig) => {
 						headers: authHeaders(),
 					},
 				),
-			listParticipants: (spaceId: string | number) =>
-				fetchJson<SpaceParticipantsListResponse>(
-					withBase(`/api/v1/spaces/${spaceId}/participants`),
+			listParticipants: (
+				spaceId: string | number,
+				params?: { limit?: number; offset?: number },
+			) => {
+				const qs = new URLSearchParams();
+				if (params?.limit != null && params.limit > 0) {
+					qs.set("limit", String(params.limit));
+				}
+				if (params?.offset != null && params.offset >= 0) {
+					qs.set("offset", String(params.offset));
+				}
+				const q = qs.size ? `?${qs.toString()}` : "";
+				return fetchJson<SpaceParticipantsListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/participants${q}`),
 					{
 						method: "GET",
 						headers: authHeaders(),
 					},
-				),
+				);
+			},
+			listSplitDecisions: (
+				spaceId: string | number,
+				params?: { limit?: number; offset?: number },
+			) => {
+				const qs = new URLSearchParams();
+				if (params?.limit != null && params.limit > 0) {
+					qs.set("limit", String(params.limit));
+				}
+				if (params?.offset != null && params.offset >= 0) {
+					qs.set("offset", String(params.offset));
+				}
+				const q = qs.size ? `?${qs.toString()}` : "";
+				return fetchJson<SpaceSplitDecisionListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/split-decisions${q}`),
+					{
+						method: "GET",
+						headers: authHeaders(),
+					},
+				);
+			},
 			listCapturePackets: (
 				spaceId: string | number,
 				params?: {
 					includeRecords?: boolean;
 					limit?: number;
+					offset?: number;
 					sourceDocumentId?: number;
 				},
 			) => {
 				const qs = new URLSearchParams();
 				if (params?.limit != null && params.limit > 0) {
 					qs.set("limit", String(params.limit));
+				}
+				if (params?.offset != null && params.offset >= 0) {
+					qs.set("offset", String(params.offset));
 				}
 				if (params?.includeRecords) {
 					qs.set("include_records", "true");
@@ -593,14 +641,26 @@ export const createApiClient = (config: ApiClientConfig) => {
 					}),
 			},
 			recurring: {
-				list: (spaceId: string | number) =>
-					fetchJson<RecurringExpense[]>(
-						withBase(`/api/v1/spaces/${spaceId}/recurring`),
+				list: (
+					spaceId: string | number,
+					params?: { limit?: number; offset?: number },
+				) => {
+					const qs = new URLSearchParams();
+					if (params?.limit != null && params.limit > 0) {
+						qs.set("limit", String(params.limit));
+					}
+					if (params?.offset != null && params.offset >= 0) {
+						qs.set("offset", String(params.offset));
+					}
+					const q = qs.size ? `?${qs.toString()}` : "";
+					return fetchJson<SpaceRecurringListResponse>(
+						withBase(`/api/v1/spaces/${spaceId}/recurring${q}`),
 						{
 							method: "GET",
 							headers: authHeaders(),
 						},
-					),
+					);
+				},
 				create: (spaceId: string | number, body: RecurringExpense) =>
 					fetchJson<RecurringExpense>(
 						withBase(`/api/v1/spaces/${spaceId}/recurring`),
@@ -730,26 +790,43 @@ export const createApiClient = (config: ApiClientConfig) => {
 					},
 				),
 			/**
-			 * Expense records linked to this space, including drafts.
+			 * Saved expense records linked to this space. Capture candidates stay in Review.
 			 * @deprecated Use `spaces.expenses.list` for space expense records.
 			 */
 			listTransactions: (
 				spaceId: string | number,
-				params?: { limit?: number },
+				params?: { limit?: number; offset?: number },
 			) => {
-				const qs = params?.limit
-					? `?limit=${encodeURIComponent(String(params.limit))}`
-					: "";
-				return fetchJson<Transaction[]>(
-					withBase(`/api/v1/spaces/${spaceId}/expenses${qs}`),
+				const qs = new URLSearchParams();
+				if (params?.limit != null && params.limit > 0) {
+					qs.set("limit", String(params.limit));
+				}
+				if (params?.offset != null && params.offset >= 0) {
+					qs.set("offset", String(params.offset));
+				}
+				const q = qs.size ? `?${qs.toString()}` : "";
+				return fetchJson<SpaceExpenseListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/expenses${q}`),
+					{ method: "GET", headers: authHeaders() },
+				).then((res) => res.expenses ?? []);
+			},
+			listPromos: (
+				spaceId: string | number,
+				params?: { limit?: number; offset?: number },
+			) => {
+				const qs = new URLSearchParams();
+				if (params?.limit != null && params.limit > 0) {
+					qs.set("limit", String(params.limit));
+				}
+				if (params?.offset != null && params.offset >= 0) {
+					qs.set("offset", String(params.offset));
+				}
+				const q = qs.size ? `?${qs.toString()}` : "";
+				return fetchJson<SpacePromoListResponse>(
+					withBase(`/api/v1/spaces/${spaceId}/benefits/promos${q}`),
 					{ method: "GET", headers: authHeaders() },
 				);
 			},
-			listPromos: (spaceId: string | number) =>
-				fetchJson<SpacePromoListResponse>(
-					withBase(`/api/v1/spaces/${spaceId}/benefits/promos`),
-					{ method: "GET", headers: authHeaders() },
-				),
 			createPromo: (spaceId: string | number, body: CreatePromoCodeRequest) =>
 				fetchJson<PromoCode>(
 					withBase(`/api/v1/spaces/${spaceId}/benefits/promos`),
@@ -774,12 +851,20 @@ export const createApiClient = (config: ApiClientConfig) => {
 					{ method: "DELETE", headers: authHeaders() },
 				),
 			expenses: {
-				list: (spaceId: string | number, params?: { limit?: number }) => {
-					const qs = params?.limit
-						? `?limit=${encodeURIComponent(String(params.limit))}`
-						: "";
-					return fetchJson<Transaction[]>(
-						withBase(`/api/v1/spaces/${spaceId}/expenses${qs}`),
+				list: (
+					spaceId: string | number,
+					params?: { limit?: number; offset?: number },
+				) => {
+					const qs = new URLSearchParams();
+					if (params?.limit != null && params.limit > 0) {
+						qs.set("limit", String(params.limit));
+					}
+					if (params?.offset != null && params.offset >= 0) {
+						qs.set("offset", String(params.offset));
+					}
+					const q = qs.size ? `?${qs.toString()}` : "";
+					return fetchJson<SpaceExpenseListResponse>(
+						withBase(`/api/v1/spaces/${spaceId}/expenses${q}`),
 						{ method: "GET", headers: authHeaders() },
 					);
 				},
@@ -808,16 +893,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 							method: "DELETE",
 							headers: authHeaders(),
 						},
-					),
-				confirm: (spaceId: string | number, expenseId: string | number) =>
-					fetchJson<{ message: string }>(
-						withBase(`/api/v1/spaces/${spaceId}/expenses/${expenseId}/confirm`),
-						{ method: "POST", headers: authHeaders() },
-					),
-				cancel: (spaceId: string | number, expenseId: string | number) =>
-					fetchJson<{ message: string }>(
-						withBase(`/api/v1/spaces/${spaceId}/expenses/${expenseId}/cancel`),
-						{ method: "POST", headers: authHeaders() },
 					),
 				listSplits: (spaceId: string | number, expenseId: string | number) =>
 					fetchJson<{ splits: ExpenseSplitRow[] }>(
@@ -912,6 +987,16 @@ export const createApiClient = (config: ApiClientConfig) => {
 					fetchJson<DocumentCandidateState>(
 						withBase(
 							`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/confirm`,
+						),
+						{ method: "POST", headers: authHeaders() },
+					),
+				createExpenseFromCandidate: (
+					spaceId: string | number,
+					candidateId: string | number,
+				) =>
+					fetchJson<CreateExpenseCandidateResponse>(
+						withBase(
+							`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/create-expense`,
 						),
 						{ method: "POST", headers: authHeaders() },
 					),
@@ -1078,49 +1163,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 					),
 					{ method: "DELETE", headers: authHeaders() },
 				),
-		},
-
-		drafts: {
-			createFromText: (payload: { space_id?: string | number; text: string }) =>
-				fetchJson<Draft>(withBase("/api/v1/drafts/text"), {
-					method: "POST",
-					headers: authHeaders(),
-					body: payload,
-				}),
-			createFromPhoto: (formData: FormData) =>
-				fetch(withBase("/api/v1/drafts/photo"), {
-					method: "POST",
-					headers: { ...authHeaders() },
-					body: formData,
-				}).then(async (res) => {
-					if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-					return (await res.json()) as Draft;
-				}),
-			createFromVoice: (formData: FormData) =>
-				fetch(withBase("/api/v1/drafts/voice"), {
-					method: "POST",
-					headers: { ...authHeaders() },
-					body: formData,
-				}).then(async (res) => {
-					if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-					return (await res.json()) as Draft;
-				}),
-			update: (draftId: string | number, payload: Partial<Draft>) =>
-				fetchJson<Draft>(withBase(`/api/v1/drafts/${draftId}`), {
-					method: "PATCH",
-					headers: authHeaders(),
-					body: payload,
-				}),
-			confirm: (draftId: string | number) =>
-				fetchJson<{ transaction: Transaction }>(
-					withBase(`/api/v1/drafts/${draftId}/confirm`),
-					{ method: "POST", headers: authHeaders() },
-				),
-			cancel: (draftId: string | number) =>
-				fetchJson<{ ok: true }>(withBase(`/api/v1/drafts/${draftId}/cancel`), {
-					method: "POST",
-					headers: authHeaders(),
-				}),
 		},
 
 		/** Deprecated compatibility alias. Prefer `spaces.expenses.get(...)`. */

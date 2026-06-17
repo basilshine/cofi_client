@@ -10,16 +10,14 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { apiClient } from "../../shared/lib/apiClient";
-import {
-	EntityIcon,
-	EntityListItem,
-} from "../../shared/lib/entityPresentation";
+import { EntityIcon } from "../../shared/lib/entityPresentation";
 import {
 	isPlaceholderParticipant,
 	participantDisplayName,
 	participantNotes,
 	toSpaceParticipantEntity,
 } from "../../shared/lib/participantPresentation";
+import { WorkspaceEntityCard } from "../../shared/ui/WorkspaceListingPage";
 import { InviteLinkSharePanel } from "../space-invite-management";
 
 type ParticipantDraft = {
@@ -573,6 +571,95 @@ export const SpaceParticipantsPanel = ({
 					const aliases =
 						aliasesByCanonicalId.get(Number(participant.id)) ?? [];
 					const sourceDocumentId = participant.source_document_id;
+					const participantActions = readOnly ? null : (
+						<span className="flex shrink-0 flex-wrap items-center gap-2">
+							{isSelected ? (
+								<span className="rounded-full border border-[rgba(160,120,70,0.28)] bg-[rgba(255,236,200,0.58)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#68400e]">
+									Selected
+								</span>
+							) : null}
+							<button
+								className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								onClick={() => startEditing(participant)}
+								title="Edit participant"
+								type="button"
+							>
+								<Pencil className="h-4 w-4" />
+							</button>
+							{canAlias ? (
+								aliasTarget ? (
+									<button
+										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(100,118,160,0.24)] bg-[rgba(100,118,160,0.1)] text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+										disabled={isSavingLink}
+										onClick={() => void unlinkParticipantAlias(participant)}
+										title="Unlink participant alias"
+										type="button"
+									>
+										<Unlink2 className="h-4 w-4" />
+									</button>
+								) : (
+									<button
+										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(100,118,160,0.24)] bg-[rgba(100,118,160,0.1)] text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+										disabled={isSavingLink || aliasTargets.length === 0}
+										onClick={() => startLinking(participant)}
+										title="Link participant alias"
+										type="button"
+									>
+										<Link2 className="h-4 w-4" />
+									</button>
+								)
+							) : null}
+							<button
+								className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(90,130,98,0.28)] bg-[rgba(120,154,124,0.14)] text-[#24452b] transition hover:bg-[rgba(120,154,124,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45"
+								disabled={isInviting || !canInvite}
+								onClick={() => void inviteParticipant(participant)}
+								title={
+									canInvite
+										? "Invite participant"
+										: participant.status === "invited"
+											? "Invite already created"
+											: isRegistered
+												? "Participant already registered"
+												: "Add email before inviting"
+								}
+								type="button"
+							>
+								<MailPlus className="h-4 w-4" />
+							</button>
+							{canDelete ? (
+								isConfirmingDelete ? (
+									<span className="inline-flex items-center gap-1 rounded-full border border-[rgba(150,70,45,0.28)] bg-[rgba(150,70,45,0.08)] px-1.5 py-1">
+										<button
+											className="inline-flex h-7 items-center rounded-full px-2 text-[11px] font-bold text-[#74341f] transition hover:bg-[rgba(150,70,45,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+											disabled={isDeleting}
+											onClick={() => void deleteParticipant(participant)}
+											type="button"
+										>
+											{isDeleting ? "Removing..." : "Remove"}
+										</button>
+										<button
+											className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											disabled={isDeleting}
+											onClick={() => setConfirmDeleteId(null)}
+											title="Cancel remove"
+											type="button"
+										>
+											<X className="h-3.5 w-3.5" />
+										</button>
+									</span>
+								) : (
+									<button
+										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(150,70,45,0.22)] bg-[rgba(150,70,45,0.08)] text-[#74341f] transition hover:bg-[rgba(150,70,45,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onClick={() => setConfirmDeleteId(participant.id)}
+										title="Remove participant"
+										type="button"
+									>
+										<Trash2 className="h-4 w-4" />
+									</button>
+								)
+							) : null}
+						</span>
+					);
 
 					return (
 						<li
@@ -761,109 +848,66 @@ export const SpaceParticipantsPanel = ({
 											) : null}
 										</>
 									) : (
-										<EntityListItem
-											density="regular"
-											entity={entity}
-											trailing={
-												readOnly ? null : (
-													<span className="flex shrink-0 items-center gap-2">
-														{isSelected ? (
-															<span className="rounded-full border border-[rgba(160,120,70,0.28)] bg-[rgba(255,236,200,0.58)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#68400e]">
-																Selected
+										<WorkspaceEntityCard
+											footer={
+												participantActions ? (
+													<div className="flex justify-end">
+														{participantActions}
+													</div>
+												) : null
+											}
+											selected={isSelected}
+											summary={
+												<div className="flex min-w-0 items-start gap-3">
+													<EntityIcon
+														className="mt-0.5 h-11 w-11 rounded-xl shadow-inner"
+														size="md"
+														visualKey={entity.visualKey}
+													/>
+													<div className="min-w-0 flex-1">
+														<div className="flex flex-wrap items-center gap-2">
+															<span
+																className={[
+																	"rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+																	participantStateClassName(participant),
+																].join(" ")}
+															>
+																{participantStateLabel(participant)}
 															</span>
-														) : null}
-														<button
-															className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-															onClick={() => startEditing(participant)}
-															title="Edit participant"
-															type="button"
-														>
-															<Pencil className="h-4 w-4" />
-														</button>
-														{canAlias ? (
-															aliasTarget ? (
-																<button
-																	className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(100,118,160,0.24)] bg-[rgba(100,118,160,0.1)] text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-																	disabled={isSavingLink}
-																	onClick={() =>
-																		void unlinkParticipantAlias(participant)
-																	}
-																	title="Unlink participant alias"
-																	type="button"
+															{entity.status ? (
+																<span
+																	className={[
+																		"rounded-full border px-2 py-0.5 text-[11px] font-semibold",
+																		entity.statusClassName,
+																	].join(" ")}
 																>
-																	<Unlink2 className="h-4 w-4" />
-																</button>
-															) : (
-																<button
-																	className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(100,118,160,0.24)] bg-[rgba(100,118,160,0.1)] text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-																	disabled={
-																		isSavingLink || aliasTargets.length === 0
-																	}
-																	onClick={() => startLinking(participant)}
-																	title="Link participant alias"
-																	type="button"
-																>
-																	<Link2 className="h-4 w-4" />
-																</button>
-															)
-														) : null}
-														<button
-															className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(90,130,98,0.28)] bg-[rgba(120,154,124,0.14)] text-[#24452b] transition hover:bg-[rgba(120,154,124,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45"
-															disabled={isInviting || !canInvite}
-															onClick={() =>
-																void inviteParticipant(participant)
-															}
-															title={
-																canInvite
-																	? "Invite participant"
-																	: participant.status === "invited"
-																		? "Invite already created"
-																		: isRegistered
-																			? "Participant already registered"
-																			: "Add email before inviting"
-															}
-															type="button"
-														>
-															<MailPlus className="h-4 w-4" />
-														</button>
-														{canDelete ? (
-															isConfirmingDelete ? (
-																<span className="inline-flex items-center gap-1 rounded-full border border-[rgba(150,70,45,0.28)] bg-[rgba(150,70,45,0.08)] px-1.5 py-1">
-																	<button
-																		className="inline-flex h-7 items-center rounded-full px-2 text-[11px] font-bold text-[#74341f] transition hover:bg-[rgba(150,70,45,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-																		disabled={isDeleting}
-																		onClick={() =>
-																			void deleteParticipant(participant)
-																		}
-																		type="button"
-																	>
-																		{isDeleting ? "Removing..." : "Remove"}
-																	</button>
-																	<button
-																		className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-																		disabled={isDeleting}
-																		onClick={() => setConfirmDeleteId(null)}
-																		title="Cancel remove"
-																		type="button"
-																	>
-																		<X className="h-3.5 w-3.5" />
-																	</button>
+																	{entity.status}
 																</span>
-															) : (
-																<button
-																	className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(150,70,45,0.22)] bg-[rgba(150,70,45,0.08)] text-[#74341f] transition hover:bg-[rgba(150,70,45,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-																	onClick={() =>
-																		setConfirmDeleteId(participant.id)
-																	}
-																	title="Remove participant"
-																	type="button"
-																>
-																	<Trash2 className="h-4 w-4" />
-																</button>
-															)
+															) : null}
+														</div>
+														<p className="mt-1 line-clamp-2 text-base font-semibold leading-snug tracking-tight text-foreground">
+															{entity.title}
+														</p>
+														{entity.subtitle ? (
+															<p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">
+																{entity.subtitle}
+															</p>
 														) : null}
-													</span>
-												)
+														{entity.detail ? (
+															<p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+																{entity.detail}
+															</p>
+														) : null}
+													</div>
+												</div>
+											}
+											tone={
+												isPlaceholderParticipant(participant) ||
+												isAliasParticipant(participant)
+													? "muted"
+													: participant.status === "invited"
+														? "attention"
+														: "default"
 											}
 										>
 											<div className="space-y-2">
@@ -983,7 +1027,7 @@ export const SpaceParticipantsPanel = ({
 													</div>
 												) : null}
 											</div>
-										</EntityListItem>
+										</WorkspaceEntityCard>
 									)}
 								</div>
 							)}

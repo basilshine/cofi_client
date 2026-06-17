@@ -1,25 +1,42 @@
 import type {
-	DashboardResponse,
 	ExpenseDetail,
 	ExpenseSplitRow,
+	PaymentLinkObligationRef,
 	PaymentLinkSummary,
+	PaymentProofRef,
 	Space,
-	SpaceActivityItem,
 	SpaceMember,
 	SpaceParticipant,
 	Transaction,
 } from "@cofi/api";
-import { Copy, Link2, RefreshCw, X } from "lucide-react";
+import {
+	CheckCircle2,
+	Copy,
+	Eye,
+	FileImage,
+	Link2,
+	Loader2,
+	X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
-import { SpaceHeader } from "../../app/layout/workspaceSpaces/SpaceHeader";
 import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import { buildExpenseDetailHref } from "../../shared/lib/expenseLinks";
+import { httpClient } from "../../shared/lib/httpClient";
+import {
+	WorkspaceFilterBar,
+	WorkspaceListBody,
+	WorkspaceListingPage,
+	WorkspacePagedList,
+	WorkspaceSummaryChip,
+	workspaceControlClass,
+	workspaceSearchInputClass,
+} from "../../shared/ui/WorkspaceListingPage";
 import {
 	SpaceSplitDecisionList,
 	type SplitDecisionRow,
@@ -27,13 +44,12 @@ import {
 import {
 	type SelectedSplitDetail,
 	SpaceSplitsRightRail,
-	type SplitActivitySummary,
 	type SplitMemberSummary,
 } from "./components/SpaceSplitsRightRail";
 
 type SplitDecisionRecord = SplitDecisionRow & {
 	expenseId: number;
-	statusLabel: "Needs confirmation" | "Split saved" | "Draft" | "Cancelled";
+	statusLabel: "Needs confirmation" | "Split saved" | "Cancelled";
 	totalAmount: number;
 	categoryLabel: string;
 	dateDisplayLabel: string;
@@ -57,6 +73,10 @@ type PaymentLinkCandidate = {
 	amountLabel: string;
 	splitCount: number;
 };
+
+type SplitStatusFilter = "all" | "needs_confirmation" | "saved" | "cancelled";
+
+const SPLIT_DECISION_PAGE_SIZE = 50;
 
 const toNumericId = (value: string | number | undefined): number | null => {
 	if (value == null) return null;
@@ -85,7 +105,7 @@ const formatRelative = (iso?: string): string => {
 
 const normalizeSourceStatus = (raw?: string | null): string => {
 	const value = (raw ?? "").toLowerCase();
-	if (value.includes("draft")) return "draft";
+	if (value.includes("draft")) return "needs_review";
 	if (value.includes("cancel")) return "cancelled";
 	if (value.includes("approved") || value.includes("confirm"))
 		return "approved";
@@ -101,9 +121,9 @@ const toTitleCase = (value: string): string =>
 const toSplitStateLabel = (
 	sourceStatus: string,
 	statusLabel: "Needs confirmation" | "Split saved",
-): "Needs confirmation" | "Split saved" | "Draft" | "Cancelled" => {
+): "Needs confirmation" | "Split saved" | "Cancelled" => {
 	if (sourceStatus === "cancelled") return "Cancelled";
-	if (sourceStatus === "draft") return "Draft";
+	if (sourceStatus === "needs_review") return "Needs confirmation";
 	if (statusLabel === "Needs confirmation") return "Needs confirmation";
 	return "Split saved";
 };
@@ -130,7 +150,7 @@ const formatShortDate = (value?: string): string => {
 
 const humanizeSourceStatusLabel = (raw: string): string => {
 	const v = raw.toLowerCase();
-	if (v === "draft") return "Draft";
+	if (v === "needs_review") return "Needs review";
 	if (v === "cancelled" || v === "canceled") return "Cancelled";
 	if (v === "approved") return "Approved";
 	if (!v || v === "unknown") return "Recorded";
@@ -199,8 +219,11 @@ const buildSplitRowContextLine = (
 	if (mappedStatus === "Cancelled") {
 		return "Cancelled · excluded from balances";
 	}
-	if (mappedStatus === "Draft" || sourceStatus === "draft") {
-		return "Draft split · not confirmed yet";
+	if (
+		mappedStatus === "Needs confirmation" ||
+		sourceStatus === "needs_review"
+	) {
+		return "Split needs confirmation";
 	}
 	if (participantCount <= 1) {
 		return "Single participant — no split needed";
@@ -258,14 +281,20 @@ const toHumanSplitTitle = ({
 	}
 
 	if (cat.includes("grocery") || cat.includes("groceries")) {
-		if (mappedStatus === "Draft" || sourceStatus === "draft")
-			return "Receipt draft";
+		if (
+			mappedStatus === "Needs confirmation" ||
+			sourceStatus === "needs_review"
+		)
+			return "Receipt needs review";
 		return "Grocery receipt";
 	}
 
-	if (cat.includes("receipt") || sourceStatus === "draft") {
-		if (mappedStatus === "Draft" || sourceStatus === "draft")
-			return "Receipt draft";
+	if (cat.includes("receipt") || sourceStatus === "needs_review") {
+		if (
+			mappedStatus === "Needs confirmation" ||
+			sourceStatus === "needs_review"
+		)
+			return "Receipt needs review";
 		return "Receipt capture";
 	}
 
@@ -291,15 +320,18 @@ const toHumanSplitTitle = ({
 	}
 
 	if (
-		sourceStatus !== "draft" &&
+		sourceStatus !== "needs_review" &&
 		sourceStatus !== "cancelled" &&
-		mappedStatus !== "Draft"
+		mappedStatus !== "Needs confirmation"
 	) {
 		return "Text capture expense";
 	}
 
-	if (mappedStatus === "Draft" || sourceStatus === "draft") {
-		return "Expense draft";
+	if (
+		mappedStatus === "Needs confirmation" ||
+		sourceStatus === "needs_review"
+	) {
+		return "Expense candidate";
 	}
 
 	return "Split decision";
@@ -310,13 +342,9 @@ export const SpaceSplitsWorkspacePage = () => {
 	const { user } = useAuth();
 	const { formatMoney } = useUserFormat();
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
-	const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(
-		null,
-	);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
-	const [spaceActivity, setSpaceActivity] = useState<SpaceActivityItem[]>([]);
 	const [expenseDetails, setExpenseDetails] = useState<
 		Record<number, ExpenseDetail>
 	>({});
@@ -338,7 +366,16 @@ export const SpaceSplitsWorkspacePage = () => {
 	const [copiedPaymentLinkId, setCopiedPaymentLinkId] = useState<number | null>(
 		null,
 	);
+	const [splitQuery, setSplitQuery] = useState("");
+	const [splitStatusFilter, setSplitStatusFilter] =
+		useState<SplitStatusFilter>("all");
 	const [isLoading, setIsLoading] = useState(true);
+	const [splitDecisionsHasMore, setSplitDecisionsHasMore] = useState(false);
+	const [splitDecisionsNextOffset, setSplitDecisionsNextOffset] = useState<
+		number | null
+	>(null);
+	const [splitDecisionsLoadingMore, setSplitDecisionsLoadingMore] =
+		useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [selectedDecisionId, setSelectedDecisionId] = useState<string | null>(
 		null,
@@ -372,27 +409,22 @@ export const SpaceSplitsWorkspacePage = () => {
 		setIsLoading(true);
 		setLoadError(null);
 		setPaymentLinksError(null);
+		setSplitDecisionsHasMore(false);
+		setSplitDecisionsNextOffset(null);
 		void (async () => {
 			try {
 				const [
-					dashRes,
 					membersRes,
 					participantsRes,
-					txRes,
-					activityRes,
+					splitDecisionsRes,
 					paymentLinksRes,
 				] = await Promise.all([
-					apiClient.dashboard.get({
-						variant: "personal",
-						period: "month",
-						space_id: numericSpaceId,
-					}),
 					apiClient.spaces.listMembers(numericSpaceId).catch(() => null),
 					apiClient.spaces.listParticipants(numericSpaceId).catch(() => null),
-					apiClient.spaces.expenses.list(numericSpaceId, { limit: 60 }),
-					apiClient.spaces.activity
-						.list(numericSpaceId, { limit: 40 })
-						.catch(() => ({ items: [] })),
+					apiClient.spaces.listSplitDecisions(numericSpaceId, {
+						limit: SPLIT_DECISION_PAGE_SIZE,
+						offset: 0,
+					}),
 					apiClient.paymentLinks
 						.list(numericSpaceId)
 						.catch((error: unknown) => {
@@ -404,57 +436,25 @@ export const SpaceSplitsWorkspacePage = () => {
 							return { links: [] };
 						}),
 				]);
-
-				const expenseIds = Array.from(
-					new Set(txRes.map((tx) => toNumericId(tx.id))),
-				)
-					.filter((id): id is number => id != null)
-					.slice(0, 36);
-
-				const [splitSettled, detailSettled] = await Promise.all([
-					Promise.allSettled(
-						expenseIds.map(async (expenseId) => {
-							const data = await apiClient.spaces.expenses.listSplits(
-								numericSpaceId,
-								expenseId,
-							);
-							return { expenseId, rows: data.splits ?? [] };
-						}),
-					),
-					Promise.allSettled(
-						expenseIds.map(async (expenseId) => {
-							const detail = await apiClient.spaces.expenses.get(
-								numericSpaceId,
-								expenseId,
-							);
-							return { expenseId, detail };
-						}),
-					),
-				]);
-
+				const decisions = splitDecisionsRes.decisions ?? [];
+				const expenseRows = decisions.map((decision) => decision.expense);
 				const splitMap: Record<number, ExpenseSplitRow[]> = {};
-				for (const result of splitSettled) {
-					if (result.status === "fulfilled") {
-						splitMap[result.value.expenseId] = result.value.rows;
-					}
-				}
-
-				const detailMap: Record<number, ExpenseDetail> = {};
-				for (const result of detailSettled) {
-					if (result.status === "fulfilled") {
-						detailMap[result.value.expenseId] = result.value.detail;
+				for (const decision of decisions) {
+					const expenseId = toNumericId(decision.expense.id);
+					if (expenseId != null) {
+						splitMap[expenseId] = decision.splits ?? [];
 					}
 				}
 
 				if (!cancelled) {
-					setDashboardData(dashRes);
 					setMembers(membersRes?.members ?? []);
 					setParticipants(participantsRes?.participants ?? []);
-					setTransactions(txRes);
-					setSpaceActivity(activityRes.items ?? []);
+					setTransactions(expenseRows);
 					setPaymentLinks(paymentLinksRes.links ?? []);
 					setSplitRows(splitMap);
-					setExpenseDetails(detailMap);
+					setExpenseDetails({});
+					setSplitDecisionsHasMore(Boolean(splitDecisionsRes.has_more));
+					setSplitDecisionsNextOffset(splitDecisionsRes.next_offset ?? null);
 				}
 			} catch (error) {
 				if (!cancelled) {
@@ -483,15 +483,67 @@ export const SpaceSplitsWorkspacePage = () => {
 		return () => window.removeEventListener("keydown", handleKeyDown);
 	}, []);
 
+	const loadMoreSplitDecisions = async () => {
+		if (
+			numericSpaceId == null ||
+			splitDecisionsLoadingMore ||
+			!splitDecisionsHasMore ||
+			splitDecisionsNextOffset == null
+		) {
+			return;
+		}
+		setSplitDecisionsLoadingMore(true);
+		setLoadError(null);
+		try {
+			const response = await apiClient.spaces.listSplitDecisions(
+				numericSpaceId,
+				{
+					limit: SPLIT_DECISION_PAGE_SIZE,
+					offset: splitDecisionsNextOffset,
+				},
+			);
+			const decisions = response.decisions ?? [];
+			setTransactions((current) => {
+				const seen = new Set(
+					current.map((transaction) => toNumericId(transaction.id)),
+				);
+				const next = [...current];
+				for (const decision of decisions) {
+					const expenseId = toNumericId(decision.expense.id);
+					if (expenseId == null || seen.has(expenseId)) continue;
+					seen.add(expenseId);
+					next.push(decision.expense);
+				}
+				return next;
+			});
+			setSplitRows((current) => {
+				const next = { ...current };
+				for (const decision of decisions) {
+					const expenseId = toNumericId(decision.expense.id);
+					if (expenseId != null) {
+						next[expenseId] = decision.splits ?? [];
+					}
+				}
+				return next;
+			});
+			setSplitDecisionsHasMore(Boolean(response.has_more));
+			setSplitDecisionsNextOffset(response.next_offset ?? null);
+		} catch (error) {
+			setLoadError(
+				error instanceof Error
+					? error.message
+					: "Failed to load more split decisions",
+			);
+		} finally {
+			setSplitDecisionsLoadingMore(false);
+		}
+	};
+
 	if (numericSpaceId == null) {
 		return <Navigate replace to="/console/home" />;
 	}
 
 	const sidStr = String(numericSpaceId);
-	const pendingDrafts = (dashboardData?.pending_drafts ?? []).filter(
-		(item) => Number(item.space_id) === Number(numericSpaceId),
-	);
-
 	const transactionByExpenseId = new Map<number, Transaction>(
 		transactions
 			.map((transaction) => [toNumericId(transaction.id), transaction] as const)
@@ -588,7 +640,9 @@ export const SpaceSplitsWorkspacePage = () => {
 			const detail = expenseDetails[expenseId];
 			const sourceDocumentId =
 				rows.find((row) => row.source_document_id != null)
-					?.source_document_id ?? detail?.source_document_id;
+					?.source_document_id ??
+				detail?.source_document_id ??
+				transaction?.source_document_id;
 			const statusLabel = rows.length > 0 ? "Split saved" : "Missing splits";
 			if (statusLabel === "Missing splits") return [];
 
@@ -636,7 +690,9 @@ export const SpaceSplitsWorkspacePage = () => {
 						: "Custom";
 			const categoryTag =
 				detail?.items?.[0]?.tags?.[0]?.name ||
+				transaction?.items?.[0]?.tags?.[0] ||
 				detail?.business_meta?.invoice_ref ||
+				transaction?.business_meta?.invoice_ref ||
 				"Uncategorized";
 			const displayCategory = toDisplayCategory(categoryTag);
 			const mappedStatusLabel = toSplitStateLabel(sourceStatus, statusLabel);
@@ -700,13 +756,37 @@ export const SpaceSplitsWorkspacePage = () => {
 		},
 	);
 
-	const pendingSplitRecords = splitDecisionRecords.filter(
+	const confirmedSplitRecords = splitDecisionRecords.filter(
+		(row) => row.statusLabel === "Split saved",
+	);
+	const filteredSplitRecords = splitDecisionRecords.filter((row) => {
+		const matchesStatus =
+			splitStatusFilter === "all" ||
+			(splitStatusFilter === "needs_confirmation" &&
+				row.statusLabel === "Needs confirmation") ||
+			(splitStatusFilter === "saved" && row.statusLabel === "Split saved") ||
+			(splitStatusFilter === "cancelled" && row.statusLabel === "Cancelled");
+		if (!matchesStatus) return false;
+		const q = splitQuery.trim().toLowerCase();
+		if (!q) return true;
+		const haystack = [
+			row.title,
+			row.contextLine,
+			row.categoryLabel,
+			row.sourceStatusShort,
+			row.sourceDocumentId != null ? `capture ${row.sourceDocumentId}` : "",
+			...row.participantsDetailed.map((participant) => participant.name),
+		]
+			.join(" ")
+			.toLowerCase();
+		return haystack.includes(q);
+	});
+	const visiblePendingSplitRecords = filteredSplitRecords.filter(
 		(row) =>
 			row.statusLabel === "Needs confirmation" ||
-			row.statusLabel === "Draft" ||
 			row.statusLabel === "Cancelled",
 	);
-	const confirmedSplitRecords = splitDecisionRecords.filter(
+	const visibleConfirmedSplitRecords = filteredSplitRecords.filter(
 		(row) => row.statusLabel === "Split saved",
 	);
 	const needsConfirmationCount = splitDecisionRecords.filter(
@@ -763,17 +843,6 @@ export const SpaceSplitsWorkspacePage = () => {
 		})
 		.slice(0, 6);
 
-	const recentActivity: SplitActivitySummary[] = spaceActivity
-		.filter(
-			(item) => item.action.includes("split") || item.action.includes("draft"),
-		)
-		.slice(0, 6)
-		.map((item) => ({
-			id: String(item.id),
-			label: toTitleCase(item.action),
-			timeLabel: formatRelative(item.created_at),
-		}));
-
 	const selectedDecision = splitDecisionRecords.find(
 		(row) => row.id === selectedDecisionId,
 	);
@@ -800,11 +869,31 @@ export const SpaceSplitsWorkspacePage = () => {
 			}
 		: null;
 
-	const moneyFlowNet = 44.2;
+	const visiblePaymentObligations = new Map<string, PaymentLinkObligationRef>();
+	for (const link of activePaymentLinks) {
+		for (const obligation of link.obligations ?? []) {
+			if (obligation.status === "confirmed") continue;
+			visiblePaymentObligations.set(obligation.obligation_id, obligation);
+		}
+	}
+	const moneyFlowAmounts = Array.from(
+		visiblePaymentObligations.values(),
+	).reduce(
+		(acc, obligation) => {
+			if (currentUserParticipantIds.has(obligation.payer_participant_id)) {
+				acc.youOwe += obligation.amount;
+			}
+			if (currentUserParticipantIds.has(obligation.recipient_participant_id)) {
+				acc.youAreOwed += obligation.amount;
+			}
+			return acc;
+		},
+		{ youOwe: 0, youAreOwed: 0 },
+	);
+	const moneyFlowNet = moneyFlowAmounts.youAreOwed - moneyFlowAmounts.youOwe;
 	const moneyFlow = {
-		// TODO: replace placeholder amounts with dedicated balances endpoint.
-		youOweLabel: formatMoney(75.8),
-		youAreOwedLabel: formatMoney(120),
+		youOweLabel: formatMoney(moneyFlowAmounts.youOwe),
+		youAreOwedLabel: formatMoney(moneyFlowAmounts.youAreOwed),
 		netLabel:
 			moneyFlowNet >= 0
 				? `+${formatMoney(moneyFlowNet)}`
@@ -815,19 +904,6 @@ export const SpaceSplitsWorkspacePage = () => {
 				: moneyFlowNet < 0
 					? ("negative" as const)
 					: ("neutral" as const),
-	};
-
-	const refreshPaymentLinks = async () => {
-		if (numericSpaceId == null) return;
-		try {
-			const res = await apiClient.paymentLinks.list(numericSpaceId);
-			setPaymentLinks(res.links ?? []);
-			setPaymentLinksError(null);
-		} catch (error) {
-			setPaymentLinksError(
-				error instanceof Error ? error.message : "Failed to load payment links",
-			);
-		}
 	};
 
 	const createPaymentLink = async () => {
@@ -890,6 +966,27 @@ export const SpaceSplitsWorkspacePage = () => {
 		}
 	};
 
+	const confirmPaymentObligation = async (obligationId: string) => {
+		if (numericSpaceId == null) return;
+		setPaymentLinkAction(`confirm:${obligationId}`);
+		setPaymentLinksError(null);
+		try {
+			const refreshed = await apiClient.paymentLinks.confirmObligation(
+				numericSpaceId,
+				obligationId,
+			);
+			setPaymentLinks(refreshed.links ?? []);
+		} catch (error) {
+			setPaymentLinksError(
+				error instanceof Error
+					? error.message
+					: "Failed to confirm payment obligation",
+			);
+		} finally {
+			setPaymentLinkAction(null);
+		}
+	};
+
 	const copyPaymentLink = async (link: PaymentLinkSummary) => {
 		await navigator.clipboard?.writeText(link.url);
 		setCopiedPaymentLinkId(link.id);
@@ -897,16 +994,14 @@ export const SpaceSplitsWorkspacePage = () => {
 
 	return (
 		<SpaceWorkspaceLayout
+			contentClassName="flex min-h-0 flex-1 flex-col p-0"
 			rightRail={
 				<SpaceSplitsRightRail
-					draftCount={pendingDrafts.length}
 					memberExposureCount={membersSummary.length}
 					membersSummary={membersSummary}
 					onCloseDetail={() => setSelectedDecisionId(null)}
-					recentActivity={recentActivity}
 					reviewCount={needsConfirmationCount}
 					selectedDetail={selectedDetail}
-					splitActivityCount={recentActivity.length}
 					splitCoveragePercent={splitCoveragePercent}
 					spaceId={numericSpaceId}
 					moneyFlow={moneyFlow}
@@ -916,107 +1011,141 @@ export const SpaceSplitsWorkspacePage = () => {
 			rightRailLabel={`${space?.name ?? "Space"} splits rail`}
 			rightRailClassName="border-border/60 bg-muted/30"
 		>
-			<SpaceHeader
-				currentUserId={user?.id ?? null}
-				space={
-					space ??
-					({ id: numericSpaceId, name: "Space", tenant_id: 0 } as Space)
+			<WorkspaceListingPage
+				description={`Split decisions, participant shares, and payment-link coverage in ${space?.name ?? "this space"}. New split candidates stay in Captures until they become saved split records.`}
+				stats={
+					<>
+						<WorkspaceSummaryChip
+							accent={needsConfirmationCount > 0 ? "attention" : "default"}
+							label="Needs review"
+							value={needsConfirmationCount}
+						/>
+						<WorkspaceSummaryChip
+							label="Saved splits"
+							value={confirmedSplitRecords.length}
+						/>
+						<WorkspaceSummaryChip
+							accent="positive"
+							label="Coverage"
+							value={`${splitCoveragePercent}%`}
+						/>
+						<WorkspaceSummaryChip
+							label="My tracked share"
+							value={totalTrackedShare}
+						/>
+					</>
 				}
-			/>
-			{loadError ? (
-				<div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-					{loadError}
-				</div>
-			) : null}
-			<section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-				{[
-					{
-						key: "needs",
-						label: "Needs confirmation",
-						value: String(needsConfirmationCount),
-						note: "Decisions waiting for people to confirm.",
-					},
-					{
-						key: "drafts",
-						label: "Drafts pending",
-						value: String(pendingDrafts.length),
-						note: "Expense records created by captures and waiting for split review.",
-					},
-					{
-						key: "coverage",
-						label: "Split coverage",
-						value: `${splitCoveragePercent}%`,
-						note: "Confirmed split rows across loaded decisions.",
-					},
-					{
-						key: "my-share",
-						label: "My tracked share",
-						value: totalTrackedShare,
-						note: "Your currently tracked split exposure.",
-					},
-				].map((widget) => (
-					<div
-						className="rounded-xl border border-border/60 bg-card px-4 py-3 soft-shadow"
-						key={widget.key}
+				title="Splits"
+			>
+				<WorkspaceFilterBar
+					resultLabel={
+						isLoading
+							? "Loading..."
+							: `${filteredSplitRecords.length} shown · ${splitDecisionRecords.length} split records`
+					}
+					search={
+						<input
+							aria-label="Search splits"
+							className={workspaceSearchInputClass}
+							onChange={(event) => setSplitQuery(event.target.value)}
+							placeholder="Search expense, person, category, capture..."
+							type="search"
+							value={splitQuery}
+						/>
+					}
+				>
+					<select
+						aria-label="Filter split status"
+						className={workspaceControlClass}
+						onChange={(event) =>
+							setSplitStatusFilter(event.target.value as SplitStatusFilter)
+						}
+						value={splitStatusFilter}
 					>
-						<p className="text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
-							{widget.label}
-						</p>
-						<p className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-							{widget.value}
-						</p>
-						<p className="mt-1 text-xs text-muted-foreground">{widget.note}</p>
+						<option value="all">All statuses</option>
+						<option value="needs_confirmation">Needs review</option>
+						<option value="saved">Saved</option>
+						<option value="cancelled">Cancelled</option>
+					</select>
+				</WorkspaceFilterBar>
+
+				<WorkspaceListBody error={loadError}>
+					{isLoading ? (
+						<section className="rounded-xl border border-border/60 bg-card px-4 py-5 text-sm text-muted-foreground">
+							Loading split decisions...
+						</section>
+					) : null}
+
+					<div className="space-y-4">
+						<SpacePaymentLinksPanel
+							action={paymentLinkAction}
+							candidates={paymentLinkCandidateRows}
+							coveredPaymentLinkByParticipantId={
+								coveredPaymentLinkByParticipantId
+							}
+							copiedLinkId={copiedPaymentLinkId}
+							error={paymentLinksError}
+							links={activePaymentLinks}
+							onCopy={(link) => void copyPaymentLink(link)}
+							onCreate={() => void createPaymentLink()}
+							onConfirmObligation={(obligationId) =>
+								void confirmPaymentObligation(obligationId)
+							}
+							onRevoke={(linkId) => void revokePaymentLink(linkId)}
+							onSelectParticipant={setSelectedPaymentParticipantId}
+							onSelectProofPolicy={setSelectedPaymentProofPolicy}
+							paymentLinkByParticipantId={paymentLinkByParticipantId}
+							proofPolicy={selectedPaymentProofPolicy}
+							selectedParticipantId={selectedPaymentParticipantId}
+							unclaimedLink={unclaimedPaymentLink}
+						/>
+
+						{isLoading ? null : (
+							<WorkspacePagedList
+								hasMore={splitDecisionsHasMore}
+								isLoadingMore={splitDecisionsLoadingMore}
+								items={["split-decisions"]}
+								loadMoreLabel="Load more split decisions"
+								onLoadMore={() => void loadMoreSplitDecisions()}
+								renderItem={() => (
+									<div className="space-y-4">
+										<SpaceSplitDecisionList
+											description="Actionable split decisions that still need confirmation."
+											emptySubtitle={
+												splitQuery || splitStatusFilter !== "all"
+													? "Try another search or status filter."
+													: "New split reviews will appear here."
+											}
+											emptyTitle="No split records here"
+											eyebrow="Needs review"
+											onSelect={setSelectedDecisionId}
+											rows={visiblePendingSplitRecords}
+											selectedId={selectedDecisionId}
+											title="Needs review"
+											variant="pending"
+										/>
+										<SpaceSplitDecisionList
+											description="Saved split decisions with lower urgency."
+											emptySubtitle={
+												splitQuery || splitStatusFilter !== "all"
+													? "Try another search or status filter."
+													: "Confirmed rows will show once approvals are saved."
+											}
+											emptyTitle="No saved splits yet"
+											eyebrow="Saved splits"
+											onSelect={setSelectedDecisionId}
+											rows={visibleConfirmedSplitRecords}
+											selectedId={selectedDecisionId}
+											title="Saved splits"
+											variant="confirmed"
+										/>
+									</div>
+								)}
+							/>
+						)}
 					</div>
-				))}
-			</section>
-
-			{isLoading ? (
-				<section className="rounded-xl border border-border/60 bg-card px-4 py-5 text-sm text-muted-foreground">
-					Loading split decisions...
-				</section>
-			) : null}
-
-			<SpacePaymentLinksPanel
-				action={paymentLinkAction}
-				candidates={paymentLinkCandidateRows}
-				coveredPaymentLinkByParticipantId={coveredPaymentLinkByParticipantId}
-				copiedLinkId={copiedPaymentLinkId}
-				error={paymentLinksError}
-				links={activePaymentLinks}
-				onCopy={(link) => void copyPaymentLink(link)}
-				onCreate={() => void createPaymentLink()}
-				onRefresh={() => void refreshPaymentLinks()}
-				onRevoke={(linkId) => void revokePaymentLink(linkId)}
-				onSelectParticipant={setSelectedPaymentParticipantId}
-				onSelectProofPolicy={setSelectedPaymentProofPolicy}
-				paymentLinkByParticipantId={paymentLinkByParticipantId}
-				proofPolicy={selectedPaymentProofPolicy}
-				selectedParticipantId={selectedPaymentParticipantId}
-				unclaimedLink={unclaimedPaymentLink}
-			/>
-
-			<SpaceSplitDecisionList
-				description="Actionable split decisions that still need confirmation."
-				emptySubtitle="New split reviews will appear here."
-				emptyTitle="All splits are clear"
-				eyebrow="Pending split approvals"
-				onSelect={setSelectedDecisionId}
-				rows={pendingSplitRecords}
-				selectedId={selectedDecisionId}
-				title={`Pending confirmations in ${space?.name ?? "this space"}`}
-				variant="pending"
-			/>
-			<SpaceSplitDecisionList
-				description="Saved split decisions with lower urgency."
-				emptySubtitle="Confirmed rows will show once approvals are saved."
-				emptyTitle="No confirmed splits yet."
-				eyebrow="Confirmed splits"
-				onSelect={setSelectedDecisionId}
-				rows={confirmedSplitRecords}
-				selectedId={selectedDecisionId}
-				title={`Confirmed split history in ${space?.name ?? "this space"}`}
-				variant="confirmed"
-			/>
+				</WorkspaceListBody>
+			</WorkspaceListingPage>
 		</SpaceWorkspaceLayout>
 	);
 };
@@ -1106,6 +1235,51 @@ const paymentLinkLifecycleChips = (link: PaymentLinkSummary) =>
 			chip != null,
 	);
 
+type PaymentProofPreview = {
+	linkLabel: string;
+	obligation: PaymentLinkObligationRef;
+	proof: PaymentProofRef;
+};
+
+type PaymentLinkReviewItem = {
+	linkLabel: string;
+	obligation: PaymentLinkObligationRef;
+	proof?: PaymentProofRef;
+};
+
+const paymentLinkProofItems = (
+	link: PaymentLinkSummary,
+): PaymentProofPreview[] => {
+	const seen = new Set<number>();
+	const out: PaymentProofPreview[] = [];
+	for (const obligation of link.obligations ?? []) {
+		for (const proof of obligation.proofs ?? []) {
+			if (seen.has(proof.id)) continue;
+			seen.add(proof.id);
+			out.push({
+				linkLabel: paymentLinkParticipantLabel(link),
+				obligation,
+				proof,
+			});
+		}
+	}
+	return out;
+};
+
+const paymentLinkConfirmableObligations = (link: PaymentLinkSummary) =>
+	(link.obligations ?? []).filter((obligation) => obligation.status === "sent");
+
+const paymentLinkReviewItems = (
+	links: PaymentLinkSummary[],
+): PaymentLinkReviewItem[] =>
+	links.flatMap((link) =>
+		paymentLinkConfirmableObligations(link).map((obligation) => ({
+			linkLabel: paymentLinkParticipantLabel(link),
+			obligation,
+			proof: obligation.proofs?.[0],
+		})),
+	);
+
 const SpacePaymentLinksPanel = ({
 	action,
 	candidates,
@@ -1115,7 +1289,7 @@ const SpacePaymentLinksPanel = ({
 	links,
 	onCopy,
 	onCreate,
-	onRefresh,
+	onConfirmObligation,
 	onRevoke,
 	onSelectParticipant,
 	onSelectProofPolicy,
@@ -1132,7 +1306,7 @@ const SpacePaymentLinksPanel = ({
 	links: PaymentLinkSummary[];
 	onCopy: (link: PaymentLinkSummary) => void;
 	onCreate: () => void;
-	onRefresh: () => void;
+	onConfirmObligation: (obligationId: string) => void;
 	onRevoke: (linkId: number) => void;
 	onSelectParticipant: (id: string) => void;
 	onSelectProofPolicy: (policy: "optional" | "required") => void;
@@ -1141,6 +1315,9 @@ const SpacePaymentLinksPanel = ({
 	selectedParticipantId: string;
 	unclaimedLink: PaymentLinkSummary | null;
 }) => {
+	const [proofPreview, setProofPreview] = useState<PaymentProofPreview | null>(
+		null,
+	);
 	const selectedCandidate =
 		selectedParticipantId === "unclaimed"
 			? null
@@ -1170,9 +1347,16 @@ const SpacePaymentLinksPanel = ({
 			(link.missing_required_proof_count ?? 0),
 		0,
 	);
+	const reviewItems = paymentLinkReviewItems(links);
 
 	return (
 		<section className="rounded-xl border border-border/60 bg-card p-4 soft-shadow">
+			{proofPreview ? (
+				<PaymentProofPreviewModal
+					onClose={() => setProofPreview(null)}
+					preview={proofPreview}
+				/>
+			) : null}
 			<div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
 				<div>
 					<p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
@@ -1182,15 +1366,9 @@ const SpacePaymentLinksPanel = ({
 						Send split-backed links
 					</h2>
 				</div>
-				<button
-					className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 text-sm font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-					disabled={action === "refresh"}
-					onClick={onRefresh}
-					type="button"
-				>
-					<RefreshCw className="h-4 w-4" />
-					Refresh
-				</button>
+				<span className="rounded-full border border-border/70 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+					{links.length} active
+				</span>
 			</div>
 
 			{error ? (
@@ -1323,84 +1501,307 @@ const SpacePaymentLinksPanel = ({
 								: links.length}
 						</span>
 					</div>
+					{reviewItems.length > 0 ? (
+						<div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/70 p-3">
+							<div className="flex items-center justify-between gap-3">
+								<p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-900">
+									Review payments
+								</p>
+								<span className="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-blue-800">
+									{reviewItems.length}
+								</span>
+							</div>
+							<div className="mt-2 grid gap-2">
+								{reviewItems.slice(0, 3).map((item) => (
+									<div
+										className="rounded-lg bg-white px-3 py-2"
+										key={item.obligation.obligation_id}
+									>
+										<div className="flex items-start justify-between gap-3">
+											<div className="min-w-0">
+												<p className="truncate text-sm font-semibold text-foreground">
+													{item.linkLabel}
+												</p>
+												<p className="text-xs text-muted-foreground">
+													{formatPaymentLinkMoney(
+														item.obligation.amount,
+														item.obligation.currency,
+													)}{" "}
+													waiting for confirmation
+												</p>
+											</div>
+											<div className="flex shrink-0 items-center gap-1">
+												{item.proof ? (
+													<button
+														className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted"
+														onClick={() =>
+															setProofPreview({
+																linkLabel: item.linkLabel,
+																obligation: item.obligation,
+																proof: item.proof as PaymentProofRef,
+															})
+														}
+														title="View proof"
+														type="button"
+													>
+														<Eye className="h-3.5 w-3.5" />
+													</button>
+												) : null}
+												<button
+													className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-foreground px-2.5 text-[11px] font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+													disabled={
+														action ===
+														`confirm:${item.obligation.obligation_id}`
+													}
+													onClick={() =>
+														onConfirmObligation(item.obligation.obligation_id)
+													}
+													type="button"
+												>
+													<CheckCircle2 className="h-3.5 w-3.5" />
+													Confirm
+												</button>
+											</div>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					) : null}
 					<div className="mt-3 grid gap-2">
 						{links.length === 0 ? (
 							<div className="rounded-lg border border-dashed border-border bg-background/70 p-3 text-sm text-muted-foreground">
 								No active payment links.
 							</div>
 						) : (
-							links.slice(0, 5).map((link) => (
-								<div
-									className="rounded-lg border border-border/50 bg-background px-3 py-2"
-									key={link.id}
-								>
-									<div className="flex items-start justify-between gap-3">
-										<div className="min-w-0">
-											<p className="truncate text-sm font-semibold text-foreground">
-												{paymentLinkParticipantLabel(link)}
-											</p>
-											<p className="truncate text-xs text-muted-foreground">
-												{formatPaymentLinkExpiry(link.expires_at)}
-											</p>
-											<p className="mt-1 text-xs font-medium text-muted-foreground">
-												Proof{" "}
-												{link.proof_policy === "required"
-													? "required"
-													: "optional"}
-											</p>
-											<p className="mt-1 text-xs font-medium text-muted-foreground">
-												{paymentLinkCoverageLabel(link)}
-											</p>
-											{link.is_outdated ? (
-												<p className="mt-1 text-xs font-semibold text-amber-700">
-													Outdated · {link.outdated_count} changed split
-													{link.outdated_count === 1 ? "" : "s"}
+							links.slice(0, 5).map((link) => {
+								const chips = paymentLinkLifecycleChips(link);
+								const proofs = paymentLinkProofItems(link);
+								const confirmable = paymentLinkConfirmableObligations(link);
+								return (
+									<div
+										className="rounded-lg border border-border/50 bg-background px-3 py-2"
+										key={link.id}
+									>
+										<div className="flex items-start justify-between gap-3">
+											<div className="min-w-0">
+												<p className="truncate text-sm font-semibold text-foreground">
+													{paymentLinkParticipantLabel(link)}
 												</p>
-											) : null}
-											{paymentLinkLifecycleChips(link).length > 0 ? (
-												<div className="mt-2 flex flex-wrap gap-1.5">
-													{paymentLinkLifecycleChips(link).map((chip) => (
-														<span
-															className={`rounded-full px-2 py-1 text-[11px] font-semibold ${chip.className}`}
-															key={chip.key}
-														>
-															{chip.label}
-														</span>
-													))}
-												</div>
-											) : null}
+												<p className="truncate text-xs text-muted-foreground">
+													{formatPaymentLinkExpiry(link.expires_at)}
+												</p>
+												<p className="mt-1 text-xs font-medium text-muted-foreground">
+													Proof{" "}
+													{link.proof_policy === "required"
+														? "required"
+														: "optional"}
+												</p>
+												<p className="mt-1 text-xs font-medium text-muted-foreground">
+													{paymentLinkCoverageLabel(link)}
+												</p>
+												{link.is_outdated ? (
+													<p className="mt-1 text-xs font-semibold text-amber-700">
+														Outdated · {link.outdated_count} changed split
+														{link.outdated_count === 1 ? "" : "s"}
+													</p>
+												) : null}
+												{chips.length > 0 ? (
+													<div className="mt-2 flex flex-wrap gap-1.5">
+														{chips.map((chip) => (
+															<span
+																className={`rounded-full px-2 py-1 text-[11px] font-semibold ${chip.className}`}
+																key={chip.key}
+															>
+																{chip.label}
+															</span>
+														))}
+													</div>
+												) : null}
+												{proofs.length > 0 || confirmable.length > 0 ? (
+													<div className="mt-2 flex flex-wrap gap-1.5">
+														{proofs.slice(0, 2).map((item) => (
+															<button
+																className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[11px] font-semibold text-foreground transition hover:bg-muted"
+																key={item.proof.id}
+																onClick={() => setProofPreview(item)}
+																type="button"
+															>
+																<Eye className="h-3.5 w-3.5" />
+																View proof
+															</button>
+														))}
+														{confirmable.map((obligation) => (
+															<button
+																className="inline-flex min-h-8 items-center gap-1.5 rounded-lg bg-foreground px-2.5 text-[11px] font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+																disabled={
+																	action ===
+																	`confirm:${obligation.obligation_id}`
+																}
+																key={obligation.obligation_id}
+																onClick={() =>
+																	onConfirmObligation(obligation.obligation_id)
+																}
+																type="button"
+															>
+																<CheckCircle2 className="h-3.5 w-3.5" />
+																Confirm
+															</button>
+														))}
+													</div>
+												) : null}
+											</div>
+											<div className="flex shrink-0 items-center gap-1">
+												<button
+													className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted"
+													onClick={() => onCopy(link)}
+													title="Copy link"
+													type="button"
+												>
+													<Copy className="h-4 w-4" />
+												</button>
+												<button
+													className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+													disabled={action === `revoke:${link.id}`}
+													onClick={() => onRevoke(link.id)}
+													title="Revoke link"
+													type="button"
+												>
+													<X className="h-4 w-4" />
+												</button>
+											</div>
 										</div>
-										<div className="flex shrink-0 items-center gap-1">
-											<button
-												className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted"
-												onClick={() => onCopy(link)}
-												title="Copy link"
-												type="button"
-											>
-												<Copy className="h-4 w-4" />
-											</button>
-											<button
-												className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-												disabled={action === `revoke:${link.id}`}
-												onClick={() => onRevoke(link.id)}
-												title="Revoke link"
-												type="button"
-											>
-												<X className="h-4 w-4" />
-											</button>
-										</div>
+										{copiedLinkId === link.id ? (
+											<p className="mt-2 text-xs font-semibold text-emerald-700">
+												Link copied
+											</p>
+										) : null}
 									</div>
-									{copiedLinkId === link.id ? (
-										<p className="mt-2 text-xs font-semibold text-emerald-700">
-											Link copied
-										</p>
-									) : null}
-								</div>
-							))
+								);
+							})
 						)}
 					</div>
 				</div>
 			</div>
 		</section>
+	);
+};
+
+const PaymentProofPreviewModal = ({
+	onClose,
+	preview,
+}: {
+	onClose: () => void;
+	preview: PaymentProofPreview;
+}) => {
+	const [objectUrl, setObjectUrl] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		let cancelled = false;
+		let localUrl: string | null = null;
+		setObjectUrl(null);
+		setError(null);
+		void (async () => {
+			try {
+				const res = await httpClient.get<Blob>(
+					`/api/v1/media/${preview.proof.media_id}`,
+					{ responseType: "blob" },
+				);
+				if (cancelled) return;
+				localUrl = URL.createObjectURL(res.data);
+				setObjectUrl(localUrl);
+			} catch {
+				if (!cancelled) setError("Proof unavailable");
+			}
+		})();
+		return () => {
+			cancelled = true;
+			if (localUrl) URL.revokeObjectURL(localUrl);
+		};
+	}, [preview.proof.media_id]);
+
+	const isImage = preview.proof.content_type?.startsWith("image/") ?? false;
+
+	return (
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/45 px-4 py-6">
+			<div className="max-h-[90vh] w-full max-w-lg overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
+				<div className="flex items-start justify-between gap-3 border-b border-border/70 px-4 py-3">
+					<div className="min-w-0">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+							Payment proof
+						</p>
+						<h3 className="mt-1 truncate text-base font-semibold text-foreground">
+							{preview.linkLabel}
+						</h3>
+						<p className="mt-1 truncate text-xs text-muted-foreground">
+							{preview.proof.actor_participant.display_name} ·{" "}
+							{preview.proof.original_filename || "Attached proof"}
+						</p>
+					</div>
+					<button
+						className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground transition hover:bg-muted"
+						onClick={onClose}
+						title="Close proof preview"
+						type="button"
+					>
+						<X className="h-4 w-4" />
+					</button>
+				</div>
+				<div className="max-h-[64vh] overflow-auto bg-muted/30 p-3">
+					<div className="overflow-hidden rounded-lg border border-border bg-background">
+						{objectUrl && isImage ? (
+							<img
+								alt={
+									preview.proof.original_filename
+										? `Payment proof ${preview.proof.original_filename}`
+										: "Payment proof"
+								}
+								className="max-h-[56vh] w-full object-contain"
+								src={objectUrl}
+							/>
+						) : (
+							<div className="flex min-h-56 flex-col items-center justify-center gap-3 px-4 py-8 text-center">
+								{error ? (
+									<>
+										<FileImage className="h-6 w-6 text-muted-foreground" />
+										<p className="text-sm font-semibold text-foreground">
+											{error}
+										</p>
+									</>
+								) : objectUrl ? (
+									<>
+										<FileImage className="h-6 w-6 text-muted-foreground" />
+										<p className="text-sm font-semibold text-foreground">
+											Protected proof file
+										</p>
+										<a
+											className="inline-flex min-h-9 items-center justify-center rounded-lg bg-foreground px-3 text-sm font-semibold text-background"
+											href={objectUrl}
+											rel="noreferrer"
+											target="_blank"
+										>
+											Open file
+										</a>
+									</>
+								) : (
+									<>
+										<Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+										<p className="text-sm text-muted-foreground">
+											Loading proof
+										</p>
+									</>
+								)}
+							</div>
+						)}
+					</div>
+					{preview.proof.note ? (
+						<p className="mt-3 rounded-lg bg-background px-3 py-2 text-sm text-muted-foreground">
+							{preview.proof.note}
+						</p>
+					) : null}
+				</div>
+			</div>
+		</div>
 	);
 };

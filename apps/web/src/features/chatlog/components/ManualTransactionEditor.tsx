@@ -476,7 +476,7 @@ export const ManualTransactionEditor = ({
 							Add item
 						</button>
 						<button
-							aria-label="Save manual draft"
+							aria-label="Save manual entry"
 							className={
 								isPanel
 									? "inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground disabled:opacity-50"
@@ -486,7 +486,7 @@ export const ManualTransactionEditor = ({
 							onClick={onSaveDraft}
 							type="button"
 						>
-							Save draft
+							Save candidate
 						</button>
 					</div>
 				) : null}

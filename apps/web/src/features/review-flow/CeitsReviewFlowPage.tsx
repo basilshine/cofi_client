@@ -1,16 +1,19 @@
 import type {
 	CapturePacket as ApiCapturePacket,
 	BenefitCandidate,
-	DashboardPendingDraft,
+	CaptureExpenseRecord,
 	DocumentCandidate,
+	ExpenseDetail,
 	ExpenseSplitRow,
 	Space,
 	SpaceMember,
 	Transaction,
 } from "@cofi/api";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
+import { GlobalComposerDock } from "../../app/layout/workspaceSpaces/GlobalComposerDock";
+import { useGlobalComposerDock } from "../../app/layout/workspaceSpaces/GlobalComposerDockContext";
 import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
@@ -21,7 +24,6 @@ import {
 	capturePacketSummaryFromApi,
 	capturePacketSummaryLine,
 } from "../../shared/lib/capturePacketSummary";
-import { createManualDraftInSpace } from "../../shared/lib/quickCaptureTransactions";
 import { CapturePacketReviewSection } from "./CapturePacketReviewSection";
 import type {
 	CandidateReviewItem,
@@ -31,11 +33,8 @@ import type {
 	SplitTargetOption,
 } from "./reviewPacketTypes";
 
-type ReviewKind = "draft" | "needs_confirmation";
-
 type ReviewItem = {
 	id: string;
-	kind: ReviewKind;
 	expenseId: number;
 	spaceId: number;
 	spaceName: string;
@@ -52,14 +51,39 @@ type ReviewItem = {
 	linePreview: Array<{ name: string; amount: number }>;
 	splits: ExpenseSplitRow[];
 	splitMethod: "equal" | "custom" | "manual";
-	isDraftLike: boolean;
 	detailsLoaded: boolean;
 	detailsLoading?: boolean;
 	detailError?: string | null;
 };
 
+const captureExpenseRecordFromExpenseDetail = (
+	expense: ExpenseDetail,
+	fallbackTitle: string,
+): CaptureExpenseRecord => {
+	const items = (expense.items ?? []).map((item, index) => ({
+		id: Number(item.id ?? index + 1),
+		name: item.name,
+		amount: Number(item.amount ?? 0),
+	}));
+	const total = items.reduce((sum, item) => sum + item.amount, 0);
+	return {
+		id: Number(expense.id),
+		title: expense.title?.trim() || fallbackTitle,
+		description: expense.description,
+		status: expense.status ?? "approved",
+		currency: expense.currency ?? "USD",
+		txn_date: expense.txn_date ?? new Date().toISOString().slice(0, 10),
+		total_amount:
+			typeof expense.amount === "number" && Number.isFinite(expense.amount)
+				? expense.amount
+				: total,
+		created_by_user_id: Number(expense.user_id ?? 0),
+		items,
+	};
+};
+
 const documentCandidateLabel = (type: string): string => {
-	if (type === "expense_candidate") return "Expense draft";
+	if (type === "expense_candidate") return "Expense candidate";
 	if (type === "expense_item_candidate") return "Line item";
 	if (type === "promo_code_candidate") return "Promo code";
 	if (type === "loyalty_event_candidate") return "Loyalty";
@@ -134,25 +158,6 @@ const firstCandidateArray = (
 	return null;
 };
 
-const candidateNumber = (value: unknown): number | null => {
-	if (typeof value === "number" && Number.isFinite(value)) return value;
-	if (typeof value !== "string") return null;
-	const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".");
-	const parsed = Number(normalized);
-	return Number.isFinite(parsed) ? parsed : null;
-};
-
-const firstCandidateNumber = (
-	data: Record<string, unknown>,
-	keys: string[],
-): number | null => {
-	for (const key of keys) {
-		const parsed = candidateNumber(data[key]);
-		if (parsed != null) return parsed;
-	}
-	return null;
-};
-
 const nestedCandidateData = (
 	data: Record<string, unknown>,
 	keys: string[],
@@ -162,76 +167,6 @@ const nestedCandidateData = (
 		if (Object.keys(nested).length > 0) return nested;
 	}
 	return data;
-};
-
-const tagsFromCandidateData = (data: Record<string, unknown>): string[] => {
-	const rawTags = firstCandidateArray(data, ["tags", "categories", "labels"]);
-	const tags =
-		rawTags
-			?.map((item) =>
-				typeof item === "string"
-					? item.trim()
-					: firstCandidateText(toRecord(item), ["name", "label", "title"]),
-			)
-			.filter((item): item is string => Boolean(item)) ?? [];
-	return tags.length ? tags : ["other"];
-};
-
-type ReviewDraftItem = { name: string; amount: number; tags?: string[] };
-
-const draftItemsFromExpenseCandidate = (
-	candidate: CandidateReviewItem,
-): ReviewDraftItem[] => {
-	if (
-		candidate.candidateType !== "expense_candidate" &&
-		candidate.candidateType !== "expense_item_candidate"
-	) {
-		return [];
-	}
-	const data = candidateData(candidate.raw);
-	if (candidate.candidateType === "expense_item_candidate") {
-		const item = nestedCandidateData(data, ["item"]);
-		const name =
-			firstCandidateText(item, ["name", "title", "description"]) ??
-			candidate.title;
-		const amount = firstCandidateNumber(item, ["amount", "total", "price"]);
-		return name.trim() && amount != null && amount !== 0
-			? [{ name: name.trim(), amount, tags: tagsFromCandidateData(item) }]
-			: [];
-	}
-	const draft = nestedCandidateData(data, ["draft", "data"]);
-	const rawItems = firstCandidateArray(draft, [
-		"items",
-		"line_items",
-		"expense_items",
-	]);
-	if (rawItems?.length) {
-		return rawItems
-			.map((rawItem): ReviewDraftItem | null => {
-				const item = toRecord(rawItem);
-				const name = firstCandidateText(item, ["name", "title", "description"]);
-				const amount = firstCandidateNumber(item, ["amount", "total", "price"]);
-				return name && amount != null && amount !== 0
-					? { name, amount, tags: tagsFromCandidateData(item) }
-					: null;
-			})
-			.filter((item): item is ReviewDraftItem => item != null);
-	}
-	const name =
-		firstCandidateText(draft, [
-			"merchant",
-			"merchant_name",
-			"vendor",
-			"payee",
-		]) ?? candidate.title;
-	const amount = firstCandidateNumber(draft, [
-		"total",
-		"total_amount",
-		"amount",
-	]);
-	return name.trim() && amount != null && amount !== 0
-		? [{ name: name.trim(), amount, tags: tagsFromCandidateData(draft) }]
-		: [];
 };
 
 const appendField = (
@@ -392,7 +327,7 @@ const candidateSummary = (
 		return {
 			detail:
 				[merchant || itemSummary, amount].filter(Boolean).join(" • ") ||
-				"Expense draft created from this capture",
+				"Expense candidate created from this capture",
 			fields,
 			itemLabels,
 		};
@@ -873,6 +808,69 @@ const buildCapturePackets = (
 const captureQueueHref = (spaceId: number, sourceDocumentId: number): string =>
 	`/console/review?spaceId=${spaceId}&sourceDocumentId=${sourceDocumentId}`;
 
+const packetOpenReviewCount = (packet: CapturePacket): number =>
+	packet.candidates.filter(
+		(candidate) => candidate.status.trim().toLowerCase() === "draft",
+	).length || Number(packet.pendingCount ?? 0);
+
+const packetCreatedRecordCount = (packet: CapturePacket): number => {
+	const records = packet.records;
+	return (
+		(records?.expenses ?? []).length +
+		(records?.benefits ?? []).length +
+		(records?.participants ?? []).length +
+		(records?.splits ?? []).length +
+		(records?.recurring ?? []).length
+	);
+};
+
+const packetReviewStatus = (packet: CapturePacket): string => {
+	const open = packetOpenReviewCount(packet);
+	if (open > 0) return `${open} needs review`;
+	const created = packetCreatedRecordCount(packet);
+	if (created > 0) return "Complete";
+	if (Number(packet.ignoredCount ?? 0) > 0) return "No action needed";
+	return "Ready";
+};
+
+const packetOutputRows = (
+	packet: CapturePacket,
+): Array<{ label: string; value: number }> =>
+	[
+		{
+			label: "Expense records",
+			value: (packet.records?.expenses ?? []).length,
+		},
+		{
+			label: "Benefit records",
+			value: (packet.records?.benefits ?? []).length,
+		},
+		{
+			label: "People",
+			value: (packet.records?.participants ?? []).length,
+		},
+		{
+			label: "Split records",
+			value: (packet.records?.splits ?? []).length,
+		},
+		{
+			label: "Future rules",
+			value: (packet.records?.recurring ?? []).length,
+		},
+	].filter((row) => row.value > 0);
+
+const packetRemainingRows = (
+	packet: CapturePacket,
+): Array<{ label: string; value: number }> =>
+	[
+		{ label: "Expense/item signals", value: packet.counts.expenses },
+		{ label: "Benefit signals", value: packet.counts.benefits },
+		{ label: "People signals", value: packet.counts.people },
+		{ label: "Split signals", value: packet.counts.splits },
+		{ label: "Future hints", value: packet.counts.future },
+		{ label: "Document signals", value: packet.counts.documents },
+	].filter((row) => row.value > 0);
+
 const sourceFromExpense = (
 	tx: Transaction | undefined,
 ): ReviewItem["source"] => {
@@ -923,9 +921,32 @@ const tagName = (tag: { name?: string } | string): string | null => {
 };
 
 const isString = (value: string | null): value is string => Boolean(value);
+const CAPTURE_PACKET_PAGE_SIZE = 50;
+
+const mergeCapturePacketPages = (
+	current: ApiCapturePacket[],
+	incoming: ApiCapturePacket[],
+): ApiCapturePacket[] => {
+	const bySourceDocument = new Map<number, ApiCapturePacket>();
+	for (const packet of current) {
+		bySourceDocument.set(Number(packet.source_document_id), packet);
+	}
+	for (const packet of incoming) {
+		bySourceDocument.set(Number(packet.source_document_id), packet);
+	}
+	return Array.from(bySourceDocument.values()).sort((left, right) => {
+		const leftTime = Date.parse(left.created_at ?? "");
+		const rightTime = Date.parse(right.created_at ?? "");
+		if (Number.isFinite(leftTime) && Number.isFinite(rightTime)) {
+			if (leftTime !== rightTime) return rightTime - leftTime;
+		}
+		return Number(right.source_document_id) - Number(left.source_document_id);
+	});
+};
 
 export const CeitsReviewFlowPage = () => {
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
+	const globalComposerDock = useGlobalComposerDock();
 	const { formatMoney } = useUserFormat();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [queueLoading, setQueueLoading] = useState(true);
@@ -941,6 +962,12 @@ export const CeitsReviewFlowPage = () => {
 	const [spaceCapturePackets, setSpaceCapturePackets] = useState<
 		ApiCapturePacket[]
 	>([]);
+	const [capturePacketsHasMore, setCapturePacketsHasMore] = useState(false);
+	const [capturePacketsNextOffset, setCapturePacketsNextOffset] = useState<
+		number | null
+	>(null);
+	const [capturePacketsLoadingMore, setCapturePacketsLoadingMore] =
+		useState(false);
 	const [spaceMembers, setSpaceMembers] = useState<SpaceMember[]>([]);
 	const [documentCandidateError, setDocumentCandidateError] = useState<
 		string | null
@@ -1001,77 +1028,27 @@ export const CeitsReviewFlowPage = () => {
 		setError(null);
 		void (async () => {
 			try {
-				const [dash, tx] = await Promise.all([
-					apiClient.dashboard.get({
-						variant: "personal",
-						period: "month",
-						space_id: spaceId,
-					}),
-					apiClient.spaces.expenses.list(spaceId, { limit: 120 }),
-				]);
-
+				const txRes = await apiClient.spaces.expenses.list(spaceId, {
+					limit: 120,
+				});
+				const tx: Transaction[] = txRes.expenses ?? [];
 				const txById = new Map<number, Transaction>(
-					tx
-						.map((t) => [Number(t.id), t])
-						.filter((e): e is [number, Transaction] => Number.isFinite(e[0])),
+					tx.map((t) => [Number(t.id), t]),
 				);
-				const draftItems = (dash.pending_drafts ?? [])
-					.filter((d) => Number(d.space_id) === Number(spaceId))
-					.filter((d): d is DashboardPendingDraft =>
-						Number.isFinite(Number(d.id)),
-					);
+
 				const needsConfirmationIds = tx
 					.filter((t) => {
 						const s = (t.status ?? "").toLowerCase();
 						return (
 							s.includes("review") ||
 							s.includes("question") ||
-							(s.includes("pending") && !s.includes("draft"))
+							s.includes("pending")
 						);
 					})
 					.map((t) => Number(t.id))
 					.filter(Number.isFinite);
 
 				const built: ReviewItem[] = [];
-
-				for (const draft of draftItems) {
-					const id = Number(draft.id);
-					const tr = txById.get(id);
-					const source = sourceFromExpense(tr);
-					const linePreview = (tr?.items ?? []).slice(0, 3).map((it) => ({
-						name: it.name,
-						amount: Number(it.amount) || 0,
-					}));
-					built.push({
-						id: `draft-${id}`,
-						kind: "draft",
-						expenseId: id,
-						spaceId: Number(spaceId),
-						spaceName: draft.space_name || activeSpace?.name || "Space",
-						title: humanTitle(tr, draft.label || "Draft expense"),
-						amount: Number(tr?.total ?? draft.total ?? 0),
-						status: (tr?.status ?? "draft").toString(),
-						dateLabel: tr?.txn_date ?? draft.updated_at ?? "—",
-						source,
-						confidenceLabel: source === "manual" ? "Medium" : "High",
-						confidenceReason:
-							source === "manual"
-								? "Manual draft with parsed lines."
-								: "Ceits parsed receipt/voice details with structured lines.",
-						summaryReason:
-							"Approving records this draft and applies split logic.",
-						whoAffected: `People in ${activeSpace?.name ?? "this space"}.`,
-						tags: (tr?.items ?? [])
-							.flatMap((it) => (it.tags ?? []).map(tagName))
-							.filter(isString)
-							.slice(0, 5),
-						linePreview,
-						splits: [],
-						splitMethod: "manual",
-						isDraftLike: true,
-						detailsLoaded: false,
-					});
-				}
 
 				for (const id of needsConfirmationIds) {
 					if (built.some((b) => b.expenseId === id)) continue;
@@ -1080,7 +1057,6 @@ export const CeitsReviewFlowPage = () => {
 					const source = sourceFromExpense(tr);
 					built.push({
 						id: `needs-${id}`,
-						kind: "needs_confirmation",
 						expenseId: id,
 						spaceId: Number(spaceId),
 						spaceName: activeSpace?.name ?? "Space",
@@ -1104,7 +1080,6 @@ export const CeitsReviewFlowPage = () => {
 						})),
 						splits: [],
 						splitMethod: "manual",
-						isDraftLike: false,
 						detailsLoaded: false,
 					});
 				}
@@ -1132,6 +1107,9 @@ export const CeitsReviewFlowPage = () => {
 		setCandidateLoading(true);
 		setDocumentCandidateError(null);
 		setSpaceCapturePackets([]);
+		setCapturePacketsHasMore(false);
+		setCapturePacketsNextOffset(null);
+		setCapturePacketsLoadingMore(false);
 		setSpaceMembers([]);
 		void (async () => {
 			try {
@@ -1144,7 +1122,8 @@ export const CeitsReviewFlowPage = () => {
 					apiClient.spaces
 						.listCapturePackets(spaceId, {
 							includeRecords: true,
-							limit: 50,
+							limit: CAPTURE_PACKET_PAGE_SIZE,
+							offset: 0,
 							sourceDocumentId: focusedSourceDocumentId ?? undefined,
 						})
 						.catch(() => null),
@@ -1165,6 +1144,12 @@ export const CeitsReviewFlowPage = () => {
 
 				if (!cancelled) {
 					setSpaceCapturePackets(capturePacketRes?.captures ?? []);
+					setCapturePacketsHasMore(capturePacketRes?.has_more === true);
+					setCapturePacketsNextOffset(
+						typeof capturePacketRes?.next_offset === "number"
+							? capturePacketRes.next_offset
+							: null,
+					);
 					setBenefitCandidates(benefitCandidateRes?.candidates ?? []);
 					setDocumentCandidates(documentCandidateRes?.candidates ?? []);
 					setSpaceMembers(membersRes?.members ?? []);
@@ -1181,6 +1166,9 @@ export const CeitsReviewFlowPage = () => {
 			} catch (e) {
 				if (!cancelled) {
 					setSpaceCapturePackets([]);
+					setCapturePacketsHasMore(false);
+					setCapturePacketsNextOffset(null);
+					setCapturePacketsLoadingMore(false);
 					setSpaceMembers([]);
 					setBenefitCandidates([]);
 					setDocumentCandidates([]);
@@ -1295,6 +1283,33 @@ export const CeitsReviewFlowPage = () => {
 			buildCapturePackets(captureCandidates, spaceCapturePackets, memberLabels),
 		[captureCandidates, spaceCapturePackets, memberLabels],
 	);
+	const activeRailCapturePacket = useMemo(() => {
+		if (capturePackets.length === 0) return null;
+		if (effectiveFocusedSourceDocumentId != null) {
+			const focused = capturePackets.find(
+				(packet) =>
+					Number(packet.sourceDocumentId) ===
+					Number(effectiveFocusedSourceDocumentId),
+			);
+			if (focused) return focused;
+		}
+		return (
+			capturePackets.find((packet) => packetOpenReviewCount(packet) > 0) ??
+			capturePackets[0]
+		);
+	}, [capturePackets, effectiveFocusedSourceDocumentId]);
+	const activeRailCaptureOutputRows = useMemo(
+		() =>
+			activeRailCapturePacket ? packetOutputRows(activeRailCapturePacket) : [],
+		[activeRailCapturePacket],
+	);
+	const activeRailCaptureRemainingRows = useMemo(
+		() =>
+			activeRailCapturePacket
+				? packetRemainingRows(activeRailCapturePacket)
+				: [],
+		[activeRailCapturePacket],
+	);
 	const captureSummary = useMemo(
 		() =>
 			capturePackets.reduce(
@@ -1388,6 +1403,44 @@ export const CeitsReviewFlowPage = () => {
 			) ?? 0
 		);
 	};
+
+	const handleLoadMoreCapturePackets = useCallback(async () => {
+		if (
+			spaceId == null ||
+			focusedSourceDocumentId != null ||
+			capturePacketsLoadingMore ||
+			capturePacketsNextOffset == null
+		) {
+			return;
+		}
+		setCapturePacketsLoadingMore(true);
+		setDocumentCandidateError(null);
+		try {
+			const res = await apiClient.spaces.listCapturePackets(spaceId, {
+				includeRecords: true,
+				limit: CAPTURE_PACKET_PAGE_SIZE,
+				offset: capturePacketsNextOffset,
+			});
+			setSpaceCapturePackets((prev) =>
+				mergeCapturePacketPages(prev, res.captures ?? []),
+			);
+			setCapturePacketsHasMore(res.has_more === true);
+			setCapturePacketsNextOffset(
+				typeof res.next_offset === "number" ? res.next_offset : null,
+			);
+		} catch (e) {
+			setDocumentCandidateError(
+				e instanceof Error ? e.message : "Failed to load more captures",
+			);
+		} finally {
+			setCapturePacketsLoadingMore(false);
+		}
+	}, [
+		capturePacketsLoadingMore,
+		capturePacketsNextOffset,
+		focusedSourceDocumentId,
+		spaceId,
+	]);
 
 	const handleIgnoreDocumentCandidate = async (
 		candidate: DocumentCandidate,
@@ -1556,9 +1609,6 @@ export const CeitsReviewFlowPage = () => {
 		const existingExpenses = packet.records?.expenses ?? [];
 		const hadExistingExpenses = existingExpenses.length > 0;
 		let reviewExpenses = [...existingExpenses];
-		let draftExpenses = existingExpenses.filter(
-			(expense) => expense.status.trim().toLowerCase() === "draft",
-		);
 		setFinishingSourceDocumentId(packet.sourceDocumentId);
 		setDocumentCandidateError(null);
 		try {
@@ -1598,54 +1648,32 @@ export const CeitsReviewFlowPage = () => {
 				);
 			}
 			if (!reviewExpenses.length) {
-				const draftItems = packet.candidates.flatMap((candidate) =>
-					draftItemsFromExpenseCandidate(candidate),
+				const expenseCandidate = packet.candidates.find(
+					(candidate) =>
+						candidate.status === "draft" &&
+						candidate.candidateType === "expense_candidate",
 				);
-				const uniqueItems = Array.from(
-					new Map(
-						draftItems.map((item) => [
-							`${item.name.toLowerCase()}:${item.amount}`,
-							item,
-						]),
-					).values(),
-				);
-				if (!uniqueItems.length) {
+				if (!expenseCandidate) {
 					throw new Error(
-						"No expense items are available to save from this capture.",
+						"No expense candidate is available to save from this capture.",
 					);
 				}
-				const created = await createManualDraftInSpace(
-					spaceId,
+				const created =
+					await apiClient.spaces.review.createExpenseFromCandidate(
+						spaceId,
+						expenseCandidate.id,
+					);
+				const createdExpense = captureExpenseRecordFromExpenseDetail(
+					created.expense,
 					packet.title,
-					uniqueItems,
-					{ sourceDocumentId: packet.sourceDocumentId },
 				);
-				const createdExpenseId = Number(
-					(created.data as { expense?: { id?: string | number } } | undefined)
-						?.expense?.id,
-				);
+				const createdExpenseId = Number(createdExpense.id);
 				if (!Number.isFinite(createdExpenseId) || createdExpenseId <= 0) {
 					throw new Error(
 						"Expense was created but no expense id was returned.",
 					);
 				}
-				const createdExpense = {
-					id: createdExpenseId,
-					title: packet.title,
-					status: "draft",
-					currency: "RUB",
-					txn_date: new Date().toISOString().slice(0, 10),
-					total_amount: uniqueItems.reduce(
-						(total, item) => total + item.amount,
-						0,
-					),
-					created_by_user_id: 0,
-				};
 				reviewExpenses = [createdExpense];
-				draftExpenses = [createdExpense];
-			}
-			for (const expense of draftExpenses) {
-				await apiClient.spaces.expenses.confirm(spaceId, expense.id);
 			}
 			if (hadExistingExpenses) {
 				for (const candidate of packet.candidates.filter(
@@ -1739,7 +1767,7 @@ export const CeitsReviewFlowPage = () => {
 			setQueue((prev) =>
 				prev.map((item) =>
 					confirmedIds.has(item.expenseId)
-						? { ...item, status: "approved", isDraftLike: false }
+						? { ...item, status: "approved" }
 						: item,
 				),
 			);
@@ -1830,137 +1858,156 @@ export const CeitsReviewFlowPage = () => {
 	if (spaceId == null || !Number.isFinite(spaceId))
 		return <Navigate replace to="/console/home" />;
 
+	const composerDock = globalComposerDock?.shouldShow ? (
+		<GlobalComposerDock
+			isCollapsed={globalComposerDock.isCollapsed}
+			onCollapsedChange={globalComposerDock.onCollapsedChange}
+			variant="inline"
+		/>
+	) : null;
+
 	return (
 		<div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
 			<header className="shrink-0 border-b border-border/80 bg-background px-4 py-3 lg:px-8">
 				<SpaceTabs />
 			</header>
 			<div className="flex min-h-0 flex-1 overflow-hidden bg-[linear-gradient(180deg,#faf7f2_0%,#f4efe6_100%)]">
-				<main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 pb-40 pt-5 lg:px-8">
-					{isReviewLoading ? (
-						<p className="text-sm text-muted-foreground">
-							Loading capture review...
-						</p>
-					) : null}
-					{error ? (
-						<p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-							{error}
-						</p>
-					) : null}
-					{!candidateLoading &&
-					documentCandidateError &&
-					capturePackets.length === 0 ? (
-						<p className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-							{documentCandidateError}
-						</p>
-					) : null}
-					{!candidateLoading && capturePackets.length > 0 ? (
-						<CapturePacketReviewSection
-							benefitCandidateActingId={benefitCandidateActingId}
-							candidateCount={captureSummary.candidates}
-							deletingSourceDocumentId={deletingSourceDocumentId}
-							documentCandidateActingId={documentCandidateActingId}
-							documentCandidateError={documentCandidateError}
-							focusedSourceDocumentId={effectiveFocusedSourceDocumentId}
-							memberLabels={memberLabels}
-							onApplySplitCandidate={(candidate, targetExpenseId) =>
-								handleApplySplitCandidate(
-									candidate.raw as DocumentCandidate,
-									targetExpenseId,
-								)
-							}
-							onConfirmDocumentCandidate={(candidate) =>
-								handleConfirmDocumentCandidate(
-									candidate.raw as DocumentCandidate,
-								)
-							}
-							onCreateParticipantCandidate={(candidate) =>
-								handleCreateParticipantCandidate(
-									candidate.raw as DocumentCandidate,
-								)
-							}
-							onCreateRecurringCandidate={(candidate) =>
-								handleCreateRecurringCandidate(
-									candidate.raw as DocumentCandidate,
-								)
-							}
-							onDeleteCapture={(sourceDocumentId) =>
-								void handleDeleteCapture(sourceDocumentId)
-							}
-							onFinishReview={(packet) => handleFinishCaptureReview(packet)}
-							onIgnoreCandidate={(candidate) =>
-								void handleIgnoreCaptureCandidate(candidate)
-							}
-							onSavePromoCandidate={(candidate) =>
-								handleSavePromoCandidate(candidate.raw as BenefitCandidate)
-							}
-							onSplitTargetChange={(candidateId, expenseId) =>
-								setSplitCandidateTargets((prev) => ({
-									...prev,
-									[candidateId]: expenseId,
-								}))
-							}
-							packets={capturePackets}
-							finishingSourceDocumentId={finishingSourceDocumentId}
-							pendingParticipantCountForSplitCandidate={
-								pendingParticipantCountForSplitCandidate
-							}
-							spaceId={spaceId}
-							splitTargetExpenseIdFor={splitTargetExpenseIdFor}
-							splitTargetOptions={splitTargetOptions}
-						/>
-					) : null}
-					{!candidateLoading && !error && capturePackets.length === 0 ? (
-						<section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.9)] px-6 py-8 text-center shadow-sm">
-							<h2 className="text-2xl font-semibold tracking-tight text-foreground">
-								{hasExpenseReviewFallback
-									? "Capture not found for this expense"
-									: "No captures waiting"}
-							</h2>
-							<p className="mt-2 text-sm text-muted-foreground">
-								{hasExpenseReviewFallback
-									? "This older expense link opened Review, but Ceits could not find a source capture for it. You can still inspect the saved expense record in this space."
-									: "Review now starts from captures only. Draft expenses and split records live in their own workspace tabs."}
+				<main
+					className={
+						composerDock
+							? "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+							: "min-h-0 min-w-0 flex-1 overflow-y-auto"
+					}
+				>
+					<div
+						className={
+							composerDock ? "min-h-0 flex-1 overflow-y-auto" : "contents"
+						}
+					>
+						{isReviewLoading ? (
+							<p className="px-4 pb-2 pt-5 text-sm text-muted-foreground lg:px-8">
+								Loading capture review...
 							</p>
-							<div className="mt-5 flex items-center justify-center gap-2">
-								<Link
-									className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-accent"
-									to={`/console/spaces/${spaceId}/overview`}
-								>
-									Return to space
-								</Link>
-								{hasExpenseReviewFallback ? (
+						) : null}
+						{error ? (
+							<p className="mx-4 mt-5 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive lg:mx-8">
+								{error}
+							</p>
+						) : null}
+						{!candidateLoading &&
+						documentCandidateError &&
+						capturePackets.length === 0 ? (
+							<p className="mx-4 mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive lg:mx-8">
+								{documentCandidateError}
+							</p>
+						) : null}
+						{!candidateLoading && capturePackets.length > 0 ? (
+							<CapturePacketReviewSection
+								benefitCandidateActingId={benefitCandidateActingId}
+								candidateCount={captureSummary.candidates}
+								deletingSourceDocumentId={deletingSourceDocumentId}
+								documentCandidateActingId={documentCandidateActingId}
+								documentCandidateError={documentCandidateError}
+								hasMorePackets={
+									focusedSourceDocumentId == null && capturePacketsHasMore
+								}
+								isLoadingMorePackets={capturePacketsLoadingMore}
+								focusedSourceDocumentId={effectiveFocusedSourceDocumentId}
+								memberLabels={memberLabels}
+								onApplySplitCandidate={(candidate, targetExpenseId) =>
+									handleApplySplitCandidate(
+										candidate.raw as DocumentCandidate,
+										targetExpenseId,
+									)
+								}
+								onConfirmDocumentCandidate={(candidate) =>
+									handleConfirmDocumentCandidate(
+										candidate.raw as DocumentCandidate,
+									)
+								}
+								onCreateParticipantCandidate={(candidate) =>
+									handleCreateParticipantCandidate(
+										candidate.raw as DocumentCandidate,
+									)
+								}
+								onCreateRecurringCandidate={(candidate) =>
+									handleCreateRecurringCandidate(
+										candidate.raw as DocumentCandidate,
+									)
+								}
+								onDeleteCapture={(sourceDocumentId) =>
+									void handleDeleteCapture(sourceDocumentId)
+								}
+								onFinishReview={(packet) => handleFinishCaptureReview(packet)}
+								onIgnoreCandidate={(candidate) =>
+									void handleIgnoreCaptureCandidate(candidate)
+								}
+								onLoadMorePackets={() => void handleLoadMoreCapturePackets()}
+								onSavePromoCandidate={(candidate) =>
+									handleSavePromoCandidate(candidate.raw as BenefitCandidate)
+								}
+								onSplitTargetChange={(candidateId, expenseId) =>
+									setSplitCandidateTargets((prev) => ({
+										...prev,
+										[candidateId]: expenseId,
+									}))
+								}
+								packets={capturePackets}
+								finishingSourceDocumentId={finishingSourceDocumentId}
+								pendingParticipantCountForSplitCandidate={
+									pendingParticipantCountForSplitCandidate
+								}
+								spaceId={spaceId}
+								splitTargetExpenseIdFor={splitTargetExpenseIdFor}
+								splitTargetOptions={splitTargetOptions}
+							/>
+						) : null}
+						{!candidateLoading && !error && capturePackets.length === 0 ? (
+							<section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.9)] px-6 py-8 text-center shadow-sm">
+								<h2 className="text-2xl font-semibold tracking-tight text-foreground">
+									{hasExpenseReviewFallback
+										? "Capture not found for this expense"
+										: "No captures waiting"}
+								</h2>
+								<p className="mt-2 text-sm text-muted-foreground">
+									{hasExpenseReviewFallback
+										? "This older expense link opened Review, but Ceits could not find a source capture for it. You can still inspect the saved expense record in this space."
+										: "Review now starts from captures and candidates only. Saved records live in their workspace tabs."}
+								</p>
+								<div className="mt-5 flex items-center justify-center gap-2">
 									<Link
 										className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-accent"
-										to={`/console/spaces/${encodeURIComponent(String(spaceId))}/expenses?expenseId=${encodeURIComponent(String(focusedExpenseId))}`}
+										to={`/console/spaces/${spaceId}/overview`}
 									>
-										Open expense record
+										Return to space
 									</Link>
-								) : null}
-								<Link
-									className="rounded-lg bg-[rgba(55,45,30,0.92)] px-4 py-2 text-sm font-semibold text-[#fffaf0] hover:bg-[rgba(45,38,28,0.95)]"
-									to={`/console/chat?spaceId=${spaceId}`}
-								>
-									Open chat
-								</Link>
-							</div>
-						</section>
-					) : null}
+									{hasExpenseReviewFallback ? (
+										<Link
+											className="rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium hover:bg-accent"
+											to={`/console/spaces/${encodeURIComponent(String(spaceId))}/expenses?expenseId=${encodeURIComponent(String(focusedExpenseId))}`}
+										>
+											Open expense record
+										</Link>
+									) : null}
+								</div>
+							</section>
+						) : null}
+					</div>
+					{composerDock}
 				</main>
 				<aside className="hidden w-[21rem] shrink-0 border-l border-[rgba(120,100,80,0.2)] bg-[rgba(255,252,246,0.92)] lg:block">
 					<div className="h-full overflow-y-auto px-4 pb-40 pt-5">
 						<p className="text-xs font-semibold uppercase tracking-[0.13em] text-muted-foreground">
 							Capture queue
 						</p>
-						<p className="mt-2 text-sm text-foreground">
+						<p className="mt-2 text-sm font-semibold text-foreground">
 							{captureSummary.total === 0
 								? "No parsed captures waiting"
 								: `${captureSummary.total} ${captureSummary.total === 1 ? "capture" : "captures"} waiting`}
 						</p>
 						<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-							Review starts from the captures in the main column. Expenses,
-							benefits, people, splits, future hints, and document signals stay
-							inside the capture they came from.
+							Review starts from the selected capture. Saved records move to
+							their workspace tabs after the capture work is resolved.
 						</p>
 						<div className="mt-4 grid grid-cols-2 gap-2 text-xs">
 							{[
@@ -1983,54 +2030,107 @@ export const CeitsReviewFlowPage = () => {
 								</div>
 							))}
 						</div>
-						<div className="mt-5 space-y-2">
+						<div className="mt-5 rounded-2xl border border-border/70 bg-background/72 p-4 shadow-sm">
 							<p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
-								Review packets
+								Active capture
 							</p>
-							{capturePackets.length > 0 ? (
-								capturePackets.slice(0, 12).map((packet) => {
-									const selected =
-										effectiveFocusedSourceDocumentId ===
-										packet.sourceDocumentId;
-									return (
-										<Link
-											className={[
-												"block rounded-2xl border px-3 py-3 text-left transition",
-												selected
-													? "border-[rgba(172,124,35,0.42)] bg-[rgba(255,245,219,0.92)] shadow-sm"
-													: "border-border/60 bg-background/64 hover:border-[rgba(172,124,35,0.26)] hover:bg-background/86",
-											].join(" ")}
-											key={packet.sourceDocumentId}
-											to={captureQueueHref(spaceId, packet.sourceDocumentId)}
-										>
-											<div className="flex items-start justify-between gap-2">
-												<div className="min-w-0">
-													<p className="truncate text-sm font-semibold text-foreground">
-														{packet.title}
-													</p>
-													<p className="mt-1 truncate text-[11px] text-muted-foreground">
-														{packet.createdByLabel
-															? `By ${packet.createdByLabel}`
-															: `Capture #${packet.sourceDocumentId}`}
-													</p>
-												</div>
-												<span className="shrink-0 rounded-full border border-border/60 bg-white/70 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-													{packet.pendingCount && packet.pendingCount > 0
-														? `${packet.pendingCount} open`
-														: packet.projectedCount && packet.projectedCount > 0
-															? `${packet.projectedCount} saved`
-															: "review"}
-												</span>
-											</div>
-											<p className="mt-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-												{packet.summary}
+							{activeRailCapturePacket ? (
+								<>
+									<div className="mt-2 flex items-start justify-between gap-3">
+										<div className="min-w-0">
+											<p className="text-base font-semibold leading-snug text-foreground">
+												{activeRailCapturePacket.title}
 											</p>
+											<p className="mt-1 text-xs text-muted-foreground">
+												{activeRailCapturePacket.createdByLabel
+													? `By ${activeRailCapturePacket.createdByLabel}`
+													: `Capture #${activeRailCapturePacket.sourceDocumentId}`}
+											</p>
+										</div>
+										<span
+											className={[
+												"shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold",
+												packetOpenReviewCount(activeRailCapturePacket) > 0
+													? "border-[rgba(194,131,48,0.38)] bg-[rgba(255,236,194,0.6)] text-[#6d4611]"
+													: "border-[rgba(91,142,96,0.3)] bg-[rgba(224,245,226,0.74)] text-[#2d5933]",
+											].join(" ")}
+										>
+											{packetReviewStatus(activeRailCapturePacket)}
+										</span>
+									</div>
+									<p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+										{activeRailCapturePacket.summary}
+									</p>
+									<div className="mt-4 space-y-3">
+										<section>
+											<p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+												Saved output
+											</p>
+											{activeRailCaptureOutputRows.length ? (
+												<div className="mt-2 space-y-1.5">
+													{activeRailCaptureOutputRows.map((row) => (
+														<div
+															className="flex items-center justify-between rounded-lg border border-[rgba(92,132,92,0.18)] bg-[rgba(238,248,239,0.65)] px-3 py-2 text-xs"
+															key={row.label}
+														>
+															<span className="text-muted-foreground">
+																{row.label}
+															</span>
+															<span className="font-semibold tabular-nums text-foreground">
+																{row.value}
+															</span>
+														</div>
+													))}
+												</div>
+											) : (
+												<p className="mt-2 rounded-lg border border-border/60 bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
+													No saved records from this capture yet.
+												</p>
+											)}
+										</section>
+										<section>
+											<p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
+												Review map
+											</p>
+											{activeRailCaptureRemainingRows.length ? (
+												<div className="mt-2 space-y-1.5">
+													{activeRailCaptureRemainingRows.map((row) => (
+														<div
+															className="flex items-center justify-between rounded-lg border border-border/60 bg-white/62 px-3 py-2 text-xs"
+															key={row.label}
+														>
+															<span className="text-muted-foreground">
+																{row.label}
+															</span>
+															<span className="font-semibold tabular-nums text-foreground">
+																{row.value}
+															</span>
+														</div>
+													))}
+												</div>
+											) : (
+												<p className="mt-2 rounded-lg border border-border/60 bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
+													No review signals remain attached to this capture.
+												</p>
+											)}
+										</section>
+									</div>
+									{effectiveFocusedSourceDocumentId !==
+									activeRailCapturePacket.sourceDocumentId ? (
+										<Link
+											className="mt-4 inline-flex h-9 w-full items-center justify-center rounded-lg border border-border/70 bg-white px-3 text-xs font-semibold text-foreground transition hover:bg-accent"
+											to={captureQueueHref(
+												spaceId,
+												activeRailCapturePacket.sourceDocumentId,
+											)}
+										>
+											Focus this capture
 										</Link>
-									);
-								})
+									) : null}
+								</>
 							) : (
-								<p className="rounded-xl border border-border/60 bg-background/64 px-3 py-3 text-xs text-muted-foreground">
-									Captures will appear here after text, photo, or voice input is
+								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+									Captures will appear after text, photo, or voice input is
 									parsed.
 								</p>
 							)}

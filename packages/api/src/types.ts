@@ -163,6 +163,10 @@ export type SpaceParticipant = {
 
 export type SpaceParticipantsListResponse = {
 	participants: SpaceParticipant[];
+	limit: number;
+	offset: number;
+	has_more: boolean;
+	next_offset?: number | null;
 };
 
 export type PaymentMethodType =
@@ -409,6 +413,10 @@ export type PromoBenefitsSummary = {
 export type SpacePromoListResponse = {
 	promos: PromoCode[];
 	summary: PromoBenefitsSummary;
+	limit: number;
+	offset: number;
+	has_more: boolean;
+	next_offset?: number | null;
 };
 
 export type SearchEntityType =
@@ -602,6 +610,32 @@ export type CapturePacket = {
 
 export type CapturePacketListResponse = {
 	captures: CapturePacket[];
+	limit?: number;
+	offset?: number;
+	has_more?: boolean;
+	next_offset?: number | null;
+};
+
+export type SpaceExpenseListResponse = {
+	expenses: Transaction[];
+	limit?: number;
+	offset?: number;
+	has_more?: boolean;
+	next_offset?: number | null;
+};
+
+export type SpaceSplitDecision = {
+	expense: Transaction;
+	splits: ExpenseSplitRow[];
+	source_document_id?: number | null;
+};
+
+export type SpaceSplitDecisionListResponse = {
+	decisions: SpaceSplitDecision[];
+	limit?: number;
+	offset?: number;
+	has_more?: boolean;
+	next_offset?: number | null;
 };
 
 export type DocumentCandidateType =
@@ -662,6 +696,11 @@ export type CreateParticipantCandidateResponse = {
 
 export type CreateRecurringCandidateResponse = {
 	recurring: RecurringExpense;
+	candidate: DocumentCandidateState;
+};
+
+export type CreateExpenseCandidateResponse = {
+	expense: ExpenseDetail;
 	candidate: DocumentCandidateState;
 };
 
@@ -748,7 +787,7 @@ export type SpaceInviteCreateResponse = {
 	expires_at: string;
 };
 
-export type DraftItem = {
+export type TransactionItem = {
 	amount: number;
 	name: string;
 	emotion?: string;
@@ -756,15 +795,6 @@ export type DraftItem = {
 	/** Optional memo for this line only (distinct from expense-level business notes). */
 	notes?: string;
 	expense_date?: string;
-};
-
-export type Draft = {
-	id: string | number;
-	space_id: string | number;
-	status: "draft";
-	items: DraftItem[];
-	total: number;
-	created_at?: string;
 };
 
 /** Optional business fields on a transaction (mirrors expense `business_meta`). */
@@ -788,7 +818,7 @@ export type Transaction = {
 	currency?: string;
 	/** Calendar date of the expense (YYYY-MM-DD). */
 	txn_date?: string;
-	items: DraftItem[];
+	items: TransactionItem[];
 	total: number;
 	created_at?: string;
 	/** Capture/source document that created this expense record, when available. */
@@ -867,7 +897,7 @@ export type ExpensePatch = {
 	currency?: string;
 	/** YYYY-MM-DD. Empty string resets the server to today’s UTC calendar date. */
 	txn_date?: string;
-	/** Omit to leave unchanged. Allowed transitions: draft→approved, draft→cancelled. */
+	/** Omit to leave unchanged. Saved records can be marked approved or cancelled. */
 	status?: string;
 	vendor_id?: number;
 	/** When true, clears `vendor_id` on the expense. */
@@ -904,7 +934,6 @@ export type ChatMessage = {
 	direction: "in" | "out";
 	message_type?:
 		| "text"
-		| "draft_expense"
 		| "confirmed_expense"
 		| "recurring_expense"
 		| (string & {});
@@ -1130,4 +1159,12 @@ export type RecurringExpense = {
 	next_run?: string;
 	nextRun?: string;
 	paused?: boolean;
+};
+
+export type SpaceRecurringListResponse = {
+	recurring: RecurringExpense[];
+	limit: number;
+	offset: number;
+	has_more: boolean;
+	next_offset?: number | null;
 };

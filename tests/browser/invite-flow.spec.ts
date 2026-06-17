@@ -91,7 +91,6 @@ const setupAuthenticatedInviteMocks = async (page: Page) => {
 						tenant_name: "Personal",
 						user_id: 42,
 					},
-					pending_drafts: [],
 					recurring_upcoming: [],
 					summary: {},
 				}),

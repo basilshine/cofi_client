@@ -169,36 +169,6 @@ const normalizeLabel = (
 	return trimmed;
 };
 
-const looksLikeRawCaptureText = (value: string | undefined | null): boolean => {
-	const text = value?.trim() ?? "";
-	if (!text) return false;
-	const normalized = text.toLowerCase();
-	return (
-		text.length > 90 ||
-		/\r|\n/.test(text) ||
-		normalized.includes("кассовый чек") ||
-		normalized.includes("фискальный") ||
-		normalized.includes("налогообложения") ||
-		normalized.includes("итого") ||
-		/\bфн\b/.test(normalized) ||
-		/\bфд\b/.test(normalized) ||
-		/\b(?:receipt|invoice)\b/.test(normalized)
-	);
-};
-
-const captureActivityTitle = (
-	value: string | undefined | null,
-	eventType: ReturnType<typeof detectActivityType>,
-): string => {
-	if (looksLikeRawCaptureText(value)) {
-		return eventType === "receipt" ? "Receipt capture" : "Capture needs review";
-	}
-	return normalizeLabel(
-		value,
-		eventType === "receipt" ? "Receipt capture" : "Capture with expense draft",
-	);
-};
-
 const buildReviewHref = (
 	spaceId: string | number,
 	sourceDocumentId?: string | number | null,
@@ -301,7 +271,6 @@ export const GlobalHomePage = () => {
 	}, [workspaceScope, dashboardData?.context?.tenant_id]);
 
 	const monthly = dashboardData?.monthly_snapshot ?? null;
-	const pendingDrafts = dashboardData?.pending_drafts ?? [];
 	const recentTx = dashboardData?.recent_transactions ?? [];
 	const recurringUpcoming = dashboardData?.recurring_upcoming ?? [];
 	const spendOverview = dashboardData?.spend_overview;
@@ -323,17 +292,11 @@ export const GlobalHomePage = () => {
 			return daysUntil >= 0 && daysUntil <= 7;
 		}).length;
 
-		if (pendingDrafts.length > 0 && dueSoonCount > 0) {
-			return `${pendingDrafts.length} capture${pendingDrafts.length === 1 ? "" : "s"} and a bill need attention`;
-		}
-		if (pendingDrafts.length > 0) {
-			return `${pendingDrafts.length} capture${pendingDrafts.length === 1 ? "" : "s"} need review`;
-		}
 		if (dueSoonCount > 0) {
 			return "A bill is due soon";
 		}
-		return "Captures and bills need attention";
-	}, [pendingDrafts.length, recurringUpcoming]);
+		return "Open Review to handle capture candidates";
+	}, [recurringUpcoming]);
 
 	const newExpenseRecordsContextLine = useMemo(() => {
 		const todayCount = recentTx.filter((t) => {
@@ -353,34 +316,6 @@ export const GlobalHomePage = () => {
 			: "Mostly groceries this week";
 		return fallback;
 	}, [recentTx]);
-
-	const reviewTopSpaces = useMemo(() => {
-		const topSpaces = new Map<number, { name: string; count: number }>();
-		for (const draft of pendingDrafts) {
-			const spaceId = draft.space_id;
-			const spaceName = draft.space_name?.trim();
-			if (
-				typeof spaceId !== "number" ||
-				!Number.isFinite(spaceId) ||
-				!spaceName
-			) {
-				continue;
-			}
-			const existing = topSpaces.get(spaceId);
-			topSpaces.set(spaceId, {
-				name: spaceName,
-				count: (existing?.count ?? 0) + 1,
-			});
-		}
-		return [...topSpaces.entries()]
-			.sort((a, b) => b[1].count - a[1].count)
-			.slice(0, 2)
-			.map(([id, payload]) => ({ id, name: payload.name }));
-	}, [pendingDrafts]);
-
-	const reviewPrimarySpaceId = useMemo(() => {
-		return reviewTopSpaces[0]?.id ?? null;
-	}, [reviewTopSpaces]);
 
 	const transactionTopSpaces = useMemo(() => {
 		const topSpaces = new Map<number, { name: string; count: number }>();
@@ -427,7 +362,6 @@ export const GlobalHomePage = () => {
 			);
 		};
 
-		for (const space of reviewTopSpaces) add(space.id, space.name);
 		for (const space of transactionTopSpaces) add(space.id, space.name);
 		if (recentActiveSpaceId != null) add(recentActiveSpaceId);
 		for (const space of spaces ?? []) {
@@ -436,7 +370,7 @@ export const GlobalHomePage = () => {
 		}
 
 		return [...byId.entries()].slice(0, 3).map(([id, name]) => ({ id, name }));
-	}, [reviewTopSpaces, transactionTopSpaces, recentActiveSpaceId, spaces]);
+	}, [transactionTopSpaces, recentActiveSpaceId, spaces]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -533,8 +467,8 @@ export const GlobalHomePage = () => {
 			occurredAt: t.occurred_at,
 			spaceName: normalizeSpaceName(t.space_name, t.space_id),
 			statusLabel: humanizeStatus(t.status, "Confirmed"),
-			statusPillLabel: ["draft", "pending", "question", "review"].some(
-				(token) => (t.status ?? "").toLowerCase().includes(token),
+			statusPillLabel: ["pending", "question", "review"].some((token) =>
+				(t.status ?? "").toLowerCase().includes(token),
 			)
 				? humanizeStatus(t.status)
 				: undefined,
@@ -552,43 +486,13 @@ export const GlobalHomePage = () => {
 			to: buildExpenseDetailHref(t.space_id, t.id),
 		}));
 
-		const draftItems = pendingDrafts.map((draft) => {
-			const detectedEventType = detectActivityType(draft.label, "draft");
-			const captureSource =
-				detectedEventType === "receipt" ? "Receipt capture" : "Text capture";
-			const captureMeaning =
-				detectedEventType === "receipt"
-					? "Receipt capture needs review before it becomes records."
-					: "Capture produced an expense draft that is not recorded until you confirm.";
-			return {
-				amountLabel: formatMoney(
-					typeof draft.my_share === "number" ? draft.my_share : draft.total,
-				),
-				eventType: "capture" as const,
-				id: `draft-${draft.id}`,
-				meaningLine: captureMeaning,
-				occurredAt: draft.updated_at,
-				spaceName: normalizeSpaceName(draft.space_name, draft.space_id),
-				statusLabel: captureSource,
-				statusPillLabel: "Capture review",
-				sourceCaptureTo:
-					draft.source_document_id != null
-						? buildReviewHref(draft.space_id, draft.source_document_id)
-						: null,
-				sourceDocumentId: draft.source_document_id ?? null,
-				timeLabel: formatRelative(draft.updated_at),
-				title: captureActivityTitle(draft.label, detectedEventType),
-				to: buildReviewHref(draft.space_id, draft.source_document_id),
-			};
-		});
-
-		return [...outcomeItems, ...txItems, ...draftItems]
+		return [...outcomeItems, ...txItems]
 			.sort(
 				(a, b) =>
 					Date.parse(b.occurredAt ?? "") - Date.parse(a.occurredAt ?? ""),
 			)
 			.slice(0, 6);
-	}, [dashboardActivity, recentTx, pendingDrafts, formatMoney]);
+	}, [dashboardActivity, recentTx, formatMoney]);
 
 	const breakdownItems = useMemo(() => {
 		const tags =
@@ -710,14 +614,10 @@ export const GlobalHomePage = () => {
 								contextLine={reviewContextLine}
 								label="Needs your review"
 								loading={isLoading}
-								spaceLinks={reviewTopSpaces}
-								to={
-									reviewPrimarySpaceId != null
-										? `/console/review?spaceId=${encodeURIComponent(String(reviewPrimarySpaceId))}`
-										: "/console/spaces"
-								}
+								spaceLinks={[]}
+								to="/console/review"
 								tone="review"
-								value={String(pendingDrafts.length)}
+								value="Open"
 							/>
 							<InsightMetricCard
 								contextLine={newExpenseRecordsContextLine}
@@ -742,11 +642,7 @@ export const GlobalHomePage = () => {
 
 					<ActivityListCard
 						ctaLabel="Review captures"
-						ctaTo={
-							reviewPrimarySpaceId != null
-								? `/console/review?spaceId=${encodeURIComponent(String(reviewPrimarySpaceId))}`
-								: "/console/spaces"
-						}
+						ctaTo="/console/review"
 						emptyText="No activity yet"
 						items={recentActivityItems}
 						linkState={chatWorkspace ? { chatWorkspace } : undefined}

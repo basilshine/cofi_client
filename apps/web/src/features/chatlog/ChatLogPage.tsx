@@ -42,10 +42,6 @@ import type { LegacyReviewDeepLink } from "./components/ChatMessageRichText";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
 import { ChatToastPortal } from "./components/ChatToastPortal";
 import { DeleteChatMessageDialog } from "./components/DeleteChatMessageDialog";
-import {
-	isDraftExpenseSystemMessage,
-	isRecurringExpenseChatMessage,
-} from "./components/DraftExpenseBoilerplateCaption";
 import { FirstChatQuickActions } from "./components/FirstChatQuickActions";
 import { NativeChatMessageList } from "./components/NativeChatMessageList";
 import { NativeChatSpaceSurface } from "./components/NativeChatSpaceSurface";
@@ -77,6 +73,13 @@ import type {
 
 const DEFAULT_LIMIT = 50;
 type NativeComposerMode = "message" | "capture";
+
+const isRecurringExpenseChatMessage = (message: ChatMessage): boolean =>
+	message.message_type === "recurring_expense";
+
+const isLegacyExpenseReviewSystemMessage = (message: ChatMessage): boolean =>
+	message.message_type === "confirmed_expense" &&
+	Boolean(message.related_expense_id || message.related_transaction_id);
 
 const spaceReviewHref = (spaceId: string | number) =>
 	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`;
@@ -252,13 +255,16 @@ export const ChatLogPage = () => {
 	const {
 		clearSelectedExpense,
 		expenseInspectorWorkspaceEditing,
+		loadMoreSpaceTransactions,
 		loadSpaceTransactions,
 		openExpenseDetail,
 		selectExpense,
 		selectedExpenseId,
 		spaceTransactions,
 		spaceTransactionsError,
+		spaceTransactionsHasMore,
 		spaceTransactionsLoading,
+		spaceTransactionsLoadingMore,
 	} = useSpaceExpensesWorkspaceState({
 		isExpensesRoute,
 		onOpenInspector: openExpenseInspectorPanel,
@@ -542,7 +548,7 @@ export const ChatLogPage = () => {
 
 	const getMessageSenderLabel = (m: ChatMessage) => {
 		if (m.sender_type !== "user") {
-			if (isDraftExpenseSystemMessage(m)) return "Parsed by Ceits";
+			if (isLegacyExpenseReviewSystemMessage(m)) return "Parsed by Ceits";
 			if (isRecurringExpenseChatMessage(m)) return "Saved by Ceits";
 			return "Ceits";
 		}
@@ -1057,8 +1063,6 @@ export const ChatLogPage = () => {
 		[navigate, selectedSpaceId, beginRecording],
 	);
 
-	// Draft approve/decline happens on the inline chat draft card now.
-
 	const handleHardPurgeAllMessages = useCallback(async () => {
 		if (selectedSpaceId == null) return;
 		const ok = window.confirm(
@@ -1512,11 +1516,14 @@ export const ChatLogPage = () => {
 				expenseRightPanel={expenseRightPanel}
 				listError={spaceTransactionsError}
 				listLoading={spaceTransactionsLoading}
+				listLoadingMore={spaceTransactionsLoadingMore}
+				listHasMore={spaceTransactionsHasMore}
 				onExpenseDeleted={(expenseId) => {
 					if (String(selectedExpenseId) === String(expenseId)) {
 						clearSelectedExpense();
 					}
 				}}
+				onLoadMore={() => void loadMoreSpaceTransactions()}
 				onReload={() => void loadSpaceTransactions()}
 				onSelectExpense={handleSelectExpenseFromPanel}
 				selectedExpenseId={selectedExpenseId}

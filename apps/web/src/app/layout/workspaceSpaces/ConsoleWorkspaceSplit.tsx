@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useOutlet } from "react-router-dom";
 import { workspacePageVariants } from "../../../shared/lib/appMotion";
 import { GlobalComposerDock } from "./GlobalComposerDock";
+import { GlobalComposerDockProvider } from "./GlobalComposerDockContext";
 import { SpaceScopedMembersSidebarBridge } from "./SpaceScopedMembersSidebarBridge";
 import { WorkspaceSpaceListNav } from "./WorkspaceSpaceListNav";
 import {
@@ -40,6 +41,32 @@ const WorkspaceSidebar = () => {
 	);
 };
 
+const composerRightInsetClassName = (pathname: string): string => {
+	if (/^\/console\/chat\/expenses(?:\/|$)/.test(pathname)) {
+		return "right-0 xl:right-[22rem]";
+	}
+	if (/^\/console\/settings(?:\/|$)/.test(pathname)) {
+		return "right-0 xl:right-[18rem]";
+	}
+	if (
+		/^\/console\/(?:home|dashboard|search)(?:\/|$)/.test(pathname) ||
+		/^\/console\/spaces\/[^/]+\/(?:overview|expenses|benefits|splits|recurring|members)(?:\/|$)/.test(
+			pathname,
+		) ||
+		/^\/console\/review(?:\/|$)/.test(pathname)
+	) {
+		return "right-0 xl:right-[20rem]";
+	}
+	return "right-0";
+};
+
+const hasInlineComposerDock = (pathname: string, search: string): boolean =>
+	/^\/console\/spaces\/[^/]+\/(?:overview|expenses|benefits|splits|recurring|members)(?:\/|$)/.test(
+		pathname,
+	) ||
+	(/^\/console\/review(?:\/|$)/.test(pathname) &&
+		new URLSearchParams(search).has("spaceId"));
+
 const ConsoleWorkspaceSplitInner = () => {
 	const location = useLocation();
 	const outlet = useOutlet();
@@ -50,6 +77,9 @@ const ConsoleWorkspaceSplitInner = () => {
 		/^\/console\/spaces\/[^/]+(\/|$)/.test(location.pathname) ||
 		/^\/console\/dashboard(\/|$)/.test(location.pathname);
 	const showGlobalComposer = shouldShowGlobalComposer(location.pathname);
+	const inlineComposerDock = showGlobalComposer
+		? hasInlineComposerDock(location.pathname, location.search)
+		: false;
 
 	useEffect(() => {
 		window.localStorage.setItem(
@@ -59,37 +89,48 @@ const ConsoleWorkspaceSplitInner = () => {
 	}, [composerCollapsed]);
 
 	return (
-		<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
-			{isSpaceScopedRoute ? <SpaceScopedMembersSidebarBridge /> : null}
-			<WorkspaceSidebar />
-			<div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-				<AnimatePresence mode="wait">
-					<motion.div
-						animate="animate"
-						className={[
-							"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
-							showGlobalComposer
-								? composerCollapsed
-									? "pb-[5.25rem] sm:pb-[4.75rem]"
-									: "pb-[9.25rem] sm:pb-[8.75rem]"
-								: "",
-						].join(" ")}
-						exit="exit"
-						initial="initial"
-						key={location.pathname}
-						variants={workspacePageVariants}
-					>
-						{outlet}
-					</motion.div>
-				</AnimatePresence>
-				{showGlobalComposer ? (
-					<GlobalComposerDock
-						isCollapsed={composerCollapsed}
-						onCollapsedChange={setComposerCollapsed}
-					/>
-				) : null}
+		<GlobalComposerDockProvider
+			value={{
+				isCollapsed: composerCollapsed,
+				onCollapsedChange: setComposerCollapsed,
+				shouldShow: inlineComposerDock,
+			}}
+		>
+			<div className="flex min-h-0 w-full min-w-0 flex-1 overflow-hidden">
+				{isSpaceScopedRoute ? <SpaceScopedMembersSidebarBridge /> : null}
+				<WorkspaceSidebar />
+				<div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+					<AnimatePresence mode="wait">
+						<motion.div
+							animate="animate"
+							className={[
+								"flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden",
+								showGlobalComposer && !inlineComposerDock
+									? composerCollapsed
+										? "pb-[5.25rem] sm:pb-[4.75rem]"
+										: "pb-[9.25rem] sm:pb-[8.75rem]"
+									: "",
+							].join(" ")}
+							exit="exit"
+							initial="initial"
+							key={location.pathname}
+							variants={workspacePageVariants}
+						>
+							{outlet}
+						</motion.div>
+					</AnimatePresence>
+					{showGlobalComposer && !inlineComposerDock ? (
+						<GlobalComposerDock
+							isCollapsed={composerCollapsed}
+							onCollapsedChange={setComposerCollapsed}
+							rightInsetClassName={composerRightInsetClassName(
+								location.pathname,
+							)}
+						/>
+					) : null}
+				</div>
 			</div>
-		</div>
+		</GlobalComposerDockProvider>
 	);
 };
 

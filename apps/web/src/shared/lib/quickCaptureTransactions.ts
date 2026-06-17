@@ -102,12 +102,7 @@ export type CaptureIntentPreview = {
 		cost_class?: string;
 		quota_units?: number;
 	};
-	next_action:
-		| "review"
-		| "ask_clarification"
-		| "save_draft"
-		| "open_chat"
-		| "select_space";
+	next_action: "review" | "ask_clarification" | "open_chat" | "select_space";
 	metadata?: Record<string, string>;
 };
 
@@ -125,7 +120,7 @@ export const parseCaptureText = async (
 	options: { spaceId?: string | number; channel?: string } = {},
 ): Promise<CaptureParsePreview> => {
 	const { data } = await httpClient.post<CaptureParsePreview>(
-		"/api/v1/capture/parse",
+		"/api/v1/capture",
 		{
 			input_kind: "text",
 			text,
@@ -167,7 +162,7 @@ export const parseCapturePhoto = async (
 	fd.append("channel", options.channel ?? "web");
 
 	const { data } = await httpClient.post<CaptureParsePreview>(
-		"/api/v1/capture/parse",
+		"/api/v1/capture",
 		fd,
 		{ headers: { "Content-Type": "multipart/form-data" } },
 	);
@@ -191,7 +186,7 @@ export const parseCaptureVoice = async (
 	fd.append("channel", options.channel ?? "web");
 
 	const { data } = await httpClient.post<CaptureParsePreview>(
-		"/api/v1/capture/parse",
+		"/api/v1/capture",
 		fd,
 		{ headers: { "Content-Type": "multipart/form-data" } },
 	);
@@ -229,17 +224,3 @@ export const parseTextInSpace = async (
 	const data = await parseCaptureText(text, { spaceId });
 	return mapParsedToManual(data.items ?? []);
 };
-
-export const createManualDraftInSpace = async (
-	spaceId: string | number,
-	description: string,
-	items: { name: string; amount: number; tags?: string[] }[],
-	options?: { sourceDocumentId?: number },
-) =>
-	httpClient.post("/api/v1/capture", {
-		input_kind: "manual",
-		space_id: Number(spaceId),
-		source_document_id: options?.sourceDocumentId,
-		description: description.trim(),
-		items,
-	});

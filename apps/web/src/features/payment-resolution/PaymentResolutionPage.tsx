@@ -583,7 +583,7 @@ const ResolveSheet = ({
 	const recipient = obligation.recipient_participant;
 	const isPayer = payer.id === selectedParticipantId;
 	const isRecipient = recipient.id === selectedParticipantId;
-	const payerProofs = obligation.proofs.filter(
+	const payerProofs = (obligation.proofs ?? []).filter(
 		(proof) => proof.actor_participant.id === payer.id,
 	);
 	const proofMissing = obligation.proof_required && payerProofs.length === 0;

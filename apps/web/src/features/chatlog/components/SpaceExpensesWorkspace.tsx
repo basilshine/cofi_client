@@ -10,8 +10,11 @@ type SpaceExpensesWorkspaceProps = {
 	expenseInspectorWorkspaceEditing: boolean;
 	expenseRightPanel: ReactNode;
 	listError: string | null;
+	listHasMore?: boolean;
 	listLoading: boolean;
+	listLoadingMore?: boolean;
 	onExpenseDeleted?: (expenseId: string | number) => void;
+	onLoadMore?: () => void;
 	onReload: () => void;
 	onSelectExpense: (expenseId: string | number) => void;
 	selectedExpenseId: string | number | null;
@@ -27,8 +30,11 @@ export const SpaceExpensesWorkspace = ({
 	expenseInspectorWorkspaceEditing,
 	expenseRightPanel,
 	listError,
+	listHasMore = false,
 	listLoading,
+	listLoadingMore = false,
 	onExpenseDeleted,
+	onLoadMore,
 	onReload,
 	onSelectExpense,
 	selectedExpenseId,
@@ -62,8 +68,11 @@ export const SpaceExpensesWorkspace = ({
 					<SpaceExpensesMain
 						currentUserId={currentUserId}
 						listError={listError}
+						listHasMore={listHasMore}
 						listLoading={listLoading}
+						listLoadingMore={listLoadingMore}
 						onExpenseDeleted={onExpenseDeleted}
+						onLoadMore={onLoadMore}
 						onReload={onReload}
 						onSelectExpense={onSelectExpense}
 						selectedExpenseId={selectedExpenseId}
