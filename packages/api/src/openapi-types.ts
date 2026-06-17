@@ -3128,6 +3128,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/telegram/group-bindings/{telegramChatID}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join the Space bound to a Telegram group chat
+         * @description Bot-mediated group invitation flow. The request must include both the authenticated Telegram user's JWT and the internal API key. The backend adds the user as a member of the bound Space and tenant; Telegram remains only an input channel.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    telegramChatID: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Telegram chat binding after the authenticated user has been connected to the bound Space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelegramGroupBinding"];
+                    };
+                };
+                /** @description Missing or invalid internal API key */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Authenticated user cannot join this binding */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Telegram chat is not bound */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/telegram/group-join-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a short-lived Telegram group join link token
+         * @description Internal bot endpoint. The bot calls this after a group user asks to add an expense but has not started the private bot yet. Telegram remains only an input channel; the token is bound to the Telegram group chat, Telegram user, and existing Ceits Space binding.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TelegramGroupJoinLinkCreateRequest"];
+                };
+            };
+            responses: {
+                /** @description Short-lived opaque token for a private Telegram bot deep link */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelegramGroupJoinLinkCreateResponse"];
+                    };
+                };
+                /** @description Missing or invalid internal API key */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Telegram chat is not bound to a Space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/integrations/telegram/group-join-links/{token}/consume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Consume a Telegram group join link token
+         * @description Bot-mediated private start flow. The request must include both the authenticated Telegram user's JWT and the internal API key. The backend verifies the token belongs to the same Telegram user before adding that user to the bound Space and tenant.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Telegram chat binding after the authenticated user has been connected to the bound Space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TelegramGroupBinding"];
+                    };
+                };
+                /** @description Missing JWT or internal API key */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Token belongs to a different Telegram user */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Token or binding was not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Token expired or was already consumed */
+                410: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/expenses": {
         parameters: {
             query?: never;
@@ -7329,6 +7517,17 @@ export interface components {
             bound_at?: string;
             /** Format: date-time */
             updated_at?: string;
+        };
+        TelegramGroupJoinLinkCreateRequest: {
+            /** Format: int64 */
+            telegram_chat_id: number;
+            /** Format: int64 */
+            telegram_user_id: number;
+        };
+        TelegramGroupJoinLinkCreateResponse: {
+            token?: string;
+            /** Format: date-time */
+            expires_at?: string;
         };
         TelegramLoginRequest: {
             /** Format: int64 */

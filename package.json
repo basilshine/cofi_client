@@ -89,6 +89,9 @@
 		"typescript": "^5.3.3",
 		"vite": "^6.3.5"
 	},
+	"overrides": {
+		"js-yaml": "^4.2.0"
+	},
 	"lint-staged": {
 		"*.{js,jsx,ts,tsx}": ["biome check", "biome format --write"],
 		"*.{json,css,md}": ["biome format --write"]
