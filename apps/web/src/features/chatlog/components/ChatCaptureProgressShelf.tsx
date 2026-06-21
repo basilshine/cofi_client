@@ -14,7 +14,7 @@ type ChatCaptureProgressShelfProps = {
 const stageLabel: Record<CaptureProgressStage, string> = {
 	received: "Received",
 	uploading: "Uploading",
-	parsing: "Parsing",
+	extracting: "Extracting",
 	review_ready: "Review ready",
 	ready: "Ready",
 	failed: "Needs attention",
@@ -56,7 +56,7 @@ export const ChatCaptureProgressShelf = ({
 							: null;
 					const isBusy =
 						event.stage === "uploading" ||
-						event.stage === "parsing" ||
+						event.stage === "extracting" ||
 						event.stage === "review_ready";
 					const isFailed = event.stage === "failed";
 					const isReady = event.stage === "ready";

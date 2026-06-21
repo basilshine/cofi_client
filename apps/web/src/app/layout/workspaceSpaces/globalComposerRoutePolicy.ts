@@ -1,9 +1,9 @@
 const dockHiddenRoutePattern = /^\/console\/(?:organization|quota)(?:\/|$)/;
-const chatIndexRoutePattern = /^\/console\/chat\/?$/;
+const spaceChatRoutePattern = /^\/console\/spaces\/[^/]+\/chat\/?$/;
 const settingsRoutePattern = /^\/console\/settings(?:\/|$)/;
 
 export const hasNativeChatComposer = (pathname: string) =>
-	chatIndexRoutePattern.test(pathname);
+	spaceChatRoutePattern.test(pathname);
 
 export const isDockHiddenWorkspaceRoute = (pathname: string) =>
 	dockHiddenRoutePattern.test(pathname);

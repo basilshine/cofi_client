@@ -1,9 +1,5 @@
 import type { ProfileUpdateRequest, User } from "@cofi/api";
-import {
-	authSessionStore,
-	isCookieRefreshEnabled,
-	warnLegacyTokenStorageIfNeeded,
-} from "./authSessionStore";
+import { authSessionStore, isCookieRefreshEnabled } from "./authSessionStore";
 import { httpClient } from "./httpClient";
 import { tokenStorage } from "./tokenStorage";
 
@@ -43,14 +39,13 @@ export const authApi = {
 		});
 		const nextRt = res.data.refreshToken ?? res.data.refresh_token ?? null;
 		if (isCookieRefreshEnabled) {
+			tokenStorage.setToken(null);
 			tokenStorage.setRefreshToken(null);
 		} else {
+			tokenStorage.setToken(res.data.token);
 			tokenStorage.setRefreshToken(nextRt);
 		}
 		authSessionStore.setAccessToken(res.data.token);
-		// Persist access token so reload can hydrate (`refreshUser`) before silent refresh runs.
-		tokenStorage.setToken(res.data.token);
-		warnLegacyTokenStorageIfNeeded();
 		return res.data;
 	},
 	register: async (payload: RegisterRequest) => {
@@ -87,10 +82,11 @@ export const authApi = {
 		const access = res.data.token;
 		const nextRt = res.data.refreshToken ?? res.data.refresh_token ?? null;
 		authSessionStore.setAccessToken(access);
-		tokenStorage.setToken(access);
 		if (isCookieRefreshEnabled) {
+			tokenStorage.setToken(null);
 			tokenStorage.setRefreshToken(null);
 		} else {
+			tokenStorage.setToken(access);
 			tokenStorage.setRefreshToken(nextRt);
 		}
 		const active = tokenStorage.getActiveProfile();

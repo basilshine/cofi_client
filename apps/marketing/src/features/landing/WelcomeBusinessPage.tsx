@@ -99,7 +99,7 @@ export const WelcomeBusinessPage = () => {
 					>
 						<h2 className="text-sm font-semibold">Quota and entitlements</h2>
 						<p className="mt-2 text-sm leading-6 text-[hsl(var(--text-secondary))]">
-							AI parse allowances and member caps follow the tenant — ready for
+							Capture allowances and member caps follow the tenant — ready for
 							team growth without surprise overages.
 						</p>
 					</motion.li>

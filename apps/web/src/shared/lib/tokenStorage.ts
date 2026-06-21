@@ -13,7 +13,7 @@ export type AuthProfile = {
 	lastUsedAt: number;
 };
 
-type LegacyAuthProfile = AuthProfile & {
+type StoredAuthProfile = AuthProfile & {
 	accessToken?: string;
 	refreshToken?: string | null;
 };
@@ -38,7 +38,7 @@ const makeProfileId = () => {
 	return `p_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 };
 
-const sanitizeProfiles = (profiles: LegacyAuthProfile[]): AuthProfile[] => {
+const sanitizeProfiles = (profiles: StoredAuthProfile[]): AuthProfile[] => {
 	return profiles.map((profile) => ({
 		id: profile.id,
 		label: profile.label,
@@ -67,7 +67,7 @@ export const tokenStorage = {
 		localStorage.setItem(REFRESH_TOKEN_KEY, token);
 	},
 	listProfiles: (): AuthProfile[] => {
-		const raw = readJson<LegacyAuthProfile[]>(PROFILES_KEY) ?? [];
+		const raw = readJson<StoredAuthProfile[]>(PROFILES_KEY) ?? [];
 		const sanitized = sanitizeProfiles(raw);
 		if (JSON.stringify(raw) !== JSON.stringify(sanitized)) {
 			writeJson(PROFILES_KEY, sanitized);

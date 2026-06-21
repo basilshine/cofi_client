@@ -95,7 +95,7 @@ export const SpaceSplitsRightRail = ({
 	const detailStatusLabel =
 		selectedDetail?.sourceStatus === "cancelled"
 			? "Cancelled"
-			: selectedDetail?.sourceStatus === "needs_review"
+			: selectedDetail?.sourceStatus === "pending_review"
 				? "Needs confirmation"
 				: selectedDetail?.statusLabel === "Needs confirmation"
 					? "Needs confirmation"
@@ -118,7 +118,7 @@ export const SpaceSplitsRightRail = ({
 					? "This will not affect balances."
 					: detailStatusLabel === "Confirmed" &&
 							selectedDetail.statusLabel === "Split saved" &&
-							selectedDetail.sourceStatus !== "needs_review"
+							selectedDetail.sourceStatus !== "pending_review"
 						? `Already included in ${selectedDetail.spaceLabel} balances.`
 						: null;
 
@@ -139,7 +139,7 @@ export const SpaceSplitsRightRail = ({
 				? null
 				: selectedDetail.statusLabel === "Split saved" &&
 						detailStatusLabel === "Confirmed" &&
-						selectedDetail.sourceStatus !== "needs_review"
+						selectedDetail.sourceStatus !== "pending_review"
 					? null
 					: selectedDetail.participantCount <= 1
 						? "After confirmation, balances in this space will update."

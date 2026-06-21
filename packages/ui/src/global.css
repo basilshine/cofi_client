@@ -58,20 +58,6 @@
 		--ceits-icon-muted: 40 12% 88%;
 	}
 
-	:root[data-theme="legacy-technical"] {
-		--bg: 36 50% 90%;
-		--surface: 33 35% 85%;
-		--surface-muted: 25 30% 85%;
-		--text-primary: 25 45% 25%;
-		--text-secondary: 25 35% 40%;
-		--accent: 28 90% 55%;
-		--accent-contrast: 36 50% 90%;
-		--border-subtle: 25 30% 80%;
-		--focus-ring: 28 90% 55%;
-		--secondary: 25 40% 30%;
-		--secondary-foreground: 33 35% 85%;
-	}
-
 	/*
 	 * Editorial palette (applied on `/console/*` by ConsoleWorkspaceTheme).
 	 * Warm Material-3-inspired tokens: cream background, white card surfaces,

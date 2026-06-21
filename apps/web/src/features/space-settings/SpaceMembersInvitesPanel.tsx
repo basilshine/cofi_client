@@ -48,13 +48,11 @@ export const SpaceMembersInvitesPanel = ({
 	tenantInviteToken,
 	acceptInviteToken,
 	setAcceptInviteToken,
-	hardPurgeFeedback,
 	handlePatchMemberRole,
 	handleRemoveSpaceMember,
 	handleCreateInvite,
 	handleCreateTenantInvite,
 	handleAcceptInvite,
-	handleHardPurgeAllMessages,
 	handleRefreshSpaces,
 }: SpaceMembersInvitesPanelProps) => {
 	void handleRefreshSpaces;
@@ -374,39 +372,6 @@ export const SpaceMembersInvitesPanel = ({
 					</details>
 				) : null}
 			</div>
-
-			{isSpaceOwner && selectedSpaceId ? (
-				<div className="mt-4 border-t border-border pt-4">
-					<div className="text-xs font-semibold text-destructive">
-						Danger zone
-					</div>
-					<p className="mt-2 text-xs text-muted-foreground">
-						Permanently remove every chat line in this space. Does not delete
-						expense records. Requires server permission (see{" "}
-						<code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">
-							ALLOW_HARD_PURGE_ALL_MESSAGES
-						</code>{" "}
-						in production).
-					</p>
-					<button
-						aria-label="Clear all chat messages in this space"
-						className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-lg border border-destructive/50 bg-background px-3 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-						disabled={isLoading}
-						onClick={() => void handleHardPurgeAllMessages()}
-						type="button"
-					>
-						Clear all chat messages
-					</button>
-					{hardPurgeFeedback ? (
-						<output
-							aria-live="polite"
-							className="mt-2 block text-xs font-medium text-emerald-700 dark:text-emerald-400"
-						>
-							{hardPurgeFeedback}
-						</output>
-					) : null}
-				</div>
-			) : null}
 
 			<SpaceMemberDetailsDialog
 				canManageMemberRoles={canManageMemberRoles}

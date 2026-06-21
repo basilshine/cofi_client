@@ -17,7 +17,7 @@ test("opens the console route in a real browser", async ({ page }) => {
 	expect(pageErrors).toEqual([]);
 });
 
-test("shows the global composer on workspace pages but not native chat composer pages", async ({
+test("shows the global composer on workspace pages but not the native chat page", async ({
 	page,
 }) => {
 	const pageErrors: string[] = [];
@@ -37,7 +37,7 @@ test("shows the global composer on workspace pages but not native chat composer 
 	test.skip(needsAuth, "requires authenticated console storage state");
 	await expect(dock).toBeVisible();
 
-	await page.goto("/console/chat/expenses?spaceId=11", {
+	await page.goto("/console/spaces/11/expenses", {
 		waitUntil: "domcontentloaded",
 	});
 	await expect(dock).toBeVisible();
@@ -47,12 +47,7 @@ test("shows the global composer on workspace pages but not native chat composer 
 	});
 	await expect(dock).toBeVisible();
 
-	await page.goto("/console/chat?spaceId=11", {
-		waitUntil: "domcontentloaded",
-	});
-	await expect(dock).toHaveCount(0);
-
-	await page.goto("/console/chat/thread?spaceId=11&expenseId=1", {
+	await page.goto("/console/spaces/11/chat", {
 		waitUntil: "domcontentloaded",
 	});
 	await expect(dock).toHaveCount(0);

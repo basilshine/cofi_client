@@ -763,7 +763,7 @@ export const SmartTextareaComposer = forwardRef<
 									type="button"
 								>
 									<Square className="h-3.5 w-3.5 fill-current" />
-									{isStoppingVoice ? "Processing" : "Stop and parse"}
+									{isStoppingVoice ? "Processing" : "Stop and capture"}
 								</button>
 							</div>
 						</>
@@ -810,7 +810,7 @@ export const SmartTextareaComposer = forwardRef<
 								Receipt or document image
 							</p>
 							<p className="text-[11px] text-muted-foreground">
-								Ceits will parse it into reviewable candidates before saving.
+								Ceits will turn it into reviewable candidates before saving.
 							</p>
 						</div>
 					</div>

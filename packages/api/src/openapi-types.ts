@@ -477,7 +477,7 @@ export interface paths {
         put?: never;
         /**
          * Create capture candidates
-         * @description Canonical capture entrypoint for text, receipt image, voice, and manual line items. Captures persist a source document and draft candidates; records are created only by explicit review projection.
+         * @description Canonical capture entrypoint for text, receipt image, voice, and manual line items. Captures persist a source document and unresolved review candidates; records are created only by explicit review projection.
          */
         post: {
             parameters: {
@@ -499,7 +499,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["CaptureParsePreview"];
+                        "application/json": components["schemas"]["CaptureResponse"];
                     };
                 };
                 /** @description Invalid request or missing routing context */
@@ -524,80 +524,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/capture/intent": {
+    "/api/v1/spaces/{spaceId}/vendors": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /**
-         * Parse composer intent
-         * @description Experimental composer intent endpoint. It returns the validated `ceits_capture_v1` contract for text, image, or voice input and, when a valid space context is provided, persists a source document and review candidates without creating records.
-         */
-        post: {
+        /** List vendors for a space tenant */
+        get: {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CaptureParseJSONRequest"];
-                    "multipart/form-data": components["schemas"]["CaptureParseMultipartRequest"];
+                path: {
+                    /** @description Space whose tenant owns the vendor catalog. */
+                    spaceId: number;
                 };
-            };
-            responses: {
-                /** @description Composer intent preview */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CaptureIntentPreview"];
-                    };
-                };
-                /** @description Invalid request */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden space context */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/vendors": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List vendors (personal tenant, or space tenant when space_id is set) */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description When set, lists vendors for that space’s tenant (requires space membership). */
-                    space_id?: number;
-                };
-                header?: never;
-                path?: never;
                 cookie?: never;
             };
             requestBody?: never;
@@ -621,23 +563,21 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a vendor */
+        /** Create a vendor for a space tenant */
         post: {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    /** @description Space whose tenant owns the vendor catalog. */
+                    spaceId: number;
+                };
                 cookie?: never;
             };
             requestBody: {
                 content: {
                     "application/json": {
                         name: string;
-                        /**
-                         * Format: int64
-                         * @description When set, creates the vendor in that space’s tenant.
-                         */
-                        space_id?: number;
                     };
                 };
             };
@@ -673,338 +613,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/finances/expenses": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all expenses */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of expenses */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Expense"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/expenses/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get expense by ID */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Expense ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Expense */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Expense"];
-                    };
-                };
-            };
-        };
-        /** Update expense by ID */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Expense ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ExpensePatch"];
-                };
-            };
-            responses: {
-                /** @description Updated expense */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Expense"];
-                    };
-                };
-                /** @description Invalid patch (currency, txn_date, status transition, vendor, etc.) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        post?: never;
-        /** Delete expense by ID */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Expense ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Expense deleted */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/expenses/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get personal expense summary
-         * @description User-scoped personal/global expense summary over approved expenses. This is not the canonical shared-space analytics surface; shared-space analytics ownership is tracked separately in the product backlog.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Personal expense summary */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ExpenseSummary"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/transactions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List expense records in a shared space (deprecated transaction alias)
-         * @deprecated
-         * @description Compatibility alias for older clients. Prefer `GET /api/v1/spaces/{spaceId}/expenses` for space-scoped saved expense records. Capture candidates stay in Review until projected and approved.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Maximum number of expense records to return. */
-                    limit?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Space expense records ordered by newest first */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Transaction"][];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/transactions/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get expense record in a shared space (deprecated transaction alias)
-         * @deprecated
-         * @description Compatibility alias for older clients. Prefer `GET /api/v1/spaces/{spaceId}/expenses/{expenseId}` for space-scoped expense records. The transaction must be linked to the requested space.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Deprecated transaction/expense record ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Space expense record detail */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Transaction"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Expense record not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/transaction-tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List expense tags in a shared space
-         * @description Canonical shared-space tag list for expense filters. The path name is kept as a compatibility alias.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Distinct tag names used by space expense records */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            tags?: string[];
-                        };
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/spaces/{spaceId}/benefits/promos": {
         parameters: {
             query?: never;
@@ -1014,7 +622,7 @@ export interface paths {
         };
         /**
          * List saved promo codes in a space
-         * @description Space-scoped Promo Wallet list. Promos may be manually added or projected from capture review candidates.
+         * @description Space-scoped Promo Wallet list. Saved promos are projected from capture review candidates; manual promo entry uses the canonical capture endpoint and remains pending review until saved.
          */
         get: {
             parameters: {
@@ -1052,51 +660,7 @@ export interface paths {
             };
         };
         put?: never;
-        /**
-         * Add a promo code manually
-         * @description Creates a saved promo in the requested space tenant. Parser-projected promos use the same PromoCode shape after review.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["CreatePromoCodeRequest"];
-                };
-            };
-            responses: {
-                /** @description Promo code created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PromoCode"];
-                    };
-                };
-                /** @description Invalid promo payload */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1212,115 +776,6 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/v1/spaces/{spaceId}/review/benefit-candidates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List benefit candidates waiting for review
-         * @description Canonical capture-review alias for draft promo and loyalty candidates extracted from captures in this space.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Maximum number of draft candidates to return. */
-                    limit?: number;
-                    /** @description When provided, return only benefit candidates from this capture/source document. */
-                    source_document_id?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Draft benefit candidates ordered by newest first. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BenefitCandidateListResponse"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/benefits/candidates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List benefit candidates waiting for review
-         * @deprecated
-         * @description Deprecated compatibility route. Use GET /api/v1/spaces/{spaceId}/review/benefit-candidates instead. Returns draft promo and loyalty candidates extracted from source documents in this space. Candidates remain non-final until a review action projects or ignores them.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Maximum number of draft candidates to return. */
-                    limit?: number;
-                    /** @description When provided, return only benefit candidates from this capture/source document. */
-                    source_document_id?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Draft benefit candidates ordered by newest first. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BenefitCandidateListResponse"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/spaces/{spaceId}/captures": {
         parameters: {
             query?: never;
@@ -1330,7 +785,7 @@ export interface paths {
         };
         /**
          * List capture packets in a space
-         * @description Returns source-document-backed capture packets grouped with candidate counts and statuses for review, overview, and composer shelves. This is a read model; candidate mutations remain on document and benefit candidate endpoints.
+         * @description Returns source-document-backed capture packets grouped with candidate counts and statuses for review, overview, and composer shelves. This is a read model; candidate mutations remain on canonical review candidate endpoints.
          */
         get: {
             parameters: {
@@ -1393,7 +848,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description Maximum number of draft candidates to return. */
+                    /** @description Maximum number of unresolved candidates to return. */
                     limit?: number;
                     /** @description When provided, return only review candidates from this capture/source document. */
                     source_document_id?: number;
@@ -1407,62 +862,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Draft document candidates ordered by newest first. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DocumentCandidateListResponse"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/document-candidates": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List capture review candidates waiting for review
-         * @deprecated
-         * @description Deprecated compatibility route. Use GET /api/v1/spaces/{spaceId}/review/candidates instead. Returns draft document-level candidates such as payment proof, privacy, merge/supporting document, space suggestion, recurring, membership, reminder, split, and participant placeholder signals for the selected space.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Maximum number of draft candidates to return. */
-                    limit?: number;
-                    /** @description When provided, return only review candidates from this capture/source document. */
-                    source_document_id?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Draft document candidates ordered by newest first. */
+                /** @description Unresolved document candidates ordered by newest first. */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -1557,7 +957,7 @@ export interface paths {
         put?: never;
         /**
          * Create an expense record from an expense candidate
-         * @description Canonical capture-review projection for turning a draft `expense_candidate` into an approved expense record. The source document and candidates remain the capture root; this endpoint records candidate resolutions and projections.
+         * @description Canonical capture-review projection for turning an unresolved `expense_candidate` into an approved expense record. The source document and candidates remain the capture root; this endpoint records candidate resolutions and projections.
          */
         post: {
             parameters: {
@@ -1821,7 +1221,7 @@ export interface paths {
         put?: never;
         /**
          * Ignore a capture review candidate
-         * @description Canonical capture-review alias for recording an ignore resolution and removing the draft candidate from active review.
+         * @description Canonical capture-review alias for recording an ignore resolution and removing the unresolved candidate from active review.
          */
         post: {
             parameters: {
@@ -1831,326 +1231,6 @@ export interface paths {
                     /** @description Space ID */
                     spaceId: number;
                     /** @description Candidate ID */
-                    candidateId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Document candidate ignored. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DocumentCandidateState"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Candidate not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/confirm": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Confirm a capture review candidate
-         * @deprecated
-         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/confirm instead. Records a confirm resolution and removes the draft document-level candidate from the active Review Flow queue without projecting it into another entity. This is for safe reviewed/acknowledged signals; entity projection remains explicit.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Document candidate ID */
-                    candidateId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Document candidate confirmed. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DocumentCandidateState"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Candidate not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/create-participant": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create a space participant from a participant placeholder candidate
-         * @deprecated
-         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/create-participant instead. Projects a draft `participant_placeholder_candidate` into a `space_participants` placeholder, records a resolution/projection, and marks the candidate as projected. It reuses an existing matching participant by email or display name when possible.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Document candidate ID */
-                    candidateId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Space participant created or reused. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CreateParticipantCandidateResponse"];
-                    };
-                };
-                /** @description Candidate cannot be projected into a participant */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Candidate not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/create-recurring": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Create a recurring expense from a recurring candidate
-         * @deprecated
-         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/create-recurring instead. Projects a draft `recurring_candidate` into a space-scoped `recurring_expenses` row, records a resolution/projection, and marks the candidate as projected. Membership and reminder candidates are intentionally not projected by this endpoint.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Document candidate ID */
-                    candidateId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Recurring expense created from the candidate. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CreateRecurringCandidateResponse"];
-                    };
-                };
-                /** @description Candidate cannot be projected into a recurring expense */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Candidate not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/apply-split": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Apply a split candidate to an expense
-         * @deprecated
-         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/apply-split instead. Projects a draft `split_candidate` into participant-owned split rows for an explicit target expense. The first implementation only auto-applies equal split candidates after related participant placeholders have already been projected.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Document candidate ID */
-                    candidateId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ApplySplitCandidateRequest"];
-                };
-            };
-            responses: {
-                /** @description Split candidate applied to the target expense. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplySplitCandidateResponse"];
-                    };
-                };
-                /** @description Candidate cannot be applied automatically or target expense is invalid */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Candidate or target expense not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/document-candidates/{candidateId}/ignore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Ignore a capture review candidate
-         * @deprecated
-         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/candidates/{candidateId}/ignore instead. Records an ignore resolution and removes the draft document-level candidate from the active Review Flow queue without projecting it into another entity.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Document candidate ID */
                     candidateId: number;
                 };
                 cookie?: never;
@@ -2246,66 +1326,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/spaces/{spaceId}/source-documents/{sourceDocumentId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Delete a review capture and its candidates
-         * @deprecated
-         * @description Deprecated compatibility route. Use DELETE /api/v1/spaces/{spaceId}/review/captures/{sourceDocumentId} instead. Deletes the selected source document from the space review queue and removes its capture review candidates, resolutions, and projections. Saved records that were already projected remain separate domain records; saved promo records are detached from the deleted source document.
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Source document / capture ID */
-                    sourceDocumentId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Source document review data deleted. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DeleteSourceDocumentReviewResponse"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Source document not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/review/benefit-candidates/{candidateId}/save-promo": {
+    "/api/v1/spaces/{spaceId}/review/candidates/{candidateId}/save-promo": {
         parameters: {
             query?: never;
             header?: never;
@@ -2316,7 +1337,7 @@ export interface paths {
         put?: never;
         /**
          * Save a promo candidate to the Promo Wallet
-         * @description Canonical capture-review alias for projecting a draft promo candidate into the space Promo Wallet.
+         * @description Canonical capture-review alias for projecting an unresolved promo candidate into the space Promo Wallet.
          */
         post: {
             parameters: {
@@ -2338,7 +1359,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["SaveBenefitCandidatePromoResponse"];
+                        "application/json": components["schemas"]["SavePromoCandidateResponse"];
                     };
                 };
                 /** @description Candidate is not a promo candidate or is otherwise invalid */
@@ -2364,621 +1385,6 @@ export interface paths {
                 };
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/review/benefit-candidates/{candidateId}/ignore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Ignore a benefit candidate
-         * @description Canonical capture-review alias for recording an ignore resolution and removing a draft benefit candidate from active review.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Candidate ID */
-                    candidateId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Candidate ignored. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BenefitCandidateState"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Candidate not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/benefits/candidates/{candidateId}/save-promo": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Save a promo candidate to the Promo Wallet
-         * @deprecated
-         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/benefit-candidates/{candidateId}/save-promo instead. Projects a draft `promo_code_candidate` into `promo_codes`, records a resolution/projection, and marks the candidate as projected.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Document candidate ID */
-                    candidateId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Promo saved and candidate projected. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["SaveBenefitCandidatePromoResponse"];
-                    };
-                };
-                /** @description Candidate is not a promo candidate or is otherwise invalid */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Candidate not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/spaces/{spaceId}/benefits/candidates/{candidateId}/ignore": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Ignore a benefit candidate
-         * @deprecated
-         * @description Deprecated compatibility route. Use POST /api/v1/spaces/{spaceId}/review/benefit-candidates/{candidateId}/ignore instead. Records an ignore resolution and removes the draft candidate from the active Review queue.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                    /** @description Document candidate ID */
-                    candidateId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Candidate ignored. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BenefitCandidateState"];
-                    };
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Candidate not found in this space */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/expenses/tags": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get personal user tags
-         * @description User-scoped personal tag catalog. Shared-space transaction filters should use GET /api/v1/spaces/{spaceId}/transaction-tags.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Language code */
-                    language?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of tags */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Tag"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/recurring": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all recurring expenses */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of recurring expenses */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a new recurring expense */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RecurringExpense"];
-                };
-            };
-            responses: {
-                /** @description Recurring expense created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/recurring/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get recurring expense by ID */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Recurring expense ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Recurring expense */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"];
-                    };
-                };
-            };
-        };
-        /** Update recurring expense by ID */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Recurring expense ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RecurringExpense"];
-                };
-            };
-            responses: {
-                /** @description Updated recurring expense */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** Delete finances recurring */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description No content */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/recurring/{id}/pause": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Pause recurring schedule
-         * @description Stops future automatic runs until resumed. Does not delete the schedule.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Recurring expense ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated recurring expense */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/recurring/{id}/resume": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Resume paused recurring schedule */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Recurring expense ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Updated recurring expense */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/notify/reminders": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all reminders */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of reminders */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Reminder"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a new reminder */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Reminder"];
-                };
-            };
-            responses: {
-                /** @description Reminder created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Reminder"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/notify/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get all notifications */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description List of notifications */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Notification"][];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a new notification */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-            responses: {
-                /** @description Notification created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Notification"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/notify/notifications/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update notification by ID */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Notification ID */
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["Notification"];
-                };
-            };
-            responses: {
-                /** @description Updated notification */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Notification"];
-                    };
-                };
-            };
-        };
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3474,7 +1880,7 @@ export interface paths {
         };
         /**
          * Update an expense record in a space
-         * @description Canonical shared-space expense update route. The expense must be linked to the requested space; only the expense owner may mutate it in this compatibility slice.
+         * @description Canonical shared-space expense update route. The expense must be linked to the requested space; only the expense owner may mutate it.
          */
         put: {
             parameters: {
@@ -3527,7 +1933,7 @@ export interface paths {
         post?: never;
         /**
          * Delete an expense record in a space
-         * @description Canonical shared-space expense delete route. The expense must be linked to the requested space; only the expense owner may delete it in this compatibility slice.
+         * @description Canonical shared-space expense delete route. The expense must be linked to the requested space; only the expense owner may delete it.
          */
         delete: {
             parameters: {
@@ -3621,7 +2027,7 @@ export interface paths {
         };
         /**
          * Replace split rows for an expense in a space
-         * @description Canonical shared-space split write route. Accepts space_participant_id lines for placeholders and registered participants. Compatibility user_id lines are still accepted and mapped to SpaceParticipant rows when possible.
+         * @description Canonical shared-space split write route. Accepts space_participant_id lines for placeholders and registered participants.
          */
         put: {
             parameters: {
@@ -3636,9 +2042,8 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        user_id?: number;
-                        space_participant_id?: number;
-                        amount?: number;
+                        space_participant_id: number;
+                        amount: number;
                     }[];
                 };
             };
@@ -3689,7 +2094,7 @@ export interface paths {
         };
         /**
          * List recurring records in a space
-         * @description Canonical space-scoped recurring read model. Recurring records are projections from expense items, membership/recurring candidates, or manual schedule creation inside the selected space. Cross-space management remains available through the compatibility `/api/v1/finances/recurring` routes.
+         * @description Canonical space-scoped recurring read model. Recurring records are projections from expense items, membership/recurring candidates, or manual recurring capture candidates inside the selected space.
          */
         get: {
             parameters: {
@@ -3727,51 +2132,7 @@ export interface paths {
             };
         };
         put?: never;
-        /**
-         * Create a recurring record in a space
-         * @description Canonical space-scoped recurring creation. The path space owns the record; any request body space_id is ignored in favor of the path spaceId.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description Space ID */
-                    spaceId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["RecurringExpense"];
-                };
-            };
-            responses: {
-                /** @description Recurring record created in this space */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["RecurringExpense"];
-                    };
-                };
-                /** @description Invalid recurring schedule or origin message */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Current user is not a member of the space */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3843,14 +2204,11 @@ export interface paths {
         post?: never;
         /**
          * Delete a recurring record in a space
-         * @description Canonical space-scoped recurring deletion. The recurring record must belong to the path space. Set purge_expenses=1 to remove linked postings created by this schedule.
+         * @description Canonical space-scoped recurring deletion. The recurring record must belong to the path space. Deleting a recurring schedule stops future postings and keeps existing expense history.
          */
         delete: {
             parameters: {
-                query?: {
-                    /** @description Delete linked expense records generated by this schedule. */
-                    purge_expenses?: boolean;
-                };
+                query?: never;
                 header?: never;
                 path: {
                     /** @description Space ID */
@@ -3864,6 +2222,13 @@ export interface paths {
             responses: {
                 /** @description Recurring record deleted */
                 204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unsupported destructive purge parameter */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4038,77 +2403,6 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/finances/expenses/{id}/splits": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List expense split rows */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Split lines */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            splits?: components["schemas"]["ExpenseSplitLine"][];
-                        };
-                    };
-                };
-            };
-        };
-        /**
-         * Replace expense splits (creator only); amounts must sum to expense total
-         * @description Accepts space_participant_id lines for shared-space participants. Compatibility user_id lines are accepted; on shared-space expenses the server maps or creates the matching SpaceParticipant and writes participant-owned split rows. Personal expenses still use user_id split rows.
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        user_id?: number;
-                        space_participant_id?: number;
-                        amount?: number;
-                    }[];
-                };
-            };
-            responses: {
-                /** @description Saved */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
         post?: never;
         delete?: never;
         options?: never;
@@ -4475,6 +2769,14 @@ export interface paths {
                     /** @description Comma-separated result types. Supported aliases include spaces, expenses, items, promos, people, splits, recurring, and documents. */
                     types?: string;
                     limit?: number;
+                    /** @description Optional merchant/store text filter for expense item search results. */
+                    merchant?: string;
+                    /** @description Alias for `merchant`. Optional merchant/store text filter for expense item search results. */
+                    merchant_q?: string;
+                    /** @description Optional expense item amount upper bound. Applies to item search results. */
+                    amount_lt?: number;
+                    /** @description Optional expense item amount lower bound. Applies to item search results. */
+                    amount_gt?: number;
                 };
                 header?: never;
                 path?: never;
@@ -4976,7 +3278,10 @@ export interface paths {
         /** Get quota */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Optional space context used to resolve tenant quota through membership. */
+                    space_id?: number;
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -4989,9 +3294,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["QuotaStatus"];
                     };
                 };
             };
@@ -5043,9 +3346,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["QuotaStatus"];
                     };
                 };
                 /** @description Invalid plan */
@@ -6463,42 +4764,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/spaces/{spaceId}/messages/all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete spaces messages all */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    spaceId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description No content */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/spaces/{spaceId}/messages/{messageId}": {
         parameters: {
             query?: never;
@@ -6953,6 +5218,7 @@ export interface components {
             /** @description Web workspace href for opening the result. */
             href: string;
             matched_fields?: string[];
+            /** @description Search status. Source document captures use `pending_review`, `records_created`, or `captured`. */
             status?: string;
             amount?: number;
             currency?: string;
@@ -7345,14 +5611,14 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /** @description Partial update for PUT /finances/expenses/{id}. Omitted keys are unchanged. Omit items to leave line items unchanged; send items (including []) to replace all lines. */
+        /** @description Partial update for PUT /spaces/{spaceId}/expenses/{expenseId}. Omitted keys are unchanged. Omit items to leave line items unchanged; send items (including []) to replace all lines. */
         ExpensePatch: {
             description?: string;
             title?: string;
             payee_text?: string;
             currency?: string;
-            /** @description YYYY-MM-DD; empty string resets txn_date to today (UTC date). */
-            txn_date?: string;
+            /** @description YYYY-MM-DD; empty string resets expense_date to today (UTC date). */
+            expense_date?: string;
             /** @description Allowed saved-record statuses are approved or cancelled. */
             status?: string;
             /** Format: int64 */
@@ -7378,7 +5644,7 @@ export interface components {
             payee_text?: string;
             currency?: string;
             /** Format: date */
-            txn_date?: string;
+            expense_date?: string;
             description?: string;
             status?: string;
             /** Format: int64 */
@@ -7401,20 +5667,6 @@ export interface components {
             vendor?: components["schemas"]["ExpenseVendorBrief"];
             business_meta?: components["schemas"]["ExpenseBusinessMetaNested"];
         };
-        Goal: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            userId?: number;
-            target?: number;
-            purpose?: string;
-            /** Format: date-time */
-            targetDate?: string;
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-        };
         RecurringExpense: {
             /** Format: int64 */
             id?: number;
@@ -7427,7 +5679,7 @@ export interface components {
             chatId?: number;
             /**
              * Format: int64
-             * @description Web Space id when recurring originates from Chat; null for Telegram-only legacy rows.
+             * @description Web Space id when recurring has a web Space context; null when only a Telegram delivery chat is known.
              */
             spaceId?: number;
             /**
@@ -7458,26 +5710,6 @@ export interface components {
             offset?: number;
             has_more?: boolean;
             next_offset?: number | null;
-        };
-        Notification: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            userId?: number;
-            /** Format: int64 */
-            chatId?: number;
-            message?: string;
-            type?: string;
-            status?: string;
-        };
-        Reminder: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            userId?: number;
-            time?: string;
-            message?: string;
-            enabled?: boolean;
         };
         AnalyticsSummary: {
             totalExpenses?: number;
@@ -7566,27 +5798,63 @@ export interface components {
             token?: string;
             password?: string;
         };
-        /** @description JSON request for canonical candidate-first capture. Text input is parsed by the capture pipeline; manual input is normalized into the same source-document and candidate pipeline without creating records. */
+        /** @description JSON request for canonical candidate-first capture. Text input is extracted by the capture pipeline; manual input is normalized into the same source-document and candidate pipeline without creating records. */
         CaptureJSONRequest: {
-            /**
-             * @default text
-             * @enum {string}
-             */
+            /** @enum {string} */
             input_kind: "text" | "manual";
             /** @description Required explicit space context until autonomous capture routing is implemented. */
             space_id: number;
             /** @description Required when input_kind is text. */
             text?: string;
-            /** @description Manual capture description. */
+            /** @description Manual capture description or human context for a structured manual promo. */
             description?: string;
-            /** @description Required when input_kind is manual. */
-            items?: components["schemas"]["SpaceManualCaptureItem"][];
+            /** @description Required for manual expense capture. Omit when sending a structured manual promo. */
+            items?: components["schemas"]["ManualCaptureItem"][];
+            promo?: components["schemas"]["ManualPromoCapture"];
+            recurring?: components["schemas"]["ManualRecurringCapture"];
             /** @description Client channel such as web, bot, or mobile. */
             channel?: string;
             /** @description Optional client/source provenance metadata. For Telegram group capture this can include source, telegram_chat_id, telegram_chat_title, telegram_message_id, telegram_sender_id, telegram_sender_name, and telegram_reply_to_message_id. */
             source_context?: {
                 [key: string]: unknown;
             };
+        };
+        /** @description Structured manual promo input for canonical capture. The server creates a source document and promo candidate; a saved PromoCode is created only by explicit review save. */
+        ManualPromoCapture: {
+            title?: string;
+            promo_code?: string;
+            description?: string;
+            source_merchant_name?: string;
+            redeem_merchant_name?: string;
+            redeem_platform?: string;
+            /** @enum {string} */
+            discount_type?: "percent" | "fixed_amount" | "cashback" | "free_shipping" | "gift" | "unknown";
+            discount_value?: number;
+            minimum_order_amount?: number;
+            currency?: string;
+            /** @description RFC3339 timestamp or YYYY-MM-DD. */
+            valid_from?: string;
+            /** @description RFC3339 timestamp or YYYY-MM-DD. */
+            valid_until?: string;
+            conditions_text?: string;
+            source_text?: string;
+        };
+        /** @description Structured manual recurring input for canonical capture. The server creates a source document and recurring candidate; a saved RecurringExpense is created only by explicit review save. */
+        ManualRecurringCapture: {
+            /** @description Human-facing recurring schedule name. */
+            name?: string;
+            /** @description Normalized service or merchant name; clients may send either service_name or name. */
+            service_name?: string;
+            amount?: number;
+            /** @description daily, weekly, monthly, yearly; test intervals remain server-gated during review save. */
+            interval?: string;
+            tag_label?: string;
+            /** @description RFC3339 timestamp or YYYY-MM-DD. */
+            start_date?: string;
+            /** @description RFC3339 timestamp or YYYY-MM-DD. */
+            next_due?: string;
+            currency?: string;
+            source_text?: string;
         };
         /** @description Multipart request for canonical image or voice capture. The server creates a source document and review candidates. */
         CaptureMultipartRequest: {
@@ -7596,7 +5864,7 @@ export interface components {
             space_id: number;
             /**
              * Format: binary
-             * @description Uploaded image/receipt or audio file. Legacy field aliases image and voice are also accepted.
+             * @description Uploaded image/receipt or audio file.
              */
             file: string;
             /** @description Client channel such as web, bot, or mobile. */
@@ -7604,159 +5872,56 @@ export interface components {
             /** @description Optional JSON object string containing client/source provenance metadata. */
             source_context?: string;
         };
-        /** @description JSON request for canonical text capture parsing. */
-        CaptureParseJSONRequest: {
-            /**
-             * @default text
-             * @enum {string}
-             */
-            input_kind: "text";
-            text: string;
-            /** @description Optional explicit space context. When set, caller must be able to post in the space. */
-            space_id?: number;
-            /** @description Client channel such as web, bot, or mobile. */
-            channel?: string;
-            /** @description Optional parser hint. */
-            prompt?: string;
-            /** @description Optional client/source provenance metadata persisted with the resulting source document. */
-            source_context?: {
-                [key: string]: unknown;
-            };
-        };
-        /** @description Multipart request for canonical image or voice capture parsing. */
-        CaptureParseMultipartRequest: {
-            /** @enum {string} */
-            input_kind: "image" | "voice";
-            /**
-             * Format: binary
-             * @description Uploaded image/receipt or audio file. Legacy field aliases image and voice are also accepted.
-             */
-            file: string;
-            /** @description Optional explicit space context. When set, caller must be able to post in the space. */
-            space_id?: number;
-            /** @description Client channel such as web, bot, or mobile. */
-            channel?: string;
-            /** @description Optional parser hint. */
-            prompt?: string;
-            /** @description Optional JSON object string containing client/source provenance metadata. */
-            source_context?: string;
-        };
-        CaptureParsePreview: components["schemas"]["SpaceParsePreview"] & {
+        CaptureResponse: components["schemas"]["CapturePayload"] & {
             /** @description Echoed explicit space context when provided. */
             space_id?: number;
         };
-        /** @description Validated `ceits_capture_v1` composer/capture intent contract. This is a preview contract and must not imply final entity creation. */
-        CaptureIntentPreview: {
-            /** @enum {string} */
-            schema_version: "ceits_capture_v1";
-            /** @enum {string} */
-            intent: "create_space" | "select_space" | "expense_text" | "expense_voice" | "expense_photo" | "expense_with_promo" | "promo_only" | "loyalty_or_bonus" | "recurring_or_membership" | "payment_proof" | "split_request" | "participant_placeholder" | "ask_ceits" | "chat_message" | "unknown_or_ambiguous";
-            confidence: number;
-            requires_review: boolean;
-            required_clarification?: string | null;
-            /**
-             * Format: int64
-             * @description Persisted source document id for this intent preview when capture review recording succeeded.
-             */
-            source_document_id?: number;
-            target_context: components["schemas"]["CaptureTargetContext"];
-            source: components["schemas"]["CaptureSource"];
-            candidates: components["schemas"]["CaptureIntentCandidate"][];
-            model_policy: components["schemas"]["CaptureModelPolicy"];
-            /** @enum {string} */
-            next_action: "review" | "ask_clarification" | "open_chat" | "select_space";
-            metadata?: {
-                [key: string]: string;
-            };
-        };
-        CaptureTargetContext: {
-            /** Format: int64 */
-            space_id?: number | null;
-            space_name?: string;
-            /** @description route, model, user_selected, or unknown. */
-            source: string;
-        };
-        CaptureSource: {
-            /** @enum {string} */
-            input_kind: "text" | "image" | "voice";
-            /** @description manual_text, receipt, audio, telegram, screenshot, or unknown. */
-            source_type: string;
-            raw_text?: string;
-        };
-        CaptureIntentCandidate: {
-            /** @enum {string} */
-            candidate_type: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
-            title: string;
-            confidence: number;
-            /** @description Draft/candidate payload. Must not contain final entity creation instructions. */
-            structured_data: {
-                [key: string]: unknown;
-            };
-        };
-        SpaceManualCaptureItem: {
+        ManualCaptureItem: {
             name: string;
             amount: number;
             tags?: string[];
             notes?: string;
         };
-        SpaceParsedItem: {
-            name?: string;
-            amount?: number;
-            tags?: string[];
-            emotion?: string;
-            notes?: string;
-        };
-        /** @description Parsed shared-space capture preview. Parser metadata fields are optional and may appear as model confidence or review hints evolve. */
-        SpaceParsePreview: {
-            items?: components["schemas"]["SpaceParsedItem"][];
-            title?: string;
-            payee_text?: string;
-            vendor_name?: string;
-            invoice_ref?: string;
-            notes?: string;
-            expense_date?: string;
+        /** @description Canonical capture response payload. Capture writes return persisted source-document ids, review candidates, and small diagnostics; LLM extractor DTOs are not a public response contract. */
+        CapturePayload: {
+            /** @description Source text produced by voice transcription when the capture input was voice. */
             transcription?: string;
             /** Format: int64 */
             media_id?: number;
             /**
              * Format: int64
-             * @description Persisted source document id for this parse preview when capture review recording succeeded.
+             * @description Persisted source document id for this capture when review recording succeeded.
              */
             source_document_id?: number;
-            /** @description Lightweight capture candidates created from this parse preview for later review. */
-            candidates?: components["schemas"]["CaptureParseCandidate"][];
+            /** @description Lightweight capture candidates created from this capture for later review. */
+            candidates?: components["schemas"]["CaptureCandidate"][];
             complexity?: string;
             confidence?: number;
             requires_review?: boolean;
-            requires_deep_parse?: boolean;
             model_policy?: components["schemas"]["CaptureModelPolicy"];
             clarification_message?: string;
             intent?: string;
-            data?: {
-                [key: string]: unknown;
-            };
-            split_draft?: {
-                [key: string]: unknown;
-            };
-            participants_draft?: {
-                [key: string]: unknown;
-            };
-            space_suggestion?: {
-                [key: string]: unknown;
-            };
         };
-        /** @description Lightweight capture review candidate summary created during capture parse. */
-        CaptureParseCandidate: {
+        /** @description Lightweight capture review candidate summary created during capture. */
+        CaptureCandidate: {
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
             source_document_id?: number;
             /** @enum {string} */
-            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
+            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
             title?: string;
             confidence?: number;
             /** @enum {string} */
-            status?: "draft" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
+            status?: "pending_review" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
+            /** @description Candidate-derived preview amount when available, for example expense totals or item line amounts. */
+            amount?: number;
+            /** @description Candidate-derived preview currency when available. */
+            currency?: string;
+            /** @description Candidate-derived preview tags when available. */
+            tags?: string[];
+            /** @description Candidate-derived source text when useful for lightweight client previews. */
+            source_text?: string;
         };
         /** @description Saved promo code found by the user or projected from capture review. */
         PromoCode: {
@@ -7791,7 +5956,7 @@ export interface components {
             source_text?: string;
             confidence?: number;
             /** @enum {string} */
-            status?: "draft" | "active" | "used" | "ignored" | "expired" | "archived";
+            status?: "active" | "used" | "ignored" | "expired" | "archived";
             /** Format: date-time */
             reminder_at?: string;
             /** Format: date-time */
@@ -7804,7 +5969,7 @@ export interface components {
         PromoBenefitsSummary: {
             /**
              * Format: int64
-             * @description Draft promo/loyalty candidates waiting for review in this space.
+             * @description Unresolved promo/loyalty candidates waiting for review in this space.
              */
             candidate_count?: number;
         };
@@ -7816,71 +5981,15 @@ export interface components {
             next_offset?: number | null;
             summary?: components["schemas"]["PromoBenefitsSummary"];
         };
-        /** @description Manual promo creation request. */
-        CreatePromoCodeRequest: {
-            title?: string;
-            promo_code?: string;
-            description?: string;
-            source_type?: string;
-            source_merchant_name?: string;
-            redeem_merchant_name?: string;
-            redeem_platform?: string;
-            /** @enum {string} */
-            discount_type?: "percent" | "fixed_amount" | "cashback" | "free_shipping" | "gift" | "unknown";
-            discount_value?: number;
-            minimum_order_amount?: number;
-            currency?: string;
-            /** @description RFC3339 timestamp or YYYY-MM-DD. */
-            valid_from?: string;
-            /** @description RFC3339 timestamp or YYYY-MM-DD. */
-            valid_until?: string;
-            conditions_text?: string;
-            source_text?: string;
-            /** @enum {string} */
-            status?: "draft" | "active" | "used" | "ignored" | "expired" | "archived";
-            /** @description RFC3339 timestamp or YYYY-MM-DD. */
-            reminder_at?: string;
-        };
         PatchPromoCodeRequest: {
             title?: string;
             description?: string;
             /** @enum {string} */
-            status?: "draft" | "active" | "used" | "ignored" | "expired" | "archived";
+            status?: "active" | "used" | "ignored" | "expired" | "archived";
             /** @description RFC3339 timestamp or YYYY-MM-DD. Empty string clears the reminder. */
             reminder_at?: string;
             /** @description RFC3339 timestamp or YYYY-MM-DD. Empty string clears the used timestamp. */
             used_at?: string;
-        };
-        /** @description Reviewable non-expense output extracted from a source document. */
-        BenefitCandidate: {
-            /** Format: int64 */
-            id?: number;
-            /** Format: int64 */
-            tenant_id?: number;
-            /** Format: int64 */
-            source_document_id?: number;
-            /** @enum {string} */
-            candidate_type?: "promo_code_candidate" | "loyalty_event_candidate";
-            title?: string;
-            structured_data?: {
-                [key: string]: unknown;
-            };
-            confidence?: number;
-            /** @enum {string} */
-            status?: "draft" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
-            /** Format: date-time */
-            created_at?: string;
-            /** Format: date-time */
-            resolved_at?: string;
-            source_type?: string;
-            input_kind?: string;
-            document_type?: string;
-            merchant_text?: string;
-            /** Format: date-time */
-            document_date?: string;
-        };
-        BenefitCandidateListResponse: {
-            candidates?: components["schemas"]["BenefitCandidate"][];
         };
         /** @description User-facing grouped counts for what Ceits found inside a capture. */
         CaptureCandidateCounts: {
@@ -7952,7 +6061,7 @@ export interface components {
             status?: string;
             currency?: string;
             /** Format: date-time */
-            txn_date?: string;
+            expense_date?: string;
             total_amount?: number;
             /** Format: int64 */
             created_by_user_id?: number;
@@ -8037,7 +6146,7 @@ export interface components {
             next_offset?: number | null;
         };
         SpaceExpenseListResponse: {
-            expenses?: components["schemas"]["Transaction"][];
+            expenses?: components["schemas"]["ExpenseRecord"][];
             limit?: number;
             offset?: number;
             has_more?: boolean;
@@ -8054,7 +6163,7 @@ export interface components {
             amount?: number;
         };
         SpaceSplitDecision: {
-            expense?: components["schemas"]["Transaction"];
+            expense?: components["schemas"]["ExpenseRecord"];
             splits?: components["schemas"]["SpaceSplitDecisionRow"][];
             /** Format: int64 */
             source_document_id?: number | null;
@@ -8080,14 +6189,14 @@ export interface components {
              */
             projected_expense_id?: number;
             /** @enum {string} */
-            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "space_suggestion_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
+            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
             title?: string;
             structured_data?: {
                 [key: string]: unknown;
             };
             confidence?: number;
             /** @enum {string} */
-            status?: "draft" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
+            status?: "pending_review" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -8136,19 +6245,14 @@ export interface components {
             split_count?: number;
             candidate?: components["schemas"]["DocumentCandidateState"];
         };
-        BenefitCandidateState: {
-            /** Format: int64 */
-            id?: number;
-            status?: string;
-        };
-        SaveBenefitCandidatePromoResponse: {
+        SavePromoCandidateResponse: {
             promo?: components["schemas"]["PromoCode"];
-            candidate?: components["schemas"]["BenefitCandidateState"];
+            candidate?: components["schemas"]["DocumentCandidateState"];
         };
-        /** @description Capability-aware parser model selection metadata returned with capture previews. */
+        /** @description Capability-aware capture model selection metadata returned with capture previews. */
         CaptureModelPolicy: {
             /**
-             * @description Effective intelligence profile selected for this parse.
+             * @description Effective intelligence profile selected for this capture.
              * @enum {string}
              */
             profile?: "basic" | "smart" | "deep";
@@ -8159,69 +6263,60 @@ export interface components {
             max_profile?: "basic" | "smart" | "deep";
             /** @description Whether Deep intelligence is available for the current tenant/context. */
             deep_allowed?: boolean;
-            /** @description Whether the parser classified or requested this input as needing Deep intelligence. */
+            /** @description Whether the capture flow classified or requested this input as needing Deep intelligence. */
             deep_requested?: boolean;
             /**
-             * @description Coarse cost class for the selected parser profile.
+             * @description Coarse cost class for the selected capture profile.
              * @enum {string}
              */
             cost_class?: "low" | "medium" | "high";
-            /** @description Relative AI parse quota units reserved or expected for this parser profile. */
+            /** @description Relative capture quota units reserved or expected for this intelligence profile. */
             quota_units?: number;
             /** @description Present when the requested profile was capped by tenant capability. */
             downgraded_reason?: string;
         };
-        SpaceCaptureResponse: {
-            expense?: components["schemas"]["Expense"];
-            message?: components["schemas"]["SpaceChatMessage"];
-            transcription?: string;
-            /** Format: int64 */
-            media_id?: number;
-            /**
-             * Format: int64
-             * @description Source document linked to the created capture record, either created by this direct text/photo/voice capture or supplied from a prior parse preview.
-             */
-            source_document_id?: number;
+        CaptureProfileCapability: {
+            /** @enum {string} */
+            profile?: "basic" | "smart" | "deep";
+            /** @enum {string} */
+            cost_class?: "low" | "medium" | "high";
+            quota_units?: number;
         };
-        SpaceChatMessage: {
-            /** Format: int64 */
-            id?: number;
+        CaptureCapabilities: {
+            /** @enum {string} */
+            max_profile?: "basic" | "smart" | "deep";
+            deep_allowed?: boolean;
+            text?: components["schemas"]["CaptureProfileCapability"];
+            image?: components["schemas"]["CaptureProfileCapability"];
+            voice?: components["schemas"]["CaptureProfileCapability"];
+            deep_request?: components["schemas"]["CaptureProfileCapability"];
+            deep_request_downgraded_to?: string;
+            deep_request_reason?: string;
+        };
+        CapabilitySummary: {
+            /** @enum {string} */
+            plan?: "basic" | "medium" | "premium";
+            capture?: components["schemas"]["CaptureCapabilities"];
+            features?: {
+                [key: string]: boolean;
+            };
+        };
+        QuotaStatus: {
             /** Format: int64 */
             tenant_id?: number;
-            /** Format: int64 */
-            space_id?: number;
-            /** Format: int64 */
-            user_id?: number;
-            sender_type?: string;
-            direction?: string;
-            message_type?: string;
-            text?: string;
-            /** Format: int64 */
-            telegram_message_id?: number;
-            /** Format: int64 */
-            related_transaction_id?: number;
-            /** Format: int64 */
-            related_expense_id?: number;
-            /**
-             * Format: int64
-             * @description Private media object attached to this chat message, when the message was created from a photo or voice capture.
-             */
-            media_id?: number;
-            /** @description Media category, for example image or voice. */
-            media_kind?: string;
-            /** @description Original media MIME type. */
-            media_content_type?: string;
-            /** @description Original uploaded filename when available. */
-            media_filename?: string;
-            /**
-             * Format: int64
-             * @description Source document that produced this chat message's draft/review work.
-             */
-            source_document_id?: number;
-            /** Format: date-time */
-            created_at?: string;
+            /** @description Current tenant capture monthly limit. */
+            limit?: number;
+            used?: number;
+            remaining?: number;
+            plan?: string;
+            max_spaces?: number;
+            max_members?: number;
+            export_enabled?: boolean;
+            audit_enabled?: boolean;
+            capture_monthly_limit?: number;
+            capabilities?: components["schemas"]["CapabilitySummary"];
         };
-        TransactionItem: {
+        ExpenseRecordItem: {
             amount?: number;
             name?: string;
             emotion?: string;
@@ -8229,12 +6324,12 @@ export interface components {
             /** Format: date-time */
             expense_date?: string;
         };
-        TransactionBusinessMeta: {
+        ExpenseRecordBusinessMeta: {
             invoice_ref?: string;
             notes?: string;
         };
-        /** @description Expense-backed transaction wire shape used by shared-space transaction lists. */
-        Transaction: {
+        /** @description Compact saved expense record wire shape used by shared-space expense lists. */
+        ExpenseRecord: {
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
@@ -8248,17 +6343,17 @@ export interface components {
             payee_text?: string;
             currency?: string;
             /** Format: date */
-            txn_date?: string;
+            expense_date?: string;
             /** Format: int64 */
             vendor_id?: number;
             vendor_name?: string;
-            business_meta?: components["schemas"]["TransactionBusinessMeta"];
+            business_meta?: components["schemas"]["ExpenseRecordBusinessMeta"];
             /**
              * Format: int64
              * @description Capture/source document that created this expense record, when available.
              */
             source_document_id?: number;
-            items?: components["schemas"]["TransactionItem"][];
+            items?: components["schemas"]["ExpenseRecordItem"][];
             total?: number;
             /** Format: date-time */
             created_at?: string;

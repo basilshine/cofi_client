@@ -2,12 +2,6 @@
 
 Scope: `cofi_client` (`apps/web`, `apps/telegram-webapp`, `packages/*`).
 
-## Legacy freeze
-
-- `cofi_client/src/*` is legacy-frozen.
-- Bugfixes are allowed, but no new architecture or feature work should be added there.
-- New work must target `apps/*` and `packages/*`.
-
 ## Dependency boundaries
 
 ```text
@@ -21,7 +15,7 @@ shared   -> nothing above
 
 ## Forbidden import patterns
 
-- `apps/* -> ../../../src/*` runtime coupling.
+- `apps/* -> ../../../src/*` root-level runtime coupling.
 - `apps/web -> packages/*/src/*` deep source imports.
 - `shared -> features` imports.
 - `features/A -> features/B/components/*` deep cross-feature imports.

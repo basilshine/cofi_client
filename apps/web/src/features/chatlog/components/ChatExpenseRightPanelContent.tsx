@@ -1,4 +1,7 @@
-import type { CapturePacket as ApiCapturePacket, Transaction } from "@cofi/api";
+import type {
+	CapturePacket as ApiCapturePacket,
+	ExpenseRecord,
+} from "@cofi/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
@@ -17,13 +20,13 @@ import {
 } from "../../../shared/lib/entityPresentation";
 import {
 	expenseStatusTone,
-	toTransactionExpenseEntity,
+	toExpenseRecordEntity,
 } from "../../../shared/lib/expensePresentation";
 import { SpaceExpenseDetailPanel } from "./SpaceExpenseDetailPanel";
 
 type Props = {
 	spaceId: string | number;
-	spaceTransactions: Transaction[] | null;
+	spaceExpenseRecords: ExpenseRecord[] | null;
 	listLoading: boolean;
 	listError: string | null;
 	onReloadList: () => void;
@@ -90,7 +93,7 @@ const packetEntity = (
 
 export const ChatExpenseRightPanelContent = ({
 	spaceId,
-	spaceTransactions,
+	spaceExpenseRecords,
 	listLoading,
 	listError,
 	onReloadList,
@@ -137,7 +140,7 @@ export const ChatExpenseRightPanelContent = ({
 	}, [loadCapturePackets]);
 
 	const stats = useMemo(() => {
-		const list = spaceTransactions ?? [];
+		const list = spaceExpenseRecords ?? [];
 		let recorded = 0;
 		let needsReview = 0;
 		let approved = 0;
@@ -169,7 +172,7 @@ export const ChatExpenseRightPanelContent = ({
 			linkedCaptures,
 			recentRecords,
 		};
-	}, [spaceTransactions]);
+	}, [spaceExpenseRecords]);
 
 	const captureSummaries = useMemo(
 		() => capturePackets.map(capturePacketSummaryFromApi),
@@ -359,13 +362,15 @@ export const ChatExpenseRightPanelContent = ({
 					</div>
 				) : null}
 
-				{listLoading && !spaceTransactions?.length ? (
+				{listLoading && !spaceExpenseRecords?.length ? (
 					<p className="text-sm text-muted-foreground">
 						{expensesWorkspaceRoute ? "Loading expenses…" : "Loading captures…"}
 					</p>
 				) : null}
 
-				{!listLoading && spaceTransactions && spaceTransactions.length === 0 ? (
+				{!listLoading &&
+				spaceExpenseRecords &&
+				spaceExpenseRecords.length === 0 ? (
 					<p className="text-sm leading-relaxed text-muted-foreground">
 						{expensesWorkspaceRoute
 							? "No saved expense records yet. New spending starts in Captures review or from the global Add expense action."
@@ -373,7 +378,7 @@ export const ChatExpenseRightPanelContent = ({
 					</p>
 				) : null}
 
-				{spaceTransactions && spaceTransactions.length > 0 ? (
+				{spaceExpenseRecords && spaceExpenseRecords.length > 0 ? (
 					<section
 						aria-labelledby="exp-rail-summary"
 						className="rounded-2xl border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.85)] p-4 shadow-sm"
@@ -426,7 +431,7 @@ export const ChatExpenseRightPanelContent = ({
 								</h4>
 								<ul className="mt-2 space-y-2">
 									{stats.recentRecords.map((tx) => {
-										const entity = toTransactionExpenseEntity(tx, {
+										const entity = toExpenseRecordEntity(tx, {
 											amountLabel: formatMoney(tx.total),
 										});
 										return (

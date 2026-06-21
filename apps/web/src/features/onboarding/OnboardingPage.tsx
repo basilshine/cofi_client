@@ -93,7 +93,7 @@ export const OnboardingPage = () => {
 		try {
 			const s = await onboardingApi.getState();
 			if (s.completed) {
-				navigate("/console/chat", { replace: true });
+				navigate("/console", { replace: true });
 				return;
 			}
 			setDraft(s.draft ?? {});
@@ -200,7 +200,7 @@ export const OnboardingPage = () => {
 			clearPendingInviteToken();
 			await refreshUser();
 			navigate(
-				`/console/chat?spaceId=${encodeURIComponent(String(res.first_space_id))}`,
+				`/console/spaces/${encodeURIComponent(String(res.first_space_id))}/expenses`,
 				{ replace: true },
 			);
 		} catch (e) {

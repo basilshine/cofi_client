@@ -20,7 +20,7 @@ import {
 import { WorkspaceEntityCard } from "../../shared/ui/WorkspaceListingPage";
 import { InviteLinkSharePanel } from "../space-invite-management";
 
-type ParticipantDraft = {
+type ParticipantFormState = {
 	displayName: string;
 	email: string;
 	telegramUsername: string;
@@ -57,7 +57,7 @@ const contactString = (
 	return typeof value === "string" ? value : "";
 };
 
-const toDraft = (participant: SpaceParticipant): ParticipantDraft => ({
+const toFormState = (participant: SpaceParticipant): ParticipantFormState => ({
 	displayName: participant.display_name ?? "",
 	email: participant.email ?? "",
 	telegramUsername: participant.telegram_username ?? "",
@@ -70,14 +70,14 @@ const cleanTelegram = (value: string): string =>
 	value.trim().replace(/^@+/, "");
 
 const compactContactData = (
-	draft: ParticipantDraft,
+	formState: ParticipantFormState,
 	existing: Record<string, unknown> | undefined,
 ): Record<string, unknown> => {
 	const next = { ...(existing ?? {}) };
 	const values = {
-		phone: draft.phone.trim(),
-		whatsapp: draft.whatsapp.trim(),
-		notes: draft.notes.trim(),
+		phone: formState.phone.trim(),
+		whatsapp: formState.whatsapp.trim(),
+		notes: formState.notes.trim(),
 	};
 	for (const [key, value] of Object.entries(values)) {
 		if (value) {
@@ -167,7 +167,7 @@ export const SpaceParticipantsPanel = ({
 	showTopBorder = true,
 }: SpaceParticipantsPanelProps) => {
 	const [editingId, setEditingId] = useState<number | null>(null);
-	const [draft, setDraft] = useState<ParticipantDraft | null>(null);
+	const [formState, setFormState] = useState<ParticipantFormState | null>(null);
 	const [savingId, setSavingId] = useState<number | null>(null);
 	const [invitingId, setInvitingId] = useState<number | null>(null);
 	const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -296,13 +296,13 @@ export const SpaceParticipantsPanel = ({
 	const startEditing = (participant: SpaceParticipant) => {
 		if (readOnly) return;
 		setEditingId(participant.id);
-		setDraft(toDraft(participant));
+		setFormState(toFormState(participant));
 		setError(null);
 	};
 
 	const stopEditing = () => {
 		setEditingId(null);
-		setDraft(null);
+		setFormState(null);
 		setError(null);
 	};
 
@@ -349,8 +349,8 @@ export const SpaceParticipantsPanel = ({
 		participant.linked_user_id == null;
 
 	const saveParticipant = async (participant: SpaceParticipant) => {
-		if (!draft) return;
-		const displayName = draft.displayName.trim();
+		if (!formState) return;
+		const displayName = formState.displayName.trim();
 		if (!displayName) {
 			setError("Name is required.");
 			return;
@@ -364,9 +364,9 @@ export const SpaceParticipantsPanel = ({
 				participant.id,
 				{
 					display_name: displayName,
-					email: draft.email.trim(),
-					telegram_username: cleanTelegram(draft.telegramUsername),
-					contact_data: compactContactData(draft, participant.contact_data),
+					email: formState.email.trim(),
+					telegram_username: cleanTelegram(formState.telegramUsername),
+					contact_data: compactContactData(formState, participant.contact_data),
 				},
 			);
 			onParticipantSaved(updated);
@@ -677,14 +677,14 @@ export const SpaceParticipantsPanel = ({
 							id={`space-participant-${String(participant.id)}`}
 							key={participant.id}
 						>
-							{isEditing && draft ? (
+							{isEditing && formState ? (
 								<div className="grid gap-2">
 									<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
 										Name
 										<input
 											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 											onChange={(event) =>
-												setDraft((current) =>
+												setFormState((current) =>
 													current
 														? {
 																...current,
@@ -693,7 +693,7 @@ export const SpaceParticipantsPanel = ({
 														: current,
 												)
 											}
-											value={draft.displayName}
+											value={formState.displayName}
 										/>
 									</label>
 									<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
@@ -701,14 +701,14 @@ export const SpaceParticipantsPanel = ({
 										<input
 											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 											onChange={(event) =>
-												setDraft((current) =>
+												setFormState((current) =>
 													current
 														? { ...current, email: event.target.value }
 														: current,
 												)
 											}
 											type="email"
-											value={draft.email}
+											value={formState.email}
 										/>
 									</label>
 									<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
@@ -716,7 +716,7 @@ export const SpaceParticipantsPanel = ({
 										<input
 											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 											onChange={(event) =>
-												setDraft((current) =>
+												setFormState((current) =>
 													current
 														? {
 																...current,
@@ -726,7 +726,7 @@ export const SpaceParticipantsPanel = ({
 												)
 											}
 											placeholder="@username"
-											value={draft.telegramUsername}
+											value={formState.telegramUsername}
 										/>
 									</label>
 									<div className="grid gap-2 sm:grid-cols-2">
@@ -735,14 +735,14 @@ export const SpaceParticipantsPanel = ({
 											<input
 												className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 												onChange={(event) =>
-													setDraft((current) =>
+													setFormState((current) =>
 														current
 															? { ...current, phone: event.target.value }
 															: current,
 													)
 												}
 												type="tel"
-												value={draft.phone}
+												value={formState.phone}
 											/>
 										</label>
 										<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
@@ -750,14 +750,14 @@ export const SpaceParticipantsPanel = ({
 											<input
 												className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 												onChange={(event) =>
-													setDraft((current) =>
+													setFormState((current) =>
 														current
 															? { ...current, whatsapp: event.target.value }
 															: current,
 													)
 												}
 												type="tel"
-												value={draft.whatsapp}
+												value={formState.whatsapp}
 											/>
 										</label>
 									</div>
@@ -766,13 +766,13 @@ export const SpaceParticipantsPanel = ({
 										<textarea
 											className="min-h-16 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 											onChange={(event) =>
-												setDraft((current) =>
+												setFormState((current) =>
 													current
 														? { ...current, notes: event.target.value }
 														: current,
 												)
 											}
-											value={draft.notes}
+											value={formState.notes}
 										/>
 									</label>
 									<div className="flex items-center justify-end gap-2 pt-1">

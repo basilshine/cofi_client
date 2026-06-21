@@ -90,7 +90,7 @@ export const SpaceExpenseDetailPanel = ({
 		);
 	}, [expense]);
 
-	const status = expense?.status?.trim() || "draft";
+	const status = expense?.status?.trim() || "approved";
 	const reviewHref =
 		expense?.source_document_id != null
 			? `/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(expense.source_document_id))}`
@@ -142,10 +142,10 @@ export const SpaceExpenseDetailPanel = ({
 										<span className={expenseStatusPillClass(status)}>
 											{expenseStatusLabel(status)}
 										</span>
-										{expense.txn_date ? (
+										{expense.expense_date ? (
 											<span className="inline-flex items-center gap-1 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/65 px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
 												<Calendar className="h-3.5 w-3.5" />
-												{expense.txn_date}
+												{expense.expense_date}
 											</span>
 										) : null}
 									</div>

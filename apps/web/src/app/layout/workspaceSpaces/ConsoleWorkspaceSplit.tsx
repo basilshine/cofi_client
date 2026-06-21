@@ -42,9 +42,6 @@ const WorkspaceSidebar = () => {
 };
 
 const composerRightInsetClassName = (pathname: string): string => {
-	if (/^\/console\/chat\/expenses(?:\/|$)/.test(pathname)) {
-		return "right-0 xl:right-[22rem]";
-	}
 	if (/^\/console\/settings(?:\/|$)/.test(pathname)) {
 		return "right-0 xl:right-[18rem]";
 	}

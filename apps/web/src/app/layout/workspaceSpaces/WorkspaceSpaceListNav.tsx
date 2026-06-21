@@ -398,14 +398,13 @@ export const WorkspaceSpaceListNav = ({
 		[spaces],
 	);
 
-	// Overview entry covers both the new global Home (`/console/home`) and the
-	// legacy widget-rich dashboard so the active state is always coherent.
+	// Overview entry covers both the global Home (`/console/home`) and
+	// dashboard deep links so the active state is always coherent.
 	const isHomeActive =
 		location.pathname.startsWith("/console/home") ||
 		location.pathname.startsWith("/console/dashboard");
 	const isSearchActive = location.pathname.startsWith("/console/search");
 	const inSpaceShell = /^\/console\/spaces\/[^/]+/.test(location.pathname);
-	const inChatShell = location.pathname.startsWith("/console/chat");
 	const inSettingsShell = location.pathname.startsWith("/console/settings");
 	const accountDisplayName =
 		user?.name?.trim() || user?.email?.split("@")[0] || "Account";
@@ -448,9 +447,6 @@ export const WorkspaceSpaceListNav = ({
 		(id: string | number) => {
 			setOpenSpaceMenuId(null);
 			setSelectedSpaceId(id);
-			// Chat owns its own space switcher — it reacts to the context change
-			// and re-fetches messages without any URL navigation.
-			if (inChatShell) return;
 
 			const sid = encodeURIComponent(String(id));
 
@@ -467,17 +463,11 @@ export const WorkspaceSpaceListNav = ({
 				return;
 			}
 
-			// Anywhere else (Home, Dashboard, Drafts, Account, …) jump into the
+			// Anywhere else (Home, Dashboard, Review, Account, ...) jump into the
 			// chosen space's overview.
 			navigate(`/console/spaces/${sid}/overview`);
 		},
-		[
-			setSelectedSpaceId,
-			navigate,
-			inSpaceShell,
-			inChatShell,
-			location.pathname,
-		],
+		[setSelectedSpaceId, navigate, inSpaceShell, location.pathname],
 	);
 
 	const handleConfirmSpaceDestructive = useCallback(async () => {

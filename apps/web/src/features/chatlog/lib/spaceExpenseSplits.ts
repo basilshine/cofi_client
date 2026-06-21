@@ -19,21 +19,9 @@ export const splitParticipantLabel = (participant: SpaceParticipant): string =>
 		? `User #${participant.user_id}`
 		: `Participant #${participant.id}`);
 
-const participantRowsFromMembers = (
-	members: SpaceMember[],
-): SplitPercentRow[] =>
-	members.map((member) => ({
-		user_id: Number(member.user_id),
-		label:
-			member.name?.trim() || member.email?.trim() || `User #${member.user_id}`,
-		percent: "0",
-	}));
-
 export const splitRowsFromParticipants = (
 	participants: SpaceParticipant[],
-	members: SpaceMember[],
 ): SplitPercentRow[] => {
-	if (participants.length === 0) return participantRowsFromMembers(members);
 	return participants.map((participant) => ({
 		user_id: participant.user_id ?? participant.linked_user_id ?? null,
 		space_participant_id: participant.id,

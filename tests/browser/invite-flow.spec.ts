@@ -163,7 +163,7 @@ test("authenticated join page accepts invite and opens joined space", async ({
 	await page.goto(`/join?token=${token}`, { waitUntil: "domcontentloaded" });
 
 	await expect(page).toHaveURL(
-		new RegExp(`/console/chat\\?spaceId=${spaceId}$`),
+		new RegExp(`/console/spaces/${spaceId}/expenses$`),
 	);
 	expect(getAcceptCount()).toBe(1);
 	expect(pageErrors).toEqual([]);

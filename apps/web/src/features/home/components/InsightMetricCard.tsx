@@ -58,7 +58,7 @@ export const InsightMetricCard = ({
 								onClick={(event) => {
 									event.stopPropagation();
 								}}
-								to={`/console/chat?spaceId=${encodeURIComponent(String(space.id))}`}
+								to={`/console/spaces/${encodeURIComponent(String(space.id))}/expenses`}
 							>
 								{space.name}
 							</Link>

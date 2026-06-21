@@ -1,19 +1,19 @@
 import type { ChatMessage, Space } from "@cofi/api";
 import { useCallback } from "react";
 import {
-	parseCapturePhoto,
-	parseCaptureText,
-	parseCaptureVoice,
-} from "../../../shared/lib/quickCaptureTransactions";
+	type CaptureResponse,
+	capturePhoto,
+	captureText,
+	captureVoice,
+} from "../../../shared/lib/quickCapture";
 import { wsClient } from "../../../shared/lib/wsClient";
 import type { ChatComposerPurpose } from "../components/ChatComposerOrientation";
 import type { ComposerPayload } from "../components/SmartTextareaComposer";
-import type { BuilderItem } from "../components/transactionBuilderTypes";
 
 export type CaptureProgressStage =
 	| "received"
 	| "uploading"
-	| "parsing"
+	| "extracting"
 	| "review_ready"
 	| "ready"
 	| "failed";
@@ -32,7 +32,6 @@ export type CaptureProgressEvent = {
 };
 
 type UseNativeChatComposerActionsArgs = {
-	loadSpaceTransactions: () => Promise<void>;
 	onCaptureProgress?: (event: CaptureProgressEvent) => void;
 	onCaptureSettled?: () => void;
 	patchSpaces: (updater: (prev: Space[] | null) => Space[] | null) => void;
@@ -49,23 +48,11 @@ type UseNativeChatComposerActionsArgs = {
 	setStickToLatest: (stickToLatest: boolean) => void;
 };
 
-const parsedItemsToBuilderItems = (
-	items: Array<{
-		name?: string | null;
-		amount?: number | string | null;
-		tags?: string[] | null;
-		notes?: string | null;
-	}>,
-): BuilderItem[] =>
-	items
-		.filter((p) => p?.name?.trim() && Number(p.amount) !== 0)
-		.map((p) => ({
-			id: crypto.randomUUID(),
-			name: p.name?.trim() ?? "",
-			amount: String(p.amount),
-			tags: (p.tags ?? []).join(", "),
-			notes: p.notes?.trim() ?? "",
-		}));
+const captureCandidateCount = (response: CaptureResponse) =>
+	response.candidates?.length ?? 0;
+
+const hasReviewCandidates = (response: CaptureResponse) =>
+	captureCandidateCount(response) > 0;
 
 export const useNativeChatComposerActions = ({
 	onCaptureProgress,
@@ -112,17 +99,14 @@ export const useNativeChatComposerActions = ({
 				if (/permission|notallowed|not allowed|denied/i.test(raw)) {
 					return "Microphone access is blocked in this browser. Allow microphone access or use text/photo.";
 				}
-				if (/500|internal server|failed to parse/i.test(raw)) {
-					return "Voice parsing failed. Your recording was not saved as a final expense. Try again or use text.";
+				if (/500|internal server/i.test(raw)) {
+					return "Voice capture failed. Your recording was not saved as a final expense. Try again or use text.";
 				}
 			}
-			if (
-				inputKind === "photo" &&
-				/failed to parse|500|internal server/i.test(raw)
-			) {
-				return "Image parsing failed. The receipt was not saved as a final expense. Try another image or use text.";
+			if (inputKind === "photo" && /500|internal server/i.test(raw)) {
+				return "Image capture failed. The receipt was not saved as a final expense. Try another image or use text.";
 			}
-			return raw || `Failed to parse ${inputKind}`;
+			return raw || `Failed to capture ${inputKind}`;
 		},
 		[],
 	);
@@ -175,7 +159,7 @@ export const useNativeChatComposerActions = ({
 		],
 	);
 
-	const parsePhotoFile = useCallback(
+	const capturePhotoFile = useCallback(
 		async (file: File) => {
 			if (!selectedSpaceId) return;
 			const progressId = crypto.randomUUID();
@@ -187,20 +171,19 @@ export const useNativeChatComposerActions = ({
 				emitProgress(
 					progressId,
 					"photo",
-					"parsing",
+					"extracting",
 					"Reading receipt and document signals",
 				);
-				const res = await parseCapturePhoto(file, { spaceId: selectedSpaceId });
-				const builderItems = parsedItemsToBuilderItems(res.items ?? []);
-				if (!builderItems.length) {
+				const res = await capturePhoto(file, { spaceId: selectedSpaceId });
+				if (!hasReviewCandidates(res)) {
 					setErrorMessage(
-						"Nothing parsed from this image — try another photo.",
+						"No review candidates were created from this image — try another photo.",
 					);
 					emitProgress(
 						progressId,
 						"photo",
 						"failed",
-						"No expense lines were found",
+						"No review candidates were created",
 						{
 							mediaId: res.media_id,
 							sourceDocumentId: res.source_document_id,
@@ -209,7 +192,7 @@ export const useNativeChatComposerActions = ({
 					return;
 				}
 				emitProgress(progressId, "photo", "review_ready", "Ready for review", {
-					candidateCount: res.candidates?.length,
+					candidateCount: captureCandidateCount(res),
 					mediaId: res.media_id,
 					sourceDocumentId: res.source_document_id,
 				});
@@ -218,7 +201,7 @@ export const useNativeChatComposerActions = ({
 				bumpSelectedSpaceActivity();
 				onCaptureSettled?.();
 				emitProgress(progressId, "photo", "ready", "Ready for review", {
-					candidateCount: res.candidates?.length,
+					candidateCount: captureCandidateCount(res),
 					mediaId: res.media_id,
 					sourceDocumentId: res.source_document_id,
 				});
@@ -243,7 +226,7 @@ export const useNativeChatComposerActions = ({
 		],
 	);
 
-	const parseVoiceBlob = useCallback(
+	const captureVoiceBlob = useCallback(
 		async (blob: Blob) => {
 			if (!selectedSpaceId) return;
 			const progressId = crypto.randomUUID();
@@ -255,22 +238,21 @@ export const useNativeChatComposerActions = ({
 				emitProgress(
 					progressId,
 					"voice",
-					"parsing",
-					"Transcribing and parsing",
+					"extracting",
+					"Transcribing and extracting",
 				);
-				const res = await parseCaptureVoice(blob, blob.type || "audio/webm", {
+				const res = await captureVoice(blob, blob.type || "audio/webm", {
 					spaceId: selectedSpaceId,
 				});
-				const builderItems = parsedItemsToBuilderItems(res.items ?? []);
-				if (!builderItems.length) {
+				if (!hasReviewCandidates(res)) {
 					setErrorMessage(
-						"Nothing parsed from voice — try speaking amounts clearly.",
+						"No review candidates were created from voice — try speaking amounts clearly.",
 					);
 					emitProgress(
 						progressId,
 						"voice",
 						"failed",
-						"No expense lines were found",
+						"No review candidates were created",
 						{
 							mediaId: res.media_id,
 							sourceDocumentId: res.source_document_id,
@@ -279,7 +261,7 @@ export const useNativeChatComposerActions = ({
 					return;
 				}
 				emitProgress(progressId, "voice", "review_ready", "Ready for review", {
-					candidateCount: res.candidates?.length,
+					candidateCount: captureCandidateCount(res),
 					mediaId: res.media_id,
 					sourceDocumentId: res.source_document_id,
 				});
@@ -288,7 +270,7 @@ export const useNativeChatComposerActions = ({
 				bumpSelectedSpaceActivity();
 				onCaptureSettled?.();
 				emitProgress(progressId, "voice", "ready", "Ready for review", {
-					candidateCount: res.candidates?.length,
+					candidateCount: captureCandidateCount(res),
 					mediaId: res.media_id,
 					sourceDocumentId: res.source_document_id,
 				});
@@ -319,7 +301,7 @@ export const useNativeChatComposerActions = ({
 			setIsLoading(true);
 			setErrorMessage(null);
 			try {
-				const res = await parseCaptureVoice(blob, blob.type || "audio/webm", {
+				const res = await captureVoice(blob, blob.type || "audio/webm", {
 					spaceId: selectedSpaceId,
 				});
 				const text = res.transcription?.trim();
@@ -355,22 +337,21 @@ export const useNativeChatComposerActions = ({
 						emitProgress(
 							progressId,
 							"text",
-							"parsing",
+							"extracting",
 							"Understanding expense details",
 						);
-						const res = await parseCaptureText(text, {
+						const res = await captureText(text, {
 							spaceId: selectedSpaceId,
 						});
-						const builderItems = parsedItemsToBuilderItems(res.items ?? []);
-						if (!builderItems.length) {
+						if (!hasReviewCandidates(res)) {
 							setErrorMessage(
-								"Nothing parsed — try clearer amounts and item names.",
+								"No review candidates were created — try clearer amounts and item names.",
 							);
 							emitProgress(
 								progressId,
 								"text",
 								"failed",
-								"No expense lines were found",
+								"No review candidates were created",
 								{
 									sourceDocumentId: res.source_document_id,
 								},
@@ -383,7 +364,7 @@ export const useNativeChatComposerActions = ({
 							"review_ready",
 							"Ready for review",
 							{
-								candidateCount: res.candidates?.length,
+								candidateCount: captureCandidateCount(res),
 								sourceDocumentId: res.source_document_id,
 							},
 						);
@@ -392,7 +373,7 @@ export const useNativeChatComposerActions = ({
 						bumpSelectedSpaceActivity();
 						onCaptureSettled?.();
 						emitProgress(progressId, "text", "ready", "Ready for review", {
-							candidateCount: res.candidates?.length,
+							candidateCount: captureCandidateCount(res),
 							sourceDocumentId: res.source_document_id,
 						});
 					} catch (err) {
@@ -403,7 +384,7 @@ export const useNativeChatComposerActions = ({
 						setIsLoading(false);
 					}
 				} else if (payload.expense_input_type === "photo") {
-					await parsePhotoFile(payload.file);
+					await capturePhotoFile(payload.file);
 				}
 				return;
 			}
@@ -438,7 +419,7 @@ export const useNativeChatComposerActions = ({
 			bumpSelectedSpaceActivity,
 			emitProgress,
 			onCaptureSettled,
-			parsePhotoFile,
+			capturePhotoFile,
 			sendChatText,
 			setComposerPurpose,
 			setErrorMessage,
@@ -450,7 +431,7 @@ export const useNativeChatComposerActions = ({
 
 	return {
 		handleComposerSubmit,
-		parseVoiceBlob,
+		captureVoiceBlob,
 		sendVoiceBlobAsChatMessage,
 	};
 };

@@ -5,10 +5,7 @@ import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope"
 import { EntityMicro } from "../../../shared/lib/entityPresentation";
 import { userMessageAccent } from "../lib/userMessageAccent";
 import { ChatMediaAttachment } from "./ChatMediaAttachment";
-import {
-	ChatMessageRichText,
-	type LegacyReviewDeepLink,
-} from "./ChatMessageRichText";
+import { ChatMessageRichText } from "./ChatMessageRichText";
 import { ExpenseMessageCard } from "./ExpenseMessageCard";
 
 const isRecurringExpenseChatMessage = (message: ChatMessage): boolean =>
@@ -28,7 +25,6 @@ type NativeChatMessageListProps = {
 	onDeleteMessageRequest: (message: ChatMessage) => void;
 	onEditMessageTextChange: (text: string) => void;
 	onOpenExpenseDetail: (expenseId: string | number) => void;
-	onOpenLegacyReviewLink: (link: LegacyReviewDeepLink) => void;
 	onRelatedResourceGone: (messageId: string | number) => void;
 	onSaveEditMessage: () => void;
 	onStartEditMessage: (message: ChatMessage) => void;
@@ -50,7 +46,6 @@ export const NativeChatMessageList = ({
 	onDeleteMessageRequest,
 	onEditMessageTextChange,
 	onOpenExpenseDetail,
-	onOpenLegacyReviewLink,
 	onRelatedResourceGone,
 	onSaveEditMessage,
 	onStartEditMessage,
@@ -70,13 +65,13 @@ export const NativeChatMessageList = ({
 		for (let i = 0; i < (messages?.length ?? 0); i += 1) {
 			const m = messages?.[i];
 			if (!m) continue;
-			const relatedId = m.related_transaction_id ?? m.related_expense_id;
+			const relatedId = m.related_expense_id;
 			if (relatedId == null) continue;
 			const key = String(relatedId);
 			latestIndexByKey.set(key, i);
 			const raw = (m.related_expense_status ?? "").toLowerCase();
 			const state: "approved" | "needs_review" =
-				m.related_transaction_id != null || raw === "approved"
+				raw === "approved"
 					? "approved"
 					: raw.includes("pending") || raw.includes("review")
 						? "needs_review"
@@ -102,7 +97,7 @@ export const NativeChatMessageList = ({
 		return messages.map((m, idx) => {
 			const isUser = m.sender_type === "user";
 			const accent = isUser ? userMessageAccent(m.user_id) : null;
-			const relatedExpenseId = m.related_transaction_id ?? m.related_expense_id;
+			const relatedExpenseId = m.related_expense_id;
 			const showCaptionAboveExpense =
 				relatedExpenseId != null &&
 				Boolean(m.text?.trim()) &&
@@ -112,10 +107,8 @@ export const NativeChatMessageList = ({
 				);
 			const isRelatedSelected =
 				selectedExpenseId != null &&
-				((m.related_expense_id != null &&
-					String(m.related_expense_id) === String(selectedExpenseId)) ||
-					(m.related_transaction_id != null &&
-						String(m.related_transaction_id) === String(selectedExpenseId)));
+				m.related_expense_id != null &&
+				String(m.related_expense_id) === String(selectedExpenseId);
 			const relatedExpenseStatus = (
 				m.related_expense_status ?? ""
 			).toLowerCase();
@@ -168,9 +161,7 @@ export const NativeChatMessageList = ({
 			const prevRelatedId =
 				prev?.related_expense_id != null
 					? String(prev.related_expense_id)
-					: prev?.related_transaction_id != null
-						? String(prev.related_transaction_id)
-						: null;
+					: null;
 			const sameRelatedAsPrev =
 				currentRelatedId != null &&
 				prevRelatedId != null &&
@@ -306,10 +297,7 @@ export const NativeChatMessageList = ({
 								<div className="whitespace-pre-wrap text-sm text-foreground">
 									<ChatMessageRichText
 										body={m.text ?? ""}
-										expenseId={null}
 										onJumpToLine={() => {}}
-										onOpenLegacyReviewLink={onOpenLegacyReviewLink}
-										spaceId={selectedSpaceId}
 									/>
 								</div>
 							) : null}
@@ -332,8 +320,8 @@ export const NativeChatMessageList = ({
 										}}
 									/>
 									<p className="mt-1">
-										This message still keeps the uploaded media, but the parsed
-										review packet was removed from this space.
+										This message still keeps the uploaded media, but the
+										captured review packet was removed from this space.
 									</p>
 								</div>
 							) : null}
@@ -347,10 +335,10 @@ export const NativeChatMessageList = ({
 									inspectorOpen={inspectorOpen}
 									isSelected={isRelatedSelected}
 									onOpenExpenseDetail={onOpenExpenseDetail}
-									onTransactionOrphaned={() => onRelatedResourceGone(m.id)}
+									onExpenseOrphaned={() => onRelatedResourceGone(m.id)}
 									spaceId={selectedSpaceId}
 									sourceDocumentId={m.source_document_id}
-									transactionId={relatedExpenseId}
+									expenseId={relatedExpenseId}
 									updates={groupedUpdates}
 								/>
 							) : null}
@@ -394,10 +382,7 @@ export const NativeChatMessageList = ({
 									<div className="whitespace-pre-wrap text-sm text-foreground">
 										<ChatMessageRichText
 											body={m.text ?? ""}
-											expenseId={null}
 											onJumpToLine={() => {}}
-											onOpenLegacyReviewLink={onOpenLegacyReviewLink}
-											spaceId={selectedSpaceId}
 										/>
 									</div>
 								</div>
@@ -405,10 +390,7 @@ export const NativeChatMessageList = ({
 								<div className="whitespace-pre-wrap text-sm text-foreground">
 									<ChatMessageRichText
 										body={m.text ?? ""}
-										expenseId={null}
 										onJumpToLine={() => {}}
-										onOpenLegacyReviewLink={onOpenLegacyReviewLink}
-										spaceId={selectedSpaceId}
 									/>
 								</div>
 							)}

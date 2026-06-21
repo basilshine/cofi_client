@@ -13,22 +13,15 @@ export const authSessionStore = {
 	clear: () => {
 		accessTokenInMemory = null;
 	},
-	hydrateFromLegacyStorage: () => {
+	hydrateFromStoredBearerToken: () => {
 		if (accessTokenInMemory) return accessTokenInMemory;
-		const legacy = tokenStorage.getToken();
-		if (!legacy) return null;
-		accessTokenInMemory = legacy;
+		if (isCookieRefreshEnabled) return null;
+		const token = tokenStorage.getToken();
+		if (!token) return null;
+		accessTokenInMemory = token;
 		return accessTokenInMemory;
 	},
-};
-
-export const warnLegacyTokenStorageIfNeeded = () => {
-	if (!isCookieRefreshEnabled || import.meta.env.DEV !== true) return;
-	const hasLegacyToken =
-		localStorage.getItem("cofi_token") != null ||
-		localStorage.getItem("cofi_refresh_token") != null;
-	if (!hasLegacyToken) return;
-	console.warn(
-		"[auth] Legacy token keys detected in localStorage while VITE_AUTH_COOKIE_REFRESH=1. Migration cleanup is pending.",
-	);
+	getRequestAccessToken: () =>
+		authSessionStore.getAccessToken() ??
+		authSessionStore.hydrateFromStoredBearerToken(),
 };

@@ -7,10 +7,10 @@ const quotaFieldRows = (q: QuotaStatus) =>
 	[
 		["tenant_id", String(q.tenant_id)],
 		["plan", q.plan],
-		["limit (AI parse monthly)", String(q.limit)],
+		["limit (capture monthly)", String(q.limit)],
 		["used", String(q.used)],
 		["remaining", String(q.remaining)],
-		["ai_parse_monthly_limit", String(q.ai_parse_monthly_limit)],
+		["capture_monthly_limit", String(q.capture_monthly_limit)],
 		["max_spaces", String(q.max_spaces)],
 		["max_members", String(q.max_members)],
 		["export_enabled", String(q.export_enabled)],
@@ -69,7 +69,7 @@ export const QuotaPage = () => {
 			<div className="space-y-2">
 				<h1 className="text-xl font-semibold">Quota</h1>
 				<p className="text-sm text-muted-foreground">
-					Tenant entitlements and AI parse allowance. Optional{" "}
+					Tenant entitlements and capture allowance. Optional{" "}
 					<code className="rounded bg-muted px-1 font-mono text-xs">
 						space_id
 					</code>{" "}

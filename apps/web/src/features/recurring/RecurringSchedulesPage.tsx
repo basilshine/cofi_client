@@ -19,6 +19,7 @@ import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWork
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import { EntityIcon, EntityMicro } from "../../shared/lib/entityPresentation";
+import { captureManualRecurring } from "../../shared/lib/quickCapture";
 import { toRecurringScheduleEntity } from "../../shared/lib/recurringPresentation";
 import {
 	WorkspaceEntityCard,
@@ -276,7 +277,7 @@ export const RecurringSchedulesPage = ({
 	spaceId,
 	spaceName,
 }: {
-	spaceId?: string | number;
+	spaceId: string | number;
 	spaceName?: string | null;
 }) => {
 	useConsoleHeaderTitle("Recurring", spaceName ?? null);
@@ -320,20 +321,13 @@ export const RecurringSchedulesPage = ({
 		setIsLoading(true);
 		setErrorMessage(null);
 		try {
-			if (spaceId != null) {
-				const data = await apiClient.spaces.recurring.list(spaceId, {
-					limit: RECURRING_PAGE_SIZE,
-					offset: 0,
-				});
-				setItems(data.recurring ?? []);
-				setItemsHasMore(Boolean(data.has_more));
-				setItemsNextOffset(data.next_offset ?? null);
-			} else {
-				const data = await apiClient.finances.recurring.list();
-				setItems(data);
-				setItemsHasMore(false);
-				setItemsNextOffset(null);
-			}
+			const data = await apiClient.spaces.recurring.list(spaceId, {
+				limit: RECURRING_PAGE_SIZE,
+				offset: 0,
+			});
+			setItems(data.recurring ?? []);
+			setItemsHasMore(Boolean(data.has_more));
+			setItemsNextOffset(data.next_offset ?? null);
 		} catch (err) {
 			setItems(null);
 			setItemsHasMore(false);
@@ -349,7 +343,7 @@ export const RecurringSchedulesPage = ({
 	}, [spaceId]);
 
 	const loadMore = useCallback(async () => {
-		if (spaceId == null || itemsNextOffset == null) return;
+		if (itemsNextOffset == null) return;
 		setIsLoadingMoreItems(true);
 		setErrorMessage(null);
 		try {
@@ -412,10 +406,7 @@ export const RecurringSchedulesPage = ({
 		setSuccessMessage(null);
 		setErrorMessage(null);
 		try {
-			const updated =
-				spaceId != null
-					? await apiClient.spaces.recurring.pause(spaceId, id)
-					: await apiClient.finances.recurring.pause(id);
+			const updated = await apiClient.spaces.recurring.pause(spaceId, id);
 			upsertRecurringLocal(updated);
 			setSuccessMessage(`Paused "${name}".`);
 			await load();
@@ -435,10 +426,7 @@ export const RecurringSchedulesPage = ({
 		setSuccessMessage(null);
 		setErrorMessage(null);
 		try {
-			const updated =
-				spaceId != null
-					? await apiClient.spaces.recurring.resume(spaceId, id)
-					: await apiClient.finances.recurring.resume(id);
+			const updated = await apiClient.spaces.recurring.resume(spaceId, id);
 			upsertRecurringLocal(updated);
 			setSuccessMessage(
 				row.name?.trim()
@@ -470,11 +458,7 @@ export const RecurringSchedulesPage = ({
 		setSuccessMessage(null);
 		setErrorMessage(null);
 		try {
-			if (spaceId != null) {
-				await apiClient.spaces.recurring.remove(spaceId, id);
-			} else {
-				await apiClient.finances.recurring.remove(id);
-			}
+			await apiClient.spaces.recurring.remove(spaceId, id);
 			removeRecurringLocal(id);
 			setSuccessMessage(`Deleted "${name}".`);
 			await load();
@@ -542,10 +526,11 @@ export const RecurringSchedulesPage = ({
 				interval: editDraft.interval,
 				tag_label: editDraft.tagLabel.trim() || undefined,
 			};
-			const updated =
-				spaceId != null
-					? await apiClient.spaces.recurring.update(spaceId, id, payload)
-					: await apiClient.finances.recurring.update(id, payload);
+			const updated = await apiClient.spaces.recurring.update(
+				spaceId,
+				id,
+				payload,
+			);
 			upsertRecurringLocal(updated);
 			setEditingId(null);
 			setEditDraft(null);
@@ -590,30 +575,27 @@ export const RecurringSchedulesPage = ({
 		setSuccessMessage(null);
 		setErrorMessage(null);
 		try {
-			const payload = {
+			const preview = await captureManualRecurring(spaceId, {
 				name: trimmedName,
 				amount: createDraft.amount,
 				interval: createDraft.interval,
-				tag_label: createDraft.tagLabel.trim() || "recurring",
-				space_id:
-					spaceId != null && Number.isFinite(Number(spaceId))
-						? Number(spaceId)
-						: undefined,
-			};
-			const created =
-				spaceId != null
-					? await apiClient.spaces.recurring.create(spaceId, payload)
-					: await apiClient.finances.recurring.create(payload);
-			upsertRecurringLocal(created);
+				tagLabel: createDraft.tagLabel.trim() || "recurring",
+			});
+			const hasRecurringCandidate = preview.candidates?.some(
+				(candidate) => candidate.candidate_type === "recurring_candidate",
+			);
+			if (!preview.source_document_id || !hasRecurringCandidate) {
+				throw new Error("Recurring capture did not create a review candidate.");
+			}
 			setCreateDraft(createEmptyRecurringDraft());
 			setCreateOpen(false);
-			setSuccessMessage(`Created "${trimmedName}".`);
+			setSuccessMessage(`Added "${trimmedName}" to review.`);
 			await load();
 		} catch (err) {
 			setCreateError(
 				err instanceof Error
 					? err.message
-					: "Failed to create recurring schedule",
+					: "Failed to add recurring schedule to review",
 			);
 		} finally {
 			setCreateBusy(false);
@@ -1321,7 +1303,7 @@ export const RecurringSchedulesPage = ({
 				description={
 					spaceName
 						? `Recurring schedules in ${spaceName}. Saved schedules create future expenses; new recurring candidates stay in Captures until they are saved.`
-						: "Recurring schedules across your workspace. Saved schedules create future expenses; new recurring candidates stay in Captures until they are saved."
+						: "Recurring schedules in this Space. Saved schedules create future expenses; new recurring candidates stay in Captures until they are saved."
 				}
 				stats={
 					<>
@@ -1570,12 +1552,12 @@ export const RecurringSchedulesPage = ({
 												Cancel
 											</button>
 											<button
-												aria-label="Create recurring schedule"
+												aria-label="Add recurring schedule to review"
 												className="inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
 												disabled={createBusy}
 												type="submit"
 											>
-												{createBusy ? "Creating..." : "Create recurring"}
+												{createBusy ? "Adding..." : "Add to review"}
 											</button>
 										</div>
 									</form>
@@ -1585,7 +1567,8 @@ export const RecurringSchedulesPage = ({
 								) : null}
 								{items?.length === 0 ? (
 									<p className="text-sm text-muted-foreground">
-										No recurring schedules yet. Create one from Chat.
+										No recurring schedules yet. Add one through Capture or save
+										a recurring candidate from Review.
 									</p>
 								) : null}
 								{items &&

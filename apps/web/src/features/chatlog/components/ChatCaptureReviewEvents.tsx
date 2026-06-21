@@ -93,7 +93,7 @@ const reviewProcessSteps = (
 	},
 	{
 		detail: "Source understood",
-		label: "Parsed",
+		label: "Extracted",
 		visualKey: "reviewPacket",
 	},
 	{
@@ -165,7 +165,7 @@ export const ChatCaptureReviewEvents = ({
 					setError(
 						err instanceof Error
 							? err.message
-							: "Failed to load parsed capture review events",
+							: "Failed to load capture review events",
 					);
 				}
 			}
@@ -235,7 +235,7 @@ export const ChatCaptureReviewEvents = ({
 
 	return (
 		<section
-			aria-label="Parsed capture review events"
+			aria-label="Extracted capture review events"
 			aria-live="polite"
 			className="group mx-auto mb-[-1px] w-full max-w-[min(780px,95%)] rounded-t-2xl border border-b-0 border-[rgba(181,131,52,0.22)] bg-[rgba(255,247,229,0.96)] shadow-[0_-10px_26px_-24px_rgba(44,32,18,0.42)] transition focus-within:shadow-[0_-14px_34px_-24px_rgba(44,32,18,0.5)] hover:shadow-[0_-14px_34px_-24px_rgba(44,32,18,0.5)]"
 		>

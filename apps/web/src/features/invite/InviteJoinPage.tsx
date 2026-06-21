@@ -111,7 +111,7 @@ export const InviteJoinPage = () => {
 					window.setTimeout(() => {
 						if (!cancelled) {
 							navigate(
-								`/console/chat?spaceId=${encodeURIComponent(String(outcome.space.id))}`,
+								`/console/spaces/${encodeURIComponent(String(outcome.space.id))}/expenses`,
 								{ replace: true },
 							);
 						}
@@ -337,7 +337,7 @@ export const InviteJoinPage = () => {
 													clearPendingInviteToken();
 													if (outcome.kind === "space") {
 														navigate(
-															`/console/chat?spaceId=${encodeURIComponent(String(outcome.space.id))}`,
+															`/console/spaces/${encodeURIComponent(String(outcome.space.id))}/expenses`,
 															{ replace: true },
 														);
 													} else {

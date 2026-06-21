@@ -44,7 +44,7 @@ const normalizeRecurringLabel = (
 ): string => {
 	const fallback = ["Fiber Internet", "Netflix", "Electricity", "Broadband"];
 	const trimmed = (label ?? "").trim();
-	if (!trimmed || /\(dummy\)/i.test(trimmed)) {
+	if (!trimmed) {
 		return fallback[index % fallback.length] ?? "Shared subscription";
 	}
 	return trimmed;
@@ -98,8 +98,8 @@ const IconBell = ({ className }: { className?: string }) => (
  * household-wide rail and a single-space rail.
  *
  * Backend gaps documented for future iteration:
- * - `GET /api/v1/finances/splits/balances[?space_id=]` would replace the
- *   "Coming soon" balance line with real "Sarah owes you $X" rows.
+ * - A Space-scoped balance read model would replace the "Coming soon" balance
+ *   line with real "Sarah owes you $X" rows.
  * - `recurring_upcoming` items would benefit from an `autopay` boolean to
  *   render the "Autopay" hint in line with the design reference.
  */
@@ -144,7 +144,7 @@ export const OverviewRightRail = ({
 	const recurringHref =
 		spaceId != null
 			? `/console/spaces/${encodeURIComponent(String(spaceId))}/recurring`
-			: "/console/recurring";
+			: "/console/spaces";
 
 	const linkState = chatWorkspace ? { chatWorkspace } : undefined;
 
@@ -198,7 +198,7 @@ export const OverviewRightRail = ({
 						: "Everything is in good shape. You can still review spaces for context.",
 					ctaLabel: isSpaceOverview ? "Go to chat" : "Open spaces",
 					ctaTo: isSpaceOverview
-						? `/console/chat?spaceId=${encodeURIComponent(String(spaceId))}`
+						? `/console/spaces/${encodeURIComponent(String(spaceId))}/chat`
 						: "/console/spaces",
 				};
 	const attentionItemsFiltered = isSpaceOverview

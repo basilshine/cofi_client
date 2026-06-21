@@ -1,5 +1,5 @@
 import { type ReactNode, Suspense, lazy } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AuthEntryPage } from "../../features/auth/AuthEntryPage";
 import { LoginPage } from "../../features/auth/LoginPage";
 import { RegisterPage } from "../../features/auth/RegisterPage";
@@ -8,7 +8,6 @@ import { OnboardingPage } from "../../features/onboarding/OnboardingPage";
 import type { SettingsSectionKey } from "../../features/settings/SettingsHubPage";
 import { AppShell } from "../layout/AppShell";
 import { ConsoleWorkspaceSplit } from "../layout/workspaceSpaces/ConsoleWorkspaceSplit";
-import { useWorkspaceSpaces } from "../layout/workspaceSpaces/WorkspaceSpacesContext";
 import { ConsoleIndexRedirect } from "./ConsoleIndexRedirect";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RequireOnboarded } from "./RequireOnboarded";
@@ -18,13 +17,6 @@ const ChatPage = lazy(() =>
 	import("../../pages/chat/ChatPage").then((module) => ({
 		default: module.ChatPage,
 	})),
-);
-const LegacyReviewRedirectPage = lazy(() =>
-	import("../../features/legacy-review-redirect/LegacyReviewRedirectPage").then(
-		(module) => ({
-			default: module.LegacyReviewRedirectPage,
-		}),
-	),
 );
 const GlobalHomePage = lazy(() =>
 	import("../../features/home/GlobalHomePage").then((module) => ({
@@ -47,11 +39,6 @@ const PaymentResolutionPage = lazy(() =>
 			default: module.PaymentResolutionPage,
 		}),
 	),
-);
-const RecurringSchedulesPage = lazy(() =>
-	import("../../features/recurring/RecurringSchedulesPage").then((module) => ({
-		default: module.RecurringSchedulesPage,
-	})),
 );
 const CeitsReviewFlowPage = lazy(() =>
 	import("../../features/review-flow/CeitsReviewFlowPage").then((module) => ({
@@ -117,45 +104,9 @@ const lazyRoute = (element: ReactNode) => (
 	<Suspense fallback={<RouteLoading />}>{element}</Suspense>
 );
 
-const ChatSectionLayout = () => <Outlet />;
 const SettingsSectionRoute = ({ section }: { section: SettingsSectionKey }) => (
 	<SettingsHubPage section={section} />
 );
-const initialLegacyTransactionsSearch =
-	typeof window !== "undefined" &&
-	window.location.pathname === "/console/transactions"
-		? window.location.search
-		: "";
-const LegacyTransactionsRoute = () => {
-	const location = useLocation();
-	const { isLoading, selectedSpaceId } = useWorkspaceSpaces();
-	const browserSearch =
-		typeof window === "undefined" ? "" : new URL(window.location.href).search;
-	const spaceIdRaw =
-		new URLSearchParams(location.search).get("spaceId") ??
-		new URLSearchParams(browserSearch).get("spaceId") ??
-		new URLSearchParams(initialLegacyTransactionsSearch).get("spaceId");
-	const spaceId =
-		spaceIdRaw != null && Number.isFinite(Number(spaceIdRaw))
-			? Number(spaceIdRaw)
-			: null;
-	const fallbackSpaceId =
-		selectedSpaceId != null && Number.isFinite(Number(selectedSpaceId))
-			? Number(selectedSpaceId)
-			: null;
-	const targetSpaceId = spaceId ?? fallbackSpaceId;
-	if (targetSpaceId == null && isLoading) return <RouteLoading />;
-	return (
-		<Navigate
-			replace
-			to={
-				targetSpaceId != null
-					? `/console/spaces/${encodeURIComponent(String(targetSpaceId))}/expenses`
-					: "/console/spaces"
-			}
-		/>
-	);
-};
 
 export const AppRouter = () => {
 	return (
@@ -203,6 +154,10 @@ export const AppRouter = () => {
 								path="spaces/:spaceId/expenses"
 							/>
 							<Route
+								element={lazyRoute(<ChatPage />)}
+								path="spaces/:spaceId/chat"
+							/>
+							<Route
 								element={lazyRoute(<SpaceSplitsWorkspacePage />)}
 								path="spaces/:spaceId/splits"
 							/>
@@ -227,22 +182,6 @@ export const AppRouter = () => {
 								element={lazyRoute(<CeitsReviewFlowPage />)}
 								path="review"
 							/>
-							<Route
-								element={<LegacyTransactionsRoute />}
-								path="transactions"
-							/>
-							<Route
-								element={lazyRoute(<RecurringSchedulesPage />)}
-								path="recurring"
-							/>
-							<Route element={<ChatSectionLayout />} path="chat">
-								<Route element={lazyRoute(<ChatPage />)} index />
-								<Route element={lazyRoute(<ChatPage />)} path="expenses" />
-								<Route
-									element={lazyRoute(<LegacyReviewRedirectPage />)}
-									path="thread"
-								/>
-							</Route>
 							<Route element={lazyRoute(<QuotaPage />)} path="quota" />
 							<Route
 								element={<Navigate replace to="/console/settings/account" />}

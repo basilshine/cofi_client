@@ -27,16 +27,16 @@ const mergeVendorRows = (
 
 export type VendorComboboxProps = {
 	spaceId: string | number;
-	/** Vendors returned from `GET /finances/vendors?space_id=` */
+	/** Vendors returned from the current Space vendor catalog. */
 	vendors: Vendor[];
 	/** Current expense’s vendor — merged into options so the selection is never missing from the list. */
 	resolvedVendor: Vendor | null;
 	selectedVendorId: number | null;
 	onSelectedVendorIdChange: (id: number | null) => void;
-	/** Create tenant vendor for this space (same as finances API). */
+	/** Create a tenant vendor through the Space-scoped API. */
 	onVendorCreated: (v: Vendor) => void;
 	disabled?: boolean;
-	/** Increment when the edit dialog opens so the field re-syncs from the draft. */
+	/** Increment when the edit dialog opens so the field re-syncs from form state. */
 	syncToken: string | number;
 };
 
@@ -118,10 +118,7 @@ export const VendorCombobox = ({
 		if (!name || spaceId == null) return;
 		setCreateBusy(true);
 		try {
-			const v = await apiClient.finances.vendors.create({
-				name,
-				space_id: Number(spaceId),
-			});
+			const v = await apiClient.spaces.vendors.create(spaceId, { name });
 			onVendorCreated(v);
 			handlePickVendor(v);
 		} catch {

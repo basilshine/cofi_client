@@ -12,7 +12,7 @@ export const participantTypeLabel = (value?: string | null): string => {
 
 export const participantStatusLabel = (value?: string | null): string => {
 	const normalized = value?.trim().toLowerCase() ?? "";
-	if (!normalized) return "Draft";
+	if (!normalized) return "Participant";
 	return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 };
 

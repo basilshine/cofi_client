@@ -17,7 +17,7 @@ export type UserTaxPreferences = {
 };
 
 export type UserAppearancePreferences = {
-	theme?: "legacy-technical" | "ceits-editorial";
+	theme?: "ceits-editorial";
 };
 
 /** Ceits web onboarding + first-chat hints stored under `userPreferences.ceits`. */
@@ -87,7 +87,7 @@ export type Space = {
 	/** Set on list responses: display label for `owner_user_id`. */
 	owner_display_name?: string;
 	created_at?: string;
-	/** Latest activity: chat, capture/review work, expense changes, or compatibility thread updates (ISO 8601). */
+	/** Latest activity: chat, capture/review work, or expense changes (ISO 8601). */
 	last_activity_at?: string;
 	/** Space-specific UI and behavior preferences. */
 	settings?: {
@@ -362,7 +362,6 @@ export type SpaceInviteSuggestionsResponse = {
 };
 
 export type PromoCodeStatus =
-	| "draft"
 	| "active"
 	| "used"
 	| "ignored"
@@ -456,40 +455,6 @@ export type SearchResponse = {
 	results: SearchResult[];
 };
 
-export type BenefitCandidateType =
-	| "promo_code_candidate"
-	| "loyalty_event_candidate";
-
-export type BenefitCandidateStatus =
-	| "draft"
-	| "confirmed"
-	| "ignored"
-	| "merged"
-	| "projected"
-	| "expired";
-
-export type BenefitCandidate = {
-	id: number;
-	tenant_id: number;
-	source_document_id: number;
-	candidate_type: BenefitCandidateType | string;
-	title: string;
-	structured_data?: Record<string, unknown>;
-	confidence: number;
-	status: BenefitCandidateStatus | string;
-	created_at: string;
-	resolved_at?: string | null;
-	source_type: string;
-	input_kind: string;
-	document_type: string;
-	merchant_text?: string;
-	document_date?: string | null;
-};
-
-export type BenefitCandidateListResponse = {
-	candidates: BenefitCandidate[];
-};
-
 export type CaptureCandidateCounts = {
 	expenses: number;
 	expense_items: number;
@@ -512,7 +477,7 @@ export type CaptureExpenseRecord = {
 	description?: string;
 	status: string;
 	currency: string;
-	txn_date: string;
+	expense_date: string;
 	total_amount: number;
 	created_by_user_id: number;
 	items?: CaptureExpenseItemRecord[];
@@ -617,7 +582,7 @@ export type CapturePacketListResponse = {
 };
 
 export type SpaceExpenseListResponse = {
-	expenses: Transaction[];
+	expenses: ExpenseRecord[];
 	limit?: number;
 	offset?: number;
 	has_more?: boolean;
@@ -625,7 +590,7 @@ export type SpaceExpenseListResponse = {
 };
 
 export type SpaceSplitDecision = {
-	expense: Transaction;
+	expense: ExpenseRecord;
 	splits: ExpenseSplitRow[];
 	source_document_id?: number | null;
 };
@@ -649,10 +614,17 @@ export type DocumentCandidateType =
 	| "membership_candidate"
 	| "reminder_candidate"
 	| "merge_candidate"
-	| "space_suggestion_candidate"
 	| "supporting_document_candidate"
 	| "split_candidate"
 	| "participant_placeholder_candidate";
+
+export type DocumentCandidateStatus =
+	| "pending_review"
+	| "confirmed"
+	| "ignored"
+	| "merged"
+	| "projected"
+	| "expired";
 
 export type DocumentCandidate = {
 	id: number;
@@ -663,7 +635,7 @@ export type DocumentCandidate = {
 	title: string;
 	structured_data?: Record<string, unknown>;
 	confidence: number;
-	status: BenefitCandidateStatus | string;
+	status: DocumentCandidateStatus | string;
 	created_at: string;
 	resolved_at?: string | null;
 	source_type: string;
@@ -710,34 +682,9 @@ export type ApplySplitCandidateResponse = {
 	candidate: DocumentCandidateState;
 };
 
-export type BenefitCandidateState = {
-	id: number;
-	status: string;
-};
-
-export type SaveBenefitCandidatePromoResponse = {
+export type SavePromoCandidateResponse = {
 	promo: PromoCode;
-	candidate: BenefitCandidateState;
-};
-
-export type CreatePromoCodeRequest = {
-	title?: string;
-	promo_code?: string;
-	description?: string;
-	source_type?: string;
-	source_merchant_name?: string;
-	redeem_merchant_name?: string;
-	redeem_platform?: string;
-	discount_type?: PromoDiscountType | string;
-	discount_value?: number;
-	minimum_order_amount?: number;
-	currency?: string;
-	valid_from?: string;
-	valid_until?: string;
-	conditions_text?: string;
-	source_text?: string;
-	status?: PromoCodeStatus | string;
-	reminder_at?: string;
+	candidate: DocumentCandidateState;
 };
 
 export type PatchPromoCodeRequest = {
@@ -787,7 +734,7 @@ export type SpaceInviteCreateResponse = {
 	expires_at: string;
 };
 
-export type TransactionItem = {
+export type ExpenseRecordItem = {
 	amount: number;
 	name: string;
 	emotion?: string;
@@ -797,13 +744,13 @@ export type TransactionItem = {
 	expense_date?: string;
 };
 
-/** Optional business fields on a transaction (mirrors expense `business_meta`). */
-export type TransactionBusinessMeta = {
+/** Optional business fields on an expense record (mirrors expense `business_meta`). */
+export type ExpenseRecordBusinessMeta = {
 	invoice_ref?: string;
 	notes?: string;
 };
 
-export type Transaction = {
+export type ExpenseRecord = {
 	id: string | number;
 	space_id: string | number;
 	/** Expense owner; used for Mine / Others filters in shared spaces. */
@@ -817,8 +764,8 @@ export type Transaction = {
 	payee_text?: string;
 	currency?: string;
 	/** Calendar date of the expense (YYYY-MM-DD). */
-	txn_date?: string;
-	items: TransactionItem[];
+	expense_date?: string;
+	items: ExpenseRecordItem[];
 	total: number;
 	created_at?: string;
 	/** Capture/source document that created this expense record, when available. */
@@ -829,10 +776,10 @@ export type Transaction = {
 	recurring_paused?: boolean;
 	vendor_id?: number;
 	vendor_name?: string;
-	business_meta?: TransactionBusinessMeta;
+	business_meta?: ExpenseRecordBusinessMeta;
 };
 
-/** Tenant-scoped vendor (`GET/POST /api/v1/finances/vendors`). */
+/** Tenant-scoped vendor managed through a Space vendor catalog. */
 export type Vendor = {
 	id: number;
 	tenant_id: number;
@@ -851,7 +798,7 @@ export type ExpenseBusinessMeta = {
 	extra?: Record<string, unknown>;
 };
 
-/** `GET /api/v1/finances/expenses/:id` — line items may include tag objects. */
+/** `GET /api/v1/spaces/:spaceId/expenses/:expenseId` — line items may include tag objects. */
 export type ExpenseDetail = {
 	id: number;
 	/** Present on space-scoped expense responses; expense owner id. */
@@ -862,7 +809,7 @@ export type ExpenseDetail = {
 	payee_text?: string;
 	currency?: string;
 	/** Calendar date of the expense (YYYY-MM-DD). */
-	txn_date?: string;
+	expense_date?: string;
 	description?: string;
 	status?: string;
 	created_at?: string;
@@ -886,7 +833,7 @@ export type ExpenseDetail = {
 };
 
 /**
- * PUT `/api/v1/finances/expenses/:id` — send only fields to change.
+ * PUT `/api/v1/spaces/:spaceId/expenses/:expenseId` — send only fields to change.
  * Omitted keys are left unchanged on the server. Omit `items` to leave line items unchanged;
  * send `items` (including `[]`) to replace all lines.
  */
@@ -896,7 +843,7 @@ export type ExpensePatch = {
 	payee_text?: string;
 	currency?: string;
 	/** YYYY-MM-DD. Empty string resets the server to today’s UTC calendar date. */
-	txn_date?: string;
+	expense_date?: string;
 	/** Omit to leave unchanged. Saved records can be marked approved or cancelled. */
 	status?: string;
 	vendor_id?: number;
@@ -939,7 +886,6 @@ export type ChatMessage = {
 		| (string & {});
 	text: string;
 	telegram_message_id?: number;
-	related_transaction_id?: string | number;
 	related_expense_id?: string | number;
 	/** From list messages: expense status for the viewer, `gone` if deleted, `inaccessible` if owned by someone else. */
 	related_expense_status?: string;
@@ -963,30 +909,30 @@ export type QuotaStatus = {
 	max_members: number;
 	export_enabled: boolean;
 	audit_enabled: boolean;
-	ai_parse_monthly_limit: number;
+	capture_monthly_limit: number;
 	capabilities?: CapabilitySummary;
 };
 
-export type ParserProfileCapability = {
+export type CaptureProfileCapability = {
 	profile: "basic" | "smart" | "deep" | (string & {});
 	cost_class: "low" | "medium" | "high" | (string & {});
 	quota_units: number;
 };
 
-export type ParserCapabilities = {
+export type CaptureCapabilities = {
 	max_profile: "basic" | "smart" | "deep" | (string & {});
 	deep_allowed: boolean;
-	text: ParserProfileCapability;
-	image: ParserProfileCapability;
-	voice: ParserProfileCapability;
-	deep_request: ParserProfileCapability;
+	text: CaptureProfileCapability;
+	image: CaptureProfileCapability;
+	voice: CaptureProfileCapability;
+	deep_request: CaptureProfileCapability;
 	deep_request_downgraded_to?: string;
 	deep_request_reason?: string;
 };
 
 export type CapabilitySummary = {
 	plan: "basic" | "medium" | "premium" | (string & {});
-	parser: ParserCapabilities;
+	capture: CaptureCapabilities;
 	features: Record<string, boolean>;
 };
 

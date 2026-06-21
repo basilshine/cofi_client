@@ -47,8 +47,6 @@ export type ChatSpacesSidebarProps = {
 	acceptInviteToken: string;
 	onAcceptInviteTokenChange: (v: string) => void;
 	onAcceptInvite: () => void;
-	onHardPurgeAllMessages: () => void;
-	hardPurgeFeedback: string | null;
 	/** Bumps invite-suggestions refetch after creating an invite. */
 	inviteSuggestionsNonce: number;
 	/** Bumps incoming-invites refetch (e.g. after loading spaces). */
@@ -116,8 +114,6 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 		onAcceptInviteTokenChange,
 		onAcceptInvite,
 		onAcceptInviteToken,
-		onHardPurgeAllMessages,
-		hardPurgeFeedback,
 		inviteSuggestionsNonce,
 		incomingInvitesRefreshKey,
 		hideSpaceList = false,
@@ -145,7 +141,6 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 			canManageMemberRoles={canManageMemberRoles}
 			clearMemberRoleError={onClearMemberRoleError}
 			currentUserId={currentUserId}
-			hardPurgeFeedback={hardPurgeFeedback}
 			handleAcceptInvite={async (tokenOverride?: string) => {
 				if (tokenOverride != null) await onAcceptInviteToken(tokenOverride);
 				else onAcceptInvite();
@@ -155,9 +150,6 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 			}}
 			handleCreateTenantInvite={async () => {
 				await Promise.resolve(onCreateTenantInvite());
-			}}
-			handleHardPurgeAllMessages={async () => {
-				await Promise.resolve(onHardPurgeAllMessages());
 			}}
 			handlePatchMemberRole={onPatchMemberRole}
 			handleRefreshSpaces={async () => {

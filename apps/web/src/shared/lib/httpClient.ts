@@ -21,10 +21,7 @@ const refreshHttp = axios.create({
 });
 
 httpClient.interceptors.request.use((config) => {
-	const token =
-		authSessionStore.getAccessToken() ??
-		authSessionStore.hydrateFromLegacyStorage() ??
-		tokenStorage.getToken();
+	const token = authSessionStore.getRequestAccessToken();
 	if (token) config.headers.Authorization = `Bearer ${token}`;
 	return config;
 });
@@ -60,11 +57,12 @@ httpClient.interceptors.response.use(
 				isCookieRefreshEnabled ? { withCredentials: true } : undefined,
 			);
 			authSessionStore.setAccessToken(data.token);
-			tokenStorage.setToken(data.token);
 			const nextRt = data.refreshToken ?? data.refresh_token ?? null;
 			if (isCookieRefreshEnabled) {
+				tokenStorage.setToken(null);
 				tokenStorage.setRefreshToken(null);
 			} else {
+				tokenStorage.setToken(data.token);
 				tokenStorage.setRefreshToken(nextRt);
 			}
 			const active = tokenStorage.getActiveProfile();

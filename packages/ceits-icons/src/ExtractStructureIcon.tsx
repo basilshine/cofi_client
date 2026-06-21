@@ -1,7 +1,7 @@
 import type { CeitsIconProps } from "./types";
 import { CEITS_ICON_STROKE_WIDTH } from "./types";
 
-export const ParseStructureIcon = ({
+export const ExtractStructureIcon = ({
 	size = 24,
 	className,
 	title,

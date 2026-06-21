@@ -1,5 +1,6 @@
 import type {
 	ExpenseDetail,
+	ExpenseRecord,
 	ExpenseSplitRow,
 	PaymentLinkObligationRef,
 	PaymentLinkSummary,
@@ -7,7 +8,6 @@ import type {
 	Space,
 	SpaceMember,
 	SpaceParticipant,
-	Transaction,
 } from "@cofi/api";
 import {
 	CheckCircle2,
@@ -105,7 +105,13 @@ const formatRelative = (iso?: string): string => {
 
 const normalizeSourceStatus = (raw?: string | null): string => {
 	const value = (raw ?? "").toLowerCase();
-	if (value.includes("draft")) return "needs_review";
+	if (
+		value.includes("pending") ||
+		value.includes("review") ||
+		value.includes("question")
+	) {
+		return "pending_review";
+	}
 	if (value.includes("cancel")) return "cancelled";
 	if (value.includes("approved") || value.includes("confirm"))
 		return "approved";
@@ -123,7 +129,7 @@ const toSplitStateLabel = (
 	statusLabel: "Needs confirmation" | "Split saved",
 ): "Needs confirmation" | "Split saved" | "Cancelled" => {
 	if (sourceStatus === "cancelled") return "Cancelled";
-	if (sourceStatus === "needs_review") return "Needs confirmation";
+	if (sourceStatus === "pending_review") return "Needs confirmation";
 	if (statusLabel === "Needs confirmation") return "Needs confirmation";
 	return "Split saved";
 };
@@ -150,7 +156,7 @@ const formatShortDate = (value?: string): string => {
 
 const humanizeSourceStatusLabel = (raw: string): string => {
 	const v = raw.toLowerCase();
-	if (v === "needs_review") return "Needs review";
+	if (v === "pending_review") return "Needs review";
 	if (v === "cancelled" || v === "canceled") return "Cancelled";
 	if (v === "approved") return "Approved";
 	if (!v || v === "unknown") return "Recorded";
@@ -221,7 +227,7 @@ const buildSplitRowContextLine = (
 	}
 	if (
 		mappedStatus === "Needs confirmation" ||
-		sourceStatus === "needs_review"
+		sourceStatus === "pending_review"
 	) {
 		return "Split needs confirmation";
 	}
@@ -247,7 +253,7 @@ type HumanTitleInput = {
 	sourceStatus: string;
 	mappedStatus: SplitDecisionRow["statusLabel"];
 	detail?: ExpenseDetail;
-	transaction?: Transaction;
+	expenseRecord?: ExpenseRecord;
 };
 
 const toHumanSplitTitle = ({
@@ -256,21 +262,21 @@ const toHumanSplitTitle = ({
 	sourceStatus,
 	mappedStatus,
 	detail,
-	transaction,
+	expenseRecord,
 }: HumanTitleInput): string => {
 	const raw = rawTitle.trim();
 	const cat = categoryTag.toLowerCase();
 	const blob =
-		`${raw} ${detail?.description ?? ""} ${transaction?.description ?? ""}`.toLowerCase();
+		`${raw} ${detail?.description ?? ""} ${expenseRecord?.description ?? ""}`.toLowerCase();
 
 	const isBareExpenseHash = /^expense\s*#?\d*$/i.test(raw);
 	const isExpenseDotGeneric =
 		/^expense\s*·\s*(receipt|recurring|uncategorized)\s*$/i.test(raw);
 
-	const recurringId = detail?.recurring_id ?? transaction?.recurring_id;
+	const recurringId = detail?.recurring_id ?? expenseRecord?.recurring_id;
 	const vendorName =
 		detail?.vendor?.name?.trim() ||
-		transaction?.vendor_name?.trim() ||
+		expenseRecord?.vendor_name?.trim() ||
 		detail?.payee_text?.trim();
 
 	if (recurringId != null) {
@@ -283,16 +289,16 @@ const toHumanSplitTitle = ({
 	if (cat.includes("grocery") || cat.includes("groceries")) {
 		if (
 			mappedStatus === "Needs confirmation" ||
-			sourceStatus === "needs_review"
+			sourceStatus === "pending_review"
 		)
 			return "Receipt needs review";
 		return "Grocery receipt";
 	}
 
-	if (cat.includes("receipt") || sourceStatus === "needs_review") {
+	if (cat.includes("receipt") || sourceStatus === "pending_review") {
 		if (
 			mappedStatus === "Needs confirmation" ||
-			sourceStatus === "needs_review"
+			sourceStatus === "pending_review"
 		)
 			return "Receipt needs review";
 		return "Receipt capture";
@@ -320,7 +326,7 @@ const toHumanSplitTitle = ({
 	}
 
 	if (
-		sourceStatus !== "needs_review" &&
+		sourceStatus !== "pending_review" &&
 		sourceStatus !== "cancelled" &&
 		mappedStatus !== "Needs confirmation"
 	) {
@@ -329,7 +335,7 @@ const toHumanSplitTitle = ({
 
 	if (
 		mappedStatus === "Needs confirmation" ||
-		sourceStatus === "needs_review"
+		sourceStatus === "pending_review"
 	) {
 		return "Expense candidate";
 	}
@@ -344,7 +350,7 @@ export const SpaceSplitsWorkspacePage = () => {
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
-	const [transactions, setTransactions] = useState<Transaction[]>([]);
+	const [expenseRecords, setExpenseRecords] = useState<ExpenseRecord[]>([]);
 	const [expenseDetails, setExpenseDetails] = useState<
 		Record<number, ExpenseDetail>
 	>({});
@@ -449,7 +455,7 @@ export const SpaceSplitsWorkspacePage = () => {
 				if (!cancelled) {
 					setMembers(membersRes?.members ?? []);
 					setParticipants(participantsRes?.participants ?? []);
-					setTransactions(expenseRows);
+					setExpenseRecords(expenseRows);
 					setPaymentLinks(paymentLinksRes.links ?? []);
 					setSplitRows(splitMap);
 					setExpenseDetails({});
@@ -503,9 +509,9 @@ export const SpaceSplitsWorkspacePage = () => {
 				},
 			);
 			const decisions = response.decisions ?? [];
-			setTransactions((current) => {
+			setExpenseRecords((current) => {
 				const seen = new Set(
-					current.map((transaction) => toNumericId(transaction.id)),
+					current.map((expenseRecord) => toNumericId(expenseRecord.id)),
 				);
 				const next = [...current];
 				for (const decision of decisions) {
@@ -544,10 +550,13 @@ export const SpaceSplitsWorkspacePage = () => {
 	}
 
 	const sidStr = String(numericSpaceId);
-	const transactionByExpenseId = new Map<number, Transaction>(
-		transactions
-			.map((transaction) => [toNumericId(transaction.id), transaction] as const)
-			.filter((entry): entry is [number, Transaction] => entry[0] != null),
+	const expenseRecordByExpenseId = new Map<number, ExpenseRecord>(
+		expenseRecords
+			.map(
+				(expenseRecord) =>
+					[toNumericId(expenseRecord.id), expenseRecord] as const,
+			)
+			.filter((entry): entry is [number, ExpenseRecord] => entry[0] != null),
 	);
 	const currentUserParticipantIds = new Set(
 		participants
@@ -629,20 +638,20 @@ export const SpaceSplitsWorkspacePage = () => {
 		new Set([
 			...Object.keys(splitRows).map((id) => Number(id)),
 			...Object.keys(expenseDetails).map((id) => Number(id)),
-			...Array.from(transactionByExpenseId.keys()),
+			...Array.from(expenseRecordByExpenseId.keys()),
 		]),
 	).filter((id) => Number.isFinite(id));
 
 	const splitDecisionRecords: SplitDecisionRecord[] = coverageIds.flatMap(
 		(expenseId) => {
-			const transaction = transactionByExpenseId.get(expenseId);
+			const expenseRecord = expenseRecordByExpenseId.get(expenseId);
 			const rows = splitRows[expenseId] ?? [];
 			const detail = expenseDetails[expenseId];
 			const sourceDocumentId =
 				rows.find((row) => row.source_document_id != null)
 					?.source_document_id ??
 				detail?.source_document_id ??
-				transaction?.source_document_id;
+				expenseRecord?.source_document_id;
 			const statusLabel = rows.length > 0 ? "Split saved" : "Missing splits";
 			if (statusLabel === "Missing splits") return [];
 
@@ -668,20 +677,20 @@ export const SpaceSplitsWorkspacePage = () => {
 						!splitRowBelongsToUser(row, user?.id, currentUserParticipantIds),
 				)
 				.reduce((sum, row) => sum + row.amount, 0);
-			const total = detail?.amount ?? transaction?.total ?? 0;
+			const total = detail?.amount ?? expenseRecord?.total ?? 0;
 			const rawTitle =
 				detail?.title?.trim() ||
-				transaction?.title?.trim() ||
+				expenseRecord?.title?.trim() ||
 				detail?.payee_text?.trim() ||
-				transaction?.description?.trim() ||
+				expenseRecord?.description?.trim() ||
 				`Expense #${expenseId}`;
 			const sourceStatus = normalizeSourceStatus(
-				detail?.status || transaction?.status || undefined,
+				detail?.status || expenseRecord?.status || undefined,
 			);
 			const dateLabel =
-				detail?.txn_date ||
-				transaction?.txn_date ||
-				formatRelative(transaction?.created_at);
+				detail?.expense_date ||
+				expenseRecord?.expense_date ||
+				formatRelative(expenseRecord?.created_at);
 			const splitMethod =
 				rows.length <= 1
 					? "Text capture"
@@ -690,9 +699,9 @@ export const SpaceSplitsWorkspacePage = () => {
 						: "Custom";
 			const categoryTag =
 				detail?.items?.[0]?.tags?.[0]?.name ||
-				transaction?.items?.[0]?.tags?.[0] ||
+				expenseRecord?.items?.[0]?.tags?.[0] ||
 				detail?.business_meta?.invoice_ref ||
-				transaction?.business_meta?.invoice_ref ||
+				expenseRecord?.business_meta?.invoice_ref ||
 				"Uncategorized";
 			const displayCategory = toDisplayCategory(categoryTag);
 			const mappedStatusLabel = toSplitStateLabel(sourceStatus, statusLabel);
@@ -702,20 +711,20 @@ export const SpaceSplitsWorkspacePage = () => {
 				sourceStatus,
 				mappedStatus: mappedStatusLabel,
 				detail,
-				transaction,
+				expenseRecord,
 			});
 			const dateForDisplay =
-				detail?.txn_date ||
-				transaction?.txn_date ||
-				(transaction?.created_at
-					? String(transaction.created_at).slice(0, 10)
+				detail?.expense_date ||
+				expenseRecord?.expense_date ||
+				(expenseRecord?.created_at
+					? String(expenseRecord.created_at).slice(0, 10)
 					: undefined) ||
 				(detail?.created_at
 					? String(detail.created_at).slice(0, 10)
 					: undefined);
 			const dateDisplayLabel = dateForDisplay
 				? formatShortDate(dateForDisplay)
-				: formatRelative(transaction?.created_at);
+				: formatRelative(expenseRecord?.created_at);
 			const contextLine = buildSplitRowContextLine(
 				mappedStatusLabel,
 				sourceStatus,

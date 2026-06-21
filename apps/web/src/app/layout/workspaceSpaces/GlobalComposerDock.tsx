@@ -26,18 +26,16 @@ import {
 import { apiClient } from "../../../shared/lib/apiClient";
 import { composerCandidateVisual } from "../../../shared/lib/entityVisual";
 import {
-	parseCaptureIntentText,
-	parseCapturePhoto,
-	parseCaptureText,
-	parseCaptureVoice,
-} from "../../../shared/lib/quickCaptureTransactions";
+	capturePhoto,
+	captureText,
+	captureVoice,
+} from "../../../shared/lib/quickCapture";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 import {
 	type GlobalComposerCandidateBundle,
 	type GlobalComposerCandidateKind,
 	type GlobalComposerCandidateSummary,
-	summarizeCaptureIntentPreview,
-	summarizeCapturePreview,
+	summarizeCaptureResponse,
 } from "./globalComposerFlow";
 import { readGlobalComposerIntent } from "./globalComposerIntent";
 import {
@@ -105,7 +103,6 @@ const candidateOnlyStatus = (
 			"privacy",
 			"merge",
 			"supporting_document",
-			"space_suggestion",
 		])
 	) {
 		return `Document signal found in ${spaceName}; review before saving records.`;
@@ -114,9 +111,9 @@ const candidateOnlyStatus = (
 		return `Capture ready for review in ${spaceName}`;
 	}
 	if (bundle.capabilityNotice) {
-		return `Basic parse finished in ${spaceName}; smart candidates are gated by plan.`;
+		return `Basic capture finished in ${spaceName}; smart candidates are gated by plan.`;
 	}
-	return "Ceits parsed the input, but needs clearer expense details before creating a candidate.";
+	return "Ceits captured the input, but needs clearer expense details before creating a candidate.";
 };
 
 const withReviewParams = (
@@ -213,8 +210,8 @@ const buildComposerFlowItems = (
 			icon: inputKindIcon(bundle),
 		},
 		{
-			key: "parse",
-			title: "Parse",
+			key: "extract",
+			title: "Extract",
 			detail: bundle.modelProfile
 				? `${bundle.modelProfile} model`
 				: "Structure detected",
@@ -281,7 +278,6 @@ const candidateActionText = (
 	if (kind === "merge") return "Possible duplicate or merge signal detected";
 	if (kind === "supporting_document")
 		return "Supporting document signal detected";
-	if (kind === "space_suggestion") return "Target space suggestion detected";
 	return `${prefix} detected`;
 };
 
@@ -300,7 +296,6 @@ const composerCandidateKindFromServerType = (
 	if (candidateType === "split_candidate") return "split";
 	if (candidateType === "participant_placeholder_candidate")
 		return "participant";
-	if (candidateType === "space_suggestion_candidate") return "space_suggestion";
 	if (candidateType === "merge_candidate") return "merge";
 	if (candidateType === "supporting_document_candidate") {
 		return "supporting_document";
@@ -314,7 +309,6 @@ const composerCandidateLabel = (
 ): string => {
 	if (kind === "expense_item") return count === 1 ? "item" : "items";
 	if (kind === "payment_proof") return "payment proof";
-	if (kind === "space_suggestion") return "space suggestion";
 	if (kind === "supporting_document") return "supporting document";
 	if (kind === "participant") return count === 1 ? "person" : "people";
 	return kind.replace(/_/g, " ");
@@ -581,7 +575,7 @@ const DockReviewDrawer = ({
 			title: "Items",
 			description: "Products or service lines extracted from the capture.",
 			addLabel: "Add item",
-			foundLabel: "Parsed items",
+			foundLabel: "Extracted items",
 			kinds: ["expense_item"],
 			reviewSection: "expenses",
 		},
@@ -1029,7 +1023,7 @@ export const GlobalComposerDock = ({
 	const activeSpaceChatHref =
 		activeSpaceId == null
 			? "/console/settings/spaces"
-			: `/console/chat?spaceId=${encodeURIComponent(String(activeSpaceId))}`;
+			: `/console/spaces/${encodeURIComponent(String(activeSpaceId))}/chat`;
 	const activeSpaceBenefitsHref =
 		activeSpaceId == null
 			? "/console/settings/spaces"
@@ -1077,12 +1071,12 @@ export const GlobalComposerDock = ({
 					if (payload.expense_input_type === "text") {
 						beginDetecting("text");
 						const text = payload.content.trim();
-						const parsed = await parseCaptureText(text, {
+						const response = await captureText(text, {
 							spaceId: activeSpaceId,
 						});
 						const bundle = await hydrateBundleFromCapturePacket(
 							activeSpaceId,
-							summarizeCapturePreview(parsed, {
+							summarizeCaptureResponse(response, {
 								fallbackIntent: "expense",
 								inputKind: "text",
 								spaceId: activeSpaceId,
@@ -1092,12 +1086,12 @@ export const GlobalComposerDock = ({
 						showTransientStatus(candidateOnlyStatus(bundle, activeSpaceName));
 					} else if (payload.expense_input_type === "photo") {
 						beginDetecting("photo");
-						const parsed = await parseCapturePhoto(payload.file, {
+						const response = await capturePhoto(payload.file, {
 							spaceId: activeSpaceId,
 						});
 						const bundle = await hydrateBundleFromCapturePacket(
 							activeSpaceId,
-							summarizeCapturePreview(parsed, {
+							summarizeCaptureResponse(response, {
 								fallbackIntent: "expense",
 								inputKind: "photo",
 								spaceId: activeSpaceId,
@@ -1116,12 +1110,12 @@ export const GlobalComposerDock = ({
 				if (!text) return;
 				setClarificationDraftText(null);
 				beginDetecting(payload.composer_mode === "message" ? "message" : "ask");
-				const intentPreview = await parseCaptureIntentText(text, {
+				const response = await captureText(text, {
 					spaceId: activeSpaceId,
 				});
 				const bundle = await hydrateBundleFromCapturePacket(
 					activeSpaceId,
-					summarizeCaptureIntentPreview(intentPreview, {
+					summarizeCaptureResponse(response, {
 						fallbackIntent: payload.composer_mode,
 						inputKind: payload.composer_mode === "message" ? "message" : "ask",
 						spaceId: activeSpaceId,
@@ -1138,18 +1132,16 @@ export const GlobalComposerDock = ({
 					return;
 				}
 				if (
-					intentPreview.next_action === "open_chat" ||
-					intentPreview.intent === "chat_message"
+					payload.composer_mode === "message" ||
+					bundle.intent === "chat_message"
 				) {
 					setClarificationDraftText(text);
 					complete(`Open chat to send this in ${activeSpaceName}`);
 					showTransientStatus(`Open chat to send this in ${activeSpaceName}`);
 					return;
 				}
-				complete(`Ceits understood this as ${intentPreview.intent}.`);
-				showTransientStatus(
-					`Ceits understood this as ${intentPreview.intent}.`,
-				);
+				complete(`Ceits understood this as ${bundle.intent}.`);
+				showTransientStatus(`Ceits understood this as ${bundle.intent}.`);
 			} catch (error) {
 				const message =
 					error instanceof Error ? error.message : "Composer failed";
@@ -1224,14 +1216,14 @@ export const GlobalComposerDock = ({
 		setErrorText(null);
 		try {
 			beginDetecting("voice");
-			const parsed = await parseCaptureVoice(
+			const response = await captureVoice(
 				blob,
 				recorder.mimeType || "audio/webm",
 				{ spaceId: activeSpaceId },
 			);
 			const bundle = await hydrateBundleFromCapturePacket(
 				activeSpaceId,
-				summarizeCapturePreview(parsed, {
+				summarizeCaptureResponse(response, {
 					fallbackIntent: "expense",
 					inputKind: "voice",
 					spaceId: activeSpaceId,
@@ -1241,7 +1233,7 @@ export const GlobalComposerDock = ({
 			showTransientStatus(candidateOnlyStatus(bundle, activeSpaceName));
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "Failed to parse voice";
+				error instanceof Error ? error.message : "Failed to capture voice";
 			fail(message);
 			setErrorText(message);
 		} finally {

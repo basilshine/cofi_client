@@ -122,7 +122,7 @@ const dashboardOutcomeStatus = (action?: string | null): string => {
 			return "Benefit record";
 		case "participant_created":
 			return "Participant record";
-		case "expense_splits_updated":
+		case "expense_participant_splits_updated":
 			return "Split records";
 		case "recurring_created":
 			return "Recurring rule";
@@ -165,7 +165,6 @@ const normalizeLabel = (
 ): string => {
 	const trimmed = (value ?? "").trim();
 	if (!trimmed) return fallback;
-	if (/\(dummy\)/i.test(trimmed)) return fallback;
 	return trimmed;
 };
 
@@ -183,7 +182,7 @@ const buildReviewHref = (
 	return `/console/review?${params.toString()}`;
 };
 
-const transactionLabelFallbacks = [
+const expenseLabelFallbacks = [
 	"Grocery run",
 	"Home Depot",
 	"Whole Foods",
@@ -271,7 +270,7 @@ export const GlobalHomePage = () => {
 	}, [workspaceScope, dashboardData?.context?.tenant_id]);
 
 	const monthly = dashboardData?.monthly_snapshot ?? null;
-	const recentTx = dashboardData?.recent_transactions ?? [];
+	const recentExpenses = dashboardData?.recent_expenses ?? [];
 	const recurringUpcoming = dashboardData?.recurring_upcoming ?? [];
 	const spendOverview = dashboardData?.spend_overview;
 	const dashboardActivity = dashboardData?.recent_activity?.items ?? [];
@@ -299,8 +298,8 @@ export const GlobalHomePage = () => {
 	}, [recurringUpcoming]);
 
 	const newExpenseRecordsContextLine = useMemo(() => {
-		const todayCount = recentTx.filter((t) => {
-			const d = new Date(t.occurred_at);
+		const todayCount = recentExpenses.filter((expense) => {
+			const d = new Date(expense.occurred_at);
 			return (
 				Number.isFinite(d.getTime()) &&
 				d.toDateString() === new Date().toDateString()
@@ -311,15 +310,15 @@ export const GlobalHomePage = () => {
 			return `+${todayCount} today`;
 		}
 
-		const fallback = recentTx[0]?.label
-			? `Mostly ${normalizeLabel(recentTx[0].label, "groceries").toLowerCase()} this week`
+		const fallback = recentExpenses[0]?.label
+			? `Mostly ${normalizeLabel(recentExpenses[0].label, "groceries").toLowerCase()} this week`
 			: "Mostly groceries this week";
 		return fallback;
-	}, [recentTx]);
+	}, [recentExpenses]);
 
-	const transactionTopSpaces = useMemo(() => {
+	const expenseTopSpaces = useMemo(() => {
 		const topSpaces = new Map<number, { name: string; count: number }>();
-		for (const tx of recentTx) {
+		for (const tx of recentExpenses) {
 			if (typeof tx.space_id !== "number" || !Number.isFinite(tx.space_id)) {
 				continue;
 			}
@@ -335,15 +334,15 @@ export const GlobalHomePage = () => {
 			.sort((a, b) => b[1].count - a[1].count)
 			.slice(0, 2)
 			.map(([id, payload]) => ({ id, name: payload.name }));
-	}, [recentTx]);
+	}, [recentExpenses]);
 
 	const recentActiveSpaceId = useMemo(() => {
-		if (recentTx.length === 0) return null;
-		const latest = [...recentTx].sort(
+		if (recentExpenses.length === 0) return null;
+		const latest = [...recentExpenses].sort(
 			(a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at),
 		)[0];
 		return typeof latest?.space_id === "number" ? latest.space_id : null;
-	}, [recentTx]);
+	}, [recentExpenses]);
 
 	const promoPreviewSpaces = useMemo(() => {
 		const byId = new Map<number, string>();
@@ -362,7 +361,7 @@ export const GlobalHomePage = () => {
 			);
 		};
 
-		for (const space of transactionTopSpaces) add(space.id, space.name);
+		for (const space of expenseTopSpaces) add(space.id, space.name);
 		if (recentActiveSpaceId != null) add(recentActiveSpaceId);
 		for (const space of spaces ?? []) {
 			add(Number(space.id), space.name);
@@ -370,7 +369,7 @@ export const GlobalHomePage = () => {
 		}
 
 		return [...byId.entries()].slice(0, 3).map(([id, name]) => ({ id, name }));
-	}, [transactionTopSpaces, recentActiveSpaceId, spaces]);
+	}, [expenseTopSpaces, recentActiveSpaceId, spaces]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -460,39 +459,39 @@ export const GlobalHomePage = () => {
 				};
 			});
 
-		const txItems = recentTx.map((t) => ({
-			amountLabel: formatMoney(t.amount),
-			eventType: detectActivityType(t.label, t.status),
-			id: `tx-${t.id}`,
-			occurredAt: t.occurred_at,
-			spaceName: normalizeSpaceName(t.space_name, t.space_id),
-			statusLabel: humanizeStatus(t.status, "Confirmed"),
+		const expenseItems = recentExpenses.map((expense) => ({
+			amountLabel: formatMoney(expense.amount),
+			eventType: detectActivityType(expense.label, expense.status),
+			id: `expense-${expense.id}`,
+			occurredAt: expense.occurred_at,
+			spaceName: normalizeSpaceName(expense.space_name, expense.space_id),
+			statusLabel: humanizeStatus(expense.status, "Confirmed"),
 			statusPillLabel: ["pending", "question", "review"].some((token) =>
-				(t.status ?? "").toLowerCase().includes(token),
+				(expense.status ?? "").toLowerCase().includes(token),
 			)
-				? humanizeStatus(t.status)
+				? humanizeStatus(expense.status)
 				: undefined,
 			sourceCaptureTo:
-				t.source_document_id != null
-					? buildReviewHref(t.space_id, t.source_document_id)
+				expense.source_document_id != null
+					? buildReviewHref(expense.space_id, expense.source_document_id)
 					: null,
-			sourceDocumentId: t.source_document_id ?? null,
-			timeLabel: formatRelative(t.occurred_at),
+			sourceDocumentId: expense.source_document_id ?? null,
+			timeLabel: formatRelative(expense.occurred_at),
 			title: normalizeLabel(
-				t.label,
-				transactionLabelFallbacks[t.id % transactionLabelFallbacks.length] ??
+				expense.label,
+				expenseLabelFallbacks[expense.id % expenseLabelFallbacks.length] ??
 					"Grocery run",
 			),
-			to: buildExpenseDetailHref(t.space_id, t.id),
+			to: buildExpenseDetailHref(expense.space_id, expense.id),
 		}));
 
-		return [...outcomeItems, ...txItems]
+		return [...outcomeItems, ...expenseItems]
 			.sort(
 				(a, b) =>
 					Date.parse(b.occurredAt ?? "") - Date.parse(a.occurredAt ?? ""),
 			)
 			.slice(0, 6);
-	}, [dashboardActivity, recentTx, formatMoney]);
+	}, [dashboardActivity, recentExpenses, formatMoney]);
 
 	const breakdownItems = useMemo(() => {
 		const tags =
@@ -623,14 +622,14 @@ export const GlobalHomePage = () => {
 								contextLine={newExpenseRecordsContextLine}
 								label="New expenses"
 								loading={isLoading}
-								spaceLinks={transactionTopSpaces}
+								spaceLinks={expenseTopSpaces}
 								to={
 									recentActiveSpaceId != null
 										? `/console/spaces/${encodeURIComponent(String(recentActiveSpaceId))}/expenses`
 										: "/console/spaces"
 								}
 								tone="activity"
-								value={String(recentTx.length)}
+								value={String(recentExpenses.length)}
 							/>
 						</div>
 					</section>

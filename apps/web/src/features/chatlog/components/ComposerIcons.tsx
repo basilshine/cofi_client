@@ -4,7 +4,7 @@ type IconProps = {
 	className?: string;
 };
 
-export const ParseSubmitIcon = ({ className = "h-5 w-5" }: IconProps) => (
+export const CaptureSubmitIcon = ({ className = "h-5 w-5" }: IconProps) => (
 	<Zap aria-hidden className={className} />
 );
 

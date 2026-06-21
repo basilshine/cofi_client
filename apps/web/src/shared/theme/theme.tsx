@@ -9,17 +9,13 @@ import {
 
 export const THEME_STORAGE_KEY = "ceits.web.theme";
 
-export const themeIds = ["legacy-technical", "ceits-editorial"] as const;
+export const themeIds = ["ceits-editorial"] as const;
 export type ThemeId = (typeof themeIds)[number];
 
 export const themeRegistry: Record<
 	ThemeId,
 	{ label: string; description: string }
 > = {
-	"legacy-technical": {
-		label: "Classic technical",
-		description: "Older dense interface kept for existing accounts.",
-	},
 	"ceits-editorial": {
 		label: "Ceits editorial",
 		description:
@@ -35,7 +31,10 @@ const isThemeId = (value: unknown): value is ThemeId =>
 export const getStoredTheme = (): ThemeId | null => {
 	if (typeof window === "undefined") return null;
 	const raw = window.localStorage.getItem(THEME_STORAGE_KEY);
-	return isThemeId(raw) ? raw : null;
+	if (raw === null) return null;
+	if (isThemeId(raw)) return raw;
+	window.localStorage.removeItem(THEME_STORAGE_KEY);
+	return null;
 };
 
 export const hasStoredTheme = (): boolean => getStoredTheme() !== null;
@@ -65,16 +64,6 @@ export const getThemeFromUserPreferences = (value: unknown): ThemeId | null => {
 		if (isThemeId(theme)) return theme;
 	}
 
-	const legacyTheme = (value as Record<string, unknown>).theme;
-	if (
-		typeof legacyTheme === "object" &&
-		legacyTheme !== null &&
-		!Array.isArray(legacyTheme)
-	) {
-		const legacyPreference = (legacyTheme as Record<string, unknown>)
-			.preference;
-		if (isThemeId(legacyPreference)) return legacyPreference;
-	}
 	return null;
 };
 

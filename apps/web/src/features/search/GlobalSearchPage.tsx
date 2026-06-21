@@ -139,7 +139,7 @@ const searchStatusLabel = (status?: string | null): string | undefined => {
 	const normalized = status?.trim().toLowerCase();
 	if (!normalized) return undefined;
 	if (normalized === "records_created") return "Records created";
-	if (normalized === "needs_review") return "Needs review";
+	if (normalized === "pending_review") return "Needs review";
 	if (normalized === "captured") return "Captured";
 	return normalized
 		.replace(/_/g, " ")
@@ -151,7 +151,7 @@ const searchStatusClassName = (status?: string | null): string | undefined => {
 	if (normalized === "records_created") {
 		return "border-[rgba(72,112,76,0.22)] bg-[rgba(236,247,238,0.92)] text-[#355a3c]";
 	}
-	if (normalized === "needs_review") {
+	if (normalized === "pending_review") {
 		return "border-[rgba(181,131,52,0.28)] bg-[rgba(255,240,208,0.86)] text-[#73501b]";
 	}
 	return undefined;

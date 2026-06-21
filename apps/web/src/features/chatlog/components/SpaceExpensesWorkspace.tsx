@@ -1,4 +1,4 @@
-import type { Transaction } from "@cofi/api";
+import type { ExpenseRecord } from "@cofi/api";
 import type { ReactNode } from "react";
 import { SpaceWorkspaceLayout } from "../../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
 import { ChatToastPortal } from "./ChatToastPortal";
@@ -20,7 +20,7 @@ type SpaceExpensesWorkspaceProps = {
 	selectedExpenseId: string | number | null;
 	selectedSpaceId: string | number | null;
 	spaceName?: string | null;
-	spaceTransactions: Transaction[] | null;
+	spaceExpenseRecords: ExpenseRecord[] | null;
 	toastMessage: string | null;
 };
 
@@ -40,7 +40,7 @@ export const SpaceExpensesWorkspace = ({
 	selectedExpenseId,
 	selectedSpaceId,
 	spaceName = null,
-	spaceTransactions,
+	spaceExpenseRecords,
 	toastMessage,
 }: SpaceExpensesWorkspaceProps) => {
 	return (
@@ -78,7 +78,7 @@ export const SpaceExpensesWorkspace = ({
 						selectedExpenseId={selectedExpenseId}
 						spaceId={selectedSpaceId}
 						spaceName={spaceName}
-						transactions={spaceTransactions}
+						expenseRecords={spaceExpenseRecords}
 					/>
 				</div>
 			) : (

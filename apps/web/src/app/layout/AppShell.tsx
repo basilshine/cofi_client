@@ -37,9 +37,8 @@ const AppShellChrome = () => {
 };
 
 export const AppShell = () => {
-	// `ConsoleHeaderCenterProvider` is kept so legacy `useConsoleHeaderTitle`
-	// calls remain valid; they simply no-op now that the global top header is
-	// gone (every page renders its own SpaceHeader / page title).
+	// Some workspace pages still use this provider to publish local header state.
+	// The global top header is gone; each page renders its own SpaceHeader / page title.
 	return (
 		<ConsoleHeaderCenterProvider>
 			<AppShellChrome />

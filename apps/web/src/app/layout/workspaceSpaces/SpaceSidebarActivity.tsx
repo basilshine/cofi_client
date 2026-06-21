@@ -78,7 +78,7 @@ const presentationForActivity = (
 				sentence: `${who} confirmed an expense record`,
 				visualKey: "expense",
 			};
-		case "expense_splits_updated":
+		case "expense_participant_splits_updated":
 			return {
 				detail: "Split records were updated for an expense in this space.",
 				label: "Split",

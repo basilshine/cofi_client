@@ -1,13 +1,12 @@
 import type {
 	CapturePacket as ApiCapturePacket,
-	BenefitCandidate,
 	CaptureExpenseRecord,
 	DocumentCandidate,
 	ExpenseDetail,
+	ExpenseRecord,
 	ExpenseSplitRow,
 	Space,
 	SpaceMember,
-	Transaction,
 } from "@cofi/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
@@ -72,7 +71,7 @@ const captureExpenseRecordFromExpenseDetail = (
 		description: expense.description,
 		status: expense.status ?? "approved",
 		currency: expense.currency ?? "USD",
-		txn_date: expense.txn_date ?? new Date().toISOString().slice(0, 10),
+		expense_date: expense.expense_date ?? new Date().toISOString().slice(0, 10),
 		total_amount:
 			typeof expense.amount === "number" && Number.isFinite(expense.amount)
 				? expense.amount
@@ -91,7 +90,6 @@ const documentCandidateLabel = (type: string): string => {
 	if (type === "privacy_signal_candidate") return "Privacy signal";
 	if (type === "merge_candidate") return "Possible duplicate";
 	if (type === "supporting_document_candidate") return "Supporting document";
-	if (type === "space_suggestion_candidate") return "Space suggestion";
 	if (type === "recurring_candidate") return "Recurring hint";
 	if (type === "membership_candidate") return "Membership hint";
 	if (type === "reminder_candidate") return "Reminder hint";
@@ -122,17 +120,12 @@ const toRecord = (value: unknown): Record<string, unknown> => {
 	return {};
 };
 
-const candidateData = (
-	candidate: BenefitCandidate | DocumentCandidate,
-): Record<string, unknown> => {
-	let current = toRecord(candidate.structured_data);
-	for (let i = 0; i < 4; i += 1) {
-		const nested = toRecord(current.data);
-		if (!Object.keys(nested).length) return current;
-		current = nested;
-	}
-	return current;
-};
+const candidateData = (candidate: DocumentCandidate): Record<string, unknown> =>
+	toRecord(candidate.structured_data);
+
+const isBenefitReviewCandidate = (candidate: DocumentCandidate): boolean =>
+	candidate.candidate_type === "promo_code_candidate" ||
+	candidate.candidate_type === "loyalty_event_candidate";
 
 const firstCandidateText = (
 	data: Record<string, unknown>,
@@ -232,7 +225,6 @@ const canMarkDocumentCandidateReviewed = (type: string): boolean =>
 		"privacy_signal_candidate",
 		"merge_candidate",
 		"supporting_document_candidate",
-		"space_suggestion_candidate",
 		"recurring_candidate",
 		"membership_candidate",
 		"reminder_candidate",
@@ -286,7 +278,7 @@ const confidenceLabel = (confidence?: number): string =>
 		: "Review";
 
 const candidateSummary = (
-	candidate: BenefitCandidate | DocumentCandidate,
+	candidate: DocumentCandidate,
 ): {
 	detail: string;
 	fields: Array<{ label: string; value: string }>;
@@ -296,28 +288,33 @@ const candidateSummary = (
 	const type = candidate.candidate_type;
 	const fields: Array<{ label: string; value: string }> = [];
 	if (type === "expense_candidate") {
-		const draft = nestedCandidateData(data, ["draft", "data"]);
-		const merchant = firstCandidateText(draft, [
+		const expenseData = data;
+		const merchant = firstCandidateText(expenseData, [
 			"merchant",
 			"merchant_name",
 			"vendor",
 			"payee",
+			"payee_text",
 		]);
-		const amount = firstCandidateText(draft, [
+		const amount = firstCandidateText(expenseData, [
 			"total",
 			"total_amount",
 			"amount",
 		]);
 		appendField(fields, "Merchant", merchant);
 		appendField(fields, "Amount", amount);
-		appendField(fields, "Currency", firstCandidateText(draft, ["currency"]));
+		appendField(
+			fields,
+			"Currency",
+			firstCandidateText(expenseData, ["currency"]),
+		);
 		appendField(
 			fields,
 			"Date",
-			firstCandidateText(draft, ["date", "txn_date"]),
+			firstCandidateText(expenseData, ["date", "expense_date"]),
 		);
-		appendItemsField(fields, draft);
-		const itemLabels = candidateItemLabels(draft);
+		appendItemsField(fields, expenseData);
+		const itemLabels = candidateItemLabels(expenseData);
 		const itemSummary =
 			itemLabels.length > 1
 				? `${itemLabels.slice(0, 2).join(", ")}${
@@ -336,7 +333,7 @@ const candidateSummary = (
 		const item = nestedCandidateData(data, ["item"]);
 		const name =
 			firstCandidateText(item, ["name", "title", "description"]) ??
-			"Parsed line item";
+			"Extracted line item";
 		appendField(
 			fields,
 			"Amount",
@@ -355,8 +352,7 @@ const candidateSummary = (
 		return { detail: name, fields, itemLabels: [name] };
 	}
 	if (type === "promo_code_candidate") {
-		const promo = nestedCandidateData(data, ["promo", "coupon"]);
-		const code = firstCandidateText(promo, [
+		const code = firstCandidateText(data, [
 			"promo_code",
 			"code",
 			"coupon",
@@ -365,18 +361,18 @@ const candidateSummary = (
 		appendField(
 			fields,
 			"Discount",
-			firstCandidateText(promo, ["discount_type"]),
+			firstCandidateText(data, ["discount_type"]),
 		);
 		appendField(
 			fields,
 			"Value",
-			firstCandidateText(promo, ["discount_value", "discount_amount", "value"]),
+			firstCandidateText(data, ["discount_value", "discount_amount", "value"]),
 		);
-		appendField(fields, "Until", firstCandidateText(promo, ["valid_until"]));
+		appendField(fields, "Until", firstCandidateText(data, ["valid_until"]));
 		appendField(
 			fields,
 			"Redeem",
-			firstCandidateText(promo, ["redeem_platform", "redeem_merchant_name"]),
+			firstCandidateText(data, ["redeem_platform", "redeem_merchant_name"]),
 		);
 		return {
 			detail: code ?? "Promo code needs review",
@@ -385,13 +381,12 @@ const candidateSummary = (
 		};
 	}
 	if (type === "loyalty_event_candidate") {
-		const loyalty = nestedCandidateData(data, ["loyalty", "bonus"]);
-		const program = firstCandidateText(loyalty, [
+		const program = firstCandidateText(data, [
 			"program_name",
 			"loyalty_program",
 			"name",
 		]);
-		const balance = firstCandidateText(loyalty, [
+		const balance = firstCandidateText(data, [
 			"available_balance",
 			"points_earned",
 			"points_spent",
@@ -399,15 +394,11 @@ const candidateSummary = (
 		appendField(
 			fields,
 			"Balance",
-			firstCandidateText(loyalty, ["available_balance"]),
+			firstCandidateText(data, ["available_balance"]),
 		);
-		appendField(
-			fields,
-			"Earned",
-			firstCandidateText(loyalty, ["points_earned"]),
-		);
-		appendField(fields, "Spent", firstCandidateText(loyalty, ["points_spent"]));
-		appendField(fields, "Card", firstCandidateText(loyalty, ["card_mask"]));
+		appendField(fields, "Earned", firstCandidateText(data, ["points_earned"]));
+		appendField(fields, "Spent", firstCandidateText(data, ["points_spent"]));
+		appendField(fields, "Card", firstCandidateText(data, ["card_mask"]));
 		return {
 			detail:
 				[program, balance ? `${balance} points` : null]
@@ -599,16 +590,18 @@ const candidateSummary = (
 	};
 };
 
+const isPendingReviewStatus = (status?: string | null): boolean =>
+	(status?.trim() || "pending_review").toLowerCase() === "pending_review";
+
 const toCandidateReviewItem = (
 	source: CandidateReviewSource,
-	candidate: BenefitCandidate | DocumentCandidate,
+	candidate: DocumentCandidate,
 ): CandidateReviewItem => {
 	const summary = candidateSummary(candidate);
 	const isSelfParticipant =
-		source === "document" &&
-		isSelfParticipantCandidate(candidate as DocumentCandidate);
-	const status = candidate.status?.trim() || "draft";
-	const isDraft = status.toLowerCase() === "draft";
+		source === "document" && isSelfParticipantCandidate(candidate);
+	const status = candidate.status?.trim() || "pending_review";
+	const isPendingReview = isPendingReviewStatus(status);
 	const fallbackLabel = documentCandidateLabel(candidate.candidate_type);
 	const rawTitle = candidate.title?.trim() || "";
 	const isTechnicalTitle =
@@ -627,12 +620,8 @@ const toCandidateReviewItem = (
 			: rawTitle,
 		meta:
 			source === "document"
-				? documentCandidateMeta(candidate as DocumentCandidate)
-				: [
-						(candidate as BenefitCandidate).source_type,
-						(candidate as BenefitCandidate).input_kind,
-						(candidate as BenefitCandidate).merchant_text,
-					]
+				? documentCandidateMeta(candidate)
+				: [candidate.source_type, candidate.input_kind, candidate.merchant_text]
 						.map((value) => value?.trim())
 						.filter(Boolean)
 						.join(" • ") || "Benefits intelligence",
@@ -641,34 +630,32 @@ const toCandidateReviewItem = (
 		documentType: candidate.document_type,
 		merchantText: candidate.merchant_text,
 		projectedExpenseId:
-			source === "document"
-				? (candidate as DocumentCandidate).projected_expense_id
-				: null,
+			source === "document" ? candidate.projected_expense_id : null,
 		detail: summary.detail,
 		fields: summary.fields,
 		itemLabels: summary.itemLabels,
 		tone: candidateTone(candidate.candidate_type),
 		confidenceLabel: confidenceLabel(candidate.confidence),
 		canMarkReviewed:
-			isDraft &&
+			isPendingReview &&
 			source === "document" &&
 			(isSelfParticipant ||
 				canMarkDocumentCandidateReviewed(candidate.candidate_type)),
 		canCreateParticipant:
-			isDraft &&
+			isPendingReview &&
 			source === "document" &&
 			canCreateParticipantFromCandidate(candidate.candidate_type) &&
 			!isSelfParticipant,
 		canCreateRecurring:
-			isDraft &&
+			isPendingReview &&
 			source === "document" &&
 			canCreateRecurringFromCandidate(candidate.candidate_type),
 		canOpenSplitReview:
-			isDraft &&
+			isPendingReview &&
 			source === "document" &&
 			canOpenSplitReviewFromCandidate(candidate.candidate_type),
 		canSavePromo:
-			isDraft && candidate.candidate_type === "promo_code_candidate",
+			isPendingReview && candidate.candidate_type === "promo_code_candidate",
 		isSelfParticipant,
 		createdAt: candidate.created_at,
 		raw: candidate,
@@ -726,8 +713,8 @@ const buildCapturePacketsFromCandidates = (
 			createdAt: packet.createdAt,
 			candidates: packet.candidates,
 			candidateCount: packet.candidates.length,
-			pendingCount: packet.candidates.filter(
-				(candidate) => candidate.status === "draft",
+			pendingCount: packet.candidates.filter((candidate) =>
+				isPendingReviewStatus(candidate.status),
 			).length,
 			projectedCount: packet.candidates.filter(
 				(candidate) => candidate.status === "projected",
@@ -809,8 +796,8 @@ const captureQueueHref = (spaceId: number, sourceDocumentId: number): string =>
 	`/console/review?spaceId=${spaceId}&sourceDocumentId=${sourceDocumentId}`;
 
 const packetOpenReviewCount = (packet: CapturePacket): number =>
-	packet.candidates.filter(
-		(candidate) => candidate.status.trim().toLowerCase() === "draft",
+	packet.candidates.filter((candidate) =>
+		isPendingReviewStatus(candidate.status),
 	).length || Number(packet.pendingCount ?? 0);
 
 const packetCreatedRecordCount = (packet: CapturePacket): number => {
@@ -872,7 +859,7 @@ const packetRemainingRows = (
 	].filter((row) => row.value > 0);
 
 const sourceFromExpense = (
-	tx: Transaction | undefined,
+	tx: ExpenseRecord | undefined,
 ): ReviewItem["source"] => {
 	const blob = `${tx?.description ?? ""} ${tx?.title ?? ""}`.toLowerCase();
 	if (
@@ -891,7 +878,7 @@ const sourceFromExpense = (
 	return "manual";
 };
 
-const humanTitle = (tx?: Transaction, fallback?: string) => {
+const humanTitle = (tx?: ExpenseRecord, fallback?: string) => {
 	const title = (tx?.title ?? fallback ?? "").trim();
 	if (title && title.toLowerCase() !== "expense") return title;
 	const firstLine = (tx?.items ?? [])
@@ -957,7 +944,7 @@ export const CeitsReviewFlowPage = () => {
 		DocumentCandidate[]
 	>([]);
 	const [benefitCandidates, setBenefitCandidates] = useState<
-		BenefitCandidate[]
+		DocumentCandidate[]
 	>([]);
 	const [spaceCapturePackets, setSpaceCapturePackets] = useState<
 		ApiCapturePacket[]
@@ -1031,8 +1018,8 @@ export const CeitsReviewFlowPage = () => {
 				const txRes = await apiClient.spaces.expenses.list(spaceId, {
 					limit: 120,
 				});
-				const tx: Transaction[] = txRes.expenses ?? [];
-				const txById = new Map<number, Transaction>(
+				const tx: ExpenseRecord[] = txRes.expenses ?? [];
+				const txById = new Map<number, ExpenseRecord>(
 					tx.map((t) => [Number(t.id), t]),
 				);
 
@@ -1063,7 +1050,7 @@ export const CeitsReviewFlowPage = () => {
 						title: humanTitle(tr, "Needs confirmation"),
 						amount: Number(tr.total ?? 0),
 						status: tr.status ?? "needs confirmation",
-						dateLabel: tr.txn_date ?? "—",
+						dateLabel: tr.expense_date ?? "—",
 						source,
 						confidenceLabel: "Medium",
 						confidenceReason: "This item has unresolved confirmation signals.",
@@ -1113,34 +1100,24 @@ export const CeitsReviewFlowPage = () => {
 		setSpaceMembers([]);
 		void (async () => {
 			try {
-				const [
-					capturePacketRes,
-					benefitCandidateRes,
-					documentCandidateRes,
-					membersRes,
-				] = await Promise.all([
-					apiClient.spaces
-						.listCapturePackets(spaceId, {
-							includeRecords: true,
-							limit: CAPTURE_PACKET_PAGE_SIZE,
-							offset: 0,
-							sourceDocumentId: focusedSourceDocumentId ?? undefined,
-						})
-						.catch(() => null),
-					apiClient.spaces.review
-						.listBenefitCandidates(spaceId, {
-							limit: 50,
-							sourceDocumentId: focusedSourceDocumentId ?? undefined,
-						})
-						.catch(() => null),
-					apiClient.spaces.review
-						.listDocumentCandidates(spaceId, {
-							limit: 50,
-							sourceDocumentId: focusedSourceDocumentId ?? undefined,
-						})
-						.catch(() => null),
-					apiClient.spaces.listMembers(spaceId).catch(() => null),
-				]);
+				const [capturePacketRes, documentCandidateRes, membersRes] =
+					await Promise.all([
+						apiClient.spaces
+							.listCapturePackets(spaceId, {
+								includeRecords: true,
+								limit: CAPTURE_PACKET_PAGE_SIZE,
+								offset: 0,
+								sourceDocumentId: focusedSourceDocumentId ?? undefined,
+							})
+							.catch(() => null),
+						apiClient.spaces.review
+							.listDocumentCandidates(spaceId, {
+								limit: 50,
+								sourceDocumentId: focusedSourceDocumentId ?? undefined,
+							})
+							.catch(() => null),
+						apiClient.spaces.listMembers(spaceId).catch(() => null),
+					]);
 
 				if (!cancelled) {
 					setSpaceCapturePackets(capturePacketRes?.captures ?? []);
@@ -1150,14 +1127,14 @@ export const CeitsReviewFlowPage = () => {
 							? capturePacketRes.next_offset
 							: null,
 					);
-					setBenefitCandidates(benefitCandidateRes?.candidates ?? []);
+					setBenefitCandidates(
+						(documentCandidateRes?.candidates ?? []).filter(
+							isBenefitReviewCandidate,
+						),
+					);
 					setDocumentCandidates(documentCandidateRes?.candidates ?? []);
 					setSpaceMembers(membersRes?.members ?? []);
-					if (
-						capturePacketRes == null ||
-						benefitCandidateRes == null ||
-						documentCandidateRes == null
-					) {
+					if (capturePacketRes == null || documentCandidateRes == null) {
 						setDocumentCandidateError(
 							"Some capture review data could not be loaded. Expense review is still available.",
 						);
@@ -1583,15 +1560,12 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 
-	const handleSavePromoCandidate = async (candidate: BenefitCandidate) => {
+	const handleSavePromoCandidate = async (candidate: DocumentCandidate) => {
 		if (spaceId == null) return;
 		setBenefitCandidateActingId(candidate.id);
 		setDocumentCandidateError(null);
 		try {
-			await apiClient.spaces.review.saveBenefitCandidatePromo(
-				spaceId,
-				candidate.id,
-			);
+			await apiClient.spaces.review.savePromoCandidate(spaceId, candidate.id);
 			setBenefitCandidates((prev) =>
 				prev.filter((item) => item.id !== candidate.id),
 			);
@@ -1623,10 +1597,7 @@ export const CeitsReviewFlowPage = () => {
 			for (const candidate of packet.candidates.filter(
 				(item) => item.canSavePromo,
 			)) {
-				await apiClient.spaces.review.saveBenefitCandidatePromo(
-					spaceId,
-					candidate.id,
-				);
+				await apiClient.spaces.review.savePromoCandidate(spaceId, candidate.id);
 			}
 			for (const candidate of packet.candidates.filter(
 				(item) => item.canCreateRecurring,
@@ -1650,7 +1621,7 @@ export const CeitsReviewFlowPage = () => {
 			if (!reviewExpenses.length) {
 				const expenseCandidate = packet.candidates.find(
 					(candidate) =>
-						candidate.status === "draft" &&
+						isPendingReviewStatus(candidate.status) &&
 						candidate.candidateType === "expense_candidate",
 				);
 				if (!expenseCandidate) {
@@ -1678,7 +1649,7 @@ export const CeitsReviewFlowPage = () => {
 			if (hadExistingExpenses) {
 				for (const candidate of packet.candidates.filter(
 					(item) =>
-						item.status === "draft" &&
+						isPendingReviewStatus(item.status) &&
 						item.candidateType === "expense_item_candidate",
 				)) {
 					await apiClient.spaces.review.confirmDocumentCandidate(
@@ -1780,12 +1751,12 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 
-	const handleIgnoreBenefitCandidate = async (candidate: BenefitCandidate) => {
+	const handleIgnoreBenefitCandidate = async (candidate: DocumentCandidate) => {
 		if (spaceId == null) return;
 		setBenefitCandidateActingId(candidate.id);
 		setDocumentCandidateError(null);
 		try {
-			await apiClient.spaces.review.ignoreBenefitCandidate(
+			await apiClient.spaces.review.ignoreDocumentCandidate(
 				spaceId,
 				candidate.id,
 			);
@@ -1805,16 +1776,16 @@ export const CeitsReviewFlowPage = () => {
 		candidate: CandidateReviewItem,
 	) => {
 		if (candidate.source === "benefit") {
-			await handleIgnoreBenefitCandidate(candidate.raw as BenefitCandidate);
+			await handleIgnoreBenefitCandidate(candidate.raw);
 			return;
 		}
-		await handleIgnoreDocumentCandidate(candidate.raw as DocumentCandidate);
+		await handleIgnoreDocumentCandidate(candidate.raw);
 	};
 
 	const handleDeleteCapture = async (sourceDocumentId: number) => {
 		if (spaceId == null || !Number.isFinite(spaceId)) return;
 		const confirmed = window.confirm(
-			"Remove this capture's review data and parsed candidates?\n\nThe original chat message/media and any records already saved from it stay in the space.",
+			"Remove this capture's review data and extracted candidates?\n\nThe original chat message/media and any records already saved from it stay in the space.",
 		);
 		if (!confirmed) return;
 		setDeletingSourceDocumentId(sourceDocumentId);
@@ -1944,7 +1915,7 @@ export const CeitsReviewFlowPage = () => {
 								}
 								onLoadMorePackets={() => void handleLoadMoreCapturePackets()}
 								onSavePromoCandidate={(candidate) =>
-									handleSavePromoCandidate(candidate.raw as BenefitCandidate)
+									handleSavePromoCandidate(candidate.raw)
 								}
 								onSplitTargetChange={(candidateId, expenseId) =>
 									setSplitCandidateTargets((prev) => ({
@@ -2002,7 +1973,7 @@ export const CeitsReviewFlowPage = () => {
 						</p>
 						<p className="mt-2 text-sm font-semibold text-foreground">
 							{captureSummary.total === 0
-								? "No parsed captures waiting"
+								? "No captures waiting for review"
 								: `${captureSummary.total} ${captureSummary.total === 1 ? "capture" : "captures"} waiting`}
 						</p>
 						<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
@@ -2131,7 +2102,7 @@ export const CeitsReviewFlowPage = () => {
 							) : (
 								<p className="mt-2 text-xs leading-relaxed text-muted-foreground">
 									Captures will appear after text, photo, or voice input is
-									parsed.
+									extracted.
 								</p>
 							)}
 						</div>

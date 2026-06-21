@@ -325,7 +325,7 @@ export const buildCapturePacketSummaries = <TCandidate>(
 				title: first
 					? options.getTitle(first, sourceDocumentId)
 					: `Capture #${sourceDocumentId}`,
-				meta: first ? options.getMeta(first) : "Parsed capture",
+				meta: first ? options.getMeta(first) : "Extracted capture",
 				createdAt: first ? (options.getCreatedAt(first) ?? "") : "",
 				candidates: sorted,
 				counts,

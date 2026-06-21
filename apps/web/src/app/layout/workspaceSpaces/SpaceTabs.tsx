@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
-import type { ChatWorkspaceScope } from "../../../shared/lib/chatWorkspaceScope";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 
 const tabClass = (isActive: boolean) =>
@@ -13,7 +12,6 @@ const tabClass = (isActive: boolean) =>
 
 type TabKey =
 	| "overview"
-	| "chat"
 	| "review"
 	| "expenses"
 	| "benefits"
@@ -23,7 +21,6 @@ type TabKey =
 
 const tabsOrder: { key: TabKey; label: string }[] = [
 	{ key: "overview", label: "Overview" },
-	{ key: "chat", label: "Chat" },
 	{ key: "review", label: "Captures" },
 	{ key: "expenses", label: "Expenses" },
 	{ key: "benefits", label: "Benefits" },
@@ -49,22 +46,6 @@ const TabIcon = ({ tab }: { tab: TabKey }) => {
 					<title>Overview</title>
 					<path d="M3 11l9-7 9 7" />
 					<path d="M5 10v10h14V10" />
-				</svg>
-			);
-		case "chat":
-			return (
-				<svg
-					aria-hidden
-					className="h-3.5 w-3.5"
-					fill="none"
-					stroke="currentColor"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth="1.8"
-					viewBox="0 0 24 24"
-				>
-					<title>Chat</title>
-					<path d="M4 5h16v11H8l-4 3V5z" />
 				</svg>
 			);
 		case "review":
@@ -184,10 +165,7 @@ const matchActiveTab = (pathname: string): TabKey | null => {
 	if (/^\/console\/spaces\/[^/]+\/members/.test(pathname)) return "members";
 	if (/^\/console\/spaces\/[^/]+\/recurring/.test(pathname)) return "recurring";
 	if (pathname.startsWith("/console/review")) return "review";
-	if (pathname.startsWith("/console/chat/expenses")) return "expenses";
-	if (pathname.startsWith("/console/chat")) return "chat";
 	if (pathname.startsWith("/console/dashboard")) return "overview";
-	if (pathname.startsWith("/console/recurring")) return "recurring";
 	return null;
 };
 
@@ -198,7 +176,7 @@ export type SpaceTabsProps = {
 
 /**
  * Single source of truth for the in-space tab row.
- * Renders Overview / Chat / Expenses / Splits / Recurring, all scoped to the
+ * Renders Overview / Captures / Expenses / Splits / Recurring, all scoped to the
  * currently selected space (driven by `WorkspaceSpacesContext`).
  *
  * When no space is selected the row is intentionally hidden so the global
@@ -210,20 +188,6 @@ export const SpaceTabs = ({ className = "" }: SpaceTabsProps) => {
 		useWorkspaceSpaces();
 
 	const sid = selectedSpaceId != null ? String(selectedSpaceId) : null;
-
-	const chatLinkState = useMemo(() => {
-		if (workspaceScope == null || selectedSpaceId == null) {
-			return undefined;
-		}
-		const state: {
-			chatWorkspace: ChatWorkspaceScope;
-			selectSpaceId: string | number;
-		} = {
-			chatWorkspace: workspaceScope,
-			selectSpaceId: selectedSpaceId,
-		};
-		return state;
-	}, [workspaceScope, selectedSpaceId]);
 
 	const spaceName = useMemo(() => {
 		if (sid == null || !spaces) return null;
@@ -239,7 +203,6 @@ export const SpaceTabs = ({ className = "" }: SpaceTabsProps) => {
 
 	const hrefByKey: Record<TabKey, string> = {
 		overview: `/console/spaces/${encodeURIComponent(sid)}/overview`,
-		chat: `/console/chat?spaceId=${encodeURIComponent(sid)}`,
 		review: `/console/review?spaceId=${encodeURIComponent(sid)}`,
 		expenses: `/console/spaces/${encodeURIComponent(sid)}/expenses`,
 		benefits: `/console/spaces/${encodeURIComponent(sid)}/benefits`,
@@ -264,9 +227,6 @@ export const SpaceTabs = ({ className = "" }: SpaceTabsProps) => {
 							className={tabClass(isActive)}
 							key={key}
 							onClick={() => setSelectedSpaceId(selectedSpaceId)}
-							state={
-								key === "chat" || key === "expenses" ? chatLinkState : undefined
-							}
 							to={hrefByKey[key]}
 						>
 							<span className="inline-flex items-center gap-1.5">

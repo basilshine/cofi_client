@@ -1,4 +1,4 @@
-import type { Transaction } from "@cofi/api";
+import type { ExpenseRecord } from "@cofi/api";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUserFormat } from "../../../shared/hooks/useUserFormat";
@@ -14,25 +14,25 @@ import {
 	toExpenseItemEntity,
 } from "../../../shared/lib/expenseItemPresentation";
 import {
-	expenseDetailToTransaction,
+	expenseDetailToExpenseRecord,
 	expenseStatusLabel,
 	expenseStatusPillClass,
-	toTransactionExpenseEntity,
+	toExpenseRecordEntity,
 } from "../../../shared/lib/expensePresentation";
-import { ExpenseInlineActions } from "../../transactions/components/RecurringScheduleInlineActions";
+import { ExpenseInlineActions } from "../../expenses/components/ExpenseInlineActions";
 
 type Props = {
-	transactionId: string | number;
+	expenseId: string | number;
 	/** Space context for expense lookup and review navigation. */
 	spaceId?: string | number;
-	/** Capture parent for review navigation when this expense came from parsing. */
+	/** Capture parent for review navigation when this expense came from extraction. */
 	sourceDocumentId?: string | number | null;
 	/** Active chat workspace. */
 	chatWorkspace?: ChatWorkspaceScope;
 	/** When set (e.g. ChatLogPage), opens the expense detail panel instead of navigating. */
 	onOpenExpenseDetail?: (expenseId: string | number) => void;
 	/** When the expense no longer exists (404); parent may remove the chat row. */
-	onTransactionOrphaned?: () => void;
+	onExpenseOrphaned?: () => void;
 	/** Narrow summary row; primary action opens the workspace expenses panel. */
 	compact?: boolean;
 	/** Chat-selected visual state when inspector is open for this expense. */
@@ -48,19 +48,19 @@ type Props = {
 };
 
 export const ExpenseMessageCard = ({
-	transactionId,
+	expenseId,
 	spaceId,
 	sourceDocumentId,
 	chatWorkspace,
 	onOpenExpenseDetail,
-	onTransactionOrphaned,
+	onExpenseOrphaned,
 	compact = false,
 	isSelected = false,
 	updates = [],
 }: Props) => {
 	const navigate = useNavigate();
 	const { formatMoney, formatDateTime } = useUserFormat();
-	const [tx, setTx] = useState<Transaction | null>(null);
+	const [expense, setExpenseRecord] = useState<ExpenseRecord | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [orphanNotice, setOrphanNotice] = useState<string | null>(null);
 	const [reloadToken, setReloadToken] = useState(0);
@@ -69,24 +69,21 @@ export const ExpenseMessageCard = ({
 		let isMounted = true;
 		const run = async () => {
 			if (spaceId == null) {
-				setTx(null);
+				setExpenseRecord(null);
 				setOrphanNotice(null);
 				setError("Missing space context for expense lookup");
 				return;
 			}
 
 			try {
-				const data = await apiClient.spaces.expenses.get(
-					spaceId,
-					transactionId,
-				);
+				const data = await apiClient.spaces.expenses.get(spaceId, expenseId);
 				if (!isMounted) return;
-				setTx(expenseDetailToTransaction(data, spaceId));
+				setExpenseRecord(expenseDetailToExpenseRecord(data, spaceId));
 				setError(null);
 				setOrphanNotice(null);
 			} catch (e) {
 				if (!isMounted) return;
-				setTx(null);
+				setExpenseRecord(null);
 				if (isNotFoundHttpError(e)) {
 					setError(null);
 					setOrphanNotice(
@@ -102,13 +99,13 @@ export const ExpenseMessageCard = ({
 		return () => {
 			isMounted = false;
 		};
-	}, [spaceId, transactionId, reloadToken]);
+	}, [spaceId, expenseId, reloadToken]);
 
 	useEffect(() => {
-		if (!orphanNotice || !onTransactionOrphaned) return;
-		const t = window.setTimeout(() => onTransactionOrphaned(), 2500);
+		if (!orphanNotice || !onExpenseOrphaned) return;
+		const t = window.setTimeout(() => onExpenseOrphaned(), 2500);
 		return () => window.clearTimeout(t);
-	}, [orphanNotice, onTransactionOrphaned]);
+	}, [orphanNotice, onExpenseOrphaned]);
 
 	if (orphanNotice) {
 		return (
@@ -117,7 +114,7 @@ export const ExpenseMessageCard = ({
 				className="rounded-md border border-border bg-muted p-2 text-xs text-muted-foreground"
 			>
 				{orphanNotice}
-				{onTransactionOrphaned ? (
+				{onExpenseOrphaned ? (
 					<span className="mt-1 block text-[10px] text-muted-foreground">
 						The message stays here as capture history; open review if the
 						original capture still exists.
@@ -130,32 +127,32 @@ export const ExpenseMessageCard = ({
 	if (error) {
 		return (
 			<div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-				Failed to load expense #{String(transactionId)}: {error}
+				Failed to load expense #{String(expenseId)}: {error}
 			</div>
 		);
 	}
 
-	if (!tx) {
+	if (!expense) {
 		return (
 			<div className="rounded-md border border-border bg-muted p-2 text-xs text-muted-foreground">
-				Loading expense #{String(transactionId)}...
+				Loading expense #{String(expenseId)}...
 			</div>
 		);
 	}
 
-	const statusRaw = tx.status?.trim() || "approved";
+	const statusRaw = expense.status?.trim() || "approved";
 	const statusLabel = expenseStatusLabel(statusRaw);
-	const expenseEntity = toTransactionExpenseEntity(tx, {
-		amountLabel: formatMoney(tx.total),
+	const expenseEntity = toExpenseRecordEntity(expense, {
+		amountLabel: formatMoney(expense.total),
 	});
 	const effectiveSourceDocumentId =
-		sourceDocumentId ?? tx.source_document_id ?? null;
+		sourceDocumentId ?? expense.source_document_id ?? null;
 	const reviewHref =
 		spaceId == null
 			? null
 			: effectiveSourceDocumentId != null
 				? `/console/review?spaceId=${encodeURIComponent(String(spaceId))}&sourceDocumentId=${encodeURIComponent(String(effectiveSourceDocumentId))}`
-				: `/console/review?spaceId=${encodeURIComponent(String(spaceId))}&expenseId=${encodeURIComponent(String(tx.id))}`;
+				: `/console/review?spaceId=${encodeURIComponent(String(spaceId))}&expenseId=${encodeURIComponent(String(expense.id))}`;
 	const navigateToReview = () => {
 		if (!reviewHref) return;
 		navigate(reviewHref, {
@@ -164,8 +161,11 @@ export const ExpenseMessageCard = ({
 	};
 
 	if (compact && onOpenExpenseDetail && spaceId != null) {
-		const compactRows = tx.items.slice(0, 3);
-		const compactMoreCount = Math.max(0, tx.items.length - compactRows.length);
+		const compactRows = expense.items.slice(0, 3);
+		const compactMoreCount = Math.max(
+			0,
+			expense.items.length - compactRows.length,
+		);
 
 		const chatToolbarBtn =
 			"inline-flex h-7 items-center justify-center rounded-md border px-2.5 text-[11px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:h-8";
@@ -173,7 +173,12 @@ export const ExpenseMessageCard = ({
 		const updateRows =
 			updates.length > 0
 				? updates
-				: [{ state: "approved" as const, timestamp: tx.created_at ?? null }];
+				: [
+						{
+							state: "approved" as const,
+							timestamp: expense.created_at ?? null,
+						},
+					];
 		const stateLabel = (state: "approved" | "needs_review") => {
 			if (state === "approved") return "Approved";
 			return "Needs review";
@@ -207,7 +212,7 @@ export const ExpenseMessageCard = ({
 									{expenseEntity.title}
 								</div>
 								<div className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-									{formatMoney(tx.total)}
+									{formatMoney(expense.total)}
 								</div>
 							</div>
 							{expenseEntity.subtitle ? (
@@ -216,9 +221,9 @@ export const ExpenseMessageCard = ({
 								</div>
 							) : null}
 							<div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-								<span>{tx.items.length} items</span>
-								{tx.created_at ? (
-									<span>· Saved {formatDateTime(tx.created_at)}</span>
+								<span>{expense.items.length} items</span>
+								{expense.created_at ? (
+									<span>· Saved {formatDateTime(expense.created_at)}</span>
 								) : null}
 							</div>
 						</div>
@@ -230,7 +235,7 @@ export const ExpenseMessageCard = ({
 								{compactRows.map((it, idx) => (
 									<div
 										className="flex items-center justify-between gap-2 rounded-md px-1 py-0.5 text-[11px] text-foreground/90 transition-colors hover:bg-[rgba(120,100,80,0.06)]"
-										key={`${String(tx.id)}-${idx}-${it.name}`}
+										key={`${String(expense.id)}-${idx}-${it.name}`}
 									>
 										<span className="line-clamp-1 min-w-0 flex-1">
 											{expenseItemTitle(it, idx)}
@@ -274,8 +279,8 @@ export const ExpenseMessageCard = ({
 		);
 	}
 
-	const topItems = tx.items.slice(0, 3);
-	const otherCount = Math.max(0, tx.items.length - topItems.length);
+	const topItems = expense.items.slice(0, 3);
+	const otherCount = Math.max(0, expense.items.length - topItems.length);
 
 	return (
 		<div className="rounded-md border border-border bg-muted p-3">
@@ -292,15 +297,15 @@ export const ExpenseMessageCard = ({
 							{statusLabel}
 						</span>
 						<span className="text-xs font-semibold text-muted-foreground">
-							expense #{String(tx.id)}
+							expense #{String(expense.id)}
 						</span>
 					</div>
 					<div className="mt-0.5 text-sm font-semibold">
-						{formatMoney(tx.total)}
+						{formatMoney(expense.total)}
 					</div>
 				</div>
 				<div className="shrink-0 text-[10px] text-muted-foreground">
-					{tx.created_at ? formatDateTime(tx.created_at) : ""}
+					{expense.created_at ? formatDateTime(expense.created_at) : ""}
 				</div>
 			</div>
 
@@ -328,31 +333,33 @@ export const ExpenseMessageCard = ({
 
 			<div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-2">
 				{spaceId != null ? (
-					<button
-						aria-label="Open expense review"
-						className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-semibold hover:bg-accent"
-						onClick={() =>
-							onOpenExpenseDetail
-								? onOpenExpenseDetail(tx.id)
-								: navigateToReview()
-						}
-						type="button"
-					>
-						Open review
-					</button>
+					<>
+						<button
+							aria-label="Open expense review"
+							className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-semibold hover:bg-accent"
+							onClick={() =>
+								onOpenExpenseDetail
+									? onOpenExpenseDetail(expense.id)
+									: navigateToReview()
+							}
+							type="button"
+						>
+							Open review
+						</button>
+						<ExpenseInlineActions
+							expenseId={expense.id}
+							onAfterChange={() => setReloadToken((n) => n + 1)}
+							onResourceGone={onExpenseOrphaned}
+							recurringId={
+								expense.recurring_id != null && Number(expense.recurring_id) > 0
+									? Number(expense.recurring_id)
+									: undefined
+							}
+							recurringPaused={expense.recurring_paused}
+							spaceId={spaceId}
+						/>
+					</>
 				) : null}
-				<ExpenseInlineActions
-					expenseId={tx.id}
-					onAfterChange={() => setReloadToken((n) => n + 1)}
-					onResourceGone={onTransactionOrphaned}
-					recurringId={
-						tx.recurring_id != null && Number(tx.recurring_id) > 0
-							? Number(tx.recurring_id)
-							: undefined
-					}
-					recurringPaused={tx.recurring_paused}
-					spaceId={spaceId}
-				/>
 			</div>
 		</div>
 	);

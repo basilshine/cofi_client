@@ -1,7 +1,7 @@
-import type { ExpenseDetail, Transaction } from "@cofi/api";
+import type { ExpenseDetail, ExpenseRecord } from "@cofi/api";
 import type { EntityViewModel } from "./entityPresentation";
 
-export const expenseListHeading = (tx: Transaction): string => {
+export const expenseListHeading = (tx: ExpenseRecord): string => {
 	const t = (tx.title ?? "").trim();
 	const generic = !t || t.toLowerCase() === "expense";
 	const firstLineName = (tx.items ?? [])
@@ -22,7 +22,7 @@ export const expenseListHeading = (tx: Transaction): string => {
 	return `Expense #${String(tx.id)}`;
 };
 
-export const expenseDisplayMerchant = (tx: Transaction): string => {
+export const expenseDisplayMerchant = (tx: ExpenseRecord): string => {
 	const vendor = tx.vendor_name?.trim();
 	if (vendor) return vendor;
 	const payee = tx.payee_text?.trim();
@@ -77,7 +77,7 @@ export const expenseStatusPillClass = (statusRaw?: string): string =>
 
 export type ExpenseSourceKind = "receipt" | "manual" | "recurring" | "voice";
 
-export const expenseSourceKind = (tx: Transaction): ExpenseSourceKind => {
+export const expenseSourceKind = (tx: ExpenseRecord): ExpenseSourceKind => {
 	if (tx.recurring_id != null && tx.recurring_id > 0) return "recurring";
 	const blob = `${tx.title ?? ""} ${tx.description ?? ""}`.toLowerCase();
 	if (
@@ -89,7 +89,7 @@ export const expenseSourceKind = (tx: Transaction): ExpenseSourceKind => {
 	}
 	if (
 		blob.includes("receipt") ||
-		blob.includes("parsed") ||
+		blob.includes("extracted") ||
 		blob.includes("scan")
 	) {
 		return "receipt";
@@ -97,7 +97,7 @@ export const expenseSourceKind = (tx: Transaction): ExpenseSourceKind => {
 	return "manual";
 };
 
-export const expenseSourceLabel = (tx: Transaction): string => {
+export const expenseSourceLabel = (tx: ExpenseRecord): string => {
 	const kind = expenseSourceKind(tx);
 	if (kind === "recurring") return "Recurring";
 	if (kind === "voice") return "Voice capture";
@@ -105,8 +105,8 @@ export const expenseSourceLabel = (tx: Transaction): string => {
 	return "Text capture";
 };
 
-export const toTransactionExpenseEntity = (
-	tx: Transaction,
+export const toExpenseRecordEntity = (
+	tx: ExpenseRecord,
 	options: { amountLabel?: string; selected?: boolean; href?: string } = {},
 ): EntityViewModel => {
 	const heading = expenseListHeading(tx);
@@ -117,7 +117,11 @@ export const toTransactionExpenseEntity = (
 		label: "Expense",
 		title: merchant,
 		subtitle: merchant !== heading ? heading : undefined,
-		detail: [tx.txn_date, expenseSourceLabel(tx), expenseStatusLabel(tx.status)]
+		detail: [
+			tx.expense_date,
+			expenseSourceLabel(tx),
+			expenseStatusLabel(tx.status),
+		]
 			.filter(Boolean)
 			.join(" - "),
 		href: options.href,
@@ -128,10 +132,10 @@ export const toTransactionExpenseEntity = (
 	};
 };
 
-export const expenseDetailToTransaction = (
+export const expenseDetailToExpenseRecord = (
 	expense: ExpenseDetail,
 	spaceId: string | number,
-): Transaction => {
+): ExpenseRecord => {
 	const items = (expense.items ?? []).map((item) => ({
 		name: item.name,
 		amount: Number(item.amount) || 0,
@@ -150,7 +154,7 @@ export const expenseDetailToTransaction = (
 		description: expense.description,
 		payee_text: expense.payee_text,
 		currency: expense.currency,
-		txn_date: expense.txn_date,
+		expense_date: expense.expense_date,
 		items,
 		total: Number(expense.amount ?? fallbackTotal) || 0,
 		created_at: expense.created_at,

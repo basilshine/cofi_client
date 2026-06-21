@@ -178,24 +178,25 @@ const packetSectionKey = (candidate: CandidateReviewItem): PacketSectionKey => {
 	return "documents";
 };
 
-const isTechnicalExpenseDraftCandidate = (
-	candidate: CandidateReviewItem,
-): boolean =>
+const isTechnicalExpenseCandidate = (candidate: CandidateReviewItem): boolean =>
 	candidate.candidateType === "expense_candidate" ||
 	candidate.candidateType === "expense_item_candidate";
 
 const reviewVisibleCandidates = (
 	candidates: CandidateReviewItem[],
 ): CandidateReviewItem[] =>
-	candidates.filter(
-		(candidate) => !isTechnicalExpenseDraftCandidate(candidate),
-	);
+	candidates.filter((candidate) => !isTechnicalExpenseCandidate(candidate));
 
-const isDraftStatus = (status: string): boolean =>
-	status.trim().toLowerCase() === "draft";
+const isPendingReviewStatus = (status: string): boolean =>
+	status.trim().toLowerCase() === "pending_review";
+
+const candidateStatusLabel = (status: string): string =>
+	isPendingReviewStatus(status || "pending_review")
+		? "Needs review"
+		: status.replace(/_/g, " ");
 
 const hasOpenCandidateAction = (candidate: CandidateReviewItem): boolean =>
-	isDraftStatus(candidate.status) &&
+	isPendingReviewStatus(candidate.status) &&
 	(candidate.canSavePromo ||
 		candidate.canCreateParticipant ||
 		candidate.canOpenSplitReview ||
@@ -274,18 +275,21 @@ const visiblePendingCount = (packet: CapturePacket): number => {
 	const visibleCandidates = reviewVisibleCandidates(packet.candidates);
 	if (visibleCandidates.length > 0) {
 		return visibleCandidates.filter((candidate) =>
-			isDraftStatus(candidate.status),
+			isPendingReviewStatus(candidate.status),
 		).length;
 	}
 	if (packet.candidates.length === 0 && capturePacketRecordCount(packet) > 0) {
 		return 0;
 	}
-	const hiddenDrafts = packet.candidates.filter(
+	const hiddenPendingReviewExpenseCandidates = packet.candidates.filter(
 		(candidate) =>
-			isTechnicalExpenseDraftCandidate(candidate) &&
-			isDraftStatus(candidate.status),
+			isTechnicalExpenseCandidate(candidate) &&
+			isPendingReviewStatus(candidate.status),
 	).length;
-	return Math.max((packet.pendingCount ?? 0) - hiddenDrafts, 0);
+	return Math.max(
+		(packet.pendingCount ?? 0) - hiddenPendingReviewExpenseCandidates,
+		0,
+	);
 };
 
 const totalPendingCount = (packet: CapturePacket): number => {
@@ -298,7 +302,7 @@ const totalPendingCount = (packet: CapturePacket): number => {
 
 const capturePacketClosedReviewCount = (packet: CapturePacket): number =>
 	reviewVisibleCandidates(packet.candidates).filter((candidate) => {
-		if (isDraftStatus(candidate.status)) return false;
+		if (isPendingReviewStatus(candidate.status)) return false;
 		return (
 			isProjectedStatus(candidate.status) ||
 			isIgnoredStatus(candidate.status) ||
@@ -387,11 +391,11 @@ const candidateEntity = (candidate: CandidateReviewItem): EntityViewModel => ({
 		.map((field) => `${field.label}: ${field.value}`),
 	status: isProjectedStatus(candidate.status)
 		? "Created"
-		: isDraftStatus(candidate.status)
+		: isPendingReviewStatus(candidate.status)
 			? candidate.confidenceLabel
 			: isIgnoredStatus(candidate.status)
 				? "Closed"
-				: candidate.status.replace(/_/g, " "),
+				: candidateStatusLabel(candidate.status),
 });
 
 type CandidateActionTone =
@@ -581,7 +585,7 @@ export const CapturePacketReviewSection = ({
 
 	return (
 		<WorkspaceListingPage
-			description="Each capture is one parsed text, voice note, receipt, or screenshot. Review what Ceits found and follow what already became expenses, promos, people, splits, future hints, or document signals."
+			description="Each capture is one extracted text, voice note, receipt, or screenshot. Review what Ceits found and follow what already became expenses, promos, people, splits, future hints, or document signals."
 			stats={
 				<>
 					<WorkspaceSummaryChip label="Captures" value={packets.length} />
@@ -936,19 +940,19 @@ const PacketFinishReviewBar = ({
 		packet.ignoredCount ?? 0,
 		capturePacketClosedReviewCount(packet),
 	);
-	const draftExpenseCount = (packet.records?.expenses ?? []).filter(
-		(expense) => expense.status.trim().toLowerCase() === "draft",
+	const pendingExpenseCount = (packet.records?.expenses ?? []).filter(
+		(expense) => expense.status.trim().toLowerCase() === "pending_review",
 	).length;
 	const saveableExpenseCandidateCount = packet.candidates.filter(
 		(candidate) =>
-			isDraftStatus(candidate.status) &&
+			isPendingReviewStatus(candidate.status) &&
 			(candidate.candidateType === "expense_candidate" ||
 				candidate.candidateType === "expense_item_candidate"),
 	).length;
 	const needsAction = pendingCount > 0 || actionCount > 0;
 	const hasSaveableExpenseWork =
 		pendingCount > 0 &&
-		(draftExpenseCount > 0 || saveableExpenseCandidateCount > 0);
+		(pendingExpenseCount > 0 || saveableExpenseCandidateCount > 0);
 	const isComplete =
 		pendingCount === 0 && completedWorkCount > 0 && actionCount === 0;
 	const canSaveAll = !isComplete && (hasSaveableExpenseWork || needsAction);
@@ -1040,7 +1044,7 @@ const RemainingReviewSummary = ({ packet }: RemainingReviewSummaryProps) => {
 	if (pendingCount <= 0) return null;
 
 	const pendingCandidates = reviewVisibleCandidates(packet.candidates).filter(
-		(candidate) => isDraftStatus(candidate.status),
+		(candidate) => isPendingReviewStatus(candidate.status),
 	);
 	const fallbackSections = packetSectionDefinitions
 		.map((section) => ({
@@ -1145,7 +1149,9 @@ const RemainingReviewSummary = ({ packet }: RemainingReviewSummaryProps) => {
 												{typeLabel}
 											</span>
 											<span className="inline-flex min-h-5 items-center rounded-full border border-[rgba(120,100,80,0.12)] bg-white/70 px-2 text-[10px] font-semibold text-muted-foreground">
-												{candidate.status || "draft"}
+												{candidateStatusLabel(
+													candidate.status || "pending_review",
+												)}
 											</span>
 										</div>
 										<p className="mt-1.5 text-sm font-semibold text-foreground">
@@ -1197,7 +1203,7 @@ const RemainingReviewSummary = ({ packet }: RemainingReviewSummaryProps) => {
 	);
 };
 
-type WizardItemDraft = {
+type WizardItemReviewRow = {
 	id: string;
 	name: string;
 	amount: string;
@@ -1205,14 +1211,14 @@ type WizardItemDraft = {
 	status: "created" | "needs_review";
 };
 
-type WizardPersonDraft = {
+type WizardPersonReviewRow = {
 	id: string;
 	name: string;
 	detail: string;
 	status: "created" | "needs_review";
 };
 
-type WizardSplitDraft = {
+type WizardSplitReviewRow = {
 	id: string;
 	label: string;
 	amount: string;
@@ -1238,7 +1244,7 @@ const CaptureReviewWizard = ({
 	spaceId,
 }: CaptureReviewWizardProps) => {
 	const isReadOnly = capturePacketReviewState(packet) === "complete";
-	const itemDrafts = useMemo<WizardItemDraft[]>(() => {
+	const itemRows = useMemo<WizardItemReviewRow[]>(() => {
 		const savedItems = (packet.records?.expenses ?? []).flatMap((expense) =>
 			(expense.items ?? []).map((item) => ({
 				id: `saved-item-${expense.id}-${item.id}`,
@@ -1256,7 +1262,7 @@ const CaptureReviewWizard = ({
 			status: "needs_review" as const,
 		}));
 	}, [packet]);
-	const personDrafts = useMemo<WizardPersonDraft[]>(() => {
+	const personRows = useMemo<WizardPersonReviewRow[]>(() => {
 		const savedPeople = (packet.records?.participants ?? []).map((person) => ({
 			id: `saved-person-${person.id}`,
 			name: person.display_name || "Participant",
@@ -1287,7 +1293,7 @@ const CaptureReviewWizard = ({
 			}));
 		return [...savedPeople, ...candidatePeople];
 	}, [packet]);
-	const splitDrafts = useMemo<WizardSplitDraft[]>(() => {
+	const splitRows = useMemo<WizardSplitReviewRow[]>(() => {
 		const savedSplits = (packet.records?.splits ?? []).map((split) => ({
 			id: `saved-split-${split.expense_id}`,
 			label: "Split",
@@ -1321,13 +1327,13 @@ const CaptureReviewWizard = ({
 			}));
 		return [...savedSplits, ...candidateSplits];
 	}, [memberLabels, packet]);
-	const [items, setItems] = useState(itemDrafts);
-	const [people, setPeople] = useState(personDrafts);
-	const [splits, setSplits] = useState(splitDrafts);
+	const [items, setItems] = useState(itemRows);
+	const [people, setPeople] = useState(personRows);
+	const [splits, setSplits] = useState(splitRows);
 
-	useEffect(() => setItems(itemDrafts), [itemDrafts]);
-	useEffect(() => setPeople(personDrafts), [personDrafts]);
-	useEffect(() => setSplits(splitDrafts), [splitDrafts]);
+	useEffect(() => setItems(itemRows), [itemRows]);
+	useEffect(() => setPeople(personRows), [personRows]);
+	useEffect(() => setSplits(splitRows), [splitRows]);
 
 	const itemReadyCount = items.filter(
 		(item) => item.status === "created",
@@ -1353,7 +1359,7 @@ const CaptureReviewWizard = ({
 				<p className="mt-1 text-xs leading-relaxed text-muted-foreground">
 					{isReadOnly
 						? "This capture is complete, so the records below are shown as saved output."
-						: "Work top to bottom: confirm expense items, then people, then split shares. Fields are editable drafts until backend update endpoints are wired."}
+						: "Work top to bottom: confirm expense items, then people, then split shares. Fields stay editable until backend update endpoints are wired."}
 				</p>
 			</div>
 			<div className="divide-y divide-[rgba(120,100,80,0.1)]">
@@ -2016,7 +2022,7 @@ export const CaptureOutcomeMap = ({ packet }: CaptureOutcomeMapProps) => {
 				visibleCandidates,
 			);
 			const loadedPending = candidates.filter((candidate) =>
-				isDraftStatus(candidate.status),
+				isPendingReviewStatus(candidate.status),
 			).length;
 			const loadedCreated = candidates.filter((candidate) =>
 				isProjectedStatus(candidate.status),
@@ -2574,7 +2580,7 @@ const CaptureCandidateActions = ({
 	onApplySplitCandidate,
 	onIgnoreCandidate,
 }: CaptureCandidateActionsProps) => {
-	const isDraft = isDraftStatus(candidate.status);
+	const isPendingReview = isPendingReviewStatus(candidate.status);
 	const hasOpenAction = hasOpenCandidateAction(candidate);
 	return (
 		<div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
@@ -2646,7 +2652,7 @@ const CaptureCandidateActions = ({
 					</Link>
 				)
 			) : null}
-			{isDraft ? (
+			{isPendingReview ? (
 				<CandidateActionButton
 					disabled={isActing}
 					onClick={() => onIgnoreCandidate(candidate)}

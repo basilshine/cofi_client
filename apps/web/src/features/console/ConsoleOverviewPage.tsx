@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { readChatWorkspaceScope } from "../../shared/lib/chatWorkspaceScope";
 import {
 	clearOnboardingIntent,
 	readOnboardingIntent,
@@ -32,11 +31,6 @@ export const ConsoleOverviewPage = () => {
 		setIntentBanner(null);
 		clearOnboardingIntent();
 	};
-
-	const chatLinkState = (() => {
-		const cw = readChatWorkspaceScope();
-		return cw ? { chatWorkspace: cw } : undefined;
-	})();
 
 	return (
 		<section className="space-y-6">
@@ -91,11 +85,11 @@ export const ConsoleOverviewPage = () => {
 
 				<Link
 					className="rounded-lg border border-border bg-card p-4 hover:bg-accent"
-					to="/console/recurring"
+					to="/console/spaces"
 				>
 					<div className="text-sm font-medium">Recurring</div>
 					<div className="mt-1 text-xs text-muted-foreground">
-						Pause, resume, or delete scheduled charges.
+						Open a space to pause, resume, or delete scheduled charges.
 					</div>
 				</Link>
 
@@ -105,7 +99,7 @@ export const ConsoleOverviewPage = () => {
 				>
 					<div className="text-sm font-medium">Quota</div>
 					<div className="mt-1 text-xs text-muted-foreground">
-						Check remaining parses and blocked state.
+						Check remaining captures and blocked state.
 					</div>
 				</Link>
 
@@ -116,17 +110,6 @@ export const ConsoleOverviewPage = () => {
 					<div className="text-sm font-medium">Spaces</div>
 					<div className="mt-1 text-xs text-muted-foreground">
 						V1 single-owner spaces (default Personal).
-					</div>
-				</Link>
-
-				<Link
-					className="rounded-lg border border-border bg-card p-4 hover:bg-accent"
-					state={chatLinkState}
-					to="/console/chat"
-				>
-					<div className="text-sm font-medium">ChatLog</div>
-					<div className="mt-1 text-xs text-muted-foreground">
-						Space-scoped chat for messages, captures, and expense review.
 					</div>
 				</Link>
 

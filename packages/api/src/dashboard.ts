@@ -36,7 +36,7 @@ export type DashboardSpaceRow = {
 	tenant_id: number;
 	last_activity_at?: string | null;
 	member_count?: number | null;
-	/** Confirmed approved spend: user's share this calendar month (txn_date). */
+	/** Confirmed approved spend: user's share this calendar month (expense_date). */
 	period_spent_preview?: number | null;
 };
 
@@ -59,7 +59,7 @@ export type DashboardMonthlySnapshot = {
 	period_kind?: DashboardSpendPeriodKind | string;
 	/** UTC anchor date (YYYY-MM-DD) used with period_kind. */
 	anchor_date?: string;
-	/** Legacy line-item sum (not split-aware). */
+	/** Raw line-item sum, before split attribution. */
 	total_spent: number;
 	/** User's attributed share (splits when present). Omitted by older API responses. */
 	total_my_share?: number;
@@ -80,14 +80,6 @@ export type DashboardOrgSnapshot = {
 	type: string;
 } | null;
 
-/** Legacy compatibility payload. New review attention should come from capture packets. */
-export type DashboardReviewQueueItem = Record<string, unknown>;
-
-export type DashboardReviewQueue = {
-	items: DashboardReviewQueueItem[];
-	total_count: number;
-};
-
 export type DashboardRecurringUpcomingItem = {
 	id: number;
 	name: string;
@@ -99,7 +91,7 @@ export type DashboardRecurringUpcomingItem = {
 	source_document_id?: number | null;
 };
 
-export type DashboardRecentTransaction = {
+export type DashboardRecentExpense = {
 	id: number;
 	amount: number;
 	currency: string;
@@ -146,9 +138,8 @@ export type DashboardResponse = {
 	spaces?: DashboardSpaceRow[] | null;
 	monthly_snapshot?: DashboardMonthlySnapshot | null;
 	org_snapshot?: DashboardOrgSnapshot;
-	review_queue?: DashboardReviewQueue | null;
 	recurring_upcoming?: DashboardRecurringUpcomingItem[] | null;
-	recent_transactions?: DashboardRecentTransaction[] | null;
+	recent_expenses?: DashboardRecentExpense[] | null;
 	spend_overview?: DashboardSpendOverview;
 	recent_activity?: DashboardRecentActivity;
 };

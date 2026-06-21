@@ -1,4 +1,4 @@
-import type { Transaction } from "@cofi/api";
+import type { ExpenseRecord } from "@cofi/api";
 import { useCallback, useEffect, useState } from "react";
 import { apiClient } from "../../../shared/lib/apiClient";
 
@@ -22,105 +22,105 @@ export const useSpaceExpensesWorkspaceState = ({
 		expenseInspectorWorkspaceEditing,
 		setExpenseInspectorWorkspaceEditing,
 	] = useState(false);
-	const [spaceTransactions, setSpaceTransactions] = useState<
-		Transaction[] | null
+	const [spaceExpenseRecords, setSpaceExpenseRecords] = useState<
+		ExpenseRecord[] | null
 	>(null);
-	const [spaceTransactionsError, setSpaceTransactionsError] = useState<
+	const [spaceExpenseRecordsError, setSpaceExpenseRecordsError] = useState<
 		string | null
 	>(null);
-	const [spaceTransactionsLoading, setSpaceTransactionsLoading] =
+	const [spaceExpenseRecordsLoading, setSpaceExpenseRecordsLoading] =
 		useState(false);
-	const [spaceTransactionsLoadingMore, setSpaceTransactionsLoadingMore] =
+	const [spaceExpenseRecordsLoadingMore, setSpaceExpenseRecordsLoadingMore] =
 		useState(false);
-	const [spaceTransactionsHasMore, setSpaceTransactionsHasMore] =
+	const [spaceExpenseRecordsHasMore, setSpaceExpenseRecordsHasMore] =
 		useState(false);
-	const [spaceTransactionsNextOffset, setSpaceTransactionsNextOffset] =
+	const [spaceExpenseRecordsNextOffset, setSpaceExpenseRecordsNextOffset] =
 		useState<number | null>(null);
 
-	const mergeTransactions = useCallback(
-		(current: Transaction[], incoming: Transaction[]) => {
-			const byId = new Map<string, Transaction>();
-			for (const tx of current) {
-				byId.set(String(tx.id), tx);
+	const mergeExpenseRecords = useCallback(
+		(current: ExpenseRecord[], incoming: ExpenseRecord[]) => {
+			const byId = new Map<string, ExpenseRecord>();
+			for (const expense of current) {
+				byId.set(String(expense.id), expense);
 			}
-			for (const tx of incoming) {
-				byId.set(String(tx.id), tx);
+			for (const expense of incoming) {
+				byId.set(String(expense.id), expense);
 			}
 			return Array.from(byId.values());
 		},
 		[],
 	);
 
-	const loadSpaceTransactions = useCallback(async () => {
+	const loadSpaceExpenseRecords = useCallback(async () => {
 		if (selectedSpaceId == null) {
-			setSpaceTransactions(null);
-			setSpaceTransactionsHasMore(false);
-			setSpaceTransactionsNextOffset(null);
+			setSpaceExpenseRecords(null);
+			setSpaceExpenseRecordsHasMore(false);
+			setSpaceExpenseRecordsNextOffset(null);
 			return;
 		}
-		setSpaceTransactionsLoading(true);
-		setSpaceTransactionsError(null);
+		setSpaceExpenseRecordsLoading(true);
+		setSpaceExpenseRecordsError(null);
 		try {
 			const data = await apiClient.spaces.expenses.list(selectedSpaceId, {
 				limit: SPACE_EXPENSE_PAGE_SIZE,
 				offset: 0,
 			});
-			setSpaceTransactions(data.expenses ?? []);
-			setSpaceTransactionsHasMore(data.has_more === true);
-			setSpaceTransactionsNextOffset(
+			setSpaceExpenseRecords(data.expenses ?? []);
+			setSpaceExpenseRecordsHasMore(data.has_more === true);
+			setSpaceExpenseRecordsNextOffset(
 				typeof data.next_offset === "number" ? data.next_offset : null,
 			);
 		} catch (e) {
-			setSpaceTransactions(null);
-			setSpaceTransactionsHasMore(false);
-			setSpaceTransactionsNextOffset(null);
-			setSpaceTransactionsError(
+			setSpaceExpenseRecords(null);
+			setSpaceExpenseRecordsHasMore(false);
+			setSpaceExpenseRecordsNextOffset(null);
+			setSpaceExpenseRecordsError(
 				e instanceof Error ? e.message : "Failed to load expenses",
 			);
 		} finally {
-			setSpaceTransactionsLoading(false);
+			setSpaceExpenseRecordsLoading(false);
 		}
 	}, [selectedSpaceId]);
 
-	const loadMoreSpaceTransactions = useCallback(async () => {
+	const loadMoreSpaceExpenseRecords = useCallback(async () => {
 		if (
 			selectedSpaceId == null ||
-			spaceTransactionsLoadingMore ||
-			spaceTransactionsNextOffset == null
+			spaceExpenseRecordsLoadingMore ||
+			spaceExpenseRecordsNextOffset == null
 		) {
 			return;
 		}
-		setSpaceTransactionsLoadingMore(true);
-		setSpaceTransactionsError(null);
+		setSpaceExpenseRecordsLoadingMore(true);
+		setSpaceExpenseRecordsError(null);
 		try {
 			const data = await apiClient.spaces.expenses.list(selectedSpaceId, {
 				limit: SPACE_EXPENSE_PAGE_SIZE,
-				offset: spaceTransactionsNextOffset,
+				offset: spaceExpenseRecordsNextOffset,
 			});
-			setSpaceTransactions((current) =>
-				mergeTransactions(current ?? [], data.expenses ?? []),
+			setSpaceExpenseRecords((current) =>
+				mergeExpenseRecords(current ?? [], data.expenses ?? []),
 			);
-			setSpaceTransactionsHasMore(data.has_more === true);
-			setSpaceTransactionsNextOffset(
+			setSpaceExpenseRecordsHasMore(data.has_more === true);
+			setSpaceExpenseRecordsNextOffset(
 				typeof data.next_offset === "number" ? data.next_offset : null,
 			);
 		} catch (e) {
-			setSpaceTransactionsError(
+			setSpaceExpenseRecordsError(
 				e instanceof Error ? e.message : "Failed to load more expenses",
 			);
 		} finally {
-			setSpaceTransactionsLoadingMore(false);
+			setSpaceExpenseRecordsLoadingMore(false);
 		}
 	}, [
-		mergeTransactions,
+		mergeExpenseRecords,
 		selectedSpaceId,
-		spaceTransactionsLoadingMore,
-		spaceTransactionsNextOffset,
+		spaceExpenseRecordsLoadingMore,
+		spaceExpenseRecordsNextOffset,
 	]);
 
 	useEffect(() => {
-		void loadSpaceTransactions();
-	}, [loadSpaceTransactions]);
+		void loadSpaceExpenseRecords();
+	}, [loadSpaceExpenseRecords]);
 
 	useEffect(() => {
 		if (!isExpensesRoute || selectedExpenseId == null) {
@@ -151,16 +151,16 @@ export const useSpaceExpensesWorkspaceState = ({
 	return {
 		clearSelectedExpense,
 		expenseInspectorWorkspaceEditing,
-		loadSpaceTransactions,
-		loadMoreSpaceTransactions,
+		loadSpaceExpenseRecords,
+		loadMoreSpaceExpenseRecords,
 		openExpenseDetail,
 		selectExpense,
 		setSelectedExpenseId,
 		selectedExpenseId,
-		spaceTransactions,
-		spaceTransactionsError,
-		spaceTransactionsHasMore,
-		spaceTransactionsLoading,
-		spaceTransactionsLoadingMore,
+		spaceExpenseRecords,
+		spaceExpenseRecordsError,
+		spaceExpenseRecordsHasMore,
+		spaceExpenseRecordsLoading,
+		spaceExpenseRecordsLoadingMore,
 	};
 };

@@ -1,5 +1,5 @@
 import { createWsClient } from "@cofi/api";
-import { tokenStorage } from "./tokenStorage";
+import { authSessionStore } from "./authSessionStore";
 
 const toWsBaseUrl = (apiBaseUrl: string) => {
 	const trimmed = apiBaseUrl.trim().replace(/\/+$/, "");
@@ -21,5 +21,5 @@ const baseWsUrl =
 
 export const wsClient = createWsClient({
 	baseWsUrl,
-	getAccessToken: () => tokenStorage.getToken(),
+	getAccessToken: () => authSessionStore.getRequestAccessToken(),
 });

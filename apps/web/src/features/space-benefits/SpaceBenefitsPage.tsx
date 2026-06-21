@@ -1,5 +1,5 @@
 import type {
-	BenefitCandidate,
+	DocumentCandidate,
 	PatchPromoCodeRequest,
 	PromoCode,
 } from "@cofi/api";
@@ -20,6 +20,7 @@ import {
 	toPromoBenefitEntity,
 } from "../../shared/lib/benefitPresentation";
 import { EntityMini } from "../../shared/lib/entityPresentation";
+import { captureManualPromo } from "../../shared/lib/quickCapture";
 import {
 	WorkspaceFilterBar,
 	WorkspaceListingPage,
@@ -38,7 +39,7 @@ type CandidateView = {
 	source: string;
 	confidenceLabel: string;
 	canSavePromo: boolean;
-	raw: BenefitCandidate;
+	raw: DocumentCandidate;
 };
 
 type PromoStatusFilter =
@@ -51,7 +52,7 @@ type PromoStatusFilter =
 
 type PromoSourceFilter = "all" | "receipts" | "manual" | "messages" | "other";
 
-type PromoEditDraft = {
+type PromoEditForm = {
 	title: string;
 	description: string;
 	reminderAt: string;
@@ -77,7 +78,7 @@ const promoSourceOptions: { value: PromoSourceFilter; label: string }[] = [
 
 const PROMO_PAGE_SIZE = 50;
 
-const promoEditDraftFrom = (promo: PromoBenefit): PromoEditDraft => ({
+const promoEditFormFrom = (promo: PromoBenefit): PromoEditForm => ({
 	title: promo.raw.title ?? "",
 	description: promo.raw.description ?? "",
 	reminderAt: promo.raw.reminder_at?.slice(0, 16) ?? "",
@@ -141,11 +142,9 @@ const toRecord = (value: unknown): Record<string, unknown> => {
 };
 
 const candidateData = (
-	candidate: BenefitCandidate,
+	candidate: DocumentCandidate,
 ): Record<string, unknown> => {
-	const structured = toRecord(candidate.structured_data);
-	const nested = toRecord(structured.data);
-	return Object.keys(nested).length ? nested : structured;
+	return toRecord(candidate.structured_data);
 };
 
 const firstText = (
@@ -167,7 +166,13 @@ const candidateTypeLabel = (type: string): string => {
 	return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-const toCandidateView = (candidate: BenefitCandidate): CandidateView => {
+const isBenefitReviewCandidate = (candidate: {
+	candidate_type: string;
+}): boolean =>
+	candidate.candidate_type === "promo_code_candidate" ||
+	candidate.candidate_type === "loyalty_event_candidate";
+
+const toCandidateView = (candidate: DocumentCandidate): CandidateView => {
 	const data = candidateData(candidate);
 	const promoCode = firstText(data, [
 		"promo_code",
@@ -297,7 +302,7 @@ export const SpaceBenefitsPage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
 	const [promos, setPromos] = useState<PromoCode[]>([]);
-	const [candidates, setCandidates] = useState<BenefitCandidate[]>([]);
+	const [candidates, setCandidates] = useState<DocumentCandidate[]>([]);
 	const [candidateCount, setCandidateCount] = useState(0);
 	const [promosHasMore, setPromosHasMore] = useState(false);
 	const [promosNextOffset, setPromosNextOffset] = useState<number | null>(null);
@@ -320,7 +325,7 @@ export const SpaceBenefitsPage = () => {
 		useState<PromoSourceFilter>("all");
 	const [selectedPromoId, setSelectedPromoId] = useState<number | null>(null);
 	const [editingPromoId, setEditingPromoId] = useState<number | null>(null);
-	const [promoEditDraft, setPromoEditDraft] = useState<PromoEditDraft | null>(
+	const [PromoEditForm, setPromoEditForm] = useState<PromoEditForm | null>(
 		null,
 	);
 	const [promoEditBusyId, setPromoEditBusyId] = useState<number | null>(null);
@@ -360,16 +365,19 @@ export const SpaceBenefitsPage = () => {
 					limit: PROMO_PAGE_SIZE,
 					offset: 0,
 				}),
-				apiClient.spaces.review.listBenefitCandidates(numericSpaceId, {
+				apiClient.spaces.review.listDocumentCandidates(numericSpaceId, {
 					limit: 20,
 				}),
 			]);
 			setPromos(promoData.promos ?? []);
 			setPromosHasMore(Boolean(promoData.has_more));
 			setPromosNextOffset(promoData.next_offset ?? null);
-			setCandidates(candidateData.candidates ?? []);
+			setCandidates(
+				(candidateData.candidates ?? []).filter(isBenefitReviewCandidate),
+			);
 			setCandidateCount(
-				(candidateData.candidates ?? []).length ||
+				(candidateData.candidates ?? []).filter(isBenefitReviewCandidate)
+					.length ||
 					promoData.summary?.candidate_count ||
 					0,
 			);
@@ -510,7 +518,7 @@ export const SpaceBenefitsPage = () => {
 			if (selectedPromoId === promo.id) {
 				setSelectedPromoId(null);
 				setEditingPromoId(null);
-				setPromoEditDraft(null);
+				setPromoEditForm(null);
 				setPromoEditError(null);
 			}
 			setDeletePromoTarget(null);
@@ -526,20 +534,20 @@ export const SpaceBenefitsPage = () => {
 	const openPromoDetail = (promo: PromoBenefit) => {
 		setSelectedPromoId(promo.id);
 		setEditingPromoId(null);
-		setPromoEditDraft(promoEditDraftFrom(promo));
+		setPromoEditForm(promoEditFormFrom(promo));
 		setPromoEditError(null);
 	};
 
 	const startPromoEdit = (promo: PromoBenefit) => {
 		setSelectedPromoId(promo.id);
 		setEditingPromoId(promo.id);
-		setPromoEditDraft(promoEditDraftFrom(promo));
+		setPromoEditForm(promoEditFormFrom(promo));
 		setPromoEditError(null);
 	};
 
 	const cancelPromoEdit = () => {
 		if (selectedPromo) {
-			setPromoEditDraft(promoEditDraftFrom(selectedPromo));
+			setPromoEditForm(promoEditFormFrom(selectedPromo));
 		}
 		setEditingPromoId(null);
 		setPromoEditError(null);
@@ -549,15 +557,15 @@ export const SpaceBenefitsPage = () => {
 		if (
 			numericSpaceId == null ||
 			selectedPromo == null ||
-			promoEditDraft == null
+			PromoEditForm == null
 		) {
 			return;
 		}
 		const body: PatchPromoCodeRequest = {
-			title: nullableText(promoEditDraft.title),
-			description: nullableText(promoEditDraft.description),
-			status: nullableText(promoEditDraft.status),
-			reminder_at: nullableText(promoEditDraft.reminderAt),
+			title: nullableText(PromoEditForm.title),
+			description: nullableText(PromoEditForm.description),
+			status: nullableText(PromoEditForm.status),
+			reminder_at: nullableText(PromoEditForm.reminderAt),
 		};
 		setPromoEditBusyId(selectedPromo.id);
 		setPromoEditError(null);
@@ -572,7 +580,7 @@ export const SpaceBenefitsPage = () => {
 					Number(item.id) === selectedPromo.id ? updated : item,
 				),
 			);
-			setPromoEditDraft(promoEditDraftFrom(toPromoBenefit(updated)));
+			setPromoEditForm(promoEditFormFrom(toPromoBenefit(updated)));
 			setEditingPromoId(null);
 		} catch (error) {
 			setPromoEditError(
@@ -594,25 +602,29 @@ export const SpaceBenefitsPage = () => {
 		setManualBusy(true);
 		setManualError(null);
 		try {
-			const created = await apiClient.spaces.createPromo(numericSpaceId, {
+			const created = await captureManualPromo(numericSpaceId, {
 				title,
-				promo_code: code,
-				redeem_platform: manualRedeemAt.trim(),
-				valid_until: manualValidUntil.trim() || undefined,
-				source_type: "manual",
-				status: "active",
+				promoCode: code,
+				redeemPlatform: manualRedeemAt.trim(),
+				validUntil: manualValidUntil.trim() || undefined,
 			});
-			setPromos((current) => [created, ...current]);
+			const hasPromoCandidate = (created.candidates ?? []).some(
+				(candidate) => candidate.candidate_type === "promo_code_candidate",
+			);
+			if (!hasPromoCandidate) {
+				throw new Error(
+					"Manual promo was captured, but no promo candidate was created.",
+				);
+			}
 			setManualTitle("");
 			setManualCode("");
 			setManualRedeemAt("");
 			setManualValidUntil("");
 			setManualOpen(false);
-			setSelectedPromoId(Number(created.id));
-			setPromoEditDraft(promoEditDraftFrom(toPromoBenefit(created)));
+			await loadPromos();
 		} catch (error) {
 			setManualError(
-				error instanceof Error ? error.message : "Failed to save promo",
+				error instanceof Error ? error.message : "Failed to capture promo",
 			);
 		} finally {
 			setManualBusy(false);
@@ -631,13 +643,13 @@ export const SpaceBenefitsPage = () => {
 		setCandidateBusyId(candidate.id);
 		setLoadError(null);
 		try {
-			const result = await apiClient.spaces.review.saveBenefitCandidatePromo(
+			const result = await apiClient.spaces.review.savePromoCandidate(
 				numericSpaceId,
 				candidate.id,
 			);
 			setPromos((current) => [result.promo, ...current]);
 			setSelectedPromoId(Number(result.promo.id));
-			setPromoEditDraft(promoEditDraftFrom(toPromoBenefit(result.promo)));
+			setPromoEditForm(promoEditFormFrom(toPromoBenefit(result.promo)));
 			removeCandidate(candidate.id);
 		} catch (error) {
 			setLoadError(
@@ -653,7 +665,7 @@ export const SpaceBenefitsPage = () => {
 		setCandidateBusyId(candidate.id);
 		setLoadError(null);
 		try {
-			await apiClient.spaces.review.ignoreBenefitCandidate(
+			await apiClient.spaces.review.ignoreDocumentCandidate(
 				numericSpaceId,
 				candidate.id,
 			);
@@ -772,7 +784,7 @@ export const SpaceBenefitsPage = () => {
 				{selectedPromo ? (
 					<div className="mt-4 space-y-4">
 						<PromoBenefitDetailHeader promo={selectedPromo} />
-						{editingPromoId === selectedPromo.id && promoEditDraft ? (
+						{editingPromoId === selectedPromo.id && PromoEditForm ? (
 							<div className="space-y-3 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/66 p-3">
 								<label className="block space-y-1 text-sm">
 									<span className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -781,13 +793,13 @@ export const SpaceBenefitsPage = () => {
 									<input
 										className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
 										onChange={(event) =>
-											setPromoEditDraft((current) =>
+											setPromoEditForm((current) =>
 												current
 													? { ...current, title: event.target.value }
 													: current,
 											)
 										}
-										value={promoEditDraft.title}
+										value={PromoEditForm.title}
 									/>
 								</label>
 								<label className="block space-y-1 text-sm">
@@ -797,13 +809,13 @@ export const SpaceBenefitsPage = () => {
 									<textarea
 										className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
 										onChange={(event) =>
-											setPromoEditDraft((current) =>
+											setPromoEditForm((current) =>
 												current
 													? { ...current, description: event.target.value }
 													: current,
 											)
 										}
-										value={promoEditDraft.description}
+										value={PromoEditForm.description}
 									/>
 								</label>
 								<div className="grid gap-3">
@@ -814,16 +826,15 @@ export const SpaceBenefitsPage = () => {
 										<select
 											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
 											onChange={(event) =>
-												setPromoEditDraft((current) =>
+												setPromoEditForm((current) =>
 													current
 														? { ...current, status: event.target.value }
 														: current,
 												)
 											}
-											value={promoEditDraft.status}
+											value={PromoEditForm.status}
 										>
 											<option value="active">Active</option>
-											<option value="draft">Draft</option>
 											<option value="used">Used</option>
 											<option value="expired">Expired</option>
 											<option value="archived">Archived</option>
@@ -837,7 +848,7 @@ export const SpaceBenefitsPage = () => {
 										<input
 											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
 											onChange={(event) =>
-												setPromoEditDraft((current) =>
+												setPromoEditForm((current) =>
 													current
 														? {
 																...current,
@@ -847,7 +858,7 @@ export const SpaceBenefitsPage = () => {
 												)
 											}
 											type="datetime-local"
-											value={promoEditDraft.reminderAt}
+											value={PromoEditForm.reminderAt}
 										/>
 									</label>
 								</div>
@@ -1244,7 +1255,7 @@ export const SpaceBenefitsPage = () => {
 											onClick={submitManualPromo}
 											type="button"
 										>
-											{manualBusy ? "Saving…" : "Save promo"}
+											{manualBusy ? "Adding…" : "Add to review"}
 										</button>
 									</div>
 								</div>

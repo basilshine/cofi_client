@@ -94,7 +94,7 @@ const capturePacketPayload = {
 						status: "approved",
 						title: "Family receipt",
 						total_amount: 1700,
-						txn_date: "2026-06-01",
+						expense_date: "2026-06-01",
 					},
 				],
 				participants: [
@@ -166,7 +166,7 @@ const searchPayload = {
 			source_document_id: sourceDocumentId,
 			space_id: spaceId,
 			space_name: "Fixture Space",
-			status: "draft",
+			status: "pending_review",
 			subtitle: "Fixture Space",
 			title: "Family receipt",
 			type: "expense",
@@ -310,11 +310,6 @@ const setupReviewMocks = async (page: Page) => {
 			return;
 		}
 
-		if (path === `/api/v1/spaces/${spaceId}/review/benefit-candidates`) {
-			await route.fulfill(json({ candidates: [] }));
-			return;
-		}
-
 		if (path === `/api/v1/spaces/${spaceId}/review/candidates`) {
 			await route.fulfill(json({ candidates: [] }));
 			return;
@@ -428,7 +423,7 @@ test("chat capture submit creates source-backed review feedback", async ({
 
 	await setupReviewMocks(page);
 
-	await page.goto(`/console/chat?spaceId=${spaceId}`, {
+	await page.goto(`/console/spaces/${spaceId}/chat`, {
 		waitUntil: "domcontentloaded",
 	});
 
@@ -538,7 +533,7 @@ test("search, activity, and chat expose source capture review links", async ({
 		),
 	);
 
-	await page.goto(`/console/chat?spaceId=${spaceId}`, {
+	await page.goto(`/console/spaces/${spaceId}/chat`, {
 		waitUntil: "domcontentloaded",
 	});
 	await expect(
@@ -551,7 +546,7 @@ test("search, activity, and chat expose source capture review links", async ({
 		),
 	);
 
-	await page.goto(`/console/chat?spaceId=${spaceId}`, {
+	await page.goto(`/console/spaces/${spaceId}/chat`, {
 		waitUntil: "domcontentloaded",
 	});
 	await page.getByRole("button", { name: /Space activity/ }).click();

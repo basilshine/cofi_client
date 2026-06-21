@@ -43,9 +43,6 @@ export const useSpaceMembersInvites = ({
 	const setAcceptInviteToken = useCallback((v: string) => {
 		setAcceptInviteTokenState(v);
 	}, []);
-	const [hardPurgeFeedback, setHardPurgeFeedback] = useState<string | null>(
-		null,
-	);
 
 	const loadMembers = useCallback(async () => {
 		if (!enabled || spaceId == null) {
@@ -203,22 +200,6 @@ export const useSpaceMembersInvites = ({
 		[acceptInviteToken, onJoinedSpace, onSpacesUpdated],
 	);
 
-	const handleHardPurgeAllMessages = useCallback(async () => {
-		if (spaceId == null) return;
-		const ok = window.confirm(
-			"Clear ALL chat messages in this space?\n\nThis cannot be undone. Expense records and recurring schedules are not deleted — only chat lines.\n\nContinue?",
-		);
-		if (!ok) return;
-		setHardPurgeFeedback(null);
-		setIsLoading(true);
-		try {
-			const res = await apiClient.spaces.hardPurgeAllMessages(spaceId);
-			setHardPurgeFeedback(`Removed ${String(res.deleted)} message(s).`);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [spaceId]);
-
 	const clearMemberRoleError = useCallback(() => setMemberRoleError(null), []);
 
 	return {
@@ -241,14 +222,12 @@ export const useSpaceMembersInvites = ({
 		tenantInviteToken,
 		acceptInviteToken,
 		setAcceptInviteToken,
-		hardPurgeFeedback,
 		handleRefreshSpaces,
 		handlePatchMemberRole,
 		handleRemoveSpaceMember,
 		handleCreateInvite,
 		handleCreateTenantInvite,
 		handleAcceptInvite,
-		handleHardPurgeAllMessages,
 	};
 };
 

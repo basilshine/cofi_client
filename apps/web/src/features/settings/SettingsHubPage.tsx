@@ -11,6 +11,7 @@ import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient } from "../../shared/lib/apiClient";
 import { authApi } from "../../shared/lib/authApi";
+import { authSessionStore } from "../../shared/lib/authSessionStore";
 import { type AuthProfile, tokenStorage } from "../../shared/lib/tokenStorage";
 import {
 	type ThemeId,
@@ -274,7 +275,7 @@ export const SettingsHubPage = ({
 
 	const tokenPreview = useMemo(() => {
 		void profilesVersion;
-		const token = tokenStorage.getToken();
+		const token = authSessionStore.getRequestAccessToken();
 		if (!token) return null;
 		if (token.length <= 18) return token;
 		return `${token.slice(0, 10)}...${token.slice(-6)}`;

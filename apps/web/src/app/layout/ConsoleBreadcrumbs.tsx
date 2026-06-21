@@ -51,12 +51,13 @@ const buildCrumbs = (
 	}
 
 	const spaceMatch = pathname.match(
-		/^\/console\/spaces\/([^/]+)\/(overview|expenses|splits|benefits|recurring)\/?$/,
+		/^\/console\/spaces\/([^/]+)\/(overview|chat|expenses|splits|benefits|recurring)\/?$/,
 	);
 	if (spaceMatch) {
 		const tail = spaceMatch[2];
 		const tailLabel: Record<string, string> = {
 			overview: "Overview",
+			chat: "Chat",
 			expenses: "Expenses",
 			splits: "Splits",
 			benefits: "Benefits",
@@ -68,61 +69,6 @@ const buildCrumbs = (
 			{ label: chat?.spaceName?.trim() ?? "Space" },
 			{ label: tailLabel[tail] ?? "Space" },
 		];
-	}
-
-	if (pathname.startsWith("/console/chat")) {
-		const space = chat?.spaceName?.trim() ?? "";
-		const hasSelectedExpense = Boolean(chat?.selectedExpense);
-		const base: Crumb[] = [{ label: "Console", to: "/console" }, workspace];
-
-		if (!space && !hasSelectedExpense) {
-			base.push({ label: "Chat" });
-			if (pathname.startsWith("/console/chat/thread")) {
-				base.push({ label: "Review" });
-			}
-			return base;
-		}
-
-		base.push({ label: "Chat", to: "/console/chat" });
-
-		if (!space && hasSelectedExpense && chat?.selectedExpense) {
-			base.push({
-				label: chat.selectedExpense.label,
-				detail: chat.selectedExpense.detail ?? null,
-			});
-			return base;
-		}
-
-		if (space) {
-			const canonicalExpensesHref =
-				chat?.spaceId != null
-					? `/console/spaces/${encodeURIComponent(String(chat.spaceId))}/expenses`
-					: undefined;
-			if (!hasSelectedExpense) {
-				base.push({ label: space });
-				if (pathname.startsWith("/console/chat/expenses")) {
-					base.push({ label: "Expenses" });
-				}
-				return base;
-			}
-			base.push({ label: space });
-			if (pathname.startsWith("/console/chat/expenses")) {
-				base.push({
-					label: "Expenses",
-					to: canonicalExpensesHref,
-				});
-			}
-			base.push({
-				label: chat?.selectedExpense?.label ?? "Expense detail",
-				detail: chat?.selectedExpense?.detail ?? null,
-			});
-			return base;
-		}
-
-		if (pathname.startsWith("/console/chat/thread")) {
-			base.push({ label: "Review" });
-		}
-		return base;
 	}
 
 	if (pathname.startsWith("/console/settings")) {
@@ -164,7 +110,6 @@ const buildCrumbs = (
 	const sectionLabel: Record<string, string> = {
 		account: "Account",
 		spaces: "Spaces",
-		transactions: "Expenses",
 		recurring: "Recurring",
 		quota: "Quota",
 	};

@@ -12,7 +12,6 @@ import {
 
 export type BenefitStatus =
 	| "active"
-	| "draft"
 	| "expires_soon"
 	| "used"
 	| "expired"
@@ -57,9 +56,6 @@ const statusClass = (status: BenefitStatus) => {
 	if (status === "expires_soon") {
 		return "border-[rgba(200,130,55,0.42)] bg-[rgba(255,236,200,0.56)] text-[#6b4510]";
 	}
-	if (status === "draft") {
-		return "border-[rgba(120,100,80,0.24)] bg-[rgba(255,252,246,0.72)] text-foreground/72";
-	}
 	if (status === "expired" || status === "archived" || status === "ignored") {
 		return "border-border/60 bg-muted/55 text-muted-foreground";
 	}
@@ -81,7 +77,6 @@ const toBenefitStatus = (promo: PromoCode): BenefitStatus => {
 		return "expires_soon";
 	}
 	if (
-		status === "draft" ||
 		status === "used" ||
 		status === "expired" ||
 		status === "archived" ||
@@ -292,7 +287,7 @@ export const PromoBenefitCard = ({
 		promo.status === "expired" ||
 		promo.status === "ignored" ||
 		promo.status === "used";
-	const attention = promo.status === "expires_soon" || promo.status === "draft";
+	const attention = promo.status === "expires_soon";
 
 	return (
 		<li>

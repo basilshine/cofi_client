@@ -1,14 +1,12 @@
 import type { DashboardResponse, DashboardVariant } from "./dashboard";
 import {
 	type ApplySplitCandidateResponse,
-	type BenefitCandidateListResponse,
 	type CapturePacketListResponse,
 	type ChatMessage,
 	type CreateExpenseCandidateResponse,
 	type CreateParticipantCandidateResponse,
 	type CreatePaymentLinkRequest,
 	type CreatePaymentLinkResponse,
-	type CreatePromoCodeRequest,
 	type CreateRecurringCandidateResponse,
 	type DeleteSourceDocumentReviewResponse,
 	type DocumentCandidateListResponse,
@@ -29,7 +27,7 @@ import {
 	type PromoCode,
 	type QuotaStatus,
 	type RecurringExpense,
-	type SaveBenefitCandidatePromoResponse,
+	type SavePromoCandidateResponse,
 	type SearchEntityType,
 	type SearchResponse,
 	type Space,
@@ -53,7 +51,6 @@ import {
 	type TenantInviteCreateResponse,
 	type TenantInvitesListResponse,
 	type TenantMembersPage,
-	type Transaction,
 	type UploadPaymentProofResponse,
 	type User,
 	type Vendor,
@@ -325,7 +322,7 @@ export const createApiClient = (config: ApiClientConfig) => {
 		spaces: {
 			/**
 			 * List spaces the user belongs to.
-			 * - Omit `params` or pass `{}`: legacy — may send `X-Tenant-Id` from `getTenantId()` (session org).
+			 * - Omit `params` or pass `{}`: uses the current session tenant header when present.
 			 * - `{ tenantId: N }`: filter to that tenant (query + header when used with quota middleware).
 			 * - `{ tenantId: null }`: **all tenants** — no `tenant_id` query, no `X-Tenant-Id` header (shows every space you are a member of).
 			 */
@@ -430,6 +427,19 @@ export const createApiClient = (config: ApiClientConfig) => {
 						headers: authHeaders(),
 					},
 				);
+			},
+			vendors: {
+				list: (spaceId: string | number) =>
+					fetchJson<Vendor[]>(withBase(`/api/v1/spaces/${spaceId}/vendors`), {
+						method: "GET",
+						headers: authHeaders(),
+					}),
+				create: (spaceId: string | number, body: { name: string }) =>
+					fetchJson<Vendor>(withBase(`/api/v1/spaces/${spaceId}/vendors`), {
+						method: "POST",
+						headers: authHeaders(),
+						body,
+					}),
 			},
 			listCapturePackets: (
 				spaceId: string | number,
@@ -661,15 +671,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 						},
 					);
 				},
-				create: (spaceId: string | number, body: RecurringExpense) =>
-					fetchJson<RecurringExpense>(
-						withBase(`/api/v1/spaces/${spaceId}/recurring`),
-						{
-							method: "POST",
-							headers: authHeaders(),
-							body,
-						},
-					),
 				update: (
 					spaceId: string | number,
 					id: string | number,
@@ -699,22 +700,16 @@ export const createApiClient = (config: ApiClientConfig) => {
 						),
 						{ method: "POST", headers: authHeaders() },
 					),
-				remove: (
-					spaceId: string | number,
-					id: string | number,
-					opts?: { purgeExpenses?: boolean },
-				) => {
-					const qs = opts?.purgeExpenses === true ? "?purge_expenses=1" : "";
-					return fetchJson<void>(
+				remove: (spaceId: string | number, id: string | number) =>
+					fetchJson<void>(
 						withBase(
-							`/api/v1/spaces/${spaceId}/recurring/${encodeURIComponent(String(id))}${qs}`,
+							`/api/v1/spaces/${spaceId}/recurring/${encodeURIComponent(String(id))}`,
 						),
 						{
 							method: "DELETE",
 							headers: authHeaders(),
 						},
-					);
-				},
+					),
 			},
 			/** Incoming invites for your login email (e.g. org member invited to a space). */
 			listPendingInvitesForMe: () =>
@@ -748,15 +743,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 				const json: unknown = await res.json();
 				return parseInviteAcceptResponse(json);
 			},
-			/** Owner-only; gated by `ALLOW_HARD_PURGE_ALL_MESSAGES` in production. */
-			hardPurgeAllMessages: (spaceId: string | number) =>
-				fetchJson<{ deleted: number }>(
-					withBase(`/api/v1/spaces/${spaceId}/messages/all`),
-					{
-						method: "DELETE",
-						headers: authHeaders(),
-					},
-				),
 			/** Soft-delete one message (owner: any line; member: own user messages only). */
 			deleteMessage: (spaceId: string | number, messageId: string | number) =>
 				fetchJson<void>(
@@ -780,36 +766,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 						body: payload,
 					},
 				),
-			/** Distinct tag names on approved expenses linked to this space (not limited to transaction list page size). */
-			listTransactionTags: (spaceId: string | number) =>
-				fetchJson<{ tags: string[] }>(
-					withBase(`/api/v1/spaces/${spaceId}/transaction-tags`),
-					{
-						method: "GET",
-						headers: authHeaders(),
-					},
-				),
-			/**
-			 * Saved expense records linked to this space. Capture candidates stay in Review.
-			 * @deprecated Use `spaces.expenses.list` for space expense records.
-			 */
-			listTransactions: (
-				spaceId: string | number,
-				params?: { limit?: number; offset?: number },
-			) => {
-				const qs = new URLSearchParams();
-				if (params?.limit != null && params.limit > 0) {
-					qs.set("limit", String(params.limit));
-				}
-				if (params?.offset != null && params.offset >= 0) {
-					qs.set("offset", String(params.offset));
-				}
-				const q = qs.size ? `?${qs.toString()}` : "";
-				return fetchJson<SpaceExpenseListResponse>(
-					withBase(`/api/v1/spaces/${spaceId}/expenses${q}`),
-					{ method: "GET", headers: authHeaders() },
-				).then((res) => res.expenses ?? []);
-			},
 			listPromos: (
 				spaceId: string | number,
 				params?: { limit?: number; offset?: number },
@@ -827,11 +783,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 					{ method: "GET", headers: authHeaders() },
 				);
 			},
-			createPromo: (spaceId: string | number, body: CreatePromoCodeRequest) =>
-				fetchJson<PromoCode>(
-					withBase(`/api/v1/spaces/${spaceId}/benefits/promos`),
-					{ method: "POST", headers: authHeaders(), body },
-				),
 			patchPromo: (
 				spaceId: string | number,
 				promoId: string | number,
@@ -903,8 +854,7 @@ export const createApiClient = (config: ApiClientConfig) => {
 					spaceId: string | number,
 					expenseId: string | number,
 					lines: Array<{
-						user_id?: number | null;
-						space_participant_id?: number | null;
+						space_participant_id: number;
 						amount: number;
 					}>,
 				) =>
@@ -918,40 +868,13 @@ export const createApiClient = (config: ApiClientConfig) => {
 					),
 			},
 			review: {
-				listBenefitCandidates: (
-					spaceId: string | number,
-					params?: { limit?: number; sourceDocumentId?: string | number },
-				) => {
-					const search = new URLSearchParams();
-					if (params?.limit != null) search.set("limit", String(params.limit));
-					if (params?.sourceDocumentId != null) {
-						search.set("source_document_id", String(params.sourceDocumentId));
-					}
-					const qs = search.toString() ? `?${search.toString()}` : "";
-					return fetchJson<BenefitCandidateListResponse>(
-						withBase(
-							`/api/v1/spaces/${spaceId}/review/benefit-candidates${qs}`,
-						),
-						{ method: "GET", headers: authHeaders() },
-					);
-				},
-				saveBenefitCandidatePromo: (
+				savePromoCandidate: (
 					spaceId: string | number,
 					candidateId: string | number,
 				) =>
-					fetchJson<SaveBenefitCandidatePromoResponse>(
+					fetchJson<SavePromoCandidateResponse>(
 						withBase(
-							`/api/v1/spaces/${spaceId}/review/benefit-candidates/${encodeURIComponent(String(candidateId))}/save-promo`,
-						),
-						{ method: "POST", headers: authHeaders() },
-					),
-				ignoreBenefitCandidate: (
-					spaceId: string | number,
-					candidateId: string | number,
-				) =>
-					fetchJson<{ id: number; status: string }>(
-						withBase(
-							`/api/v1/spaces/${spaceId}/review/benefit-candidates/${encodeURIComponent(String(candidateId))}/ignore`,
+							`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/save-promo`,
 						),
 						{ method: "POST", headers: authHeaders() },
 					),
@@ -1042,139 +965,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 						{ method: "DELETE", headers: authHeaders() },
 					),
 			},
-			/** @deprecated Use `spaces.review.listBenefitCandidates`. */
-			listBenefitCandidates: (
-				spaceId: string | number,
-				params?: { limit?: number; sourceDocumentId?: string | number },
-			) => {
-				const search = new URLSearchParams();
-				if (params?.limit != null) search.set("limit", String(params.limit));
-				if (params?.sourceDocumentId != null) {
-					search.set("source_document_id", String(params.sourceDocumentId));
-				}
-				const qs = search.toString() ? `?${search.toString()}` : "";
-				return fetchJson<BenefitCandidateListResponse>(
-					withBase(`/api/v1/spaces/${spaceId}/review/benefit-candidates${qs}`),
-					{ method: "GET", headers: authHeaders() },
-				);
-			},
-			/** @deprecated Use `spaces.review.saveBenefitCandidatePromo`. */
-			saveBenefitCandidatePromo: (
-				spaceId: string | number,
-				candidateId: string | number,
-			) =>
-				fetchJson<SaveBenefitCandidatePromoResponse>(
-					withBase(
-						`/api/v1/spaces/${spaceId}/review/benefit-candidates/${encodeURIComponent(String(candidateId))}/save-promo`,
-					),
-					{ method: "POST", headers: authHeaders() },
-				),
-			/** @deprecated Use `spaces.review.ignoreBenefitCandidate`. */
-			ignoreBenefitCandidate: (
-				spaceId: string | number,
-				candidateId: string | number,
-			) =>
-				fetchJson<{ id: number; status: string }>(
-					withBase(
-						`/api/v1/spaces/${spaceId}/review/benefit-candidates/${encodeURIComponent(String(candidateId))}/ignore`,
-					),
-					{ method: "POST", headers: authHeaders() },
-				),
-			/** @deprecated Use `spaces.review.listDocumentCandidates`. */
-			listDocumentCandidates: (
-				spaceId: string | number,
-				params?: { limit?: number; sourceDocumentId?: string | number },
-			) => {
-				const search = new URLSearchParams();
-				if (params?.limit != null) search.set("limit", String(params.limit));
-				if (params?.sourceDocumentId != null) {
-					search.set("source_document_id", String(params.sourceDocumentId));
-				}
-				const qs = search.toString() ? `?${search.toString()}` : "";
-				return fetchJson<DocumentCandidateListResponse>(
-					withBase(`/api/v1/spaces/${spaceId}/review/candidates${qs}`),
-					{ method: "GET", headers: authHeaders() },
-				);
-			},
-			/** @deprecated Use `spaces.review.ignoreDocumentCandidate`. */
-			ignoreDocumentCandidate: (
-				spaceId: string | number,
-				candidateId: string | number,
-			) =>
-				fetchJson<DocumentCandidateState>(
-					withBase(
-						`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/ignore`,
-					),
-					{ method: "POST", headers: authHeaders() },
-				),
-			/** @deprecated Use `spaces.review.confirmDocumentCandidate`. */
-			confirmDocumentCandidate: (
-				spaceId: string | number,
-				candidateId: string | number,
-			) =>
-				fetchJson<DocumentCandidateState>(
-					withBase(
-						`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/confirm`,
-					),
-					{ method: "POST", headers: authHeaders() },
-				),
-			/** @deprecated Use `spaces.review.createParticipantFromCandidate`. */
-			createParticipantFromCandidate: (
-				spaceId: string | number,
-				candidateId: string | number,
-			) =>
-				fetchJson<CreateParticipantCandidateResponse>(
-					withBase(
-						`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/create-participant`,
-					),
-					{ method: "POST", headers: authHeaders() },
-				),
-			/** @deprecated Use `spaces.review.createRecurringFromCandidate`. */
-			createRecurringFromCandidate: (
-				spaceId: string | number,
-				candidateId: string | number,
-			) =>
-				fetchJson<CreateRecurringCandidateResponse>(
-					withBase(
-						`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/create-recurring`,
-					),
-					{ method: "POST", headers: authHeaders() },
-				),
-			/** @deprecated Use `spaces.review.applySplitCandidate`. */
-			applySplitCandidate: (
-				spaceId: string | number,
-				candidateId: string | number,
-				payload: { expense_id: string | number },
-			) =>
-				fetchJson<ApplySplitCandidateResponse>(
-					withBase(
-						`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/apply-split`,
-					),
-					{ method: "POST", headers: authHeaders(), body: payload },
-				),
-			/** @deprecated Use `spaces.review.deleteSourceDocumentReview`. */
-			deleteSourceDocumentReview: (
-				spaceId: string | number,
-				sourceDocumentId: string | number,
-			) =>
-				fetchJson<DeleteSourceDocumentReviewResponse>(
-					withBase(
-						`/api/v1/spaces/${spaceId}/review/captures/${encodeURIComponent(String(sourceDocumentId))}`,
-					),
-					{ method: "DELETE", headers: authHeaders() },
-				),
-		},
-
-		/** Deprecated compatibility alias. Prefer `spaces.expenses.get(...)`. */
-		transactions: {
-			getBySpaceAndId: (spaceId: string | number, id: string | number) =>
-				fetchJson<Transaction>(
-					withBase(`/api/v1/spaces/${spaceId}/expenses/${id}`),
-					{
-						method: "GET",
-						headers: authHeaders(),
-					},
-				),
 		},
 
 		chatlog: {
@@ -1391,112 +1181,6 @@ export const createApiClient = (config: ApiClientConfig) => {
 					headers: quotaHeaders({ tenantId: opts?.tenantId }),
 					body,
 				});
-			},
-		},
-
-		/** Finances — `/api/v1/finances/*`. */
-		finances: {
-			vendors: {
-				list: (opts?: { spaceId?: string | number }) => {
-					const q =
-						opts?.spaceId != null
-							? `?space_id=${encodeURIComponent(String(opts.spaceId))}`
-							: "";
-					return fetchJson<Vendor[]>(withBase(`/api/v1/finances/vendors${q}`), {
-						method: "GET",
-						headers: authHeaders(),
-					});
-				},
-				create: (body: { name: string; space_id?: number }) =>
-					fetchJson<Vendor>(withBase("/api/v1/finances/vendors"), {
-						method: "POST",
-						headers: authHeaders(),
-						body,
-					}),
-			},
-			expenses: {
-				get: (id: string | number) =>
-					fetchJson<ExpenseDetail>(
-						withBase(`/api/v1/finances/expenses/${id}`),
-						{ method: "GET", headers: authHeaders() },
-					),
-				update: (id: string | number, body: ExpensePatch) =>
-					fetchJson<ExpenseDetail>(
-						withBase(`/api/v1/finances/expenses/${id}`),
-						{
-							method: "PUT",
-							headers: authHeaders(),
-							body,
-						},
-					),
-				delete: (id: string | number) =>
-					fetchJson<void>(withBase(`/api/v1/finances/expenses/${id}`), {
-						method: "DELETE",
-						headers: authHeaders(),
-					}),
-				listSplits: (id: string | number) =>
-					fetchJson<{ splits: ExpenseSplitRow[] }>(
-						withBase(`/api/v1/finances/expenses/${id}/splits`),
-						{ method: "GET", headers: authHeaders() },
-					),
-				putSplits: (
-					id: string | number,
-					lines: Array<{
-						user_id?: number | null;
-						space_participant_id?: number | null;
-						amount: number;
-					}>,
-				) =>
-					fetchJson<void>(withBase(`/api/v1/finances/expenses/${id}/splits`), {
-						method: "PUT",
-						headers: authHeaders(),
-						body: lines,
-					}),
-			},
-			recurring: {
-				list: () =>
-					fetchJson<RecurringExpense[]>(
-						withBase("/api/v1/finances/recurring"),
-						{
-							method: "GET",
-							headers: authHeaders(),
-						},
-					),
-				create: (body: RecurringExpense) =>
-					fetchJson<RecurringExpense>(withBase("/api/v1/finances/recurring"), {
-						method: "POST",
-						headers: authHeaders(),
-						body,
-					}),
-				update: (id: string | number, body: RecurringExpense) =>
-					fetchJson<RecurringExpense>(
-						withBase(`/api/v1/finances/recurring/${id}`),
-						{
-							method: "PUT",
-							headers: authHeaders(),
-							body,
-						},
-					),
-				pause: (id: string | number) =>
-					fetchJson<RecurringExpense>(
-						withBase(`/api/v1/finances/recurring/${id}/pause`),
-						{ method: "POST", headers: authHeaders() },
-					),
-				resume: (id: string | number) =>
-					fetchJson<RecurringExpense>(
-						withBase(`/api/v1/finances/recurring/${id}/resume`),
-						{ method: "POST", headers: authHeaders() },
-					),
-				remove: (id: string | number, opts?: { purgeExpenses?: boolean }) => {
-					const qs = opts?.purgeExpenses === true ? "?purge_expenses=1" : "";
-					return fetchJson<void>(
-						withBase(`/api/v1/finances/recurring/${id}${qs}`),
-						{
-							method: "DELETE",
-							headers: authHeaders(),
-						},
-					);
-				},
 			},
 		},
 	};

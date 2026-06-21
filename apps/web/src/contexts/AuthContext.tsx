@@ -45,10 +45,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 	const [isLoading, setIsLoading] = useState(true);
 
 	const refreshUser = useCallback(async () => {
-		let token =
-			authSessionStore.getAccessToken() ??
-			authSessionStore.hydrateFromLegacyStorage() ??
-			tokenStorage.getToken();
+		let token = authSessionStore.getRequestAccessToken();
 
 		const canSilentRefresh =
 			!!tokenStorage.getRefreshToken()?.trim() ||
@@ -57,10 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 		if (!token && canSilentRefresh) {
 			try {
 				await authApi.refresh();
-				token =
-					authSessionStore.getAccessToken() ??
-					authSessionStore.hydrateFromLegacyStorage() ??
-					tokenStorage.getToken();
+				token = authSessionStore.getRequestAccessToken();
 			} catch {
 				authSessionStore.clear();
 			}

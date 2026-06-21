@@ -43,7 +43,7 @@ const permissionsForRole = (role: SpaceRole): readonly string[] => {
 		case "admin":
 			return [
 				"Post in chat, capture expenses, and review capture outcomes.",
-				"Approve split decisions and collaborate on drafts like other members.",
+				"Approve split decisions and collaborate on capture reviews like other members.",
 				"Same baseline as editor/member unless additional rules are added later.",
 			];
 		case "editor":

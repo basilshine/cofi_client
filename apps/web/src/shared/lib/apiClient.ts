@@ -1,6 +1,5 @@
 import { createApiClient } from "@cofi/api";
 import { authSessionStore } from "./authSessionStore";
-import { tokenStorage } from "./tokenStorage";
 import { notifyWorkspaceNavUpdated } from "./workspaceNavEvents";
 
 const ACTIVE_ORG_TENANT_KEY = "ceits.activeOrgTenantId";
@@ -30,9 +29,6 @@ export const writeActiveOrgTenantId = (tenantId: number | null): void => {
 export const apiClient = createApiClient({
 	// Paths in @cofi/api are `/api/v1/...`. Use empty base + Vite proxy, or full origin (no `/api` suffix).
 	baseUrl: import.meta.env.VITE_API_URL?.trim() || "",
-	getAccessToken: () =>
-		authSessionStore.getAccessToken() ??
-		authSessionStore.hydrateFromLegacyStorage() ??
-		tokenStorage.getToken(),
+	getAccessToken: () => authSessionStore.getRequestAccessToken(),
 	getTenantId: () => readActiveOrgTenantId(),
 });

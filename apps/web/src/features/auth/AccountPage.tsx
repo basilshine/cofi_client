@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient, readActiveOrgTenantId } from "../../shared/lib/apiClient";
 import { authSurfaceVariants } from "../../shared/lib/appMotion";
+import { authSessionStore } from "../../shared/lib/authSessionStore";
 import { type AuthProfile, tokenStorage } from "../../shared/lib/tokenStorage";
 import {
 	type ThemeId,
@@ -485,7 +486,7 @@ export const AccountPage = () => {
 
 	const tokenPreview = useMemo(() => {
 		void profilesVersion;
-		const token = tokenStorage.getToken();
+		const token = authSessionStore.getRequestAccessToken();
 		if (!token) return null;
 		if (token.length <= 18) return token;
 		return `${token.slice(0, 10)}…${token.slice(-6)}`;

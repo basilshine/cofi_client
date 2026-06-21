@@ -1,8 +1,4 @@
-import type {
-	BenefitCandidate,
-	CapturePacketRecords,
-	DocumentCandidate,
-} from "@cofi/api";
+import type { CapturePacketRecords, DocumentCandidate } from "@cofi/api";
 
 export type CandidateReviewSource = "benefit" | "document";
 
@@ -39,7 +35,7 @@ export type CandidateReviewItem = {
 	canSavePromo: boolean;
 	isSelfParticipant: boolean;
 	createdAt: string;
-	raw: BenefitCandidate | DocumentCandidate;
+	raw: DocumentCandidate;
 };
 
 export type CapturePacket = {

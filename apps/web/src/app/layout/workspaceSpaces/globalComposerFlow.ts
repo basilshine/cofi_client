@@ -1,8 +1,7 @@
 import type {
-	CaptureIntentPreview,
-	CaptureParseCandidate,
-	CaptureParsePreview,
-} from "../../../shared/lib/quickCaptureTransactions";
+	CaptureCandidate,
+	CaptureResponse,
+} from "../../../shared/lib/quickCapture";
 
 export type GlobalComposerInputKind =
 	| "text"
@@ -32,7 +31,6 @@ export type GlobalComposerCandidateKind =
 	| "reminder"
 	| "split"
 	| "participant"
-	| "space_suggestion"
 	| "merge"
 	| "supporting_document";
 
@@ -51,7 +49,7 @@ export type GlobalComposerCandidateBundle = {
 	createdRecordCount?: number;
 	createdRecordLabels?: string[];
 	requiresReview: boolean;
-	requiresDeepParse: boolean;
+	requiresDeepIntelligence: boolean;
 	clarificationMessage?: string;
 	modelProfile?: string;
 	modelMaxProfile?: string;
@@ -141,174 +139,51 @@ export const globalComposerFlowReducer = (
 	return { step: "failed", error: action.error, message: action.error };
 };
 
-export const summarizeCapturePreview = (
-	preview: CaptureParsePreview,
-	input: {
-		inputKind: Extract<GlobalComposerInputKind, "text" | "photo" | "voice">;
-		spaceId?: string | number;
-		fallbackIntent?: string;
-	},
-): GlobalComposerCandidateBundle => {
-	const data = objectRecord(preview.data);
-	const candidates =
-		preview.candidates != null
-			? summarizeServerCandidates(preview.candidates)
-			: summarizePreviewShape(preview, data);
-
-	return {
-		inputKind: input.inputKind,
-		intent: preview.intent?.trim() || input.fallbackIntent || "unknown",
-		spaceId: input.spaceId,
-		sourceDocumentId: preview.source_document_id,
-		candidates,
-		requiresReview:
-			preview.requires_review === true ||
-			preview.clarification_message != null ||
-			candidates.length > 1,
-		requiresDeepParse: preview.requires_deep_parse === true,
-		clarificationMessage: preview.clarification_message,
-		modelProfile: preview.model_policy?.profile,
-		modelMaxProfile: preview.model_policy?.max_profile,
-		capabilityNotice: capabilityNoticeForPreview(preview),
-	};
-};
-
-export const summarizeCaptureIntentPreview = (
-	preview: CaptureIntentPreview,
+export const summarizeCaptureResponse = (
+	response: CaptureResponse,
 	input: {
 		inputKind: GlobalComposerInputKind;
 		spaceId?: string | number;
 		fallbackIntent?: string;
 	},
 ): GlobalComposerCandidateBundle => {
-	const candidates = summarizeServerCandidates(preview.candidates ?? []);
-	const clarificationMessage =
-		preview.required_clarification?.trim() ||
-		(preview.next_action === "ask_clarification"
-			? "Ceits needs one more detail before continuing."
-			: undefined);
+	const candidates = summarizeCaptureCandidates(response);
 
 	return {
 		inputKind: input.inputKind,
-		intent: preview.intent?.trim() || input.fallbackIntent || "unknown",
-		spaceId: preview.target_context?.space_id ?? input.spaceId,
-		sourceDocumentId: preview.source_document_id,
+		intent: response.intent?.trim() || input.fallbackIntent || "unknown",
+		spaceId: input.spaceId,
+		sourceDocumentId: response.source_document_id,
 		candidates,
-		requiresReview: preview.requires_review === true || candidates.length > 0,
-		requiresDeepParse: false,
-		clarificationMessage,
-		modelProfile: preview.model_policy?.profile,
-		modelMaxProfile: preview.model_policy?.max_profile,
-		capabilityNotice: capabilityNoticeForIntent(preview),
+		requiresReview:
+			response.requires_review === true ||
+			response.clarification_message != null ||
+			candidates.length > 1,
+		requiresDeepIntelligence: response.model_policy?.deep_requested === true,
+		clarificationMessage: response.clarification_message,
+		modelProfile: response.model_policy?.profile,
+		modelMaxProfile: response.model_policy?.max_profile,
+		capabilityNotice: capabilityNoticeForResponse(response),
 	};
 };
 
-const capabilityNoticeForPreview = (
-	preview: CaptureParsePreview,
+const capabilityNoticeForResponse = (
+	response: CaptureResponse,
 ): string | undefined => {
-	if (preview.model_policy?.max_profile?.toLowerCase() !== "basic") {
+	if (response.model_policy?.max_profile?.toLowerCase() !== "basic") {
 		return undefined;
 	}
-	return "Basic keeps expense and item candidates only. Medium and Premium can surface promos, loyalty, payment proof, privacy, merge, and space suggestions when detected.";
+	return "Basic keeps expense and item candidates only. Medium and Premium can surface promos, loyalty, payment proof, privacy, merge, and supporting documents when detected.";
 };
 
-const capabilityNoticeForIntent = (
-	preview: CaptureIntentPreview,
-): string | undefined => {
-	if (preview.model_policy?.max_profile?.toLowerCase() !== "basic") {
-		return undefined;
-	}
-	return "Basic intent keeps expense and item candidates only. Medium and Premium can surface promos, loyalty, payment proof, privacy, merge, and space suggestions when detected.";
-};
-
-const summarizePreviewShape = (
-	preview: CaptureParsePreview,
-	data: Record<string, unknown>,
-) => {
-	const candidates: GlobalComposerCandidateSummary[] = [];
-	const itemCount = (preview.items ?? []).filter(
-		(item) =>
-			item?.name?.trim() ||
-			(Number.isFinite(Number(item?.amount)) && Number(item?.amount) !== 0),
-	).length;
-
-	if (
-		itemCount > 0 ||
-		hasAnyKey(data, "total", "total_amount", "amount", "merchant", "vendor")
-	) {
-		candidates.push({ kind: "expense", count: 1, label: "expense" });
-	}
-	if (itemCount > 0) {
-		candidates.push({
-			kind: "expense_item",
-			count: itemCount,
-			label: itemCount === 1 ? "item" : "items",
-		});
-	}
-	if (hasAnyKey(data, "promo_code", "promo", "coupon", "discount_code")) {
-		candidates.push({ kind: "promo", count: 1, label: "promo" });
-	}
-	if (
-		hasAnyKey(
-			data,
-			"loyalty",
-			"loyalty_program",
-			"bonus",
-			"bonus_points",
-			"points_earned",
-			"points_spent",
-		)
-	) {
-		candidates.push({ kind: "loyalty", count: 1, label: "loyalty" });
-	}
-	if (hasAnyKey(data, "payment_proof", "card_last4", "rrn", "terminal_id")) {
-		candidates.push({
-			kind: "payment_proof",
-			count: 1,
-			label: "payment proof",
-		});
-	}
-	if (hasAnyKey(data, "privacy_signal", "sensitivity", "sensitive")) {
-		candidates.push({ kind: "privacy", count: 1, label: "privacy" });
-	}
-	if (hasAnyKey(data, "recurring", "recurring_rule", "renewal_date")) {
-		candidates.push({ kind: "recurring", count: 1, label: "recurring" });
-	}
-	if (hasAnyKey(data, "membership", "service_period", "period_end")) {
-		candidates.push({ kind: "membership", count: 1, label: "membership" });
-	}
-	if (preview.split_draft != null) {
-		candidates.push({ kind: "split", count: 1, label: "split" });
-	}
-	if (preview.participants_draft != null) {
-		candidates.push({
-			kind: "participant",
-			count: 1,
-			label: "participants",
-		});
-	}
-	if (preview.space_suggestion != null) {
-		candidates.push({
-			kind: "space_suggestion",
-			count: 1,
-			label: "space suggestion",
-		});
-	}
-	if (hasAnyKey(data, "duplicate_candidate", "merge_candidate")) {
-		candidates.push({ kind: "merge", count: 1, label: "merge" });
-	}
-	if (hasAnyKey(data, "supporting_document")) {
-		candidates.push({
-			kind: "supporting_document",
-			count: 1,
-			label: "supporting document",
-		});
-	}
-	return candidates;
+const summarizeCaptureCandidates = (
+	response: CaptureResponse,
+): GlobalComposerCandidateSummary[] => {
+	return summarizeServerCandidates(response.candidates ?? []);
 };
 
 const summarizeServerCandidates = (
-	candidates: CaptureParseCandidate[],
+	candidates: CaptureCandidate[],
 ): GlobalComposerCandidateSummary[] => {
 	const counts = new Map<GlobalComposerCandidateKind, number>();
 	for (const candidate of candidates) {
@@ -324,7 +199,7 @@ const summarizeServerCandidates = (
 };
 
 const candidateKindFromServer = (
-	candidateType: CaptureParseCandidate["candidate_type"] | string | undefined,
+	candidateType: CaptureCandidate["candidate_type"] | string | undefined,
 ): GlobalComposerCandidateKind | null => {
 	if (candidateType === "expense_candidate") return "expense";
 	if (candidateType === "expense_item_candidate") return "expense_item";
@@ -336,7 +211,6 @@ const candidateKindFromServer = (
 	if (candidateType === "membership_candidate") return "membership";
 	if (candidateType === "reminder_candidate") return "reminder";
 	if (candidateType === "merge_candidate") return "merge";
-	if (candidateType === "space_suggestion_candidate") return "space_suggestion";
 	if (candidateType === "supporting_document_candidate") {
 		return "supporting_document";
 	}
@@ -353,7 +227,6 @@ const candidateLabel = (
 ): string => {
 	if (kind === "expense_item") return count === 1 ? "item" : "items";
 	if (kind === "payment_proof") return "payment proof";
-	if (kind === "space_suggestion") return "space suggestion";
 	if (kind === "supporting_document") return "supporting document";
 	return kind.replace(/_/g, " ");
 };
@@ -371,7 +244,7 @@ export const candidateBundleNotice = (
 		return `Records created from this capture: ${labels}.`;
 	}
 	if (!bundle.candidates.length) {
-		return "Ceits parsed the input, but needs a clearer amount, item, promo, or instruction.";
+		return "Ceits captured the input, but needs a clearer amount, item, promo, or instruction.";
 	}
 
 	const labels = bundle.candidates
@@ -390,19 +263,7 @@ export const candidateBundleNotice = (
 		? " Review before final save."
 		: " Ready for candidate save.";
 	const policyHint = bundle.modelProfile
-		? ` ${bundle.modelProfile} parse.`
+		? ` ${bundle.modelProfile} capture.`
 		: "";
 	return `Found ${summary} from this capture.${policyHint}${reviewHint}`;
-};
-
-const objectRecord = (value: unknown): Record<string, unknown> => {
-	if (value == null || typeof value !== "object" || Array.isArray(value)) {
-		return {};
-	}
-	return value as Record<string, unknown>;
-};
-
-const hasAnyKey = (data: Record<string, unknown>, ...keys: string[]) => {
-	const normalized = new Set(Object.keys(data).map((key) => key.toLowerCase()));
-	return keys.some((key) => normalized.has(key.toLowerCase()));
 };

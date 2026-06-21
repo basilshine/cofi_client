@@ -5,8 +5,8 @@ import { apiClient } from "../../shared/lib/apiClient";
 type TestPlan = "basic" | "medium" | "premium";
 
 const TEST_PLANS: { value: TestPlan; label: string; note: string }[] = [
-	{ value: "basic", label: "Basic", note: "Basic parse" },
-	{ value: "medium", label: "Medium", note: "Smart parse" },
+	{ value: "basic", label: "Basic", note: "Basic capture" },
+	{ value: "medium", label: "Medium", note: "Smart capture" },
 	{ value: "premium", label: "Premium", note: "Deep intelligence" },
 ];
 
@@ -50,36 +50,36 @@ const CapabilitySummaryBlock = ({
 	return (
 		<div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
 			<div className="rounded-xl border border-border bg-card p-4">
-				<p className="eyebrow">Parser policy</p>
+				<p className="eyebrow">Capture policy</p>
 				<div className="mt-3 grid gap-2 text-sm">
 					<div className="flex justify-between gap-3">
 						<span className="text-muted-foreground">Max profile</span>
 						<span className="font-mono text-xs">
-							{capabilities.parser.max_profile}
+							{capabilities.capture.max_profile}
 						</span>
 					</div>
 					<div className="flex justify-between gap-3">
 						<span className="text-muted-foreground">Text</span>
 						<span className="font-mono text-xs">
-							{capabilities.parser.text.profile}
+							{capabilities.capture.text.profile}
 						</span>
 					</div>
 					<div className="flex justify-between gap-3">
 						<span className="text-muted-foreground">Image</span>
 						<span className="font-mono text-xs">
-							{capabilities.parser.image.profile}
+							{capabilities.capture.image.profile}
 						</span>
 					</div>
 					<div className="flex justify-between gap-3">
 						<span className="text-muted-foreground">Voice</span>
 						<span className="font-mono text-xs">
-							{capabilities.parser.voice.profile}
+							{capabilities.capture.voice.profile}
 						</span>
 					</div>
 					<div className="flex justify-between gap-3">
 						<span className="text-muted-foreground">Deep allowed</span>
 						<span className="font-mono text-xs">
-							{String(capabilities.parser.deep_allowed)}
+							{String(capabilities.capture.deep_allowed)}
 						</span>
 					</div>
 				</div>
@@ -267,7 +267,7 @@ export const SubscriptionTestPlanPanel = () => {
 					</div>
 					<div className="text-right text-xs text-muted-foreground">
 						<p>Tenant #{quota?.tenant_id ?? "—"}</p>
-						<p>AI parse limit {quota?.ai_parse_monthly_limit ?? "—"}</p>
+						<p>Capture limit {quota?.capture_monthly_limit ?? "—"}</p>
 					</div>
 				</div>
 			</div>

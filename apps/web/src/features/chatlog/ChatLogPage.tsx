@@ -38,7 +38,6 @@ import {
 	type ChatComposerPurpose,
 } from "./components/ChatComposerOrientation";
 import { ChatExpenseRightPanelContent } from "./components/ChatExpenseRightPanelContent";
-import type { LegacyReviewDeepLink } from "./components/ChatMessageRichText";
 import type { ChatSpacesSidebarProps } from "./components/ChatSpacesSidebar";
 import { ChatToastPortal } from "./components/ChatToastPortal";
 import { DeleteChatMessageDialog } from "./components/DeleteChatMessageDialog";
@@ -77,9 +76,9 @@ type NativeComposerMode = "message" | "capture";
 const isRecurringExpenseChatMessage = (message: ChatMessage): boolean =>
 	message.message_type === "recurring_expense";
 
-const isLegacyExpenseReviewSystemMessage = (message: ChatMessage): boolean =>
+const isConfirmedExpenseSystemMessage = (message: ChatMessage): boolean =>
 	message.message_type === "confirmed_expense" &&
-	Boolean(message.related_expense_id || message.related_transaction_id);
+	Boolean(message.related_expense_id);
 
 const spaceReviewHref = (spaceId: string | number) =>
 	`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`;
@@ -212,9 +211,6 @@ export const ChatLogPage = () => {
 	const [stickToLatest, setStickToLatest] = useState(true);
 	const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 	const [currentUserId, setCurrentUserId] = useState<number | null>(null);
-	const [hardPurgeFeedback, setHardPurgeFeedback] = useState<string | null>(
-		null,
-	);
 	const [editingMessageId, setEditingMessageId] = useState<
 		string | number | null
 	>(null);
@@ -234,12 +230,14 @@ export const ChatLogPage = () => {
 	const routeParams = useParams();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const routeSpaceId = routeParams.spaceId?.trim();
+	const isCanonicalSpaceChatRoute = /^\/console\/spaces\/[^/]+\/chat\/?$/.test(
+		location.pathname,
+	);
 	const isCanonicalExpensesRoute =
 		/^\/console\/spaces\/[^/]+\/expenses\/?$/.test(location.pathname);
-	const isLegacyExpensesRoute = location.pathname.startsWith(
-		"/console/chat/expenses",
-	);
-	const isExpensesRoute = isCanonicalExpensesRoute || isLegacyExpensesRoute;
+	const isCanonicalSpaceRoute =
+		isCanonicalSpaceChatRoute || isCanonicalExpensesRoute;
+	const isExpensesRoute = isCanonicalExpensesRoute;
 	/** Dedupe processing the same `?invite=` token from the URL in one session. */
 	const lastUrlInviteTokenProcessedRef = useRef<string | null>(null);
 	/** Dedupe opening the same expense detail deep link from the Expenses URL. */
@@ -255,25 +253,24 @@ export const ChatLogPage = () => {
 	const {
 		clearSelectedExpense,
 		expenseInspectorWorkspaceEditing,
-		loadMoreSpaceTransactions,
-		loadSpaceTransactions,
+		loadMoreSpaceExpenseRecords,
+		loadSpaceExpenseRecords,
 		openExpenseDetail,
 		selectExpense,
 		selectedExpenseId,
-		spaceTransactions,
-		spaceTransactionsError,
-		spaceTransactionsHasMore,
-		spaceTransactionsLoading,
-		spaceTransactionsLoadingMore,
+		spaceExpenseRecords,
+		spaceExpenseRecordsError,
+		spaceExpenseRecordsHasMore,
+		spaceExpenseRecordsLoading,
+		spaceExpenseRecordsLoadingMore,
 	} = useSpaceExpensesWorkspaceState({
 		isExpensesRoute,
 		onOpenInspector: openExpenseInspectorPanel,
 		selectedSpaceId,
 	});
 
-	const { handleComposerSubmit, parseVoiceBlob, sendVoiceBlobAsChatMessage } =
+	const { handleComposerSubmit, captureVoiceBlob, sendVoiceBlobAsChatMessage } =
 		useNativeChatComposerActions({
-			loadSpaceTransactions,
 			onCaptureProgress: (event) => {
 				setCaptureProgressEvents((prev) =>
 					[event, ...prev.filter((item) => item.id !== event.id)].slice(0, 5),
@@ -346,16 +343,12 @@ export const ChatLogPage = () => {
 		selectedSpaceIdRef.current = selectedSpaceId;
 	}, [selectedSpaceId]);
 
-	/** Deep links and sub-nav use path `:spaceId` first, with `?spaceId=` as compatibility fallback. */
+	/** Deep links and sub-nav resolve the Space from the canonical path `:spaceId`. */
 	useEffect(() => {
 		if (!scopeResolutionDone || !workspaceScope) return;
 		if (!spaces?.length) return;
-		const p = location.pathname;
-		if (!p.startsWith("/console/chat") && !isCanonicalExpensesRoute) return;
-		if (p.startsWith("/console/chat/thread")) return;
-		const raw = isCanonicalExpensesRoute
-			? routeSpaceId
-			: searchParams.get("spaceId")?.trim();
+		if (!isCanonicalSpaceRoute) return;
+		const raw = routeSpaceId;
 		if (!raw) return;
 		const space = spaces.find((s) => String(s.id) === String(raw));
 		if (!space) return;
@@ -366,9 +359,8 @@ export const ChatLogPage = () => {
 		workspaceScope,
 		spaces,
 		location.pathname,
-		isCanonicalExpensesRoute,
+		isCanonicalSpaceRoute,
 		routeSpaceId,
-		searchParams,
 		selectedSpaceId,
 		setSelectedSpaceId,
 	]);
@@ -548,7 +540,7 @@ export const ChatLogPage = () => {
 
 	const getMessageSenderLabel = (m: ChatMessage) => {
 		if (m.sender_type !== "user") {
-			if (isLegacyExpenseReviewSystemMessage(m)) return "Parsed by Ceits";
+			if (isConfirmedExpenseSystemMessage(m)) return "Captured by Ceits";
 			if (isRecurringExpenseChatMessage(m)) return "Saved by Ceits";
 			return "Ceits";
 		}
@@ -582,7 +574,6 @@ export const ChatLogPage = () => {
 		setSelectedSpaceId(spaceId);
 		setInviteToken(null);
 		setTenantInviteToken(null);
-		setHardPurgeFeedback(null);
 		setMessages(null);
 		setMembers(null);
 		setCanManageMemberRoles(false);
@@ -770,8 +761,7 @@ export const ChatLogPage = () => {
 			return;
 		}
 
-		const rawSpaceId = searchParams.get("spaceId")?.trim();
-		const targetSpaceId = rawSpaceId || selectedSpaceId;
+		const targetSpaceId = selectedSpaceId;
 		if (targetSpaceId == null) return;
 
 		const linkKey = `${String(targetSpaceId)}:${expenseId}`;
@@ -783,13 +773,6 @@ export const ChatLogPage = () => {
 			return;
 		}
 		lastExpenseDetailLinkProcessedRef.current = linkKey;
-
-		if (rawSpaceId && String(selectedSpaceId) !== String(rawSpaceId)) {
-			void handleSelectSpace(rawSpaceId, {
-				openExpenseId: expenseId,
-			});
-			return;
-		}
 
 		setNativeComposerPurpose("message");
 		openExpenseDetail(expenseId);
@@ -1004,7 +987,7 @@ export const ChatLogPage = () => {
 			if (result.forMessage) {
 				await sendVoiceBlobAsChatMessage(result.blob);
 			} else {
-				await parseVoiceBlob(result.blob);
+				await captureVoiceBlob(result.blob);
 			}
 			return;
 		}
@@ -1044,7 +1027,7 @@ export const ChatLogPage = () => {
 			if (id === "add_recurring_bill") {
 				if (selectedSpaceId == null) return;
 				navigate(
-					`/console/recurring?spaceId=${encodeURIComponent(String(selectedSpaceId))}`,
+					`/console/spaces/${encodeURIComponent(String(selectedSpaceId))}/recurring`,
 				);
 				return;
 			}
@@ -1062,31 +1045,6 @@ export const ChatLogPage = () => {
 		},
 		[navigate, selectedSpaceId, beginRecording],
 	);
-
-	const handleHardPurgeAllMessages = useCallback(async () => {
-		if (selectedSpaceId == null) return;
-		const ok = window.confirm(
-			"Clear ALL chat messages in this space?\n\nThis cannot be undone. Expense records and recurring schedules are not deleted — only chat lines.\n\nContinue?",
-		);
-		if (!ok) return;
-		setHardPurgeFeedback(null);
-		setErrorMessage(null);
-		setIsLoading(true);
-		try {
-			const res = await apiClient.spaces.hardPurgeAllMessages(selectedSpaceId);
-			setMessages([]);
-			setOldestMessageId(null);
-			setHasMore(false);
-			setStickToLatest(true);
-			setHardPurgeFeedback(`Removed ${String(res.deleted)} message(s).`);
-		} catch (e) {
-			setErrorMessage(
-				e instanceof Error ? e.message : "Failed to clear chat messages",
-			);
-		} finally {
-			setIsLoading(false);
-		}
-	}, [selectedSpaceId]);
 
 	useEffect(() => {
 		if (!multiUserSpace) {
@@ -1312,8 +1270,6 @@ export const ChatLogPage = () => {
 			acceptInviteToken,
 			onAcceptInviteTokenChange: setAcceptInviteToken,
 			onAcceptInvite: () => void handleAcceptInviteRef.current(),
-			onHardPurgeAllMessages: () => void handleHardPurgeAllMessages(),
-			hardPurgeFeedback,
 			inviteSuggestionsNonce,
 			incomingInvitesRefreshKey,
 			onAcceptInviteToken: async (token) => {
@@ -1351,8 +1307,6 @@ export const ChatLogPage = () => {
 		handleCreateTenantInvite,
 		tenantInviteToken,
 		acceptInviteToken,
-		handleHardPurgeAllMessages,
-		hardPurgeFeedback,
 		inviteSuggestionsNonce,
 		incomingInvitesRefreshKey,
 		latestMainMessageIdBySpace,
@@ -1367,43 +1321,14 @@ export const ChatLogPage = () => {
 
 	const handleCloseExpenseDetail = useCallback(() => {
 		clearSelectedExpense();
-		void loadSpaceTransactions();
-	}, [clearSelectedExpense, loadSpaceTransactions]);
+		void loadSpaceExpenseRecords();
+	}, [clearSelectedExpense, loadSpaceExpenseRecords]);
 
 	const handleSelectExpenseFromPanel = useCallback(
 		(expenseId: string | number) => {
 			selectExpense(expenseId);
 		},
 		[selectExpense],
-	);
-
-	const handleOpenLegacyReviewLinkFromMainChat = useCallback(
-		(link: LegacyReviewDeepLink) => {
-			const openReview = async () => {
-				const href = await reviewHrefForSpaceExpense(
-					link.spaceId,
-					link.expenseId,
-				);
-				navigate(href);
-			};
-			if (
-				selectedSpaceId != null &&
-				String(selectedSpaceId) !== String(link.spaceId)
-			) {
-				void handleSelectSpace(link.spaceId).then(() => void openReview());
-				return;
-			}
-			setNativeComposerPurpose("message");
-			clearSelectedExpense();
-			void openReview();
-		},
-		[
-			clearSelectedExpense,
-			handleSelectSpace,
-			navigate,
-			selectedSpaceId,
-			setNativeComposerPurpose,
-		],
 	);
 
 	useEffect(() => {
@@ -1421,7 +1346,7 @@ export const ChatLogPage = () => {
 		}
 		if (selectedExpenseId != null) {
 			const selectedExpense =
-				spaceTransactions?.find(
+				spaceExpenseRecords?.find(
 					(tx) => String(tx.id) === String(selectedExpenseId),
 				) ?? null;
 			let label: string;
@@ -1460,7 +1385,7 @@ export const ChatLogPage = () => {
 		workspaceScope,
 		selectedSpace,
 		selectedExpenseId,
-		spaceTransactions,
+		spaceExpenseRecords,
 		formatMoney,
 		setChatBreadcrumb,
 	]);
@@ -1495,15 +1420,15 @@ export const ChatLogPage = () => {
 		) : (
 			<ChatExpenseRightPanelContent
 				expensesWorkspaceRoute={isExpensesRoute}
-				listError={spaceTransactionsError}
-				listLoading={spaceTransactionsLoading}
+				listError={spaceExpenseRecordsError}
+				listLoading={spaceExpenseRecordsLoading}
 				onCloseExpense={handleCloseExpenseDetail}
-				onReloadList={() => void loadSpaceTransactions()}
+				onReloadList={() => void loadSpaceExpenseRecords()}
 				onSelectExpense={handleSelectExpenseFromPanel}
 				selectedExpenseId={selectedExpenseId}
 				spaceId={selectedSpaceId}
 				spaceName={selectedSpace?.name ?? null}
-				spaceTransactions={spaceTransactions}
+				spaceExpenseRecords={spaceExpenseRecords}
 			/>
 		);
 
@@ -1514,22 +1439,22 @@ export const ChatLogPage = () => {
 				errorMessage={errorMessage}
 				expenseInspectorWorkspaceEditing={expenseInspectorWorkspaceEditing}
 				expenseRightPanel={expenseRightPanel}
-				listError={spaceTransactionsError}
-				listLoading={spaceTransactionsLoading}
-				listLoadingMore={spaceTransactionsLoadingMore}
-				listHasMore={spaceTransactionsHasMore}
+				listError={spaceExpenseRecordsError}
+				listLoading={spaceExpenseRecordsLoading}
+				listLoadingMore={spaceExpenseRecordsLoadingMore}
+				listHasMore={spaceExpenseRecordsHasMore}
 				onExpenseDeleted={(expenseId) => {
 					if (String(selectedExpenseId) === String(expenseId)) {
 						clearSelectedExpense();
 					}
 				}}
-				onLoadMore={() => void loadMoreSpaceTransactions()}
-				onReload={() => void loadSpaceTransactions()}
+				onLoadMore={() => void loadMoreSpaceExpenseRecords()}
+				onReload={() => void loadSpaceExpenseRecords()}
 				onSelectExpense={handleSelectExpenseFromPanel}
 				selectedExpenseId={selectedExpenseId}
 				selectedSpaceId={selectedSpaceId}
 				spaceName={selectedSpace?.name ?? null}
-				spaceTransactions={spaceTransactions}
+				spaceExpenseRecords={spaceExpenseRecords}
 				toastMessage={toastMessage}
 			/>
 		);
@@ -1635,7 +1560,6 @@ export const ChatLogPage = () => {
 						onDeleteMessageRequest={setPendingDeleteMessage}
 						onEditMessageTextChange={setEditingMessageText}
 						onOpenExpenseDetail={openExpenseInSidebar}
-						onOpenLegacyReviewLink={handleOpenLegacyReviewLinkFromMainChat}
 						onRelatedResourceGone={handleRelatedResourceGone}
 						onSaveEditMessage={() => void handleSaveEditMessage()}
 						onStartEditMessage={(message) => {

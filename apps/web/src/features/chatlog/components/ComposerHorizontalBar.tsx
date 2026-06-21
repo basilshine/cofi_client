@@ -1,4 +1,4 @@
-import { ParseStructureIcon, VoiceCaptureIcon } from "@cofi/ceits-icons";
+import { ExtractStructureIcon, VoiceCaptureIcon } from "@cofi/ceits-icons";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Ref, RefObject } from "react";
 import {
@@ -21,8 +21,8 @@ type ComposerHorizontalBarProps = {
 	placeholder: string;
 	ariaLabel: string;
 	textareaRef?: RefObject<HTMLTextAreaElement | null>;
-	/** Send (chat) vs Parse (capture) when the field has text */
-	variant: "message" | "parse";
+	/** Send (chat) vs Capture (review) when the field has text */
+	variant: "message" | "capture";
 	onSubmit: () => void;
 	onStartRecording: () => void;
 	onPlusFocusText: () => void;
@@ -173,8 +173,8 @@ export const ComposerHorizontalBar = ({
 	};
 
 	const trailingLabel = hasText
-		? variant === "parse"
-			? "Parse expense"
+		? variant === "capture"
+			? "Capture expense"
 			: "Send message"
 		: "Record voice — hold for camera, upload, or voice";
 
@@ -267,8 +267,8 @@ export const ComposerHorizontalBar = ({
 					type="button"
 				>
 					{hasText ? (
-						variant === "parse" ? (
-							<ParseStructureIcon className="h-4 w-4" size={16} />
+						variant === "capture" ? (
+							<ExtractStructureIcon className="h-4 w-4" size={16} />
 						) : (
 							<SendMessageIcon className="h-4 w-4" />
 						)

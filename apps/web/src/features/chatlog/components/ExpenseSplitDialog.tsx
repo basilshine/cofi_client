@@ -111,7 +111,7 @@ export const ExpenseSplitDialog = ({
 			const [expense, memRes, participantRes, splitRes] = await Promise.all([
 				apiClient.spaces.expenses.get(spaceId, expenseId),
 				apiClient.spaces.listMembers(spaceId),
-				apiClient.spaces.listParticipants(spaceId).catch(() => null),
+				apiClient.spaces.listParticipants(spaceId),
 				apiClient.spaces.expenses
 					.listSplits(spaceId, expenseId)
 					.catch(() => null),
@@ -122,9 +122,11 @@ export const ExpenseSplitDialog = ({
 			setMembers(mem);
 			const total = expenseTotal;
 			const participantRows = splitRowsFromParticipants(
-				participantRes?.participants ?? [],
-				mem,
+				participantRes.participants ?? [],
 			);
+			if (participantRows.length === 0) {
+				throw new Error("No space participants found for this expense.");
+			}
 			if (splitRes?.splits?.length && total > 0) {
 				setSplitRows(
 					applyAmountsToSplitRows(participantRows, splitRes.splits, total),
@@ -206,6 +208,10 @@ export const ExpenseSplitDialog = ({
 			return;
 		}
 		const amounts = percentsToAmounts(pcts, expenseTotal);
+		if (splitRows.some((row) => row.space_participant_id == null)) {
+			setActionError("Each split line must have a space participant.");
+			return;
+		}
 		setSaving(true);
 		setActionError(null);
 		try {
@@ -213,9 +219,7 @@ export const ExpenseSplitDialog = ({
 				spaceId,
 				expenseId,
 				splitRows.map((r, i) => ({
-					...(r.space_participant_id != null
-						? { space_participant_id: r.space_participant_id }
-						: { user_id: Number(r.user_id) }),
+					space_participant_id: Number(r.space_participant_id),
 					amount: amounts[i] ?? 0,
 				})),
 			);

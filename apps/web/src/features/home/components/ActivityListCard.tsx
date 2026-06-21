@@ -44,7 +44,7 @@ type ActivityItem = {
 	sourceCaptureTo?: string | null;
 	eventType?:
 		| "expense"
-		| "draft"
+		| "review"
 		| "edited"
 		| "split-assigned"
 		| "recurring-created"
@@ -73,7 +73,7 @@ type ActivityListCardProps = {
 	streamGroupByAttention?: boolean;
 	/** When the decision-queue CTA is hovered, emphasize matching rows. */
 	railHighlightActive?: boolean;
-	railHighlightMode?: "splits" | "drafts" | "bills" | "none";
+	railHighlightMode?: "splits" | "review" | "bills" | "none";
 	/** Optional anchor id (e.g. link from rail hint). */
 	activityAnchorId?: string;
 	/** Whether the list represents one space or a cross-space dashboard. */
@@ -234,7 +234,7 @@ const getReceiptEventTitle = (
 	const variants = [
 		"Receipt imported",
 		itemCount != null ? `${itemCount} items detected` : "Items detected",
-		"Draft created",
+		"Candidate ready",
 		"Ready for review",
 	];
 	return variants[
@@ -251,9 +251,9 @@ const isNeedsReviewStatus = (status: string): boolean => {
 	);
 };
 
-const isDraftStatus = (status: string): boolean => {
+const isPendingReviewCompatStatus = (status: string): boolean => {
 	const lower = status.toLowerCase();
-	return lower.includes("draft") || lower.includes("not saved");
+	return lower.includes("pending_review") || lower.includes("not saved");
 };
 
 const isConfirmedStatus = (status: string): boolean => {
@@ -270,20 +270,20 @@ const rowNeedsAttention = (item: ActivityItem): boolean => {
 		);
 	}
 	if (item.eventType === "split-assigned") return true;
-	if (item.eventType === "draft") return true;
+	if (item.eventType === "review") return true;
 	const sl = item.statusLabel ?? "";
 	if (item.eventType === "receipt" && isNeedsReviewStatus(sl)) return true;
 	if (isConfirmedStatus(sl)) return false;
-	if (isNeedsReviewStatus(sl) || isDraftStatus(sl)) return true;
+	if (isNeedsReviewStatus(sl) || isPendingReviewCompatStatus(sl)) return true;
 	if (item.eventType === "question") {
-		return isNeedsReviewStatus(sl) || isDraftStatus(sl);
+		return isNeedsReviewStatus(sl) || isPendingReviewCompatStatus(sl);
 	}
 	return false;
 };
 
 const rowMatchesRailHighlight = (
 	item: ActivityItem,
-	mode: "splits" | "drafts" | "bills" | "none",
+	mode: "splits" | "review" | "bills" | "none",
 ): boolean => {
 	if (mode === "none") return false;
 	const labels = `${item.statusLabel ?? ""} ${item.statusPillLabel ?? ""} ${item.meaningLine ?? ""}`;
@@ -294,13 +294,13 @@ const rowMatchesRailHighlight = (
 			/\bapproval\b/i.test(labels)
 		);
 	}
-	if (mode === "drafts") {
+	if (mode === "review") {
 		return (
 			item.eventType === "capture" ||
-			item.eventType === "draft" ||
+			item.eventType === "review" ||
 			item.eventType === "receipt" ||
 			/\bexpense candidate\b/i.test(labels) ||
-			/\bdraft\b/i.test(labels) ||
+			/\bpending_review\b/i.test(labels) ||
 			/\bneeds review\b/i.test(labels.toLowerCase()) ||
 			/\bpending\b/i.test(labels.toLowerCase())
 		);
@@ -316,9 +316,9 @@ const buildHoverPreviewHint = (
 	if (item.previewNote?.trim()) return item.previewNote.trim();
 	if (item.eventType === "receipt") {
 		if (receiptMerchant && receiptItemCount != null) {
-			return `Parsed ${receiptItemCount} lines from ${receiptMerchant}`;
+			return `Extracted ${receiptItemCount} lines from ${receiptMerchant}`;
 		}
-		return "Parsed and ready for review";
+		return "Extracted and ready for review";
 	}
 	if (item.itemPreview && item.itemPreview.length > 0) {
 		return `Detected ${item.itemPreview.length} line items`;
@@ -336,8 +336,11 @@ const buildHoverPreviewHint = (
 };
 
 const expenseRecordStateLine = (item: ActivityItem): string => {
-	if (item.eventType === "draft" || isDraftStatus(item.statusLabel)) {
-		return "Draft needs confirmation";
+	if (
+		item.eventType === "review" ||
+		isPendingReviewCompatStatus(item.statusLabel)
+	) {
+		return "Candidate needs confirmation";
 	}
 	if (isNeedsReviewStatus(item.statusLabel)) {
 		return "Needs capture review";
@@ -361,7 +364,7 @@ const sourceCaptureLabel = (item: ActivityItem): string | null => {
 };
 
 type ReceiptProcessStep = {
-	id: "imported" | "scanned" | "detected" | "draft";
+	id: "imported" | "scanned" | "detected" | "review";
 	label: string;
 	strong?: boolean;
 };
@@ -375,14 +378,14 @@ const buildReceiptProcessSteps = (
 		id: "detected",
 		label: itemCount != null ? `${itemCount} items detected` : "Items detected",
 	},
-	{ id: "draft", label: "Draft created", strong: true },
+	{ id: "review", label: "Candidate ready", strong: true },
 ];
 
 const receiptProcessStepIcons: Record<ReceiptProcessStep["id"], LucideIcon> = {
 	imported: ArrowDownToLine,
 	scanned: ScanLine,
 	detected: ListChecks,
-	draft: PencilLine,
+	review: PencilLine,
 };
 
 export const ActivityListCard = ({
@@ -413,11 +416,11 @@ export const ActivityListCard = ({
 		const isQuestion = item.eventType === "question";
 		const isRecurring =
 			item.eventType === "recurring" || item.eventType === "recurring-created";
-		const isReceiptParsed = item.eventType === "receipt";
+		const isReceiptExtracted = item.eventType === "receipt";
 		const isExpenseLike =
 			item.eventType === "capture" ||
 			item.eventType === "expense" ||
-			item.eventType === "draft" ||
+			item.eventType === "review" ||
 			item.eventType === "benefit" ||
 			item.eventType === "participant" ||
 			item.eventType === "split-assigned" ||
@@ -425,10 +428,10 @@ export const ActivityListCard = ({
 			item.eventType === "voice" ||
 			!item.eventType;
 		const helperLine =
-			item.eventType === "draft"
+			item.eventType === "review"
 				? isGlobalScope
-					? `Added to ${item.spaceName} as draft`
-					: "Added to this space as draft"
+					? `Added to ${item.spaceName} for review`
+					: "Added to this space for review"
 				: item.eventType === "capture"
 					? isGlobalScope
 						? `Waiting in ${item.spaceName} capture review`
@@ -490,7 +493,7 @@ export const ActivityListCard = ({
 			);
 		}
 
-		if (isReceiptParsed) {
+		if (isReceiptExtracted) {
 			const itemCount = extractReceiptItemCount(item);
 			const processSteps = buildReceiptProcessSteps(itemCount);
 			const needsReview = isNeedsReviewStatus(
@@ -508,13 +511,13 @@ export const ActivityListCard = ({
 						<div className="overflow-x-auto">
 							<ul className="inline-flex min-w-max items-center gap-1">
 								{processSteps.map((step, index) => {
-									const isCurrent = needsReview && step.id === "draft";
+									const isCurrent = needsReview && step.id === "review";
 									const StepIcon = receiptProcessStepIcons[step.id];
 									const shortLabel =
 										step.id === "detected" && itemCount != null
 											? `${itemCount} items`
-											: step.id === "draft"
-												? "Draft"
+											: step.id === "review"
+												? "Review"
 												: step.label;
 									return (
 										<li
@@ -836,10 +839,10 @@ export const ActivityListCard = ({
 								) : null}
 								<ul className="space-y-2.5">
 									{groupItems.map((item, index) => {
-										const isReceiptParsed = item.eventType === "receipt";
+										const isReceiptExtracted = item.eventType === "receipt";
 										const receiptItemCount = extractReceiptItemCount(item);
 										const receiptMerchant = extractReceiptMerchant(item.title);
-										const displayStatus = isReceiptParsed
+										const displayStatus = isReceiptExtracted
 											? item.statusLabel || "Needs review"
 											: item.statusLabel;
 										const recentHighlightClass = isVeryRecent(item.occurredAt)
@@ -849,13 +852,13 @@ export const ActivityListCard = ({
 											item.title,
 											item.spaceName,
 										);
-										const displayTitle = isReceiptParsed
+										const displayTitle = isReceiptExtracted
 											? getReceiptEventTitle(item, receiptItemCount)
 											: rowTitle;
-										const leadingMeta = isReceiptParsed
+										const leadingMeta = isReceiptExtracted
 											? `${receiptMerchant}${receiptItemCount != null ? ` · ${receiptItemCount} items` : ""}`
 											: null;
-										const lineTwoText = isReceiptParsed
+										const lineTwoText = isReceiptExtracted
 											? leadingMeta
 											: item.categoryLabel ||
 												(item.statusPillLabel
@@ -864,8 +867,8 @@ export const ActivityListCard = ({
 										const sourceLabel = sourceCaptureLabel(item);
 										const hoverPreviewHint = buildHoverPreviewHint(
 											item,
-											isReceiptParsed ? receiptMerchant : null,
-											isReceiptParsed ? receiptItemCount : null,
+											isReceiptExtracted ? receiptMerchant : null,
+											isReceiptExtracted ? receiptItemCount : null,
 										);
 										const showTimeline = index < groupItems.length - 1;
 										const isExpanded = expandedId === item.id;
@@ -891,7 +894,7 @@ export const ActivityListCard = ({
 											streamGroupByAttention &&
 											!railLinked &&
 											(railHighlightMode === "splits" ||
-												railHighlightMode === "drafts");
+												railHighlightMode === "review");
 										const urgentRow = Boolean(
 											isSpaceWarm && isNeedsReviewStatus(displayStatus),
 										);
@@ -1019,7 +1022,7 @@ export const ActivityListCard = ({
 																	)}
 																	{item.statusPillLabel ? (
 																		<span
-																			className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${isNeedsReviewStatus(item.statusPillLabel) ? "border border-[rgba(189,143,64,0.45)] bg-[rgba(189,143,64,0.28)] font-semibold text-[rgba(102,68,14,0.98)]" : isDraftStatus(item.statusPillLabel) ? "bg-[rgba(122,126,138,0.14)] text-[#5B6070]" : "bg-muted text-muted-foreground"}`}
+																			className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${isNeedsReviewStatus(item.statusPillLabel) ? "border border-[rgba(189,143,64,0.45)] bg-[rgba(189,143,64,0.28)] font-semibold text-[rgba(102,68,14,0.98)]" : isPendingReviewCompatStatus(item.statusPillLabel) ? "bg-[rgba(122,126,138,0.14)] text-[#5B6070]" : "bg-muted text-muted-foreground"}`}
 																		>
 																			{item.statusPillLabel}
 																		</span>

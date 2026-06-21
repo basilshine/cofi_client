@@ -55,7 +55,7 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 		],
 		comparison: {
 			plain:
-				"Plain trackers list transactions but often lose the story behind each expense.",
+				"Plain trackers list expense rows but often lose the story behind each expense.",
 			ceits:
 				"Ceits keeps the story and the numbers together so shared decisions are easier and faster.",
 		},
@@ -168,7 +168,7 @@ export const LANDING_PAGES: Record<string, LandingPageConfig> = {
 			"People do not only need a ledger. They need shared memory and decision clarity. Ceits keeps capture, splits, and history connected.",
 		whyTitle: "Why it feels better than plain tracking",
 		whyBody:
-			"Ceits is designed for real conversations around spending, not only transaction rows.",
+			"Ceits is designed for real conversations around spending, not only expense rows.",
 		strengths: [
 			"Shared spaces by relationship or life context",
 			"Split logic that stays transparent over time",
