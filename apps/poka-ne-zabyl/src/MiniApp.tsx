@@ -169,6 +169,59 @@ const currencyOptions = [
 	["AED", "Дирхам ОАЭ"],
 	["GBP", "Фунт стерлингов"],
 ] as const;
+const countryOptions = [
+	["RU", "Россия"],
+	["KZ", "Казахстан"],
+	["BY", "Беларусь"],
+	["AM", "Армения"],
+	["AZ", "Азербайджан"],
+	["GE", "Грузия"],
+	["KG", "Кыргызстан"],
+	["UZ", "Узбекистан"],
+	["TJ", "Таджикистан"],
+	["MD", "Молдова"],
+	["TR", "Турция"],
+	["TH", "Таиланд"],
+	["AE", "ОАЭ"],
+	["CN", "Китай"],
+	["DE", "Германия"],
+	["FR", "Франция"],
+	["IT", "Италия"],
+	["ES", "Испания"],
+	["GB", "Великобритания"],
+	["US", "США"],
+] as const;
+const timezoneOptions = [
+	["Europe/Kaliningrad", "Калининград (UTC+2)"],
+	["Europe/Moscow", "Москва (UTC+3)"],
+	["Europe/Samara", "Самара (UTC+4)"],
+	["Asia/Yekaterinburg", "Екатеринбург (UTC+5)"],
+	["Asia/Omsk", "Омск (UTC+6)"],
+	["Asia/Novosibirsk", "Новосибирск (UTC+7)"],
+	["Asia/Barnaul", "Барнаул (UTC+7)"],
+	["Asia/Tomsk", "Томск (UTC+7)"],
+	["Asia/Krasnoyarsk", "Красноярск (UTC+7)"],
+	["Asia/Irkutsk", "Иркутск (UTC+8)"],
+	["Asia/Chita", "Чита (UTC+9)"],
+	["Asia/Yakutsk", "Якутск (UTC+9)"],
+	["Asia/Vladivostok", "Владивосток (UTC+10)"],
+	["Asia/Magadan", "Магадан (UTC+11)"],
+	["Asia/Sakhalin", "Сахалин (UTC+11)"],
+	["Asia/Kamchatka", "Камчатка (UTC+12)"],
+	["Europe/Minsk", "Минск (UTC+3)"],
+	["Asia/Almaty", "Алматы (UTC+5)"],
+	["Asia/Bishkek", "Бишкек (UTC+6)"],
+	["Asia/Tashkent", "Ташкент (UTC+5)"],
+	["Asia/Tbilisi", "Тбилиси (UTC+4)"],
+	["Asia/Yerevan", "Ереван (UTC+4)"],
+	["Asia/Baku", "Баку (UTC+4)"],
+	["Europe/Istanbul", "Стамбул (UTC+3)"],
+	["Asia/Bangkok", "Бангкок (UTC+7)"],
+	["Asia/Dubai", "Дубай (UTC+4)"],
+	["Europe/Berlin", "Берлин"],
+	["Europe/London", "Лондон"],
+	["America/New_York", "Нью-Йорк"],
+] as const;
 type CapturePacket = { media_object_id?: number; input_kind?: string };
 
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
@@ -2135,11 +2188,11 @@ const ProfileView = ({
 				</div>
 				<div>
 					<span>Страна</span>
-					<b>{user?.country || "RU"}</b>
+					<b>{countryName(user?.country || "RU")}</b>
 				</div>
 				<div>
 					<span>Часовой пояс</span>
-					<b>{user?.timezone || "Europe/Moscow"}</b>
+					<b>{timezoneName(user?.timezone || "Europe/Moscow")}</b>
 				</div>
 			</div>
 		</section>
@@ -2461,37 +2514,56 @@ const ProfileEditor = ({
 		</label>
 		<label>
 			Валюта
-			<input
-				list="currency-codes"
-				maxLength={3}
+			<select
 				value={user.currency}
 				onChange={(event) =>
-					onChange({ ...user, currency: event.target.value.toUpperCase() })
+					onChange({ ...user, currency: event.target.value })
 				}
-			/>
+			>
+				{!currencyOptions.some(([code]) => code === user.currency) && (
+					<option value={user.currency}>{user.currency}</option>
+				)}
+				{currencyOptions.map(([code, name]) => (
+					<option key={code} value={code}>
+						{code} — {name}
+					</option>
+				))}
+			</select>
 		</label>
 		<label>
 			Страна
-			<input
-				list="country-codes"
-				maxLength={2}
+			<select
 				value={user.country}
-				onChange={(event) =>
-					onChange({ ...user, country: event.target.value.toUpperCase() })
-				}
-			/>
+				onChange={(event) => onChange({ ...user, country: event.target.value })}
+			>
+				{!countryOptions.some(([code]) => code === user.country) && (
+					<option value={user.country}>{user.country}</option>
+				)}
+				{countryOptions.map(([code, name]) => (
+					<option key={code} value={code}>
+						{name}
+					</option>
+				))}
+			</select>
 		</label>
 		<label>
 			Часовой пояс
-			<input
-				list="timezone-codes"
+			<select
 				value={user.timezone}
 				onChange={(event) =>
 					onChange({ ...user, timezone: event.target.value })
 				}
-			/>
+			>
+				{!timezoneOptions.some(([zone]) => zone === user.timezone) && (
+					<option value={user.timezone}>{user.timezone}</option>
+				)}
+				{timezoneOptions.map(([zone, name]) => (
+					<option key={zone} value={zone}>
+						{name}
+					</option>
+				))}
+			</select>
 		</label>
-		<ProfileOptions />
 		<button
 			className="mini-save"
 			type="button"
@@ -2586,31 +2658,6 @@ const SpaceEditor = ({
 			)}
 		</div>
 	</Modal>
-);
-
-const ProfileOptions = () => (
-	<>
-		<datalist id="currency-codes">
-			{currencyOptions.map(([code]) => (
-				<option key={code} value={code} />
-			))}
-		</datalist>
-		<datalist id="country-codes">
-			<option value="RU" />
-			<option value="KZ" />
-			<option value="TH" />
-			<option value="GE" />
-			<option value="TR" />
-		</datalist>
-		<datalist id="timezone-codes">
-			<option value="Europe/Moscow" />
-			<option value="Asia/Tomsk" />
-			<option value="Asia/Novosibirsk" />
-			<option value="Asia/Yekaterinburg" />
-			<option value="Asia/Almaty" />
-			<option value="Asia/Bangkok" />
-		</datalist>
-	</>
 );
 
 const Modal = ({
@@ -2709,6 +2756,10 @@ const formatDate = (value: string) =>
 	new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(
 		new Date(value),
 	);
+const countryName = (code: string) =>
+	countryOptions.find(([value]) => value === code)?.[1] || code;
+const timezoneName = (timezone: string) =>
+	timezoneOptions.find(([value]) => value === timezone)?.[1] || timezone;
 const expenseWord = (count: number) =>
 	count % 10 === 1 && count % 100 !== 11
 		? "расход"
