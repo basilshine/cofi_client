@@ -156,6 +156,19 @@ type ReviewDraft = {
 };
 
 type ReviewTarget = { spaceID: number; candidateID: number };
+
+const currencyOptions = [
+	["RUB", "Российский рубль"],
+	["USD", "Доллар США"],
+	["EUR", "Евро"],
+	["KZT", "Казахстанский тенге"],
+	["THB", "Тайский бат"],
+	["CNY", "Китайский юань"],
+	["GEL", "Грузинский лари"],
+	["TRY", "Турецкая лира"],
+	["AED", "Дирхам ОАЭ"],
+	["GBP", "Фунт стерлингов"],
+] as const;
 type CapturePacket = { media_object_id?: number; input_kind?: string };
 
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
@@ -448,8 +461,10 @@ export const MiniApp = () => {
 					? requestedReview?.spaceID || 0
 					: availableSpaces[0]?.id || 0,
 			);
-			if (availableSpaces.length === 0)
-				setError("Сначала создайте пространство в боте.");
+			if (availableSpaces.length === 0) {
+				setView("spaces");
+				setLoading(false);
+			}
 		} catch (err) {
 			setError(
 				err instanceof Error ? err.message : "Не удалось войти через Telegram",
@@ -923,46 +938,102 @@ export const MiniApp = () => {
 
 	const saveSpace = async () => {
 		if (!editingSpace) return;
+		const creating = editingSpace.id === 0;
 		if (previewMode) {
+			const saved = creating
+				? {
+						...editingSpace,
+						id: Math.max(0, ...spaces.map(({ id }) => id)) + 1,
+					}
+				: editingSpace;
 			setSpaces((current) =>
-				current.map((space) =>
-					space.id === editingSpace.id ? editingSpace : space,
-				),
+				creating
+					? [...current, saved]
+					: current.map((space) => (space.id === saved.id ? saved : space)),
 			);
+			setSpaceID(saved.id);
 			setEditingSpace(null);
-			setNotice("Пространство сохранено");
+			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
 			return;
 		}
 		setSaving(true);
 		try {
 			const saved = await apiRequest<Space>(
-				`/spaces/${editingSpace.id}`,
+				creating ? "/spaces" : `/spaces/${editingSpace.id}`,
 				token,
 				{
-					method: "PATCH",
+					method: creating ? "POST" : "PATCH",
 					body: JSON.stringify({
 						name: editingSpace.name,
-						...(editingSpace.owner_user_id === user?.id
+						...(creating || editingSpace.owner_user_id === user?.id
 							? { currency: editingSpace.currency }
 							: {}),
 					}),
 				},
 			);
 			setSpaces((current) =>
-				current.map((space) => (space.id === saved.id ? saved : space)),
+				creating
+					? [...current, saved]
+					: current.map((space) => (space.id === saved.id ? saved : space)),
 			);
+			setSpaceID(saved.id);
 			setEditingSpace(null);
-			setNotice("Пространство сохранено");
-			await loadSpace();
+			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
+			if (!creating) await loadSpace();
 		} catch (err) {
 			setNotice(
 				err instanceof Error
 					? err.message
-					: "Не удалось сохранить пространство",
+					: creating
+						? "Не удалось создать пространство"
+						: "Не удалось сохранить пространство",
 			);
 		} finally {
 			setSaving(false);
 		}
+	};
+
+	const deleteSpace = async () => {
+		if (!editingSpace?.id) return;
+		const owned = editingSpace.owner_user_id === user?.id;
+		if (
+			!window.confirm(
+				owned
+					? `Удалить «${editingSpace.name}» вместе со всеми расходами? Это действие нельзя отменить.`
+					: `Покинуть пространство «${editingSpace.name}»?`,
+			)
+		)
+			return;
+		const remaining = spaces.filter(({ id }) => id !== editingSpace.id);
+		const nextSpaceID =
+			spaceID === editingSpace.id ? remaining[0]?.id || 0 : spaceID;
+		if (!previewMode) {
+			setSaving(true);
+			try {
+				await apiRequest(`/spaces/${editingSpace.id}`, token, {
+					method: "DELETE",
+				});
+			} catch (err) {
+				setNotice(
+					err instanceof Error
+						? err.message
+						: "Не удалось удалить пространство",
+				);
+				setSaving(false);
+				return;
+			}
+			setSaving(false);
+		}
+		setSpaces(remaining);
+		setSpaceID(nextSpaceID);
+		if (!nextSpaceID) {
+			setExpenses([]);
+			setCategories([]);
+			setVendors([]);
+			setMembers([]);
+		}
+		setEditingSpace(null);
+		setNotice(owned ? "Пространство удалено" : "Вы покинули пространство");
 	};
 
 	const addExpense = () => {
@@ -1114,6 +1185,15 @@ export const MiniApp = () => {
 								members={members}
 								onSelect={setSpaceID}
 								onEdit={(space) => setEditingSpace({ ...space })}
+								onAdd={() =>
+									setEditingSpace({
+										id: 0,
+										tenant_id: activeSpace?.tenant_id || 0,
+										owner_user_id: user?.id || 0,
+										name: "",
+										currency: user?.currency || "RUB",
+									})
+								}
 							/>
 						)}
 						{view === "profile" && (
@@ -1230,6 +1310,7 @@ export const MiniApp = () => {
 					onChange={setEditingSpace}
 					onClose={() => setEditingSpace(null)}
 					onSave={saveSpace}
+					onDelete={editingSpace.id ? deleteSpace : undefined}
 				/>
 			)}
 		</div>
@@ -1928,19 +2009,27 @@ const SpacesView = ({
 	members,
 	onSelect,
 	onEdit,
+	onAdd,
 }: {
 	spaces: Space[];
 	activeSpaceID: number;
 	members: SpaceMember[];
 	onSelect: (id: number) => void;
 	onEdit: (space: Space) => void;
+	onAdd: () => void;
 }) => {
 	const activeSpace = spaces.find((space) => space.id === activeSpaceID);
 	return (
 		<section className="mini-view">
-			<div className="mini-title">
-				<p>Личные и общие</p>
-				<h1>Пространства</h1>
+			<div className="mini-title-row">
+				<div className="mini-title">
+					<p>Личные и общие</p>
+					<h1>Пространства</h1>
+				</div>
+				<button className="mini-add-button" type="button" onClick={onAdd}>
+					<Plus size={18} weight="bold" />
+					Добавить
+				</button>
 			</div>
 			<div className="mini-spaces">
 				{spaces.map((space) => (
@@ -1966,6 +2055,7 @@ const SpacesView = ({
 					</article>
 				))}
 			</div>
+			{spaces.length === 0 && <Empty text="Создайте первое пространство" />}
 			<div className="mini-section-head">
 				<h2>{activeSpace?.name || "Участники"}</h2>
 				<span>{members.length}</span>
@@ -2426,6 +2516,7 @@ const SpaceEditor = ({
 	onChange,
 	onClose,
 	onSave,
+	onDelete,
 }: {
 	space: Space;
 	canEditCurrency: boolean;
@@ -2433,8 +2524,12 @@ const SpaceEditor = ({
 	onChange: (space: Space) => void;
 	onClose: () => void;
 	onSave: () => void;
+	onDelete?: () => void;
 }) => (
-	<Modal title="Настройки пространства" onClose={onClose}>
+	<Modal
+		title={space.id ? "Настройки пространства" : "Новое пространство"}
+		onClose={onClose}
+	>
 		<label>
 			Название
 			<input
@@ -2445,43 +2540,60 @@ const SpaceEditor = ({
 		</label>
 		<label>
 			Валюта пространства
-			<input
+			<select
 				disabled={!canEditCurrency}
-				list="currency-codes"
-				maxLength={3}
 				value={space.currency}
 				onChange={(event) =>
-					onChange({ ...space, currency: event.target.value.toUpperCase() })
+					onChange({ ...space, currency: event.target.value })
 				}
-			/>
+			>
+				{!currencyOptions.some(([code]) => code === space.currency) && (
+					<option value={space.currency}>{space.currency}</option>
+				)}
+				{currencyOptions.map(([code, name]) => (
+					<option key={code} value={code}>
+						{code} — {name}
+					</option>
+				))}
+			</select>
 		</label>
-		<ProfileOptions />
 		<p className="mini-field-note">
 			{canEditCurrency
 				? "После первого расхода валюта пространства фиксируется."
 				: "Валюту может менять только владелец пространства."}
 		</p>
-		<button
-			className="mini-save"
-			type="button"
-			disabled={
-				saving || !space.name.trim() || space.currency.trim().length !== 3
-			}
-			onClick={onSave}
-		>
-			{saving ? "Сохраняем…" : "Сохранить"}
-		</button>
+		<div className="mini-modal-actions">
+			<button
+				className="mini-save"
+				type="button"
+				disabled={
+					saving || !space.name.trim() || space.currency.trim().length !== 3
+				}
+				onClick={onSave}
+			>
+				{saving ? "Сохраняем…" : space.id ? "Сохранить" : "Создать"}
+			</button>
+			{onDelete && (
+				<button
+					className="mini-delete"
+					type="button"
+					disabled={saving}
+					onClick={onDelete}
+				>
+					<Trash size={18} />
+					{canEditCurrency ? "Удалить пространство" : "Покинуть пространство"}
+				</button>
+			)}
+		</div>
 	</Modal>
 );
 
 const ProfileOptions = () => (
 	<>
 		<datalist id="currency-codes">
-			<option value="RUB" />
-			<option value="USD" />
-			<option value="EUR" />
-			<option value="KZT" />
-			<option value="THB" />
+			{currencyOptions.map(([code]) => (
+				<option key={code} value={code} />
+			))}
 		</datalist>
 		<datalist id="country-codes">
 			<option value="RU" />
