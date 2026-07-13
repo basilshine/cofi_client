@@ -13,7 +13,7 @@
 	--mini-green: #315b49;
 	--mini-red: #a84c3e;
 	min-height: 100vh;
-	padding-bottom: calc(78px + env(safe-area-inset-bottom));
+	padding-bottom: calc(88px + env(safe-area-inset-bottom));
 	background: #f4f1ea;
 	font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -231,15 +231,31 @@
 	color: var(--mini-ink);
 }
 .mini-result {
-	display: flex;
-	align-items: baseline;
+	display: grid;
+	grid-template-columns: 1fr auto;
+	align-items: end;
 	justify-content: space-between;
+	gap: 20px;
+	padding: 1px 1px 14px;
+	border-bottom: 1px solid var(--mini-line);
 	color: var(--mini-muted);
 	font-size: 13px;
 }
+.mini-result > div {
+	display: grid;
+	gap: 3px;
+}
+.mini-result > div:last-child {
+	justify-items: end;
+}
+.mini-result small {
+	font-size: 11px;
+	text-transform: uppercase;
+}
 .mini-result strong {
 	color: var(--mini-ink);
-	font-size: 20px;
+	font-size: 24px;
+	line-height: 1;
 }
 .mini-intro {
 	margin: -8px 0 0;
@@ -407,14 +423,15 @@
 .mini-nav {
 	position: fixed;
 	z-index: 20;
-	right: 0;
-	bottom: 0;
-	left: 0;
+	right: 8px;
+	bottom: 8px;
+	left: 8px;
 	display: grid;
 	grid-template-columns: repeat(4, 1fr);
 	min-height: calc(64px + env(safe-area-inset-bottom));
 	padding: 5px 6px env(safe-area-inset-bottom);
-	border-top: 1px solid var(--mini-line);
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
 	background: rgba(255, 254, 250, 0.97);
 	backdrop-filter: blur(18px);
 }
@@ -600,14 +617,17 @@
 	}
 	.mini-nav {
 		right: auto;
+		bottom: 0;
+		left: 0;
 		top: 58px;
 		width: 88px;
 		grid-template-columns: 1fr;
 		grid-template-rows: repeat(4, 72px);
 		align-content: start;
 		padding: 14px 7px;
-		border-top: 0;
+		border: 0;
 		border-right: 1px solid var(--mini-line);
+		border-radius: 0;
 	}
 	.mini-app {
 		padding: 0 0 0 88px;

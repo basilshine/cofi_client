@@ -34,9 +34,10 @@ type Category = {
 };
 
 type ExpenseItem = {
-	id: number;
+	id?: number;
 	name: string;
 	amount: number;
+	space_amount?: number;
 	category_id?: number;
 	category_name?: string;
 	category?: { id: number; name: string };
@@ -49,7 +50,9 @@ type Expense = {
 	title: string;
 	payee_text?: string;
 	expense_date: string;
-	amount: number;
+	amount?: number;
+	total?: number;
+	space_total?: number;
 	currency: string;
 	space_currency?: string;
 	items: ExpenseItem[];
@@ -116,7 +119,8 @@ const previewExpenses: Expense[] = [
 		title: "Покупки на неделю",
 		payee_text: "Лента",
 		expense_date: isoDay(0),
-		amount: 2840,
+		total: 2840,
+		space_total: 2840,
 		currency: "RUB",
 		items: [{ id: 1, name: "Продукты", amount: 2840, category_id: 1 }],
 	},
@@ -126,7 +130,8 @@ const previewExpenses: Expense[] = [
 		title: "Корм для кошек",
 		payee_text: "Белый кролик",
 		expense_date: isoDay(-1),
-		amount: 1360,
+		total: 1360,
+		space_total: 1360,
 		currency: "RUB",
 		items: [
 			{ id: 2, name: "Корм и наполнитель", amount: 1360, category_id: 2 },
@@ -138,7 +143,8 @@ const previewExpenses: Expense[] = [
 		title: "Танцы",
 		payee_text: "Студия движения",
 		expense_date: isoDay(-2),
-		amount: 2600,
+		total: 2600,
+		space_total: 2600,
 		currency: "RUB",
 		items: [{ id: 3, name: "Абонемент", amount: 2600, category_id: 3 }],
 	},
@@ -148,7 +154,8 @@ const previewExpenses: Expense[] = [
 		title: "Такси домой",
 		payee_text: "Яндекс Go",
 		expense_date: isoDay(-3),
-		amount: 680,
+		total: 680,
+		space_total: 680,
 		currency: "RUB",
 		items: [{ id: 4, name: "Поездка", amount: 680, category_id: 4 }],
 	},
@@ -329,7 +336,7 @@ export const MiniApp = () => {
 	const activeSpace = spaces.find((space) => space.id === spaceID);
 	const currency = activeSpace?.currency || user?.currency || "RUB";
 	const total = filteredExpenses.reduce(
-		(sum, expense) => sum + expense.amount,
+		(sum, expense) => sum + expenseDisplayAmount(expense),
 		0,
 	);
 	const categoryTotals = useMemo(() => {
@@ -339,7 +346,7 @@ export const MiniApp = () => {
 				if (item.category_id)
 					totals.set(
 						item.category_id,
-						(totals.get(item.category_id) || 0) + item.amount,
+						(totals.get(item.category_id) || 0) + itemDisplayAmount(item),
 					);
 			}
 		}
@@ -684,6 +691,26 @@ const ExpensesView = ({
 				placeholder="Магазин или покупка"
 			/>
 		</label>
+		<div className="mini-result">
+			<div>
+				<small>Найдено</small>
+				<span>
+					{expenses.length} {expenseWord(expenses.length)}
+				</span>
+			</div>
+			<div>
+				<small>Итого</small>
+				<strong>
+					{formatMoney(
+						expenses.reduce(
+							(sum, expense) => sum + expenseDisplayAmount(expense),
+							0,
+						),
+						currency,
+					)}
+				</strong>
+			</div>
+		</div>
 		<div className="mini-filters">
 			<select
 				aria-label="Период"
@@ -707,17 +734,6 @@ const ExpensesView = ({
 					</option>
 				))}
 			</select>
-		</div>
-		<div className="mini-result">
-			<span>
-				{expenses.length} {expenseWord(expenses.length)}
-			</span>
-			<strong>
-				{formatMoney(
-					expenses.reduce((sum, expense) => sum + expense.amount, 0),
-					currency,
-				)}
-			</strong>
 		</div>
 		<ExpenseList expenses={expenses} currency={currency} onEdit={onEdit} />
 	</section>
@@ -749,7 +765,10 @@ const ExpenseList = ({
 				</span>
 				<span className="mini-expense-amount">
 					<b>
-						{formatMoney(expense.amount, expense.space_currency || currency)}
+						{formatMoney(
+							expenseDisplayAmount(expense),
+							expense.space_currency || currency,
+						)}
 					</b>
 					<small>{formatDate(expense.expense_date)}</small>
 				</span>
@@ -1106,6 +1125,15 @@ const periodStart = (period: Period) => {
 		return new Date(now.getFullYear(), now.getMonth() - 2, 1);
 	return new Date(now.getFullYear(), 0, 1);
 };
+
+const itemDisplayAmount = (item: ExpenseItem) =>
+	item.space_amount ?? item.amount ?? 0;
+
+const expenseDisplayAmount = (expense: Expense) =>
+	expense.space_total ??
+	expense.total ??
+	expense.amount ??
+	expense.items.reduce((sum, item) => sum + itemDisplayAmount(item), 0);
 
 const formatMoney = (amount: number, currency: string) =>
 	new Intl.NumberFormat("ru-RU", {
