@@ -74,6 +74,7 @@ type ExpenseItem = {
 	source_currency?: string;
 	space_amount?: number;
 	space_currency?: string;
+	reporting_amount?: number;
 	category_id?: number;
 	category_name?: string;
 	category?: { id: number; name: string };
@@ -95,6 +96,8 @@ type Expense = {
 	amount?: number;
 	total?: number;
 	space_total?: number;
+	reporting_total?: number;
+	reporting_currency?: string;
 	currency: string;
 	source_currency?: string;
 	space_currency?: string;
@@ -535,7 +538,7 @@ export const MiniApp = () => {
 	useEffect(() => {
 		if (!token || !spaceID) return;
 		void loadSpace();
-	}, [token, spaceID]);
+	}, [token, spaceID, user?.currency]);
 
 	const loadSpace = async () => {
 		if (previewMode) return;
@@ -546,7 +549,7 @@ export const MiniApp = () => {
 			const [expenseData, categoryData, quotaData, memberData, vendorData] =
 				await Promise.all([
 					apiRequest<{ expenses: Expense[] }>(
-						`/spaces/${spaceID}/expenses?limit=200`,
+						`/spaces/${spaceID}/expenses?limit=200&currency=${encodeURIComponent(user?.currency || "RUB")}`,
 						token,
 					),
 					apiRequest<{ categories: Category[] }>(

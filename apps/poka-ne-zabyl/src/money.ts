@@ -4,6 +4,7 @@ export type MoneyItem = {
 	source_currency?: string;
 	space_amount?: number;
 	space_currency?: string;
+	reporting_amount?: number;
 };
 
 export type MoneyExpense = {
@@ -13,6 +14,8 @@ export type MoneyExpense = {
 	source_currency?: string;
 	space_total?: number;
 	space_currency?: string;
+	reporting_total?: number;
+	reporting_currency?: string;
 	items: MoneyItem[];
 };
 
@@ -31,6 +34,8 @@ export const expenseAmountInCurrency = (
 	targetCurrency: string,
 ) => {
 	const target = code(targetCurrency);
+	if (target === code(expense.reporting_currency))
+		return expense.reporting_total ?? null;
 	if (target === code(expense.source_currency || expense.currency))
 		return sourceTotal(expense);
 	if (target === code(expense.space_currency))
@@ -50,6 +55,8 @@ export const itemAmountInCurrency = (
 	targetCurrency: string,
 ) => {
 	const target = code(targetCurrency);
+	if (target === code(expense.reporting_currency))
+		return item.reporting_amount ?? null;
 	if (
 		target ===
 		code(item.source_currency || expense.source_currency || expense.currency)

@@ -1867,6 +1867,8 @@ export interface paths {
                     limit?: number;
                     /** @description Zero-based expense record offset for server-backed list pagination. */
                     offset?: number;
+                    /** @description Optional reporting currency. When supplied, records include converted reporting amounts without changing persisted Space amounts. */
+                    currency?: components["schemas"]["CurrencyCode"];
                 };
                 header?: never;
                 path: {
@@ -5581,6 +5583,8 @@ export interface components {
         CurrencyConversion: {
             source_currency?: components["schemas"]["CurrencyCode"];
             space_currency?: components["schemas"]["CurrencyCode"];
+            /** @description Line-item amount converted by the server into the requested reporting currency. */
+            reporting_amount?: number | null;
             /** @description Rate used to convert source currency into the Space reporting currency. */
             exchange_rate?: number | null;
             /**
@@ -6941,6 +6945,9 @@ export interface components {
             total?: number;
             /** @description Total in the Space reporting currency; falls back to total for legacy rows without space amounts. */
             space_total?: number;
+            /** @description Total converted by the server into the requested reporting currency. */
+            reporting_total?: number | null;
+            reporting_currency?: components["schemas"]["CurrencyCode"];
             /** Format: date-time */
             created_at?: string;
             /** Format: int64 */

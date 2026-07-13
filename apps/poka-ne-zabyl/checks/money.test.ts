@@ -41,3 +41,21 @@ test("does not label the converted ledger total as the source amount", () => {
 	assert.equal(expenseAmountInCurrency(convertedExpense, "RUB"), 1600);
 	assert.equal(expenseAmountInCurrency(convertedExpense, "USD"), 20);
 });
+
+test("uses server reporting amounts for profile totals", () => {
+	const reportedExpense = {
+		total: 320,
+		currency: "USD",
+		space_total: 320,
+		space_currency: "USD",
+		reporting_total: 25600,
+		reporting_currency: "RUB",
+		items: [{ amount: 320, reporting_amount: 25600 }],
+	};
+
+	assert.equal(expenseAmountInCurrency(reportedExpense, "RUB"), 25600);
+	assert.deepEqual(expenseDisplayMoney(reportedExpense, "RUB"), {
+		amount: 25600,
+		currency: "RUB",
+	});
+});
