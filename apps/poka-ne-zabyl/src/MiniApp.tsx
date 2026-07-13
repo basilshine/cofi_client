@@ -23,7 +23,7 @@ import {
 	expenseDisplayMoney,
 	itemAmountInCurrency,
 } from "./money";
-import { findVendorByName } from "./vendor";
+import { commonVendorName, findVendorByName } from "./vendor";
 
 type View =
 	| "overview"
@@ -774,19 +774,42 @@ export const MiniApp = () => {
 					?.name ||
 				""
 			).trim();
-			let vendorID =
-				editingExpense.vendor_id || findVendorByName(vendors, sellerName)?.id;
-			if (sellerName && !vendorID) {
-				const vendor = await apiRequest<Vendor>(
+			const vendorRequests = new Map<string, Promise<number | undefined>>();
+			const ensureVendorID = (name: string, existingID?: number) => {
+				const trimmed = name.trim();
+				if (!trimmed) return Promise.resolve(undefined);
+				const knownID = existingID || findVendorByName(vendors, trimmed)?.id;
+				if (knownID) return Promise.resolve(knownID);
+				const key = trimmed.toLocaleLowerCase("ru");
+				const pending = vendorRequests.get(key);
+				if (pending) return pending;
+				const request = apiRequest<Vendor>(
 					`/spaces/${spaceID}/vendors`,
 					token,
 					{
 						method: "POST",
-						body: JSON.stringify({ name: sellerName, aliases: [] }),
+						body: JSON.stringify({ name: trimmed, aliases: [] }),
 					},
-				);
-				vendorID = vendor.id;
-			}
+				).then((vendor) => vendor.id);
+				vendorRequests.set(key, request);
+				return request;
+			};
+			const vendorID = await ensureVendorID(
+				sellerName,
+				editingExpense.vendor_id,
+			);
+			const itemVendorNames = editingExpense.items.map(
+				(item) =>
+					item.vendor_name?.trim() ||
+					item.vendor?.name ||
+					vendors.find((vendor) => vendor.id === item.vendor_id)?.name ||
+					sellerName,
+			);
+			const itemVendorIDs = await Promise.all(
+				editingExpense.items.map((item, index) =>
+					ensureVendorID(itemVendorNames[index], item.vendor_id),
+				),
+			);
 			if (creating) {
 				const captured = await apiRequest<CaptureResponse>("/capture", token, {
 					method: "POST",
@@ -794,13 +817,10 @@ export const MiniApp = () => {
 						input_kind: "manual",
 						space_id: spaceID,
 						description: editingExpense.title,
-						items: editingExpense.items.map((item) => ({
+						items: editingExpense.items.map((item, index) => ({
 							name: item.name,
 							amount: Number(item.amount),
-							vendor_name:
-								vendors.find(
-									(vendor) => vendor.id === (item.vendor_id || vendorID),
-								)?.name || sellerName,
+							vendor_name: itemVendorNames[index],
 							currency,
 							category: categories.find(
 								(category) => category.id === item.category_id,
@@ -829,11 +849,11 @@ export const MiniApp = () => {
 							vendor_id: vendorID || undefined,
 							vendor_id_clear: !vendorID,
 							expense_date: editingExpense.expense_date,
-							items: editingExpense.items.map((item) => ({
+							items: editingExpense.items.map((item, index) => ({
 								name: item.name,
 								amount: Number(item.amount),
 								category_id: item.category_id,
-								vendor_id: item.vendor_id || vendorID || undefined,
+								vendor_id: itemVendorIDs[index],
 								notes: item.notes || "",
 							})),
 						}),
@@ -1518,6 +1538,13 @@ const ReviewEditor = ({
 	onClose: () => void;
 }) => {
 	const total = draft.items.reduce((sum, item) => sum + Number(item.amount), 0);
+	const sharedVendorName = commonVendorName(
+		draft.items.map((item) => item.vendor_name),
+	);
+	const applyItems = (items: ReviewDraftItem[]) => {
+		const commonName = commonVendorName(items.map((item) => item.vendor_name));
+		onChange({ ...draft, payeeText: commonName ?? "", items });
+	};
 	const invalid =
 		!draft.title.trim() ||
 		draft.items.length === 0 ||
@@ -1554,9 +1581,13 @@ const ReviewEditor = ({
 				</label>
 				<div className="review-meta">
 					<label className="review-field">
-						<span>Продавец</span>
-						<select
-							value={draft.payeeText}
+						<span>Продавец всего расхода</span>
+						<input
+							list="review-vendors"
+							placeholder={
+								sharedVendorName === null ? "Разные продавцы" : "Не определён"
+							}
+							value={sharedVendorName ?? ""}
 							onChange={(event) => {
 								const payeeText = event.target.value;
 								onChange({
@@ -1564,22 +1595,19 @@ const ReviewEditor = ({
 									payeeText,
 									items: draft.items.map((item) => ({
 										...item,
-										vendor_name: item.vendor_name || payeeText,
+										vendor_name: payeeText,
 									})),
 								});
 							}}
-						>
-							<option value="">Не определён</option>
-							{draft.payeeText &&
-								!vendors.some((vendor) => vendor.name === draft.payeeText) && (
-									<option value={draft.payeeText}>{draft.payeeText}</option>
-								)}
+						/>
+						<datalist id="review-vendors">
 							{vendors.map((vendor) => (
-								<option key={vendor.id} value={vendor.name}>
-									{vendor.name}
-								</option>
+								<option key={vendor.id} value={vendor.name} />
 							))}
-						</select>
+						</datalist>
+						<small className="review-field-hint">
+							Изменение применится ко всем позициям
+						</small>
 					</label>
 					<label className="review-field">
 						<span>Дата</span>
@@ -1655,16 +1683,30 @@ const ReviewEditor = ({
 									</option>
 								))}
 							</select>
+							<input
+								className="review-line-vendor"
+								list="review-vendors"
+								aria-label={`Продавец позиции ${index + 1}`}
+								placeholder="Продавец позиции"
+								value={item.vendor_name}
+								onChange={(event) => {
+									const vendorName = event.target.value;
+									applyItems(
+										draft.items.map((current, itemIndex) =>
+											itemIndex === index
+												? { ...current, vendor_name: vendorName }
+												: current,
+										),
+									);
+								}}
+							/>
 							<button
 								type="button"
 								aria-label={`Удалить позицию ${index + 1}`}
 								onClick={() =>
-									onChange({
-										...draft,
-										items: draft.items.filter(
-											(_, itemIndex) => itemIndex !== index,
-										),
-									})
+									applyItems(
+										draft.items.filter((_, itemIndex) => itemIndex !== index),
+									)
 								}
 							>
 								<Trash size={17} />
@@ -1685,7 +1727,7 @@ const ReviewEditor = ({
 									name: "",
 									amount: 0,
 									category_key: "other",
-									vendor_name: draft.payeeText,
+									vendor_name: sharedVendorName ?? "",
 									notes: "",
 								},
 							],
@@ -2256,166 +2298,198 @@ const ExpenseEditor = ({
 	onChange: (expense: Expense) => void;
 	onClose: () => void;
 	onSave: () => void;
-}) => (
-	<Modal
-		title={creating ? "Новый расход" : "Редактировать расход"}
-		onClose={onClose}
-	>
-		<label>
-			{creating ? "На что потратили" : "Название"}
-			<input
-				value={expense.title}
-				onChange={(event) =>
-					onChange({
-						...expense,
-						title: event.target.value,
-						items: creating
-							? expense.items.map((item, index) =>
-									index === 0 ? { ...item, name: event.target.value } : item,
-								)
-							: expense.items,
-					})
-				}
-			/>
-		</label>
-		<label>
-			Продавец
-			<input
-				list="expense-vendors"
-				placeholder="Например, Лента"
-				value={
-					expense.payee_text ||
-					vendors.find((vendor) => vendor.id === expense.vendor_id)?.name ||
-					""
-				}
-				onChange={(event) => {
-					const payeeText = event.target.value;
-					onChange({
-						...expense,
-						payee_text: payeeText,
-						vendor_id: findVendorByName(vendors, payeeText)?.id,
-					});
-				}}
-			/>
-			<datalist id="expense-vendors">
-				{vendors.map((vendor) => (
-					<option key={vendor.id} value={vendor.name} />
-				))}
-			</datalist>
-		</label>
-		{!creating && (
+}) => {
+	const fallbackVendorName =
+		expense.payee_text ||
+		expense.vendor_name ||
+		expense.vendor?.name ||
+		vendors.find((vendor) => vendor.id === expense.vendor_id)?.name ||
+		"";
+	const itemVendorName = (item: ExpenseItem) =>
+		item.vendor_name ||
+		item.vendor?.name ||
+		vendors.find((vendor) => vendor.id === item.vendor_id)?.name ||
+		fallbackVendorName;
+	const sharedVendorName = commonVendorName(expense.items.map(itemVendorName));
+	const updateItemVendor = (index: number, vendorName: string) => {
+		const selectedVendor = findVendorByName(vendors, vendorName);
+		const items = expense.items.map((item, itemIndex) =>
+			itemIndex === index
+				? {
+						...item,
+						vendor_id: selectedVendor?.id,
+						vendor_name: vendorName,
+						vendor: selectedVendor,
+					}
+				: item,
+		);
+		const commonName = commonVendorName(items.map(itemVendorName));
+		const commonVendor = commonName
+			? findVendorByName(vendors, commonName)
+			: undefined;
+		onChange({
+			...expense,
+			payee_text: commonName ?? "",
+			vendor_id: commonVendor?.id,
+			vendor: commonVendor,
+			items,
+		});
+	};
+
+	return (
+		<Modal
+			title={creating ? "Новый расход" : "Редактировать расход"}
+			onClose={onClose}
+		>
 			<label>
-				Дата
+				{creating ? "На что потратили" : "Название"}
 				<input
-					type="date"
-					value={expense.expense_date.slice(0, 10)}
+					value={expense.title}
 					onChange={(event) =>
-						onChange({ ...expense, expense_date: event.target.value })
+						onChange({
+							...expense,
+							title: event.target.value,
+							items: creating
+								? expense.items.map((item, index) =>
+										index === 0 ? { ...item, name: event.target.value } : item,
+									)
+								: expense.items,
+						})
 					}
 				/>
 			</label>
-		)}
-		<div className="mini-editor-items">
-			<span>{creating ? "Сумма и категория" : "Позиции"}</span>
-			{expense.items.map((item, index) => (
-				<div
-					key={item.id || index}
-					className={`mini-editor-item${creating ? " mini-editor-item--new" : ""}`}
-				>
-					{!creating && (
+			<label>
+				Продавец всего расхода
+				<input
+					list="expense-vendors"
+					placeholder={
+						sharedVendorName === null ? "Разные продавцы" : "Не определён"
+					}
+					value={sharedVendorName ?? ""}
+					onChange={(event) => {
+						const payeeText = event.target.value;
+						const selectedVendor = findVendorByName(vendors, payeeText);
+						onChange({
+							...expense,
+							payee_text: payeeText,
+							vendor_id: selectedVendor?.id,
+							vendor: selectedVendor,
+							items: expense.items.map((item) => ({
+								...item,
+								vendor_id: selectedVendor?.id,
+								vendor_name: payeeText,
+								vendor: selectedVendor,
+							})),
+						});
+					}}
+				/>
+				<small className="mini-field-hint">
+					Изменение применится ко всем позициям
+				</small>
+				<datalist id="expense-vendors">
+					{vendors.map((vendor) => (
+						<option key={vendor.id} value={vendor.name} />
+					))}
+				</datalist>
+			</label>
+			{!creating && (
+				<label>
+					Дата
+					<input
+						type="date"
+						value={expense.expense_date.slice(0, 10)}
+						onChange={(event) =>
+							onChange({ ...expense, expense_date: event.target.value })
+						}
+					/>
+				</label>
+			)}
+			<div className="mini-editor-items">
+				<span>{creating ? "Сумма и категория" : "Позиции"}</span>
+				{expense.items.map((item, index) => (
+					<div
+						key={item.id || index}
+						className={`mini-editor-item${creating ? " mini-editor-item--new" : ""}`}
+					>
+						{!creating && (
+							<input
+								aria-label="Название позиции"
+								value={item.name}
+								onChange={(event) =>
+									onChange({
+										...expense,
+										items: expense.items.map((current, itemIndex) =>
+											itemIndex === index
+												? { ...current, name: event.target.value }
+												: current,
+										),
+									})
+								}
+							/>
+						)}
 						<input
-							aria-label="Название позиции"
-							value={item.name}
+							aria-label="Сумма позиции"
+							type="number"
+							min="0"
+							step="0.01"
+							value={item.amount}
 							onChange={(event) =>
 								onChange({
 									...expense,
 									items: expense.items.map((current, itemIndex) =>
 										itemIndex === index
-											? { ...current, name: event.target.value }
+											? { ...current, amount: Number(event.target.value) }
 											: current,
 									),
 								})
 							}
 						/>
-					)}
-					<input
-						aria-label="Сумма позиции"
-						type="number"
-						min="0"
-						step="0.01"
-						value={item.amount}
-						onChange={(event) =>
-							onChange({
-								...expense,
-								items: expense.items.map((current, itemIndex) =>
-									itemIndex === index
-										? { ...current, amount: Number(event.target.value) }
-										: current,
-								),
-							})
-						}
-					/>
-					<select
-						aria-label="Категория позиции"
-						value={item.category_id || 0}
-						onChange={(event) =>
-							onChange({
-								...expense,
-								items: expense.items.map((current, itemIndex) =>
-									itemIndex === index
-										? { ...current, category_id: Number(event.target.value) }
-										: current,
-								),
-							})
-						}
-					>
-						{categories.map((category) => (
-							<option key={category.id} value={category.id}>
-								{category.name}
-							</option>
-						))}
-					</select>
-					<select
-						aria-label="Продавец позиции"
-						value={item.vendor_id || 0}
-						onChange={(event) =>
-							onChange({
-								...expense,
-								items: expense.items.map((current, itemIndex) =>
-									itemIndex === index
-										? {
-												...current,
-												vendor_id: Number(event.target.value) || undefined,
-											}
-										: current,
-								),
-							})
-						}
-					>
-						<option value={0}>Как у всего расхода</option>
-						{vendors.map((vendor) => (
-							<option key={vendor.id} value={vendor.id}>
-								{vendor.name}
-							</option>
-						))}
-					</select>
-				</div>
-			))}
-		</div>
-		<button
-			className="mini-save"
-			type="button"
-			disabled={
-				saving ||
-				!expense.title.trim() ||
-				expense.items.some((item) => !item.name.trim() || item.amount <= 0)
-			}
-			onClick={onSave}
-		>
-			{saving ? "Сохраняем…" : "Сохранить"}
-		</button>
-	</Modal>
-);
+						<select
+							aria-label="Категория позиции"
+							value={item.category_id || 0}
+							onChange={(event) =>
+								onChange({
+									...expense,
+									items: expense.items.map((current, itemIndex) =>
+										itemIndex === index
+											? { ...current, category_id: Number(event.target.value) }
+											: current,
+									),
+								})
+							}
+						>
+							{categories.map((category) => (
+								<option key={category.id} value={category.id}>
+									{category.name}
+								</option>
+							))}
+						</select>
+						<input
+							className="mini-editor-vendor"
+							list="expense-vendors"
+							aria-label="Продавец позиции"
+							placeholder="Продавец позиции"
+							value={itemVendorName(item)}
+							onChange={(event) => updateItemVendor(index, event.target.value)}
+						/>
+					</div>
+				))}
+			</div>
+			<button
+				className="mini-save"
+				type="button"
+				disabled={
+					saving ||
+					!expense.title.trim() ||
+					expense.items.some((item) => !item.name.trim() || item.amount <= 0)
+				}
+				onClick={onSave}
+			>
+				{saving ? "Сохраняем…" : "Сохранить"}
+			</button>
+		</Modal>
+	);
+};
 
 const VendorEditor = ({
 	vendor,

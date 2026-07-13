@@ -9,3 +9,13 @@ export const findVendorByName = <T extends VendorOption>(
 		(vendor) => vendor.name.trim().toLocaleLowerCase("ru") === normalized,
 	);
 };
+
+export const commonVendorName = (names: string[]): string | null => {
+	if (names.length === 0) return "";
+	const values = names.map((name) => name.trim());
+	const first = values[0];
+	const normalized = first.toLocaleLowerCase("ru");
+	return values.every((name) => name.toLocaleLowerCase("ru") === normalized)
+		? first
+		: null;
+};
