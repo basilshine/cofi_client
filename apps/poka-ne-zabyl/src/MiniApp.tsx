@@ -8,6 +8,7 @@ import {
 	PencilSimple,
 	Plus,
 	Receipt,
+	Storefront,
 	Tag,
 	Trash,
 	UserCircle,
@@ -23,7 +24,13 @@ import {
 	itemAmountInCurrency,
 } from "./money";
 
-type View = "overview" | "expenses" | "categories" | "spaces" | "profile";
+type View =
+	| "overview"
+	| "expenses"
+	| "vendors"
+	| "categories"
+	| "spaces"
+	| "profile";
 type Period = "month" | "three-months" | "year" | "all";
 
 type Space = {
@@ -51,6 +58,13 @@ type Category = {
 	last_used?: string | null;
 };
 
+type VendorAlias = { id?: number; alias: string };
+type Vendor = {
+	id: number;
+	name: string;
+	aliases?: VendorAlias[];
+};
+
 type ExpenseItem = {
 	id?: number;
 	name: string;
@@ -62,6 +76,9 @@ type ExpenseItem = {
 	category_id?: number;
 	category_name?: string;
 	category?: { id: number; name: string };
+	vendor_id?: number;
+	vendor_name?: string;
+	vendor?: { id: number; name: string };
 	notes?: string;
 };
 
@@ -70,6 +87,9 @@ type Expense = {
 	user_id: number;
 	title: string;
 	payee_text?: string;
+	vendor_id?: number;
+	vendor_name?: string;
+	vendor?: { id: number; name: string };
 	expense_date: string;
 	amount?: number;
 	total?: number;
@@ -200,6 +220,16 @@ const previewExpenses: Expense[] = [
 		items: [{ id: 4, name: "Поездка", amount: 680, category_id: 4 }],
 	},
 ];
+const previewVendors: Vendor[] = [
+	{ id: 1, name: "Лента", aliases: [] },
+	{
+		id: 2,
+		name: "Белый кролик",
+		aliases: [{ alias: "ИП Иванов Иван Иванович" }],
+	},
+	{ id: 3, name: "Студия движения", aliases: [] },
+	{ id: 4, name: "Яндекс Go", aliases: [] },
+];
 
 const apiRequest = async <T,>(
 	path: string,
@@ -228,6 +258,7 @@ const initialView = (): View => {
 	const requested = new URLSearchParams(window.location.search).get("view");
 	return requested === "expenses" ||
 		requested === "categories" ||
+		requested === "vendors" ||
 		requested === "spaces" ||
 		requested === "profile"
 		? requested
@@ -244,15 +275,18 @@ export const MiniApp = () => {
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [expenses, setExpenses] = useState<Expense[]>([]);
 	const [categories, setCategories] = useState<Category[]>([]);
+	const [vendors, setVendors] = useState<Vendor[]>([]);
 	const [quota, setQuota] = useState<Quota | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState("");
 	const [notice, setNotice] = useState("");
 	const [period, setPeriod] = useState<Period>("month");
 	const [categoryID, setCategoryID] = useState(0);
+	const [vendorID, setVendorID] = useState(0);
 	const [query, setQuery] = useState("");
 	const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+	const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 	const [editingProfile, setEditingProfile] = useState<User | null>(null);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [saving, setSaving] = useState(false);
@@ -304,6 +338,7 @@ export const MiniApp = () => {
 			setSpaceID(1);
 			setExpenses(previewExpenses);
 			setCategories(previewCategories);
+			setVendors(previewVendors);
 			setQuota({ plan: "basic", limit: 100, used: 37, remaining: 63 });
 			setLoading(false);
 			return;
@@ -349,7 +384,7 @@ export const MiniApp = () => {
 		setError("");
 		try {
 			// ponytail: the latest 200 records cover launch usage; add server filters when this ceiling becomes visible.
-			const [expenseData, categoryData, quotaData, memberData] =
+			const [expenseData, categoryData, quotaData, memberData, vendorData] =
 				await Promise.all([
 					apiRequest<{ expenses: Expense[] }>(
 						`/spaces/${spaceID}/expenses?limit=200`,
@@ -364,11 +399,13 @@ export const MiniApp = () => {
 						`/spaces/${spaceID}/members`,
 						token,
 					),
+					apiRequest<Vendor[]>(`/spaces/${spaceID}/vendors`, token),
 				]);
 			setExpenses(expenseData.expenses || []);
 			setCategories(categoryData.categories || []);
 			setQuota(quotaData);
 			setMembers(memberData.members || []);
+			setVendors(vendorData || []);
 		} catch (err) {
 			setError(
 				err instanceof Error
@@ -388,10 +425,17 @@ export const MiniApp = () => {
 			const categoryMatches =
 				categoryID === 0 ||
 				expense.items.some((item) => item.category_id === categoryID);
+			const vendorMatches =
+				vendorID === 0 ||
+				expense.vendor_id === vendorID ||
+				expense.items.some((item) => item.vendor_id === vendorID);
 			const text = [
 				expense.title,
 				expense.payee_text,
+				expense.vendor_name,
+				expense.vendor?.name,
 				...expense.items.map((item) => item.name),
+				...expense.items.map((item) => item.vendor_name || item.vendor?.name),
 			]
 				.filter(Boolean)
 				.join(" ")
@@ -399,10 +443,11 @@ export const MiniApp = () => {
 			return (
 				(!start || date >= start) &&
 				categoryMatches &&
+				vendorMatches &&
 				(!normalizedQuery || text.includes(normalizedQuery))
 			);
 		});
-	}, [expenses, period, categoryID, query]);
+	}, [expenses, period, categoryID, vendorID, query]);
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
 	const currency = user?.currency || activeSpace?.currency || "RUB";
@@ -494,6 +539,10 @@ export const MiniApp = () => {
 						items: editingExpense.items.map((item) => ({
 							name: item.name,
 							amount: Number(item.amount),
+							vendor_name: vendors.find(
+								(vendor) =>
+									vendor.id === (item.vendor_id || editingExpense.vendor_id),
+							)?.name,
 							currency,
 							category: categories.find(
 								(category) => category.id === item.category_id,
@@ -519,11 +568,15 @@ export const MiniApp = () => {
 						body: JSON.stringify({
 							title: editingExpense.title,
 							payee_text: editingExpense.payee_text || "",
+							vendor_id: editingExpense.vendor_id || undefined,
+							vendor_id_clear: !editingExpense.vendor_id,
 							expense_date: editingExpense.expense_date,
 							items: editingExpense.items.map((item) => ({
 								name: item.name,
 								amount: Number(item.amount),
 								category_id: item.category_id,
+								vendor_id:
+									item.vendor_id || editingExpense.vendor_id || undefined,
 								notes: item.notes || "",
 							})),
 						}),
@@ -536,6 +589,49 @@ export const MiniApp = () => {
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : "Не удалось сохранить расход",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const saveVendor = async () => {
+		if (!editingVendor) return;
+		const creating = editingVendor.id === 0;
+		if (previewMode) {
+			const saved = creating
+				? { ...editingVendor, id: Date.now() }
+				: editingVendor;
+			setVendors((current) =>
+				creating
+					? [...current, saved]
+					: current.map((vendor) => (vendor.id === saved.id ? saved : vendor)),
+			);
+			setEditingVendor(null);
+			setNotice(creating ? "Продавец добавлен" : "Продавец сохранён");
+			return;
+		}
+		setSaving(true);
+		try {
+			await apiRequest(
+				creating
+					? `/spaces/${spaceID}/vendors`
+					: `/spaces/${spaceID}/vendors/${editingVendor.id}`,
+				token,
+				{
+					method: creating ? "POST" : "PUT",
+					body: JSON.stringify({
+						name: editingVendor.name,
+						aliases: (editingVendor.aliases || []).map((alias) => alias.alias),
+					}),
+				},
+			);
+			setEditingVendor(null);
+			setNotice(creating ? "Продавец добавлен" : "Продавец сохранён");
+			await loadSpace();
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось сохранить продавца",
 			);
 		} finally {
 			setSaving(false);
@@ -718,6 +814,7 @@ export const MiniApp = () => {
 			user_id: user?.id || 0,
 			title: "",
 			payee_text: "",
+			vendor_id: undefined,
 			expense_date: new Date().toISOString().slice(0, 10),
 			currency,
 			space_currency: currency,
@@ -783,15 +880,27 @@ export const MiniApp = () => {
 							<ExpensesView
 								expenses={filteredExpenses}
 								categories={categories}
+								vendors={vendors}
 								currency={currency}
 								period={period}
 								categoryID={categoryID}
+								vendorID={vendorID}
 								query={query}
 								onPeriod={setPeriod}
 								onCategory={setCategoryID}
+								onVendor={setVendorID}
 								onQuery={setQuery}
 								onEdit={setEditingExpense}
 								onAdd={addExpense}
+								onManageVendors={() => setView("vendors")}
+							/>
+						)}
+						{view === "vendors" && (
+							<VendorsView
+								vendors={vendors}
+								onBack={() => setView("expenses")}
+								onEdit={(vendor) => setEditingVendor({ ...vendor })}
+								onAdd={() => setEditingVendor({ id: 0, name: "", aliases: [] })}
 							/>
 						)}
 						{view === "categories" && (
@@ -863,7 +972,7 @@ export const MiniApp = () => {
 					onClick={() => setView("spaces")}
 				/>
 				<NavButton
-					active={view === "expenses"}
+					active={view === "expenses" || view === "vendors"}
 					label="Расходы"
 					icon={<Receipt />}
 					onClick={() => setView("expenses")}
@@ -886,11 +995,21 @@ export const MiniApp = () => {
 				<ExpenseEditor
 					expense={editingExpense}
 					categories={categories}
+					vendors={vendors}
 					creating={editingExpense.id === 0}
 					saving={saving}
 					onChange={setEditingExpense}
 					onClose={() => setEditingExpense(null)}
 					onSave={saveExpense}
+				/>
+			)}
+			{editingVendor && (
+				<VendorEditor
+					vendor={editingVendor}
+					saving={saving}
+					onChange={setEditingVendor}
+					onClose={() => setEditingVendor(null)}
+					onSave={saveVendor}
 				/>
 			)}
 			{editingCategory && (
@@ -1005,27 +1124,35 @@ const Overview = ({
 const ExpensesView = ({
 	expenses,
 	categories,
+	vendors,
 	currency,
 	period,
 	categoryID,
+	vendorID,
 	query,
 	onPeriod,
 	onCategory,
+	onVendor,
 	onQuery,
 	onEdit,
 	onAdd,
+	onManageVendors,
 }: {
 	expenses: Expense[];
 	categories: Category[];
+	vendors: Vendor[];
 	currency: string;
 	period: Period;
 	categoryID: number;
+	vendorID: number;
 	query: string;
 	onPeriod: (period: Period) => void;
 	onCategory: (id: number) => void;
+	onVendor: (id: number) => void;
 	onQuery: (value: string) => void;
 	onEdit: (expense: Expense) => void;
 	onAdd: () => void;
+	onManageVendors: () => void;
 }) => (
 	<section className="mini-view">
 		<div className="mini-title-row">
@@ -1067,7 +1194,7 @@ const ExpensesView = ({
 				</strong>
 			</div>
 		</div>
-		<div className="mini-filters">
+		<div className="mini-filters mini-filters--three">
 			<select
 				aria-label="Период"
 				value={period}
@@ -1090,7 +1217,27 @@ const ExpensesView = ({
 					</option>
 				))}
 			</select>
+			<select
+				aria-label="Продавец"
+				value={vendorID}
+				onChange={(event) => onVendor(Number(event.target.value))}
+			>
+				<option value={0}>Все продавцы</option>
+				{vendors.map((vendor) => (
+					<option key={vendor.id} value={vendor.id}>
+						{vendor.name}
+					</option>
+				))}
+			</select>
 		</div>
+		<button
+			className="mini-link-button"
+			type="button"
+			onClick={onManageVendors}
+		>
+			<Storefront size={17} />
+			Названия продавцов
+		</button>
 		<ExpenseList expenses={expenses} currency={currency} onEdit={onEdit} />
 	</section>
 );
@@ -1107,14 +1254,16 @@ const ExpenseList = ({
 	<div className="mini-expenses">
 		{expenses.map((expense) => {
 			const money = expenseDisplayMoney(expense, currency);
+			const seller = expenseSellerName(expense);
 			return (
 				<button key={expense.id} type="button" onClick={() => onEdit(expense)}>
 					<span className="mini-expense-icon">
 						<Receipt size={19} />
 					</span>
 					<span className="mini-expense-copy">
-						<b>{expense.payee_text || expense.title || "Расход"}</b>
+						<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
 						<small>
+							<span className="mini-vendor-chip">{seller}</span>
 							{expense.items
 								.map((item) => item.name)
 								.slice(0, 2)
@@ -1131,6 +1280,15 @@ const ExpenseList = ({
 		{expenses.length === 0 && <Empty text="Ничего не найдено" />}
 	</div>
 );
+
+const expenseSellerName = (expense: Expense) =>
+	expense.vendor_name ||
+	expense.vendor?.name ||
+	expense.items.find((item) => item.vendor_name || item.vendor?.name)
+		?.vendor_name ||
+	expense.items.find((item) => item.vendor?.name)?.vendor?.name ||
+	expense.payee_text ||
+	"Продавец не определён";
 
 const CategoriesView = ({
 	categories,
@@ -1188,6 +1346,54 @@ const CategoriesView = ({
 					</button>
 				</article>
 			))}
+		</div>
+	</section>
+);
+
+const VendorsView = ({
+	vendors,
+	onBack,
+	onEdit,
+	onAdd,
+}: {
+	vendors: Vendor[];
+	onBack: () => void;
+	onEdit: (vendor: Vendor) => void;
+	onAdd: () => void;
+}) => (
+	<section className="mini-view">
+		<div className="mini-title-row">
+			<div className="mini-title">
+				<button className="mini-back-link" type="button" onClick={onBack}>
+					Расходы
+				</button>
+				<h1>Продавцы</h1>
+			</div>
+			<button className="mini-add-button" type="button" onClick={onAdd}>
+				<Plus size={18} weight="bold" />
+				Добавить
+			</button>
+		</div>
+		<p className="mini-intro">
+			Объединяйте название магазина и юридическое имя из чека.
+		</p>
+		<div className="mini-vendors">
+			{vendors.map((vendor) => (
+				<button key={vendor.id} type="button" onClick={() => onEdit(vendor)}>
+					<span className="mini-expense-icon">
+						<Storefront size={19} />
+					</span>
+					<span>
+						<b>{vendor.name}</b>
+						<small>
+							{vendor.aliases?.map((alias) => alias.alias).join(", ") ||
+								"Псевдонимов пока нет"}
+						</small>
+					</span>
+					<PencilSimple size={18} />
+				</button>
+			))}
+			{vendors.length === 0 && <Empty text="Продавцов пока нет" />}
 		</div>
 	</section>
 );
@@ -1329,6 +1535,7 @@ const ProfileView = ({
 const ExpenseEditor = ({
 	expense,
 	categories,
+	vendors,
 	creating,
 	saving,
 	onChange,
@@ -1337,6 +1544,7 @@ const ExpenseEditor = ({
 }: {
 	expense: Expense;
 	categories: Category[];
+	vendors: Vendor[];
 	creating: boolean;
 	saving: boolean;
 	onChange: (expense: Expense) => void;
@@ -1363,6 +1571,25 @@ const ExpenseEditor = ({
 					})
 				}
 			/>
+		</label>
+		<label>
+			Продавец
+			<select
+				value={expense.vendor_id || 0}
+				onChange={(event) =>
+					onChange({
+						...expense,
+						vendor_id: Number(event.target.value) || undefined,
+					})
+				}
+			>
+				<option value={0}>Не определён</option>
+				{vendors.map((vendor) => (
+					<option key={vendor.id} value={vendor.id}>
+						{vendor.name}
+					</option>
+				))}
+			</select>
 		</label>
 		{!creating && (
 			<>
@@ -1447,6 +1674,30 @@ const ExpenseEditor = ({
 							</option>
 						))}
 					</select>
+					<select
+						aria-label="Продавец позиции"
+						value={item.vendor_id || 0}
+						onChange={(event) =>
+							onChange({
+								...expense,
+								items: expense.items.map((current, itemIndex) =>
+									itemIndex === index
+										? {
+												...current,
+												vendor_id: Number(event.target.value) || undefined,
+											}
+										: current,
+								),
+							})
+						}
+					>
+						<option value={0}>Как у всего расхода</option>
+						{vendors.map((vendor) => (
+							<option key={vendor.id} value={vendor.id}>
+								{vendor.name}
+							</option>
+						))}
+					</select>
 				</div>
 			))}
 		</div>
@@ -1458,6 +1709,60 @@ const ExpenseEditor = ({
 				!expense.title.trim() ||
 				expense.items.some((item) => !item.name.trim() || item.amount <= 0)
 			}
+			onClick={onSave}
+		>
+			{saving ? "Сохраняем…" : "Сохранить"}
+		</button>
+	</Modal>
+);
+
+const VendorEditor = ({
+	vendor,
+	saving,
+	onChange,
+	onClose,
+	onSave,
+}: {
+	vendor: Vendor;
+	saving: boolean;
+	onChange: (vendor: Vendor) => void;
+	onClose: () => void;
+	onSave: () => void;
+}) => (
+	<Modal
+		title={vendor.id === 0 ? "Новый продавец" : "Название продавца"}
+		onClose={onClose}
+	>
+		<label>
+			Название для списка
+			<input
+				maxLength={120}
+				value={vendor.name}
+				onChange={(event) => onChange({ ...vendor, name: event.target.value })}
+			/>
+		</label>
+		<label>
+			Другие названия из чеков
+			<textarea
+				rows={4}
+				placeholder={"ИП Иванов Иван Иванович\nООО «С Блеском»"}
+				value={(vendor.aliases || []).map((alias) => alias.alias).join("\n")}
+				onChange={(event) =>
+					onChange({
+						...vendor,
+						aliases: event.target.value.split("\n").map((alias) => ({ alias })),
+					})
+				}
+			/>
+		</label>
+		<p className="mini-field-note">
+			В следующий раз эти названия автоматически станут «
+			{vendor.name || "Название"}».
+		</p>
+		<button
+			className="mini-save"
+			type="button"
+			disabled={saving || !vendor.name.trim()}
 			onClick={onSave}
 		>
 			{saving ? "Сохраняем…" : "Сохранить"}

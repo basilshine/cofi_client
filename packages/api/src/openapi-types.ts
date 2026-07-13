@@ -578,6 +578,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         name: string;
+                        aliases?: string[];
                     };
                 };
             };
@@ -660,6 +661,66 @@ export interface paths {
             };
         };
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/vendors/{vendorId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Rename a vendor and replace its receipt aliases */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    vendorId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name: string;
+                        aliases?: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description Vendor updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Vendor"];
+                    };
+                };
+                /** @description Invalid name or alias conflict */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Vendor not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         post?: never;
         delete?: never;
         options?: never;
@@ -5899,6 +5960,15 @@ export interface components {
             /** Format: date-time */
             updated_at?: string;
         };
+        VendorAlias: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            tenant_id?: number;
+            /** Format: int64 */
+            vendor_id?: number;
+            alias?: string;
+        };
         /** @description Vendor embedded in expense responses (id + display name). */
         ExpenseVendorBrief: {
             /** Format: int64 */
@@ -6038,6 +6108,7 @@ export interface components {
             space_amount?: number | null;
             space_currency?: components["schemas"]["CurrencyCode"];
             name?: string;
+            aliases?: components["schemas"]["VendorAlias"][];
             tagLabel?: string;
             /** Format: date-time */
             startDate?: string;
@@ -6259,8 +6330,9 @@ export interface components {
             confidence?: number;
             /** @enum {string} */
             status?: "pending_review" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
-            /** @description Candidate-derived preview amount when available, for example expense totals or item line amounts. */
             amount?: number;
+            /** @description Candidate-derived preview amount when available, for example expense totals or item line amounts. */
+            vendor_name?: string;
             /** @description Candidate-derived preview currency when available. */
             currency?: components["schemas"]["CurrencyCode"];
             /** @description Candidate-derived preview tags when available. */
@@ -6519,6 +6591,9 @@ export interface components {
         CategoryItem: {
             /** Format: int64 */
             expense_id?: number;
+            /** Format: int64 */
+            vendor_id?: number | null;
+            vendor?: components["schemas"]["ExpenseVendorBrief"];
             name?: string;
             amount?: number;
             merchant?: string;
@@ -6716,6 +6791,8 @@ export interface components {
             capabilities?: components["schemas"]["CapabilitySummary"];
         };
         ExpenseRecordItem: {
+            /** Format: int64 */
+            id?: number;
             amount?: number;
             /** @description Original line-item amount in the detected/source currency. */
             source_amount?: number | null;
@@ -6724,6 +6801,9 @@ export interface components {
             space_amount?: number | null;
             space_currency?: components["schemas"]["CurrencyCode"];
             name?: string;
+            /** Format: int64 */
+            vendor_id?: number | null;
+            vendor_name?: string;
             /** Format: int64 */
             category_id?: number | null;
             category_key?: string;
