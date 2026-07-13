@@ -2300,7 +2300,49 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /** Create a custom expense category */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created category */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CategorySummary"];
+                    };
+                };
+                /** @description Invalid category name */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -2409,7 +2451,52 @@ export interface paths {
             };
         };
         post?: never;
-        delete?: never;
+        /**
+         * Delete a custom category
+         * @description Moves linked expense items to the protected Other category before deleting the category.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    categoryId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Category deleted and linked items moved to Other */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Category not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The protected Other category cannot be deleted */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;

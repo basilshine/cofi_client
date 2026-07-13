@@ -5,8 +5,10 @@ import {
 	MagnifyingGlass,
 	NotePencil,
 	PencilSimple,
+	Plus,
 	Receipt,
 	Tag,
+	Trash,
 	UserCircle,
 	X,
 } from "@phosphor-icons/react";
@@ -73,6 +75,9 @@ type Quota = {
 };
 
 type AuthResponse = { token: string; user: User };
+type CaptureResponse = {
+	candidates?: { id: number; candidate_type: string }[];
+};
 
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
 const previewMode =
@@ -110,6 +115,14 @@ const previewCategories: Category[] = [
 		count: 6,
 		total: 2740,
 		last_used: new Date(Date.now() - 259200000).toISOString(),
+	},
+	{
+		id: 5,
+		key: "other",
+		name: "Другое",
+		count: 0,
+		total: 0,
+		last_used: null,
 	},
 ];
 const previewExpenses: Expense[] = [
@@ -366,38 +379,83 @@ export const MiniApp = () => {
 
 	const saveExpense = async () => {
 		if (!editingExpense) return;
+		const creating = editingExpense.id === 0;
 		if (previewMode) {
+			const saved = creating
+				? {
+						...editingExpense,
+						id: Date.now(),
+						total: editingExpense.items.reduce(
+							(sum, item) => sum + item.amount,
+							0,
+						),
+						space_total: editingExpense.items.reduce(
+							(sum, item) => sum + item.amount,
+							0,
+						),
+					}
+				: editingExpense;
 			setExpenses((current) =>
-				current.map((expense) =>
-					expense.id === editingExpense.id ? editingExpense : expense,
-				),
+				creating
+					? [saved, ...current]
+					: current.map((expense) =>
+							expense.id === saved.id ? saved : expense,
+						),
 			);
 			setEditingExpense(null);
-			setNotice("Расход сохранён");
+			setNotice(creating ? "Расход добавлен" : "Расход сохранён");
 			return;
 		}
 		setSaving(true);
 		try {
-			await apiRequest(
-				`/spaces/${spaceID}/expenses/${editingExpense.id}`,
-				token,
-				{
-					method: "PUT",
+			if (creating) {
+				const captured = await apiRequest<CaptureResponse>("/capture", token, {
+					method: "POST",
 					body: JSON.stringify({
-						title: editingExpense.title,
-						payee_text: editingExpense.payee_text || "",
-						expense_date: editingExpense.expense_date,
+						input_kind: "manual",
+						space_id: spaceID,
+						description: editingExpense.title,
 						items: editingExpense.items.map((item) => ({
 							name: item.name,
 							amount: Number(item.amount),
-							category_id: item.category_id,
-							notes: item.notes || "",
+							currency,
+							category: categories.find(
+								(category) => category.id === item.category_id,
+							)?.key,
 						})),
 					}),
-				},
-			);
+				});
+				const candidate = captured.candidates?.find(
+					(item) => item.candidate_type === "expense_candidate",
+				);
+				if (!candidate) throw new Error("Не удалось подготовить расход");
+				await apiRequest(
+					`/spaces/${spaceID}/review/candidates/${candidate.id}/create-expense`,
+					token,
+					{ method: "POST", body: "{}" },
+				);
+			} else {
+				await apiRequest(
+					`/spaces/${spaceID}/expenses/${editingExpense.id}`,
+					token,
+					{
+						method: "PUT",
+						body: JSON.stringify({
+							title: editingExpense.title,
+							payee_text: editingExpense.payee_text || "",
+							expense_date: editingExpense.expense_date,
+							items: editingExpense.items.map((item) => ({
+								name: item.name,
+								amount: Number(item.amount),
+								category_id: item.category_id,
+								notes: item.notes || "",
+							})),
+						}),
+					},
+				);
+			}
 			setEditingExpense(null);
-			setNotice("Расход сохранён");
+			setNotice(creating ? "Расход добавлен" : "Расход сохранён");
 			await loadSpace();
 		} catch (err) {
 			setNotice(
@@ -410,14 +468,81 @@ export const MiniApp = () => {
 
 	const saveCategory = async () => {
 		if (!editingCategory) return;
+		const creating = editingCategory.id === 0;
 		if (previewMode) {
 			setCategories((current) =>
-				current.map((category) =>
-					category.id === editingCategory.id ? editingCategory : category,
-				),
+				creating
+					? [
+							...current,
+							{
+								...editingCategory,
+								id: Math.max(0, ...current.map((category) => category.id)) + 1,
+								key: `custom_${Date.now()}`,
+							},
+						]
+					: current.map((category) =>
+							category.id === editingCategory.id ? editingCategory : category,
+						),
 			);
 			setEditingCategory(null);
-			setNotice("Категория переименована");
+			setNotice(creating ? "Категория добавлена" : "Категория переименована");
+			return;
+		}
+		setSaving(true);
+		try {
+			await apiRequest(
+				creating
+					? `/spaces/${spaceID}/categories`
+					: `/spaces/${spaceID}/categories/${editingCategory.id}`,
+				token,
+				{
+					method: creating ? "POST" : "PUT",
+					body: JSON.stringify({ name: editingCategory.name }),
+				},
+			);
+			setEditingCategory(null);
+			setNotice(creating ? "Категория добавлена" : "Категория переименована");
+			await loadSpace();
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: creating
+						? "Не удалось добавить категорию"
+						: "Не удалось переименовать категорию",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const deleteCategory = async () => {
+		if (!editingCategory || editingCategory.key === "other") return;
+		if (
+			!window.confirm(
+				`Удалить «${editingCategory.name}»? Все её расходы перейдут в «Другое».`,
+			)
+		)
+			return;
+		const other = categories.find((category) => category.key === "other");
+		if (previewMode) {
+			setCategories((current) =>
+				current.filter((category) => category.id !== editingCategory.id),
+			);
+			if (other) {
+				setExpenses((current) =>
+					current.map((expense) => ({
+						...expense,
+						items: expense.items.map((item) =>
+							item.category_id === editingCategory.id
+								? { ...item, category_id: other.id }
+								: item,
+						),
+					})),
+				);
+			}
+			setEditingCategory(null);
+			setNotice("Категория удалена, расходы перенесены в «Другое»");
 			return;
 		}
 		setSaving(true);
@@ -425,23 +550,33 @@ export const MiniApp = () => {
 			await apiRequest(
 				`/spaces/${spaceID}/categories/${editingCategory.id}`,
 				token,
-				{
-					method: "PUT",
-					body: JSON.stringify({ name: editingCategory.name }),
-				},
+				{ method: "DELETE" },
 			);
 			setEditingCategory(null);
-			setNotice("Категория переименована");
+			setNotice("Категория удалена, расходы перенесены в «Другое»");
 			await loadSpace();
 		} catch (err) {
 			setNotice(
-				err instanceof Error
-					? err.message
-					: "Не удалось переименовать категорию",
+				err instanceof Error ? err.message : "Не удалось удалить категорию",
 			);
 		} finally {
 			setSaving(false);
 		}
+	};
+
+	const addExpense = () => {
+		const category =
+			categories.find((item) => item.key === "other") || categories[0];
+		setEditingExpense({
+			id: 0,
+			user_id: user?.id || 0,
+			title: "",
+			payee_text: "",
+			expense_date: new Date().toISOString().slice(0, 10),
+			currency,
+			space_currency: currency,
+			items: [{ name: "", amount: 0, category_id: category?.id }],
+		});
 	};
 
 	if (loading && !token) return <LoadingScreen />;
@@ -510,6 +645,7 @@ export const MiniApp = () => {
 								onCategory={setCategoryID}
 								onQuery={setQuery}
 								onEdit={setEditingExpense}
+								onAdd={addExpense}
 							/>
 						)}
 						{view === "categories" && (
@@ -518,6 +654,15 @@ export const MiniApp = () => {
 								currency={currency}
 								onOpen={openCategory}
 								onEdit={(category) => setEditingCategory({ ...category })}
+								onAdd={() =>
+									setEditingCategory({
+										id: 0,
+										key: "",
+										name: "",
+										count: 0,
+										total: 0,
+									})
+								}
 							/>
 						)}
 						{view === "profile" && (
@@ -564,6 +709,7 @@ export const MiniApp = () => {
 				<ExpenseEditor
 					expense={editingExpense}
 					categories={categories}
+					creating={editingExpense.id === 0}
 					saving={saving}
 					onChange={setEditingExpense}
 					onClose={() => setEditingExpense(null)}
@@ -577,6 +723,11 @@ export const MiniApp = () => {
 					onChange={setEditingCategory}
 					onClose={() => setEditingCategory(null)}
 					onSave={saveCategory}
+					onDelete={
+						editingCategory.id > 0 && editingCategory.key !== "other"
+							? deleteCategory
+							: undefined
+					}
 				/>
 			)}
 		</div>
@@ -666,6 +817,7 @@ const ExpensesView = ({
 	onCategory,
 	onQuery,
 	onEdit,
+	onAdd,
 }: {
 	expenses: Expense[];
 	categories: Category[];
@@ -677,11 +829,18 @@ const ExpensesView = ({
 	onCategory: (id: number) => void;
 	onQuery: (value: string) => void;
 	onEdit: (expense: Expense) => void;
+	onAdd: () => void;
 }) => (
 	<section className="mini-view">
-		<div className="mini-title">
-			<p>История</p>
-			<h1>Расходы</h1>
+		<div className="mini-title-row">
+			<div className="mini-title">
+				<p>История</p>
+				<h1>Расходы</h1>
+			</div>
+			<button className="mini-add-button" type="button" onClick={onAdd}>
+				<Plus size={18} weight="bold" />
+				Добавить
+			</button>
 		</div>
 		<label className="mini-search">
 			<MagnifyingGlass size={19} />
@@ -783,16 +942,24 @@ const CategoriesView = ({
 	currency,
 	onOpen,
 	onEdit,
+	onAdd,
 }: {
 	categories: Category[];
 	currency: string;
 	onOpen: (id: number) => void;
 	onEdit: (category: Category) => void;
+	onAdd: () => void;
 }) => (
 	<section className="mini-view">
-		<div className="mini-title">
-			<p>Порядок в расходах</p>
-			<h1>Категории</h1>
+		<div className="mini-title-row">
+			<div className="mini-title">
+				<p>Порядок в расходах</p>
+				<h1>Категории</h1>
+			</div>
+			<button className="mini-add-button" type="button" onClick={onAdd}>
+				<Plus size={18} weight="bold" />
+				Добавить
+			</button>
 		</div>
 		<p className="mini-intro">
 			Сначала идут категории, которыми вы пользовались недавно.
@@ -891,6 +1058,7 @@ const ProfileView = ({
 const ExpenseEditor = ({
 	expense,
 	categories,
+	creating,
 	saving,
 	onChange,
 	onClose,
@@ -898,58 +1066,79 @@ const ExpenseEditor = ({
 }: {
 	expense: Expense;
 	categories: Category[];
+	creating: boolean;
 	saving: boolean;
 	onChange: (expense: Expense) => void;
 	onClose: () => void;
 	onSave: () => void;
 }) => (
-	<Modal title="Редактировать расход" onClose={onClose}>
+	<Modal
+		title={creating ? "Новый расход" : "Редактировать расход"}
+		onClose={onClose}
+	>
 		<label>
-			Название
+			{creating ? "На что потратили" : "Название"}
 			<input
 				value={expense.title}
 				onChange={(event) =>
-					onChange({ ...expense, title: event.target.value })
+					onChange({
+						...expense,
+						title: event.target.value,
+						items: creating
+							? expense.items.map((item, index) =>
+									index === 0 ? { ...item, name: event.target.value } : item,
+								)
+							: expense.items,
+					})
 				}
 			/>
 		</label>
-		<label>
-			Магазин
-			<input
-				value={expense.payee_text || ""}
-				onChange={(event) =>
-					onChange({ ...expense, payee_text: event.target.value })
-				}
-			/>
-		</label>
-		<label>
-			Дата
-			<input
-				type="date"
-				value={expense.expense_date.slice(0, 10)}
-				onChange={(event) =>
-					onChange({ ...expense, expense_date: event.target.value })
-				}
-			/>
-		</label>
-		<div className="mini-editor-items">
-			<span>Позиции</span>
-			{expense.items.map((item, index) => (
-				<div key={item.id || index} className="mini-editor-item">
+		{!creating && (
+			<>
+				<label>
+					Магазин
 					<input
-						aria-label="Название позиции"
-						value={item.name}
+						value={expense.payee_text || ""}
 						onChange={(event) =>
-							onChange({
-								...expense,
-								items: expense.items.map((current, itemIndex) =>
-									itemIndex === index
-										? { ...current, name: event.target.value }
-										: current,
-								),
-							})
+							onChange({ ...expense, payee_text: event.target.value })
 						}
 					/>
+				</label>
+				<label>
+					Дата
+					<input
+						type="date"
+						value={expense.expense_date.slice(0, 10)}
+						onChange={(event) =>
+							onChange({ ...expense, expense_date: event.target.value })
+						}
+					/>
+				</label>
+			</>
+		)}
+		<div className="mini-editor-items">
+			<span>{creating ? "Сумма и категория" : "Позиции"}</span>
+			{expense.items.map((item, index) => (
+				<div
+					key={item.id || index}
+					className={`mini-editor-item${creating ? " mini-editor-item--new" : ""}`}
+				>
+					{!creating && (
+						<input
+							aria-label="Название позиции"
+							value={item.name}
+							onChange={(event) =>
+								onChange({
+									...expense,
+									items: expense.items.map((current, itemIndex) =>
+										itemIndex === index
+											? { ...current, name: event.target.value }
+											: current,
+									),
+								})
+							}
+						/>
+					)}
 					<input
 						aria-label="Сумма позиции"
 						type="number"
@@ -996,7 +1185,7 @@ const ExpenseEditor = ({
 			disabled={
 				saving ||
 				!expense.title.trim() ||
-				expense.items.some((item) => !item.name.trim() || item.amount < 0)
+				expense.items.some((item) => !item.name.trim() || item.amount <= 0)
 			}
 			onClick={onSave}
 		>
@@ -1011,14 +1200,19 @@ const CategoryEditor = ({
 	onChange,
 	onClose,
 	onSave,
+	onDelete,
 }: {
 	category: Category;
 	saving: boolean;
 	onChange: (category: Category) => void;
 	onClose: () => void;
 	onSave: () => void;
+	onDelete?: () => void;
 }) => (
-	<Modal title="Название категории" onClose={onClose}>
+	<Modal
+		title={category.id === 0 ? "Новая категория" : "Название категории"}
+		onClose={onClose}
+	>
 		<label>
 			Название
 			<input
@@ -1029,14 +1223,27 @@ const CategoryEditor = ({
 				}
 			/>
 		</label>
-		<button
-			className="mini-save"
-			type="button"
-			disabled={saving || !category.name.trim()}
-			onClick={onSave}
-		>
-			{saving ? "Сохраняем…" : "Сохранить"}
-		</button>
+		<div className="mini-modal-actions">
+			<button
+				className="mini-save"
+				type="button"
+				disabled={saving || !category.name.trim()}
+				onClick={onSave}
+			>
+				{saving ? "Сохраняем…" : "Сохранить"}
+			</button>
+			{onDelete && (
+				<button
+					className="mini-delete"
+					type="button"
+					disabled={saving}
+					onClick={onDelete}
+				>
+					<Trash size={18} />
+					Удалить категорию
+				</button>
+			)}
+		</div>
 	</Modal>
 );
 
