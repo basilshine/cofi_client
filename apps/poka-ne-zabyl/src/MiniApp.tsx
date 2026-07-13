@@ -23,6 +23,7 @@ import {
 	expenseDisplayMoney,
 	itemAmountInCurrency,
 } from "./money";
+import { findVendorByName } from "./vendor";
 
 type View =
 	| "overview"
@@ -765,6 +766,25 @@ export const MiniApp = () => {
 		}
 		setSaving(true);
 		try {
+			const sellerName = (
+				editingExpense.payee_text ||
+				vendors.find((vendor) => vendor.id === editingExpense.vendor_id)
+					?.name ||
+				""
+			).trim();
+			let vendorID =
+				editingExpense.vendor_id || findVendorByName(vendors, sellerName)?.id;
+			if (sellerName && !vendorID) {
+				const vendor = await apiRequest<Vendor>(
+					`/spaces/${spaceID}/vendors`,
+					token,
+					{
+						method: "POST",
+						body: JSON.stringify({ name: sellerName, aliases: [] }),
+					},
+				);
+				vendorID = vendor.id;
+			}
 			if (creating) {
 				const captured = await apiRequest<CaptureResponse>("/capture", token, {
 					method: "POST",
@@ -775,10 +795,10 @@ export const MiniApp = () => {
 						items: editingExpense.items.map((item) => ({
 							name: item.name,
 							amount: Number(item.amount),
-							vendor_name: vendors.find(
-								(vendor) =>
-									vendor.id === (item.vendor_id || editingExpense.vendor_id),
-							)?.name,
+							vendor_name:
+								vendors.find(
+									(vendor) => vendor.id === (item.vendor_id || vendorID),
+								)?.name || sellerName,
 							currency,
 							category: categories.find(
 								(category) => category.id === item.category_id,
@@ -803,16 +823,15 @@ export const MiniApp = () => {
 						method: "PUT",
 						body: JSON.stringify({
 							title: editingExpense.title,
-							payee_text: editingExpense.payee_text || "",
-							vendor_id: editingExpense.vendor_id || undefined,
-							vendor_id_clear: !editingExpense.vendor_id,
+							payee_text: sellerName,
+							vendor_id: vendorID || undefined,
+							vendor_id_clear: !vendorID,
 							expense_date: editingExpense.expense_date,
 							items: editingExpense.items.map((item) => ({
 								name: item.name,
 								amount: Number(item.amount),
 								category_id: item.category_id,
-								vendor_id:
-									item.vendor_id || editingExpense.vendor_id || undefined,
+								vendor_id: item.vendor_id || vendorID || undefined,
 								notes: item.notes || "",
 							})),
 						}),
@@ -2250,45 +2269,40 @@ const ExpenseEditor = ({
 		</label>
 		<label>
 			Продавец
-			<select
-				value={expense.vendor_id || 0}
-				onChange={(event) =>
+			<input
+				list="expense-vendors"
+				placeholder="Например, Лента"
+				value={
+					expense.payee_text ||
+					vendors.find((vendor) => vendor.id === expense.vendor_id)?.name ||
+					""
+				}
+				onChange={(event) => {
+					const payeeText = event.target.value;
 					onChange({
 						...expense,
-						vendor_id: Number(event.target.value) || undefined,
-					})
-				}
-			>
-				<option value={0}>Не определён</option>
+						payee_text: payeeText,
+						vendor_id: findVendorByName(vendors, payeeText)?.id,
+					});
+				}}
+			/>
+			<datalist id="expense-vendors">
 				{vendors.map((vendor) => (
-					<option key={vendor.id} value={vendor.id}>
-						{vendor.name}
-					</option>
+					<option key={vendor.id} value={vendor.name} />
 				))}
-			</select>
+			</datalist>
 		</label>
 		{!creating && (
-			<>
-				<label>
-					Магазин
-					<input
-						value={expense.payee_text || ""}
-						onChange={(event) =>
-							onChange({ ...expense, payee_text: event.target.value })
-						}
-					/>
-				</label>
-				<label>
-					Дата
-					<input
-						type="date"
-						value={expense.expense_date.slice(0, 10)}
-						onChange={(event) =>
-							onChange({ ...expense, expense_date: event.target.value })
-						}
-					/>
-				</label>
-			</>
+			<label>
+				Дата
+				<input
+					type="date"
+					value={expense.expense_date.slice(0, 10)}
+					onChange={(event) =>
+						onChange({ ...expense, expense_date: event.target.value })
+					}
+				/>
+			</label>
 		)}
 		<div className="mini-editor-items">
 			<span>{creating ? "Сумма и категория" : "Позиции"}</span>

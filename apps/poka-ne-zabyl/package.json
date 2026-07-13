@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc -p tsconfig.json && vite build",
-		"test:money": "node --test checks/money.test.ts",
+		"test:money": "node --test checks/*.test.ts",
 		"preview": "vite preview"
 	},
 	"dependencies": {
