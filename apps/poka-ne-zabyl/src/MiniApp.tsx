@@ -1274,11 +1274,11 @@ export const MiniApp = () => {
 								onEdit={(space) => setEditingSpace({ ...space })}
 								onAdd={() =>
 									setEditingSpace({
-								id: 0,
-								tenant_id: activeSpace?.tenant_id || 0,
-								owner_user_id: user?.id || 0,
-								is_personal: false,
-								name: "",
+										id: 0,
+										tenant_id: activeSpace?.tenant_id || 0,
+										owner_user_id: user?.id || 0,
+										is_personal: false,
+										name: "",
 										currency: user?.currency || "RUB",
 									})
 								}
