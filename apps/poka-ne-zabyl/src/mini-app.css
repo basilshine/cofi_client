@@ -1195,6 +1195,15 @@
 	}
 }
 @media (max-width: 699px) {
+	.review-meta {
+		grid-template-columns: minmax(0, 1fr);
+	}
+	.review-field input[type="date"],
+	.mini-modal input[type="date"] {
+		display: block;
+		inline-size: 100%;
+		max-inline-size: 100%;
+	}
 	.mini-app input,
 	.mini-app select,
 	.mini-app textarea {

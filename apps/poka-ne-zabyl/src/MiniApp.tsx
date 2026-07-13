@@ -477,7 +477,7 @@ export const MiniApp = () => {
 					sourceDocumentID: 77,
 					title: "Покупки в Ленте",
 					payeeText: "Лента",
-					expenseDate: new Date().toISOString().slice(0, 10),
+					expenseDate: localISODate(),
 					sourceCurrency: "RUB",
 					items: [
 						{
@@ -1182,7 +1182,7 @@ export const MiniApp = () => {
 			title: "",
 			payee_text: "",
 			vendor_id: undefined,
-			expense_date: new Date().toISOString().slice(0, 10),
+			expense_date: localISODate(),
 			currency,
 			space_currency: currency,
 			items: [{ name: "", amount: 0, category_id: category?.id }],
@@ -1476,6 +1476,9 @@ const reviewDraftFromCandidate = (
 				.map((item) => ({ ...item.structured_data, name: item.title }));
 	const sourceCurrency =
 		readString(data, "source_currency", "currency") || "RUB";
+	const itemExpenseDate = rawItems
+		.map((raw) => readString(objectValue(raw), "expense_date", "date"))
+		.find(Boolean);
 	return {
 		candidateID: candidate.id,
 		sourceDocumentID: candidate.source_document_id,
@@ -1492,7 +1495,8 @@ const reviewDraftFromCandidate = (
 		),
 		expenseDate:
 			readString(data, "expense_date", "date", "document_date").slice(0, 10) ||
-			new Date().toISOString().slice(0, 10),
+			itemExpenseDate?.slice(0, 10) ||
+			localISODate(),
 		sourceCurrency,
 		items: rawItems.map((raw, index) => {
 			const item = objectValue(raw);
@@ -2936,5 +2940,12 @@ const memberRole = (role: string) =>
 function isoDay(offset: number) {
 	const date = new Date();
 	date.setDate(date.getDate() + offset);
-	return date.toISOString().slice(0, 10);
+	return localISODate(date);
+}
+
+function localISODate(date = new Date()) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
 }
