@@ -31,6 +31,10 @@
 	font: inherit;
 	letter-spacing: 0;
 }
+.mini-app input,
+.mini-app textarea {
+	caret-color: #111;
+}
 .mini-header {
 	position: sticky;
 	z-index: 10;
@@ -515,6 +519,26 @@
 .mini-profile-list div:last-child {
 	border: 0;
 }
+.mini-profile-list > button {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	justify-content: space-between;
+	padding: 15px;
+	border: 0;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	text-align: left;
+}
+.mini-profile-list > button > span {
+	display: inline-flex;
+	align-items: center;
+	gap: 9px;
+	color: var(--mini-ink);
+}
+.mini-profile-list > button svg {
+	color: var(--mini-green);
+}
 .mini-profile-list span {
 	color: var(--mini-muted);
 }
@@ -794,6 +818,31 @@
 	font-weight: 700;
 }
 .mini-delete:disabled {
+	opacity: 0.45;
+}
+.mini-vendor-merge {
+	display: grid;
+	gap: 8px;
+	padding: 13px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: #f6f5ef;
+}
+.mini-vendor-merge label {
+	display: grid;
+	gap: 7px;
+	color: var(--mini-muted);
+	font-size: 12px;
+}
+.mini-vendor-merge button {
+	min-height: 42px;
+	border: 1px solid var(--mini-green);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--mini-green);
+	font-weight: 700;
+}
+.mini-vendor-merge button:disabled {
 	opacity: 0.45;
 }
 .mini-alert {

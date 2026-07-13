@@ -24,7 +24,7 @@ import {
 	expenseDisplayMoney,
 	itemAmountInCurrency,
 } from "./money";
-import { commonVendorName, findVendorByName } from "./vendor";
+import { commonVendorName, findVendorByName, vendorFieldValue } from "./vendor";
 
 type View =
 	| "overview"
@@ -936,6 +936,94 @@ export const MiniApp = () => {
 		}
 	};
 
+	const deleteVendor = async () => {
+		if (!editingVendor || editingVendor.id === 0) return;
+		if (
+			!window.confirm(
+				`Удалить продавца «${editingVendor.name}»? Расходы останутся на месте.`,
+			)
+		)
+			return;
+		if (previewMode) {
+			setVendors((current) =>
+				current.filter((vendor) => vendor.id !== editingVendor.id),
+			);
+			setEditingVendor(null);
+			setNotice("Продавец удалён");
+			return;
+		}
+		setSaving(true);
+		try {
+			await apiRequest(
+				`/spaces/${spaceID}/vendors/${editingVendor.id}`,
+				token,
+				{ method: "DELETE" },
+			);
+			setEditingVendor(null);
+			setNotice("Продавец удалён, расходы сохранены");
+			await loadSpace();
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось удалить продавца",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const mergeVendor = async (targetVendorID: number) => {
+		if (!editingVendor || editingVendor.id === 0 || !targetVendorID) return;
+		const target = vendors.find((vendor) => vendor.id === targetVendorID);
+		if (!target) return;
+		if (
+			!window.confirm(
+				`Объединить «${editingVendor.name}» с «${target.name}»? Все расходы будут привязаны к «${target.name}».`,
+			)
+		)
+			return;
+		if (previewMode) {
+			setVendors((current) =>
+				current
+					.filter((vendor) => vendor.id !== editingVendor.id)
+					.map((vendor) =>
+						vendor.id === targetVendorID
+							? {
+									...vendor,
+									aliases: [
+										...(vendor.aliases || []),
+										{ alias: editingVendor.name },
+										...(editingVendor.aliases || []),
+									],
+								}
+							: vendor,
+					),
+			);
+			setEditingVendor(null);
+			setNotice(`Теперь это «${target.name}»`);
+			return;
+		}
+		setSaving(true);
+		try {
+			await apiRequest(
+				`/spaces/${spaceID}/vendors/${editingVendor.id}/merge`,
+				token,
+				{
+					method: "POST",
+					body: JSON.stringify({ target_vendor_id: targetVendorID }),
+				},
+			);
+			setEditingVendor(null);
+			setNotice(`Продавцы объединены под названием «${target.name}»`);
+			await loadSpace();
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось объединить продавцов",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	const saveCategory = async () => {
 		if (!editingCategory) return;
 		const creating = editingCategory.id === 0;
@@ -1307,13 +1395,12 @@ export const MiniApp = () => {
 								onQuery={setQuery}
 								onEdit={setEditingExpense}
 								onAdd={addExpense}
-								onManageVendors={() => setView("vendors")}
 							/>
 						)}
 						{view === "vendors" && (
 							<VendorsView
 								vendors={vendors}
-								onBack={() => setView("expenses")}
+								onBack={() => setView("profile")}
 								onEdit={(vendor) => setEditingVendor({ ...vendor })}
 								onAdd={() => setEditingVendor({ id: 0, name: "", aliases: [] })}
 							/>
@@ -1357,6 +1444,8 @@ export const MiniApp = () => {
 							<ProfileView
 								user={user}
 								quota={quota}
+								vendorsCount={vendors.length}
+								onManageVendors={() => setView("vendors")}
 								onEdit={() =>
 									user &&
 									setEditingProfile({
@@ -1396,7 +1485,7 @@ export const MiniApp = () => {
 					onClick={() => setView("spaces")}
 				/>
 				<NavButton
-					active={view === "expenses" || view === "vendors"}
+					active={view === "expenses"}
 					label="Расходы"
 					icon={<Receipt />}
 					onClick={() => setView("expenses")}
@@ -1408,7 +1497,7 @@ export const MiniApp = () => {
 					onClick={() => setView("categories")}
 				/>
 				<NavButton
-					active={view === "profile"}
+					active={view === "profile" || view === "vendors"}
 					label="Профиль"
 					icon={<UserCircle />}
 					onClick={() => setView("profile")}
@@ -1435,6 +1524,9 @@ export const MiniApp = () => {
 					onChange={setEditingVendor}
 					onClose={() => setEditingVendor(null)}
 					onSave={saveVendor}
+					onMerge={mergeVendor}
+					onDelete={deleteVendor}
+					vendors={vendors}
 				/>
 			)}
 			{editingCategory && (
@@ -1651,20 +1743,29 @@ const ReviewEditor = ({
 							value={sharedVendorName ?? ""}
 							onChange={(event) => {
 								const payeeText = event.target.value;
+								const selectedVendor = findVendorByName(vendors, payeeText);
+								const displayName = selectedVendor?.name ?? payeeText;
 								onChange({
 									...draft,
-									payeeText,
+									payeeText: displayName,
 									items: draft.items.map((item) => ({
 										...item,
-										vendor_name: payeeText,
+										vendor_name: displayName,
 									})),
 								});
 							}}
 						/>
 						<datalist id="review-vendors">
-							{vendors.map((vendor) => (
-								<option key={vendor.id} value={vendor.name} />
-							))}
+							{vendors.flatMap((vendor) => [
+								<option key={`vendor-${vendor.id}`} value={vendor.name} />,
+								...(vendor.aliases || []).map((alias, index) => (
+									<option
+										key={`vendor-${vendor.id}-alias-${index}`}
+										value={alias.alias}
+										label={`→ ${vendor.name}`}
+									/>
+								)),
+							])}
 						</datalist>
 						<small className="review-field-hint">
 							Изменение применится ко всем позициям
@@ -1752,10 +1853,14 @@ const ReviewEditor = ({
 								value={item.vendor_name}
 								onChange={(event) => {
 									const vendorName = event.target.value;
+									const selectedVendor = findVendorByName(vendors, vendorName);
 									applyItems(
 										draft.items.map((current, itemIndex) =>
 											itemIndex === index
-												? { ...current, vendor_name: vendorName }
+												? {
+														...current,
+														vendor_name: selectedVendor?.name ?? vendorName,
+													}
 												: current,
 										),
 									);
@@ -1936,7 +2041,6 @@ const ExpensesView = ({
 	onQuery,
 	onEdit,
 	onAdd,
-	onManageVendors,
 }: {
 	expenses: Expense[];
 	categories: Category[];
@@ -1952,7 +2056,6 @@ const ExpensesView = ({
 	onQuery: (value: string) => void;
 	onEdit: (expense: Expense) => void;
 	onAdd: () => void;
-	onManageVendors: () => void;
 }) => (
 	<section className="mini-view">
 		<div className="mini-title-row">
@@ -2030,14 +2133,6 @@ const ExpensesView = ({
 				))}
 			</select>
 		</div>
-		<button
-			className="mini-link-button"
-			type="button"
-			onClick={onManageVendors}
-		>
-			<Storefront size={17} />
-			Названия продавцов
-		</button>
 		<ExpenseList expenses={expenses} currency={currency} onEdit={onEdit} />
 	</section>
 );
@@ -2160,7 +2255,7 @@ const VendorsView = ({
 		<div className="mini-title-row">
 			<div className="mini-title">
 				<button className="mini-back-link" type="button" onClick={onBack}>
-					Расходы
+					Профиль
 				</button>
 				<h1>Продавцы</h1>
 			</div>
@@ -2268,12 +2363,16 @@ const SpacesView = ({
 const ProfileView = ({
 	user,
 	quota,
+	vendorsCount,
 	onEdit,
+	onManageVendors,
 	onUnavailable,
 }: {
 	user: User | null;
 	quota: Quota | null;
+	vendorsCount: number;
 	onEdit: () => void;
+	onManageVendors: () => void;
 	onUnavailable: () => void;
 }) => {
 	const used = quota?.used || 0;
@@ -2331,6 +2430,13 @@ const ProfileView = ({
 					<span>Часовой пояс</span>
 					<b>{timezoneName(user?.timezone || "Europe/Moscow")}</b>
 				</div>
+				<button type="button" onClick={onManageVendors}>
+					<span>
+						<Storefront size={18} />
+						Продавцы и названия
+					</span>
+					<b>{vendorsCount}</b>
+				</button>
 			</div>
 		</section>
 	);
@@ -2357,26 +2463,29 @@ const ExpenseEditor = ({
 	onSave: () => void;
 	onDelete?: () => void;
 }) => {
-	const fallbackVendorName =
-		expense.payee_text ||
-		expense.vendor_name ||
-		expense.vendor?.name ||
-		vendors.find((vendor) => vendor.id === expense.vendor_id)?.name ||
-		"";
+	const fallbackVendorName = vendorFieldValue(
+		expense.vendor_name,
+		expense.payee_text,
+		expense.vendor?.name,
+		vendors.find((vendor) => vendor.id === expense.vendor_id)?.name,
+	);
 	const itemVendorName = (item: ExpenseItem) =>
-		item.vendor_name ||
-		item.vendor?.name ||
-		vendors.find((vendor) => vendor.id === item.vendor_id)?.name ||
-		fallbackVendorName;
+		vendorFieldValue(
+			item.vendor_name,
+			item.vendor?.name,
+			vendors.find((vendor) => vendor.id === item.vendor_id)?.name,
+			fallbackVendorName,
+		);
 	const sharedVendorName = commonVendorName(expense.items.map(itemVendorName));
 	const updateItemVendor = (index: number, vendorName: string) => {
 		const selectedVendor = findVendorByName(vendors, vendorName);
+		const displayName = selectedVendor?.name ?? vendorName;
 		const items = expense.items.map((item, itemIndex) =>
 			itemIndex === index
 				? {
 						...item,
 						vendor_id: selectedVendor?.id,
-						vendor_name: vendorName,
+						vendor_name: displayName,
 						vendor: selectedVendor,
 					}
 				: item,
@@ -2388,6 +2497,7 @@ const ExpenseEditor = ({
 		onChange({
 			...expense,
 			payee_text: commonName ?? "",
+			vendor_name: commonName ?? "",
 			vendor_id: commonVendor?.id,
 			vendor: commonVendor,
 			items,
@@ -2427,15 +2537,17 @@ const ExpenseEditor = ({
 					onChange={(event) => {
 						const payeeText = event.target.value;
 						const selectedVendor = findVendorByName(vendors, payeeText);
+						const displayName = selectedVendor?.name ?? payeeText;
 						onChange({
 							...expense,
-							payee_text: payeeText,
+							payee_text: displayName,
+							vendor_name: displayName,
 							vendor_id: selectedVendor?.id,
 							vendor: selectedVendor,
 							items: expense.items.map((item) => ({
 								...item,
 								vendor_id: selectedVendor?.id,
-								vendor_name: payeeText,
+								vendor_name: displayName,
 								vendor: selectedVendor,
 							})),
 						});
@@ -2445,9 +2557,16 @@ const ExpenseEditor = ({
 					Изменение применится ко всем позициям
 				</small>
 				<datalist id="expense-vendors">
-					{vendors.map((vendor) => (
-						<option key={vendor.id} value={vendor.name} />
-					))}
+					{vendors.flatMap((vendor) => [
+						<option key={`vendor-${vendor.id}`} value={vendor.name} />,
+						...(vendor.aliases || []).map((alias, index) => (
+							<option
+								key={`vendor-${vendor.id}-alias-${index}`}
+								value={alias.alias}
+								label={`→ ${vendor.name}`}
+							/>
+						)),
+					])}
 				</datalist>
 			</label>
 			{!creating && (
@@ -2564,57 +2683,111 @@ const ExpenseEditor = ({
 
 const VendorEditor = ({
 	vendor,
+	vendors,
 	saving,
 	onChange,
 	onClose,
 	onSave,
+	onMerge,
+	onDelete,
 }: {
 	vendor: Vendor;
+	vendors: Vendor[];
 	saving: boolean;
 	onChange: (vendor: Vendor) => void;
 	onClose: () => void;
 	onSave: () => void;
-}) => (
-	<Modal
-		title={vendor.id === 0 ? "Новый продавец" : "Название продавца"}
-		onClose={onClose}
-	>
-		<label>
-			Название для списка
-			<input
-				maxLength={120}
-				value={vendor.name}
-				onChange={(event) => onChange({ ...vendor, name: event.target.value })}
-			/>
-		</label>
-		<label>
-			Другие названия из чеков
-			<textarea
-				rows={4}
-				placeholder={"ИП Иванов Иван Иванович\nООО «С Блеском»"}
-				value={(vendor.aliases || []).map((alias) => alias.alias).join("\n")}
-				onChange={(event) =>
-					onChange({
-						...vendor,
-						aliases: event.target.value.split("\n").map((alias) => ({ alias })),
-					})
-				}
-			/>
-		</label>
-		<p className="mini-field-note">
-			В следующий раз эти названия автоматически станут «
-			{vendor.name || "Название"}».
-		</p>
-		<button
-			className="mini-save"
-			type="button"
-			disabled={saving || !vendor.name.trim()}
-			onClick={onSave}
+	onMerge: (targetVendorID: number) => void;
+	onDelete: () => void;
+}) => {
+	const [targetVendorID, setTargetVendorID] = useState(0);
+	const mergeTargets = vendors.filter((item) => item.id !== vendor.id);
+	return (
+		<Modal
+			title={vendor.id === 0 ? "Новый продавец" : "Настроить продавца"}
+			onClose={onClose}
 		>
-			{saving ? "Сохраняем…" : "Сохранить"}
-		</button>
-	</Modal>
-);
+			<label>
+				Название для списка
+				<input
+					maxLength={120}
+					value={vendor.name}
+					onChange={(event) =>
+						onChange({ ...vendor, name: event.target.value })
+					}
+				/>
+			</label>
+			<label>
+				Другие названия из чеков
+				<textarea
+					rows={4}
+					placeholder={"ИП Иванов Иван Иванович\nООО «С Блеском»"}
+					value={(vendor.aliases || []).map((alias) => alias.alias).join("\n")}
+					onChange={(event) =>
+						onChange({
+							...vendor,
+							aliases: event.target.value
+								.split("\n")
+								.map((alias) => ({ alias })),
+						})
+					}
+				/>
+			</label>
+			<p className="mini-field-note">
+				В следующий раз эти названия автоматически станут «
+				{vendor.name || "Название"}».
+			</p>
+			<div className="mini-modal-actions">
+				<button
+					className="mini-save"
+					type="button"
+					disabled={saving || !vendor.name.trim()}
+					onClick={onSave}
+				>
+					{saving ? "Сохраняем…" : "Сохранить"}
+				</button>
+				{vendor.id > 0 && mergeTargets.length > 0 && (
+					<div className="mini-vendor-merge">
+						<label>
+							Объединить с
+							<select
+								value={targetVendorID}
+								onChange={(event) =>
+									setTargetVendorID(Number(event.target.value))
+								}
+							>
+								<option value={0}>Выберите основное название</option>
+								{mergeTargets.map((target) => (
+									<option key={target.id} value={target.id}>
+										{target.name}
+									</option>
+								))}
+							</select>
+						</label>
+						<button
+							type="button"
+							disabled={saving || !targetVendorID}
+							onClick={() => onMerge(targetVendorID)}
+						>
+							Объединить
+						</button>
+					</div>
+				)}
+				{vendor.id > 0 && (
+					<button
+						className="mini-delete"
+						type="button"
+						disabled={saving}
+						onClick={onDelete}
+					>
+						<Trash size={18} />
+						Удалить продавца
+					</button>
+				)}
+			</div>
+		</Modal>
+	);
+};
 
 const CategoryEditor = ({
 	category,

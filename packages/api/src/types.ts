@@ -833,6 +833,12 @@ export type Vendor = {
 	id: number;
 	tenant_id: number;
 	name: string;
+	aliases?: Array<{
+		id: number;
+		tenant_id: number;
+		vendor_id: number;
+		alias: string;
+	}>;
 	created_at?: string;
 	updated_at?: string;
 };

@@ -722,6 +722,94 @@ export interface paths {
             };
         };
         post?: never;
+        /** Delete a vendor without deleting its expenses */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    vendorId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Vendor deleted and expense links cleared */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Vendor not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/vendors/{vendorId}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Merge a duplicate vendor into another vendor */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    vendorId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        target_vendor_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Target vendor with merged aliases */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Vendor"];
+                    };
+                };
+                /** @description Invalid target or alias conflict */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Source or target vendor not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -5690,6 +5778,8 @@ export interface components {
             tenant_id?: number;
             /** Format: int64 */
             owner_user_id?: number;
+            /** @description Permanent personal Space; it cannot be renamed or deleted. */
+            is_personal?: boolean;
             name?: string;
             description?: string;
             currency?: components["schemas"]["CurrencyCode"];
@@ -6021,6 +6111,7 @@ export interface components {
             /** Format: int64 */
             tenant_id?: number;
             name?: string;
+            aliases?: components["schemas"]["VendorAlias"][];
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
