@@ -19,3 +19,25 @@ test("uses the amount that matches the profile currency", () => {
 		currency: "RUB",
 	});
 });
+
+test("does not label the converted ledger total as the source amount", () => {
+	const convertedExpense = {
+		total: 20,
+		currency: "USD",
+		source_currency: "RUB",
+		space_total: 20,
+		space_currency: "USD",
+		items: [
+			{
+				amount: 20,
+				source_amount: 1600,
+				source_currency: "RUB",
+				space_amount: 20,
+				space_currency: "USD",
+			},
+		],
+	};
+
+	assert.equal(expenseAmountInCurrency(convertedExpense, "RUB"), 1600);
+	assert.equal(expenseAmountInCurrency(convertedExpense, "USD"), 20);
+});

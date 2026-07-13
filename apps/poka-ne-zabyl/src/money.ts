@@ -19,12 +19,12 @@ export type MoneyExpense = {
 const code = (value?: string) => value?.trim().toUpperCase() || "";
 
 const sourceTotal = (expense: MoneyExpense) =>
-	expense.total ??
-	expense.amount ??
-	expense.items.reduce(
-		(sum, item) => sum + (item.source_amount ?? item.amount ?? 0),
-		0,
-	);
+	expense.items.length > 0
+		? expense.items.reduce(
+				(sum, item) => sum + (item.source_amount ?? item.amount ?? 0),
+				0,
+			)
+		: (expense.total ?? expense.amount ?? 0);
 
 export const expenseAmountInCurrency = (
 	expense: MoneyExpense,
