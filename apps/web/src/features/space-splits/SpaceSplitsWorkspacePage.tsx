@@ -346,8 +346,11 @@ const toHumanSplitTitle = ({
 export const SpaceSplitsWorkspacePage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
 	const { user } = useAuth();
-	const { formatMoney } = useUserFormat();
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
+	const spaceCurrency = spaces?.find(
+		(space) => String(space.id) === String(spaceId),
+	)?.currency;
+	const { formatMoney } = useUserFormat(spaceCurrency);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
 	const [expenseRecords, setExpenseRecords] = useState<ExpenseRecord[]>([]);

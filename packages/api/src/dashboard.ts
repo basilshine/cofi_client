@@ -3,12 +3,14 @@
  * Omitted keys or null are non-breaking per contract.
  */
 
+import type { CurrencyCode } from "./types";
+
 export type DashboardVariant = "personal" | "business";
 
 export type DashboardContextPayload = {
 	tenant_id: number;
 	variant: DashboardVariant;
-	currency: string;
+	currency: CurrencyCode;
 };
 
 export type DashboardQuickCaptureSpace = {
@@ -85,6 +87,7 @@ export type DashboardRecurringUpcomingItem = {
 	name: string;
 	next_due: string;
 	amount: number;
+	currency: CurrencyCode;
 	space_id?: number;
 	space_name?: string;
 	/** Capture/source document that created this recurring rule, when available. */
@@ -94,7 +97,7 @@ export type DashboardRecurringUpcomingItem = {
 export type DashboardRecentExpense = {
 	id: number;
 	amount: number;
-	currency: string;
+	currency: CurrencyCode;
 	occurred_at: string;
 	space_id: number;
 	space_name: string;

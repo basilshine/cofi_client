@@ -1361,7 +1361,12 @@ export const ChatLogPage = () => {
 			}
 			const detailParts: string[] = [];
 			if (selectedExpense && Number.isFinite(Number(selectedExpense.total))) {
-				detailParts.push(formatMoney(Number(selectedExpense.total)));
+				detailParts.push(
+					formatMoney(
+						Number(selectedExpense.space_total ?? selectedExpense.total),
+						selectedExpense.space_currency ?? selectedExpense.currency,
+					),
+				);
 			}
 			if (selectedExpense?.status) {
 				detailParts.push(selectedExpense.status);

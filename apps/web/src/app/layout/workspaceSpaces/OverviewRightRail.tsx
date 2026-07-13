@@ -57,7 +57,7 @@ export type OverviewRightRailProps = {
 	spaceId?: number | null;
 	/** Used in copy / button labels when scoped. */
 	spaceName?: string | null;
-	formatMoney: (amount: number) => string;
+	formatMoney: (amount: number, currency?: string | null) => string;
 	className?: string;
 	/** Space Overview: hover on decision CTA highlights related activity rows. */
 	onSpaceOverviewCtaHover?: (active: boolean) => void;
@@ -222,7 +222,10 @@ export const OverviewRightRail = ({
 		return {
 			id: `${item.id}-${item.next_due}`,
 			name: normalizeRecurringLabel(item.name, item.id),
-			amountLabel: formatMoney(item.amount),
+			amountLabel: formatMoney(
+				item.amount,
+				item.currency ?? dashboardData?.context.currency,
+			),
 			dueLabel,
 			dueSoonLabel,
 			spaceName: item.space_name ?? null,

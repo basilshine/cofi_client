@@ -1,4 +1,4 @@
-import type { components } from "@cofi/api";
+import type { CurrencyCode, components } from "@cofi/api";
 import { httpClient } from "./httpClient";
 
 export type CaptureCandidate = components["schemas"]["CaptureCandidate"];
@@ -14,7 +14,7 @@ export type ManualPromoCaptureInput = {
 	discountType?: string;
 	discountValue?: number;
 	minimumOrderAmount?: number;
-	currency?: string;
+	currency?: CurrencyCode;
 	validFrom?: string;
 	validUntil?: string;
 	conditionsText?: string;
@@ -29,7 +29,7 @@ export type ManualRecurringCaptureInput = {
 	tagLabel?: string;
 	startDate?: string;
 	nextDue?: string;
-	currency?: string;
+	currency?: CurrencyCode;
 	sourceText?: string;
 };
 

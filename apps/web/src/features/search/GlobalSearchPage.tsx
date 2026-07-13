@@ -2,6 +2,7 @@ import type { SearchEntityType, SearchResult } from "@cofi/api";
 import { ListChecks, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import {
 	EntityIcon,
@@ -121,20 +122,6 @@ const formatDate = (iso?: string): string | null => {
 	}).format(new Date(ts));
 };
 
-const formatAmount = (amount?: number, currency?: string): string | null => {
-	if (amount == null || !Number.isFinite(amount)) return null;
-	const code = currency?.trim().toUpperCase() || "RUB";
-	try {
-		return new Intl.NumberFormat(undefined, {
-			style: "currency",
-			currency: code,
-			maximumFractionDigits: 0,
-		}).format(amount);
-	} catch {
-		return `${amount.toLocaleString()} ${code}`;
-	}
-};
-
 const searchStatusLabel = (status?: string | null): string | undefined => {
 	const normalized = status?.trim().toLowerCase();
 	if (!normalized) return undefined;
@@ -218,7 +205,11 @@ const SearchResultRow = ({
 	query: string;
 	result: SearchResult;
 }) => {
-	const amount = formatAmount(result.amount, result.currency);
+	const { formatMoney } = useUserFormat();
+	const amount =
+		result.amount == null || !Number.isFinite(result.amount)
+			? null
+			: formatMoney(result.amount, result.currency);
 	const when = formatDate(result.occurred_at ?? result.created_at);
 	const sourceCapture =
 		result.source_document_id != null && Number(result.source_document_id) > 0

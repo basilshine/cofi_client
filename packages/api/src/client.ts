@@ -3,11 +3,13 @@ import {
 	type ApplySplitCandidateResponse,
 	type CapturePacketListResponse,
 	type ChatMessage,
+	type CreateExpenseCandidateRequest,
 	type CreateExpenseCandidateResponse,
 	type CreateParticipantCandidateResponse,
 	type CreatePaymentLinkRequest,
 	type CreatePaymentLinkResponse,
 	type CreateRecurringCandidateResponse,
+	type CurrencyCode,
 	type DeleteSourceDocumentReviewResponse,
 	type DocumentCandidateListResponse,
 	type DocumentCandidateState,
@@ -339,7 +341,7 @@ export const createApiClient = (config: ApiClientConfig) => {
 					),
 				});
 			},
-			create: (payload: { name: string }) =>
+			create: (payload: { name: string; currency?: CurrencyCode }) =>
 				fetchJson<Space>(withBase("/api/v1/spaces"), {
 					method: "POST",
 					headers: authHeaders(),
@@ -347,7 +349,11 @@ export const createApiClient = (config: ApiClientConfig) => {
 				}),
 			patch: (
 				spaceId: string | number,
-				payload: { name?: string; description?: string },
+				payload: {
+					name?: string;
+					description?: string;
+					currency?: CurrencyCode;
+				},
 			) =>
 				fetchJson<Space>(withBase(`/api/v1/spaces/${spaceId}`), {
 					method: "PATCH",
@@ -916,12 +922,13 @@ export const createApiClient = (config: ApiClientConfig) => {
 				createExpenseFromCandidate: (
 					spaceId: string | number,
 					candidateId: string | number,
+					payload?: CreateExpenseCandidateRequest,
 				) =>
 					fetchJson<CreateExpenseCandidateResponse>(
 						withBase(
 							`/api/v1/spaces/${spaceId}/review/candidates/${encodeURIComponent(String(candidateId))}/create-expense`,
 						),
-						{ method: "POST", headers: authHeaders() },
+						{ method: "POST", headers: authHeaders(), body: payload },
 					),
 				createParticipantFromCandidate: (
 					spaceId: string | number,

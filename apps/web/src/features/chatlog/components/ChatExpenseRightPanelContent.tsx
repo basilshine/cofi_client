@@ -432,7 +432,10 @@ export const ChatExpenseRightPanelContent = ({
 								<ul className="mt-2 space-y-2">
 									{stats.recentRecords.map((tx) => {
 										const entity = toExpenseRecordEntity(tx, {
-											amountLabel: formatMoney(tx.total),
+											amountLabel: formatMoney(
+												tx.space_total ?? tx.total,
+												tx.space_currency ?? tx.currency,
+											),
 										});
 										return (
 											<li key={`ap-${String(tx.id)}`}>
@@ -458,7 +461,10 @@ export const ChatExpenseRightPanelContent = ({
 														) : null}
 													</span>
 													<span className="shrink-0 pt-1 tabular-nums text-muted-foreground">
-														{formatMoney(tx.total)}
+														{formatMoney(
+															tx.space_total ?? tx.total,
+															tx.space_currency ?? tx.currency,
+														)}
 													</span>
 												</button>
 											</li>

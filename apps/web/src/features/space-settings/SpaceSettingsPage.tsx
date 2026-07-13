@@ -14,6 +14,10 @@ import { SpaceTabs } from "../../app/layout/workspaceSpaces/SpaceTabs";
 import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { apiClient } from "../../shared/lib/apiClient";
+import {
+	getCurrencyOptions,
+	normalizeCurrencyCode,
+} from "../../shared/lib/currency";
 import { SpaceParticipantsPanel } from "../../widgets/space-participants-panel";
 import { SpaceMembersInvitesPanel } from "./SpaceMembersInvitesPanel";
 import {
@@ -85,6 +89,9 @@ export const SpaceSettingsPage = ({
 
 	const [name, setName] = useState(space?.name ?? "");
 	const [description, setDescription] = useState(space?.description ?? "");
+	const [currency, setCurrency] = useState(() =>
+		normalizeCurrencyCode(space?.currency ?? user?.currency),
+	);
 	const [theme, setTheme] = useState<AppearanceTheme>("default");
 	const [accent, setAccent] = useState("#8d6e63");
 	const [saving, setSaving] = useState(false);
@@ -102,10 +109,13 @@ export const SpaceSettingsPage = ({
 	useEffect(() => {
 		setName(space?.name ?? "");
 		setDescription(space?.description ?? "");
+		setCurrency(normalizeCurrencyCode(space?.currency ?? user?.currency));
 		const appearance = space?.settings?.appearance;
 		setTheme((appearance?.theme as AppearanceTheme | undefined) ?? "default");
 		setAccent(appearance?.accent ?? "#8d6e63");
-	}, [space]);
+	}, [space, user?.currency]);
+
+	const currencyOptions = useMemo(() => getCurrencyOptions(), []);
 
 	const handleCloneSpace = useCallback(async () => {
 		if (numericSpaceId == null) return;
@@ -372,7 +382,11 @@ export const SpaceSettingsPage = ({
 						<>
 							<div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
 								You are a member of this space, but only the owner can edit
-								space identity and appearance.
+								space identity, currency, and appearance.
+								<span className="mt-2 block font-medium text-foreground">
+									Space currency:{" "}
+									{normalizeCurrencyCode(space.currency ?? user?.currency)}
+								</span>
 							</div>
 							<section className={sectionCard}>
 								<div className={sectionHeading}>
@@ -441,6 +455,22 @@ export const SpaceSettingsPage = ({
 											value={description}
 										/>
 									</label>
+									<label className="grid gap-1 text-sm">
+										<span className="text-muted-foreground">
+											Space currency
+										</span>
+										<select
+											className={inputBase}
+											onChange={(e) => setCurrency(e.target.value)}
+											value={currency}
+										>
+											{currencyOptions.map((option) => (
+												<option key={option.code} value={option.code}>
+													{option.label}
+												</option>
+											))}
+										</select>
+									</label>
 								</div>
 							</section>
 							<section className={sectionCard}>
@@ -490,6 +520,7 @@ export const SpaceSettingsPage = ({
 												{
 													name: name.trim(),
 													description: description.trim(),
+													currency: normalizeCurrencyCode(currency),
 												},
 											);
 											const withSettings = await apiClient.spaces.patchSettings(

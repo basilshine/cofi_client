@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { formatCurrencyAmount } from "../../shared/lib/currency";
 import {
 	EntityIcon,
 	EntityListItem,
@@ -21,6 +22,8 @@ import {
 import type {
 	CandidateReviewItem,
 	CapturePacket,
+	CaptureReviewCurrencyDecision,
+	CurrencyReviewModel,
 	SplitTargetOption,
 } from "./reviewPacketTypes";
 
@@ -59,7 +62,10 @@ type CapturePacketReviewSectionProps = {
 		targetExpenseId: number | null,
 	) => Promise<void> | void;
 	onDeleteCapture: (sourceDocumentId: number) => void;
-	onFinishReview: (packet: CapturePacket) => Promise<void> | void;
+	onFinishReview: (
+		packet: CapturePacket,
+		currencyDecision?: CaptureReviewCurrencyDecision,
+	) => Promise<void> | void;
 	onIgnoreCandidate: (candidate: CandidateReviewItem) => void;
 	onLoadMorePackets?: () => void;
 	finishingSourceDocumentId: number | null;
@@ -920,8 +926,43 @@ type PacketFinishReviewBarProps = {
 	finishing: boolean;
 	isDeletingCapture: boolean;
 	onDeleteCapture: (sourceDocumentId: number) => void;
-	onFinishReview: (packet: CapturePacket) => Promise<void> | void;
+	onFinishReview: (
+		packet: CapturePacket,
+		currencyDecision?: CaptureReviewCurrencyDecision,
+	) => Promise<void> | void;
 	packet: CapturePacket;
+};
+
+type CurrencySaveChoice = "space" | "source";
+
+const packetCurrencyReview = (
+	packet: CapturePacket,
+): CurrencyReviewModel | null =>
+	packet.candidates.find(
+		(candidate) =>
+			candidate.candidateType === "expense_candidate" &&
+			candidate.currencyReview?.mismatch,
+	)?.currencyReview ?? null;
+
+const currencyDecisionFromChoice = (
+	review: CurrencyReviewModel | null,
+	choice: CurrencySaveChoice,
+): CaptureReviewCurrencyDecision => {
+	const decision: CaptureReviewCurrencyDecision = {
+		transaction_currency: choice,
+	};
+	if (choice === "source" && review?.sourceCurrency) {
+		decision.source_currency = review.sourceCurrency;
+	}
+	return decision;
+};
+
+const currencyReviewAmountLabel = (
+	amount: number | undefined,
+	currency: string | undefined,
+): string | null => {
+	if (amount == null || currency == null) return null;
+	return formatCurrencyAmount(amount, currency);
 };
 
 const PacketFinishReviewBar = ({
@@ -932,6 +973,9 @@ const PacketFinishReviewBar = ({
 	onFinishReview,
 	packet,
 }: PacketFinishReviewBarProps) => {
+	const reviewCurrency = packetCurrencyReview(packet);
+	const [currencyChoice, setCurrencyChoice] =
+		useState<CurrencySaveChoice>("space");
 	const pendingCount = totalPendingCount(packet);
 	const recordCount = capturePacketRecordCount(packet);
 	const completedWorkCount = Math.max(
@@ -982,6 +1026,14 @@ const PacketFinishReviewBar = ({
 			: recordCount > 0
 				? `${recordCount} ${recordCount === 1 ? "record is" : "records are"} created; no remaining action is available in this capture.`
 				: "Ceits has no reviewable records or actions for this capture.";
+	const sourceAmountLabel = currencyReviewAmountLabel(
+		reviewCurrency?.sourceAmount,
+		reviewCurrency?.sourceCurrency,
+	);
+	const spaceAmountLabel = currencyReviewAmountLabel(
+		reviewCurrency?.spaceAmount,
+		reviewCurrency?.spaceCurrency,
+	);
 
 	return (
 		<div
@@ -1002,6 +1054,46 @@ const PacketFinishReviewBar = ({
 				<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
 					{outcomeDescription}
 				</p>
+				{reviewCurrency ? (
+					<div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+						{sourceAmountLabel ? (
+							<span className="rounded-full border border-border/70 bg-white/70 px-2.5 py-1 text-muted-foreground">
+								Detected: {sourceAmountLabel}
+							</span>
+						) : null}
+						{spaceAmountLabel ? (
+							<span className="rounded-full border border-border/70 bg-white/70 px-2.5 py-1 text-muted-foreground">
+								Space: {spaceAmountLabel}
+							</span>
+						) : null}
+						<div className="inline-flex overflow-hidden rounded-full border border-border/70 bg-white/70">
+							<button
+								className={[
+									"px-2.5 py-1 font-semibold transition-colors",
+									currencyChoice === "space"
+										? "bg-foreground text-background"
+										: "text-muted-foreground hover:bg-muted",
+								].join(" ")}
+								onClick={() => setCurrencyChoice("space")}
+								type="button"
+							>
+								{reviewCurrency.spaceCurrency ?? "Space"}
+							</button>
+							<button
+								className={[
+									"px-2.5 py-1 font-semibold transition-colors",
+									currencyChoice === "source"
+										? "bg-foreground text-background"
+										: "text-muted-foreground hover:bg-muted",
+								].join(" ")}
+								onClick={() => setCurrencyChoice("source")}
+								type="button"
+							>
+								{reviewCurrency.sourceCurrency ?? "Source"}
+							</button>
+						</div>
+					</div>
+				) : null}
 			</div>
 			<div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
 				{isComplete ? (
@@ -1012,7 +1104,15 @@ const PacketFinishReviewBar = ({
 					<button
 						className="inline-flex min-h-9 items-center rounded-full bg-[rgba(68,58,42,0.94)] px-3.5 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition hover:bg-[rgba(50,43,32,0.98)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 						disabled={finishing}
-						onClick={() => void onFinishReview(packet)}
+						onClick={() =>
+							void onFinishReview(
+								packet,
+								currencyDecisionFromChoice(
+									reviewCurrency,
+									reviewCurrency ? currencyChoice : "space",
+								),
+							)
+						}
 						type="button"
 					>
 						{finishing ? "Saving" : "Save all"}

@@ -1,4 +1,9 @@
-import type { CapturePacketRecords, DocumentCandidate } from "@cofi/api";
+import type {
+	CapturePacketRecords,
+	CurrencyCode,
+	CurrencyDecisionRequest,
+	DocumentCandidate,
+} from "@cofi/api";
 
 export type CandidateReviewSource = "benefit" | "document";
 
@@ -26,6 +31,7 @@ export type CandidateReviewItem = {
 	detail: string;
 	fields: Array<{ label: string; value: string }>;
 	itemLabels: string[];
+	currencyReview?: CurrencyReviewModel;
 	tone: CandidateReviewTone;
 	confidenceLabel: string;
 	canMarkReviewed: boolean;
@@ -37,6 +43,16 @@ export type CandidateReviewItem = {
 	createdAt: string;
 	raw: DocumentCandidate;
 };
+
+export type CurrencyReviewModel = {
+	sourceAmount?: number;
+	sourceCurrency?: CurrencyCode;
+	spaceAmount?: number;
+	spaceCurrency?: CurrencyCode;
+	mismatch: boolean;
+};
+
+export type CaptureReviewCurrencyDecision = CurrencyDecisionRequest;
 
 export type CapturePacket = {
 	sourceDocumentId: number;

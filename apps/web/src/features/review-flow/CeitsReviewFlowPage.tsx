@@ -29,6 +29,7 @@ import type {
 	CandidateReviewSource,
 	CandidateReviewTone,
 	CapturePacket,
+	CaptureReviewCurrencyDecision,
 	SplitTargetOption,
 } from "./reviewPacketTypes";
 
@@ -62,7 +63,11 @@ const captureExpenseRecordFromExpenseDetail = (
 	const items = (expense.items ?? []).map((item, index) => ({
 		id: Number(item.id ?? index + 1),
 		name: item.name,
-		amount: Number(item.amount ?? 0),
+		amount: Number(item.space_amount ?? item.amount ?? 0),
+		source_amount: item.source_amount,
+		source_currency: item.source_currency,
+		space_amount: item.space_amount,
+		space_currency: item.space_currency,
 	}));
 	const total = items.reduce((sum, item) => sum + item.amount, 0);
 	return {
@@ -70,12 +75,26 @@ const captureExpenseRecordFromExpenseDetail = (
 		title: expense.title?.trim() || fallbackTitle,
 		description: expense.description,
 		status: expense.status ?? "approved",
-		currency: expense.currency ?? "USD",
+		currency: expense.space_currency ?? expense.currency ?? "USD",
+		source_currency: expense.source_currency,
+		space_currency: expense.space_currency,
+		exchange_rate: expense.exchange_rate,
+		exchange_rate_as_of: expense.exchange_rate_as_of,
+		exchange_rate_provider: expense.exchange_rate_provider,
+		converted_at: expense.converted_at,
+		rounding_mode: expense.rounding_mode,
+		currency_precision: expense.currency_precision,
+		conversion_status: expense.conversion_status,
+		currency_decision: expense.currency_decision,
+		currency_source: expense.currency_source,
 		expense_date: expense.expense_date ?? new Date().toISOString().slice(0, 10),
 		total_amount:
-			typeof expense.amount === "number" && Number.isFinite(expense.amount)
-				? expense.amount
-				: total,
+			total > 0
+				? total
+				: typeof expense.amount === "number" && Number.isFinite(expense.amount)
+					? expense.amount
+					: total,
+		space_total: total > 0 ? total : undefined,
 		created_by_user_id: Number(expense.user_id ?? 0),
 		items,
 	};
@@ -151,6 +170,21 @@ const firstCandidateArray = (
 	return null;
 };
 
+const firstCandidateNumber = (
+	data: Record<string, unknown>,
+	keys: string[],
+): number | null => {
+	for (const key of keys) {
+		const value = data[key];
+		if (typeof value === "number" && Number.isFinite(value)) return value;
+		if (typeof value === "string" && value.trim()) {
+			const parsed = Number(value.replace(",", "."));
+			if (Number.isFinite(parsed)) return parsed;
+		}
+	}
+	return null;
+};
+
 const nestedCandidateData = (
 	data: Record<string, unknown>,
 	keys: string[],
@@ -187,6 +221,43 @@ const appendItemsField = (
 			? ` +${rawItems.length - labels.length}`
 			: "";
 	appendField(fields, "Items", `${labels.join(", ")}${extra}`);
+};
+
+const candidateCurrencyReview = (
+	candidate: DocumentCandidate,
+): CandidateReviewItem["currencyReview"] => {
+	if (candidate.candidate_type !== "expense_candidate") return undefined;
+	const data = candidateData(candidate);
+	const conversion = toRecord(data.conversion);
+	const sourceCurrency =
+		firstCandidateText(data, ["source_currency", "currency"]) ??
+		firstCandidateText(conversion, ["source_currency"]);
+	const spaceCurrency =
+		firstCandidateText(data, ["space_currency"]) ??
+		firstCandidateText(conversion, ["target_currency", "space_currency"]);
+	const sourceAmount =
+		firstCandidateNumber(data, ["source_amount", "total", "total_amount"]) ??
+		firstCandidateNumber(conversion, ["source_amount"]);
+	const spaceAmount =
+		firstCandidateNumber(data, ["space_amount"]) ??
+		firstCandidateNumber(conversion, ["target_amount", "space_amount"]);
+	if (
+		!sourceCurrency &&
+		!spaceCurrency &&
+		sourceAmount == null &&
+		spaceAmount == null
+	) {
+		return undefined;
+	}
+	return {
+		sourceAmount: sourceAmount ?? undefined,
+		sourceCurrency: sourceCurrency ?? undefined,
+		spaceAmount: spaceAmount ?? undefined,
+		spaceCurrency: spaceCurrency ?? undefined,
+		mismatch:
+			Boolean(sourceCurrency && spaceCurrency) &&
+			sourceCurrency?.toUpperCase() !== spaceCurrency?.toUpperCase(),
+	};
 };
 
 const candidateItemLabels = (data: Record<string, unknown>): string[] => {
@@ -307,6 +378,16 @@ const candidateSummary = (
 			fields,
 			"Currency",
 			firstCandidateText(expenseData, ["currency"]),
+		);
+		appendField(
+			fields,
+			"Source currency",
+			firstCandidateText(expenseData, ["source_currency"]),
+		);
+		appendField(
+			fields,
+			"Space currency",
+			firstCandidateText(expenseData, ["space_currency"]),
 		);
 		appendField(
 			fields,
@@ -634,6 +715,7 @@ const toCandidateReviewItem = (
 		detail: summary.detail,
 		fields: summary.fields,
 		itemLabels: summary.itemLabels,
+		currencyReview: candidateCurrencyReview(candidate),
 		tone: candidateTone(candidate.candidate_type),
 		confidenceLabel: confidenceLabel(candidate.confidence),
 		canMarkReviewed:
@@ -934,7 +1016,6 @@ const mergeCapturePacketPages = (
 export const CeitsReviewFlowPage = () => {
 	const { spaces, selectedSpaceId, setSelectedSpaceId } = useWorkspaceSpaces();
 	const globalComposerDock = useGlobalComposerDock();
-	const { formatMoney } = useUserFormat();
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [queueLoading, setQueueLoading] = useState(true);
 	const [candidateLoading, setCandidateLoading] = useState(true);
@@ -1000,6 +1081,7 @@ export const CeitsReviewFlowPage = () => {
 		if (spaces == null || spaceId == null) return null;
 		return spaces.find((s) => Number(s.id) === Number(spaceId)) ?? null;
 	}, [spaces, spaceId]);
+	const { formatMoney } = useUserFormat(activeSpace?.currency);
 
 	useConsoleHeaderTitle("Capture Review", activeSpace?.name ?? null);
 
@@ -1578,7 +1660,10 @@ export const CeitsReviewFlowPage = () => {
 		}
 	};
 
-	const handleFinishCaptureReview = async (packet: CapturePacket) => {
+	const handleFinishCaptureReview = async (
+		packet: CapturePacket,
+		currencyDecision?: CaptureReviewCurrencyDecision,
+	) => {
 		if (spaceId == null) return;
 		const existingExpenses = packet.records?.expenses ?? [];
 		const hadExistingExpenses = existingExpenses.length > 0;
@@ -1633,6 +1718,9 @@ export const CeitsReviewFlowPage = () => {
 					await apiClient.spaces.review.createExpenseFromCandidate(
 						spaceId,
 						expenseCandidate.id,
+						currencyDecision
+							? { currency_decision: currencyDecision }
+							: { currency_decision: { transaction_currency: "space" } },
 					);
 				const createdExpense = captureExpenseRecordFromExpenseDetail(
 					created.expense,
@@ -1909,7 +1997,9 @@ export const CeitsReviewFlowPage = () => {
 								onDeleteCapture={(sourceDocumentId) =>
 									void handleDeleteCapture(sourceDocumentId)
 								}
-								onFinishReview={(packet) => handleFinishCaptureReview(packet)}
+								onFinishReview={(packet, currencyDecision) =>
+									handleFinishCaptureReview(packet, currencyDecision)
+								}
 								onIgnoreCandidate={(candidate) =>
 									void handleIgnoreCaptureCandidate(candidate)
 								}

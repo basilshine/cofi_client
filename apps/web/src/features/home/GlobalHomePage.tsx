@@ -460,7 +460,7 @@ export const GlobalHomePage = () => {
 			});
 
 		const expenseItems = recentExpenses.map((expense) => ({
-			amountLabel: formatMoney(expense.amount),
+			amountLabel: formatMoney(expense.amount, expense.currency),
 			eventType: detectActivityType(expense.label, expense.status),
 			id: `expense-${expense.id}`,
 			occurredAt: expense.occurred_at,
@@ -499,7 +499,10 @@ export const GlobalHomePage = () => {
 				?.filter((item) => Number.isFinite(item.amount))
 				.slice(0, 3)
 				.map((item) => {
-					const amountLabel = formatMoney(item.amount);
+					const amountLabel = formatMoney(
+						item.amount,
+						dashboardData?.context.currency,
+					);
 					const tone = getHeroChipTone(item.tag);
 					if (monthlyTotal == null || monthlyTotal <= 0) {
 						return { label: item.tag, detail: amountLabel, tone };
@@ -518,7 +521,12 @@ export const GlobalHomePage = () => {
 				tone: "uncategorized" as const,
 			},
 		];
-	}, [spendOverview?.by_tag, monthlyTotal, formatMoney]);
+	}, [
+		spendOverview?.by_tag,
+		monthlyTotal,
+		dashboardData?.context.currency,
+		formatMoney,
+	]);
 
 	const breakdownStripSegments = useMemo(() => {
 		const weighted = breakdownItems.map((item, index) => {
@@ -598,7 +606,11 @@ export const GlobalHomePage = () => {
 					>
 						<div className="lg:col-span-2">
 							<OverviewHeroCard
-								amount={monthlyTotal != null ? formatMoney(monthlyTotal) : "—"}
+								amount={
+									monthlyTotal != null
+										? formatMoney(monthlyTotal, dashboardData?.context.currency)
+										: "—"
+								}
 								chips={breakdownItems}
 								eyebrow="Your shared money this month"
 								insight={insightText}

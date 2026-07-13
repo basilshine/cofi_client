@@ -1,4 +1,5 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { getCurrencyOptions } from "../../../shared/lib/currency";
 import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 
 export const WorkspaceCreateSpaceDialog = () => {
@@ -8,6 +9,8 @@ export const WorkspaceCreateSpaceDialog = () => {
 		setCreateSpaceDialogOpen,
 		newSpaceName,
 		setNewSpaceName,
+		newSpaceCurrency,
+		setNewSpaceCurrency,
 		createSpace,
 		isCreatingSpace,
 		isLoading,
@@ -23,6 +26,7 @@ export const WorkspaceCreateSpaceDialog = () => {
 			}
 		})();
 	};
+	const currencyOptions = getCurrencyOptions();
 
 	if (workspaceScope?.kind !== "personal") {
 		return null;
@@ -71,6 +75,23 @@ export const WorkspaceCreateSpaceDialog = () => {
 								type="text"
 								value={newSpaceName}
 							/>
+						</label>
+						<label className="grid gap-1">
+							<span className="text-xs font-medium text-muted-foreground">
+								Currency
+							</span>
+							<select
+								aria-label="New space currency"
+								className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+								onChange={(e) => setNewSpaceCurrency(e.target.value)}
+								value={newSpaceCurrency}
+							>
+								{currencyOptions.map((option) => (
+									<option key={option.code} value={option.code}>
+										{option.label}
+									</option>
+								))}
+							</select>
 						</label>
 						<div className="mt-2 flex justify-end gap-2">
 							<Dialog.Close asChild>

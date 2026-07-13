@@ -8,14 +8,15 @@ import {
 	useMemo,
 	useState,
 } from "react";
+import { useAuth } from "../../../contexts/AuthContext";
 import type { ChatSpacesSidebarProps } from "../../../features/chatlog/components/ChatSpacesSidebar";
 import { apiClient } from "../../../shared/lib/apiClient";
 import {
 	type ChatWorkspaceScope,
 	writeChatWorkspaceScope,
 } from "../../../shared/lib/chatWorkspaceScope";
+import { normalizeCurrencyCode } from "../../../shared/lib/currency";
 import { notifyWorkspaceNavUpdated } from "../../../shared/lib/workspaceNavEvents";
-import { wsClient } from "../../../shared/lib/wsClient";
 const STORAGE_EXPANDED = "ceits.workspace.sidebarExpanded";
 const STORAGE_RIGHT_EXPANDED = "ceits.workspace.rightSidebarExpanded";
 
@@ -41,6 +42,8 @@ type WorkspaceSpacesContextValue = {
 	setRightSidebarExpanded: (next: boolean) => void;
 	newSpaceName: string;
 	setNewSpaceName: (v: string) => void;
+	newSpaceCurrency: string;
+	setNewSpaceCurrency: (v: string) => void;
 	createSpace: () => Promise<void>;
 	isCreatingSpace: boolean;
 	createSpaceDialogOpen: boolean;
@@ -55,6 +58,7 @@ export const WorkspaceSpacesProvider = ({
 }: { children: ReactNode }) => {
 	const [workspaceScope, setWorkspaceScope] =
 		useState<ChatWorkspaceScope | null>(null);
+	const { user } = useAuth();
 	const [spaces, setSpaces] = useState<Space[] | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -81,6 +85,9 @@ export const WorkspaceSpacesProvider = ({
 		}
 	});
 	const [newSpaceName, setNewSpaceName] = useState("");
+	const [newSpaceCurrency, setNewSpaceCurrency] = useState(() =>
+		normalizeCurrencyCode(user?.currency),
+	);
 	const [isCreatingSpace, setIsCreatingSpace] = useState(false);
 	const [createSpaceDialogOpen, setCreateSpaceDialogOpen] = useState(false);
 
@@ -164,12 +171,13 @@ export const WorkspaceSpacesProvider = ({
 	const createSpace = useCallback(async () => {
 		const name = newSpaceName.trim();
 		if (!name || workspaceScope?.kind !== "personal") return;
+		const currency = normalizeCurrencyCode(newSpaceCurrency || user?.currency);
 		setIsCreatingSpace(true);
 		setLoadError(null);
 		try {
-			await wsClient.connect();
-			const created = await wsClient.rpc<Space>("spaces.create", { name });
+			const created = await apiClient.spaces.create({ name, currency });
 			setNewSpaceName("");
+			setNewSpaceCurrency(normalizeCurrencyCode(user?.currency ?? currency));
 			setLoadError(null);
 			if (workspaceScope?.kind === "personal") {
 				const list =
@@ -187,7 +195,15 @@ export const WorkspaceSpacesProvider = ({
 		} finally {
 			setIsCreatingSpace(false);
 		}
-	}, [newSpaceName, workspaceScope]);
+	}, [newSpaceCurrency, newSpaceName, user?.currency, workspaceScope]);
+
+	useEffect(() => {
+		setNewSpaceCurrency((current) =>
+			current.trim()
+				? normalizeCurrencyCode(current)
+				: normalizeCurrencyCode(user?.currency),
+		);
+	}, [user?.currency]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -258,6 +274,8 @@ export const WorkspaceSpacesProvider = ({
 			setRightSidebarExpanded,
 			newSpaceName,
 			setNewSpaceName,
+			newSpaceCurrency,
+			setNewSpaceCurrency,
 			createSpace,
 			isCreatingSpace,
 			createSpaceDialogOpen,
@@ -280,6 +298,7 @@ export const WorkspaceSpacesProvider = ({
 			rightSidebarExpanded,
 			setRightSidebarExpanded,
 			newSpaceName,
+			newSpaceCurrency,
 			createSpace,
 			isCreatingSpace,
 			createSpaceDialogOpen,

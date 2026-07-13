@@ -110,7 +110,6 @@ export const AccountPage = () => {
 
 	const [weekStartsOn, setWeekStartsOn] = useState(1);
 	const [fiscalYearStartMonth, setFiscalYearStartMonth] = useState(1);
-	const [reportingCurrency, setReportingCurrency] = useState("");
 
 	const [taxPreferencesConsent, setTaxPreferencesConsent] = useState(false);
 	const [taxPrimaryCountry, setTaxPrimaryCountry] = useState("");
@@ -187,9 +186,6 @@ export const AccountPage = () => {
 					const m = fin.fiscalYearStartMonth;
 					setFiscalYearStartMonth(m >= 1 && m <= 12 ? m : 1);
 				}
-				if (typeof fin.reportingCurrency === "string") {
-					setReportingCurrency(fin.reportingCurrency);
-				}
 			}
 			const tax = prefs.tax;
 			if (tax && typeof tax === "object") {
@@ -207,7 +203,6 @@ export const AccountPage = () => {
 		} else {
 			setWeekStartsOn(1);
 			setFiscalYearStartMonth(1);
-			setReportingCurrency("");
 			setTaxPrimaryCountry("");
 			setTaxFilingIntent("unspecified");
 		}
@@ -589,20 +584,11 @@ export const AccountPage = () => {
 			return;
 		}
 
-		const reporting = reportingCurrency.trim().toUpperCase();
-		if (reporting !== "" && !/^[A-Z]{3}$/.test(reporting)) {
-			setErrorMessage(
-				"Reporting currency must be empty or a 3-letter ISO code.",
-			);
-			return;
-		}
-
 		const userPreferences: UserPreferencesPayload = {
 			version: 1,
 			financial: {
 				weekStartsOn,
 				fiscalYearStartMonth,
-				reportingCurrency: reporting === "" ? "" : reporting,
 			},
 			appearance: {
 				theme: selectedTheme,
@@ -1005,19 +991,6 @@ export const AccountPage = () => {
 											</option>
 										))}
 									</select>
-								</label>
-								<label className="block space-y-1 text-sm">
-									<span className="text-muted-foreground">
-										Reporting currency (optional)
-									</span>
-									<input
-										className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm uppercase"
-										maxLength={3}
-										onChange={(e) => setReportingCurrency(e.target.value)}
-										placeholder="Leave empty to use account currency"
-										type="text"
-										value={reportingCurrency}
-									/>
 								</label>
 							</div>
 						</div>

@@ -1,0 +1,47 @@
+name: PNZ Landing Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/poka-ne-zabyl/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".dockerignore"
+      - ".github/workflows/pnz-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: pnz-landing-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEPLOY_HOST: ${{ secrets.PNZ_DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.PNZ_DEPLOY_USER }}
+      DEPLOY_SSH_KEY: ${{ secrets.PNZ_DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.PNZ_DEPLOY_KNOWN_HOSTS }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -f apps/poka-ne-zabyl/Dockerfile -t pnz-landing:latest .
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+
+      - name: Deploy landing
+        run: |
+          docker save pnz-landing:latest | gzip > pnz-landing.tar.gz
+          scp pnz-landing.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/tmp/pnz-landing.tar.gz"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "/opt/pnz/deploy-image.sh landing /tmp/pnz-landing.tar.gz"

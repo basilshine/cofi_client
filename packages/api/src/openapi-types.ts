@@ -971,7 +971,11 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreateExpenseCandidateRequest"];
+                };
+            };
             responses: {
                 /** @description Expense record created from the candidate. */
                 200: {
@@ -2255,6 +2259,162 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List stable expense categories for a space
+         * @description Returns the tenant category catalog ordered by most recent use in the requested space.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Category catalog with usage totals */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CategoryListResponse"];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/categories/{categoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get period totals and recent items for a category */
+        get: {
+            parameters: {
+                query?: {
+                    period?: "today" | "week" | "month" | "all";
+                };
+                header?: never;
+                path: {
+                    spaceId: number;
+                    categoryId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Category period summary and five most recent items */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CategoryDetail"];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Category not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /**
+         * Rename a category
+         * @description Renames a stable tenant category without changing its key or existing expense links.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    categoryId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        name: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Renamed category */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CategorySummary"];
+                    };
+                };
+                /** @description Invalid category name */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Category not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/recurring/{id}/pause": {
         parameters: {
             query?: never;
@@ -3413,10 +3573,11 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        name: string;
+                        currency?: components["schemas"]["CurrencyCode"];
                     };
                 };
             };
@@ -3485,9 +3646,7 @@ export interface paths {
             };
             requestBody?: {
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["PatchSpaceRequest"];
                 };
             };
             responses: {
@@ -3497,10 +3656,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["Space"];
                     };
+                };
+                /** @description Space currency is locked because saved money records already exist. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
@@ -5198,6 +5362,46 @@ export interface components {
         };
         /** @enum {string} */
         SearchEntityType: "space" | "expense" | "expense_item" | "promo_code" | "participant" | "split" | "recurring" | "source_document";
+        /**
+         * @description ISO 4217 alphabetic currency code normalized to uppercase.
+         * @example USD
+         */
+        CurrencyCode: string;
+        /** @description Persisted FX snapshot for saved money records. Clients render Space reporting amounts from this snapshot and must not recalculate historical conversions. */
+        CurrencyConversion: {
+            source_currency?: components["schemas"]["CurrencyCode"];
+            space_currency?: components["schemas"]["CurrencyCode"];
+            /** @description Rate used to convert source currency into the Space reporting currency. */
+            exchange_rate?: number | null;
+            /**
+             * Format: date
+             * @description Rate date used for conversion.
+             */
+            exchange_rate_as_of?: string | null;
+            /** @description FX provider or backfill marker that produced the rate. */
+            exchange_rate_provider?: string;
+            /**
+             * Format: date-time
+             * @description Timestamp when conversion was applied.
+             */
+            converted_at?: string | null;
+            /**
+             * @description Rounding rule used after conversion.
+             * @enum {string}
+             */
+            rounding_mode?: "minor_unit_half_away_from_zero";
+            /**
+             * Format: int32
+             * @description Minor-unit precision used for the reporting amount.
+             */
+            currency_precision?: number | null;
+            /** @enum {string} */
+            conversion_status?: "not_needed" | "converted" | "rate_unavailable" | "legacy_backfill";
+            /** @enum {string} */
+            currency_decision?: "space" | "legacy_backfill";
+            /** @description How the transaction/source currency was chosen. */
+            currency_source?: string;
+        };
         SearchResult: {
             /** @description Stable typed result id, formatted as `{type}:{entity_id}`. */
             id: string;
@@ -5207,6 +5411,7 @@ export interface components {
             /** Format: int64 */
             space_id?: number;
             space_name?: string;
+            space_currency?: components["schemas"]["CurrencyCode"];
             /**
              * Format: int64
              * @description Source capture that projected this result, when available.
@@ -5221,7 +5426,7 @@ export interface components {
             /** @description Search status. Source document captures use `pending_review`, `records_created`, or `captured`. */
             status?: string;
             amount?: number;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** Format: date-time */
             occurred_at?: string;
             /** Format: date-time */
@@ -5248,7 +5453,7 @@ export interface components {
             country?: string;
             language?: string;
             timezone?: string;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             dateFormat?: string;
             emailNotifications?: boolean;
             darkMode?: boolean;
@@ -5262,6 +5467,35 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        /** @description Shared Space. `currency` is the Space reporting/display currency and is immutable after saved money records exist. */
+        Space: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            tenant_id?: number;
+            /** Format: int64 */
+            owner_user_id?: number;
+            name?: string;
+            description?: string;
+            currency?: components["schemas"]["CurrencyCode"];
+            settings?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+            /** Format: date-time */
+            last_activity_at?: string | null;
+            tenant_name?: string;
+            owner_display_name?: string;
+        };
+        /** @description Partial Space update. `currency` is owner-only and returns 409 once saved money records exist. */
+        PatchSpaceRequest: {
+            name?: string;
+            description?: string;
+            currency?: components["schemas"]["CurrencyCode"];
         };
         SpaceParticipant: {
             /** Format: int64 */
@@ -5342,7 +5576,7 @@ export interface components {
             claimed_participant?: components["schemas"]["PaymentResolutionParticipant"];
             obligation_count?: number;
             snapshot_total?: number;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             unpaid_count?: number;
             sent_count?: number;
             confirmed_count?: number;
@@ -5370,7 +5604,7 @@ export interface components {
             /** Format: int64 */
             recipient_participant_id?: number;
             amount?: number;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** @enum {string} */
             status?: "unpaid" | "sent" | "received" | "confirmed" | "disputed";
             proof_required?: boolean;
@@ -5422,7 +5656,7 @@ export interface components {
             payer_participant?: components["schemas"]["PaymentResolutionParticipant"];
             recipient_participant?: components["schemas"]["PaymentResolutionParticipant"];
             amount?: number;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** Format: int64 */
             source_expense_id?: number;
             /** Format: int64 */
@@ -5517,8 +5751,7 @@ export interface components {
             language: string;
             /** @description IANA time zone name (e.g. Europe/London) */
             timezone: string;
-            /** @description ISO 4217 alphabetic code (e.g. USD) */
-            currency: string;
+            currency: components["schemas"]["CurrencyCode"];
             /** @description One of MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD */
             dateFormat: string;
             emailNotifications?: boolean;
@@ -5537,6 +5770,12 @@ export interface components {
             /** Format: int64 */
             expense_id?: number;
             amount?: number;
+            /** @description Original line-item amount in source currency, when different from canonical amount. */
+            source_amount?: number | null;
+            source_currency?: components["schemas"]["CurrencyCode"];
+            /** @description Line-item amount in the Space reporting currency. */
+            space_amount?: number | null;
+            space_currency?: components["schemas"]["CurrencyCode"];
             name?: string;
             emotion?: string;
             tags?: components["schemas"]["Tag"][];
@@ -5616,7 +5855,21 @@ export interface components {
             description?: string;
             title?: string;
             payee_text?: string;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
+            source_currency?: components["schemas"]["CurrencyCode"];
+            space_currency?: components["schemas"]["CurrencyCode"];
+            exchange_rate?: number | null;
+            /** Format: date */
+            exchange_rate_as_of?: string | null;
+            exchange_rate_provider?: string;
+            /** Format: date-time */
+            converted_at?: string | null;
+            rounding_mode?: string;
+            /** Format: int32 */
+            currency_precision?: number | null;
+            conversion_status?: string;
+            currency_decision?: string;
+            currency_source?: string;
             /** @description YYYY-MM-DD; empty string resets expense_date to today (UTC date). */
             expense_date?: string;
             /** @description Allowed saved-record statuses are approved or cancelled. */
@@ -5642,7 +5895,7 @@ export interface components {
             amount?: number;
             title?: string;
             payee_text?: string;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** Format: date */
             expense_date?: string;
             description?: string;
@@ -5693,6 +5946,10 @@ export interface components {
              */
             source_document_id?: number;
             amount?: number;
+            source_amount?: number | null;
+            source_currency?: components["schemas"]["CurrencyCode"];
+            space_amount?: number | null;
+            space_currency?: components["schemas"]["CurrencyCode"];
             name?: string;
             tagLabel?: string;
             /** Format: date-time */
@@ -5742,6 +5999,7 @@ export interface components {
             /** Format: int64 */
             space_id?: number;
             space_name?: string;
+            space_currency?: components["schemas"]["CurrencyCode"];
             /** Format: int64 */
             bound_by_user_id?: number;
             bound_by_name?: string;
@@ -5831,7 +6089,7 @@ export interface components {
             discount_type?: "percent" | "fixed_amount" | "cashback" | "free_shipping" | "gift" | "unknown";
             discount_value?: number;
             minimum_order_amount?: number;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** @description RFC3339 timestamp or YYYY-MM-DD. */
             valid_from?: string;
             /** @description RFC3339 timestamp or YYYY-MM-DD. */
@@ -5853,7 +6111,7 @@ export interface components {
             start_date?: string;
             /** @description RFC3339 timestamp or YYYY-MM-DD. */
             next_due?: string;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             source_text?: string;
         };
         /** @description Multipart request for canonical image or voice capture. The server creates a source document and review candidates. */
@@ -5917,11 +6175,18 @@ export interface components {
             /** @description Candidate-derived preview amount when available, for example expense totals or item line amounts. */
             amount?: number;
             /** @description Candidate-derived preview currency when available. */
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** @description Candidate-derived preview tags when available. */
             tags?: string[];
             /** @description Candidate-derived source text when useful for lightweight client previews. */
             source_text?: string;
+            /** @description Candidate-derived merchant, store, or payee text when available. */
+            payee_text?: string;
+            /**
+             * Format: date
+             * @description Candidate-derived expense date when available.
+             */
+            expense_date?: string;
         };
         /** @description Saved promo code found by the user or projected from capture review. */
         PromoCode: {
@@ -5947,7 +6212,7 @@ export interface components {
             discount_type?: "percent" | "fixed_amount" | "cashback" | "free_shipping" | "gift" | "unknown";
             discount_value?: number;
             minimum_order_amount?: number;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** Format: date-time */
             valid_from?: string;
             /** Format: date-time */
@@ -6021,7 +6286,7 @@ export interface components {
             /** Format: date-time */
             document_date?: string;
             total_amount?: number;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** @description Persisted client/source provenance metadata for this capture. */
             source_context?: {
                 [key: string]: unknown;
@@ -6059,7 +6324,7 @@ export interface components {
             title?: string;
             description?: string;
             status?: string;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** Format: date-time */
             expense_date?: string;
             total_amount?: number;
@@ -6083,7 +6348,7 @@ export interface components {
             redeem_platform?: string;
             discount_type?: string;
             discount_value?: number | null;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
             /** Format: date-time */
             valid_until?: string | null;
             status?: string;
@@ -6152,6 +6417,38 @@ export interface components {
             has_more?: boolean;
             next_offset?: number | null;
         };
+        CategorySummary: {
+            /** Format: int64 */
+            id?: number;
+            key?: string;
+            name?: string;
+            position?: number;
+            /** Format: int64 */
+            count?: number;
+            total?: number;
+            /** Format: date-time */
+            last_used?: string | null;
+        };
+        CategoryItem: {
+            /** Format: int64 */
+            expense_id?: number;
+            name?: string;
+            amount?: number;
+            merchant?: string;
+            /** Format: date-time */
+            used_at?: string;
+        };
+        CategoryListResponse: {
+            currency?: components["schemas"]["CurrencyCode"];
+            categories?: components["schemas"]["CategorySummary"][];
+        };
+        CategoryDetail: {
+            category?: components["schemas"]["CategorySummary"];
+            /** @enum {string} */
+            period?: "today" | "week" | "month" | "all";
+            currency?: components["schemas"]["CurrencyCode"];
+            items?: components["schemas"]["CategoryItem"][];
+        };
         SpaceSplitDecisionRow: {
             /** Format: int64 */
             user_id?: number | null;
@@ -6208,7 +6505,7 @@ export interface components {
             /** Format: date-time */
             document_date?: string;
             total_amount?: number;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
         };
         DocumentCandidateListResponse: {
             candidates?: components["schemas"]["DocumentCandidate"][];
@@ -6222,6 +6519,21 @@ export interface components {
             /** Format: int64 */
             source_document_id?: number;
             deleted?: boolean;
+        };
+        /** @description Review-time source money correction. Saved ledger amounts stay in the Space currency; source money is preserved separately. */
+        CurrencyDecisionRequest: {
+            /**
+             * @description `space` saves ledger amounts in the Space currency. Other ledger currencies are intentionally not supported until splits and payment resolution are currency-aware.
+             * @enum {string}
+             */
+            transaction_currency?: "space";
+            /** @description Optional source amount correction. The first backend slice supports this only for single-item candidates. */
+            source_amount?: number;
+            /** @description Optional source currency correction before server-side conversion. */
+            source_currency?: components["schemas"]["CurrencyCode"];
+        };
+        CreateExpenseCandidateRequest: {
+            currency_decision?: components["schemas"]["CurrencyDecisionRequest"];
         };
         CreateExpenseCandidateResponse: {
             expense?: components["schemas"]["Expense"];
@@ -6318,7 +6630,17 @@ export interface components {
         };
         ExpenseRecordItem: {
             amount?: number;
+            /** @description Original line-item amount in the detected/source currency. */
+            source_amount?: number | null;
+            source_currency?: components["schemas"]["CurrencyCode"];
+            /** @description Line-item amount in the Space reporting currency. */
+            space_amount?: number | null;
+            space_currency?: components["schemas"]["CurrencyCode"];
             name?: string;
+            /** Format: int64 */
+            category_id?: number | null;
+            category_key?: string;
+            category_name?: string;
             emotion?: string;
             tags?: string[];
             /** Format: date-time */
@@ -6341,7 +6663,21 @@ export interface components {
             title?: string;
             description?: string;
             payee_text?: string;
-            currency?: string;
+            currency?: components["schemas"]["CurrencyCode"];
+            source_currency?: components["schemas"]["CurrencyCode"];
+            space_currency?: components["schemas"]["CurrencyCode"];
+            exchange_rate?: number | null;
+            /** Format: date */
+            exchange_rate_as_of?: string | null;
+            exchange_rate_provider?: string;
+            /** Format: date-time */
+            converted_at?: string | null;
+            rounding_mode?: string;
+            /** Format: int32 */
+            currency_precision?: number | null;
+            conversion_status?: string;
+            currency_decision?: string;
+            currency_source?: string;
             /** Format: date */
             expense_date?: string;
             /** Format: int64 */
@@ -6355,6 +6691,8 @@ export interface components {
             source_document_id?: number;
             items?: components["schemas"]["ExpenseRecordItem"][];
             total?: number;
+            /** @description Total in the Space reporting currency; falls back to total for legacy rows without space amounts. */
+            space_total?: number;
             /** Format: date-time */
             created_at?: string;
             /** Format: int64 */

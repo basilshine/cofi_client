@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useConsoleHeaderTitle } from "../../app/layout/ConsoleHeaderCenterContext";
 import { SpaceWorkspaceLayout } from "../../app/layout/workspaceSpaces/SpaceWorkspaceLayout";
+import { useWorkspaceSpaces } from "../../app/layout/workspaceSpaces/WorkspaceSpacesContext";
 import { useUserFormat } from "../../shared/hooks/useUserFormat";
 import { apiClient } from "../../shared/lib/apiClient";
 import { EntityIcon, EntityMicro } from "../../shared/lib/entityPresentation";
@@ -281,7 +282,11 @@ export const RecurringSchedulesPage = ({
 	spaceName?: string | null;
 }) => {
 	useConsoleHeaderTitle("Recurring", spaceName ?? null);
-	const { formatMoney, formatDateTime } = useUserFormat();
+	const { spaces } = useWorkspaceSpaces();
+	const spaceCurrency = spaces?.find(
+		(space) => String(space.id) === String(spaceId),
+	)?.currency;
+	const { formatMoney, formatDateTime } = useUserFormat(spaceCurrency);
 	const [items, setItems] = useState<RecurringExpense[] | null>(null);
 	const [itemsHasMore, setItemsHasMore] = useState(false);
 	const [itemsNextOffset, setItemsNextOffset] = useState<number | null>(null);

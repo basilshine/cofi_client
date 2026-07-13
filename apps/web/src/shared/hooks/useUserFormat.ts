@@ -8,12 +8,12 @@ import {
 	normalizeDateFormat,
 } from "../lib/userFormat";
 
-export const useUserFormat = () => {
+export const useUserFormat = (currencyOverride?: string | null) => {
 	const { user } = useAuth();
 
 	const currency = useMemo(
-		() => normalizeCurrencyCode(user?.currency),
-		[user?.currency],
+		() => normalizeCurrencyCode(currencyOverride ?? user?.currency),
+		[currencyOverride, user?.currency],
 	);
 
 	const dateFormat: UserDateFormatPreference = useMemo(
@@ -22,7 +22,13 @@ export const useUserFormat = () => {
 	);
 
 	const formatMoney = useCallback(
-		(amount: number) => formatCurrencyAmount(amount, currency),
+		(amount: number, amountCurrency?: string | null) =>
+			formatCurrencyAmount(
+				amount,
+				amountCurrency == null
+					? currency
+					: normalizeCurrencyCode(amountCurrency),
+			),
 		[currency],
 	);
 

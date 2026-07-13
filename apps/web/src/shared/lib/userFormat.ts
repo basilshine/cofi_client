@@ -1,9 +1,8 @@
-/** Normalizes profile currency to a 3-letter ISO code for `Intl` (fallback USD). */
-export const normalizeCurrencyCode = (raw?: string | null): string => {
-	const t = raw?.trim().toUpperCase();
-	if (t && /^[A-Z]{3}$/.test(t)) return t;
-	return "USD";
-};
+export {
+	formatCurrencyAmount,
+	getCurrencyOptions,
+	normalizeCurrencyCode,
+} from "./currency";
 
 export type UserDateFormatPreference =
 	| "YYYY-MM-DD"
@@ -50,24 +49,4 @@ export const formatDateTimeForUser = (
 		minute: "2-digit",
 	});
 	return `${datePart} ${timePart}`;
-};
-
-export const formatCurrencyAmount = (
-	amount: number,
-	currencyCode: string,
-): string => {
-	if (!Number.isFinite(amount)) {
-		return formatCurrencyAmount(0, currencyCode);
-	}
-	try {
-		return new Intl.NumberFormat(undefined, {
-			style: "currency",
-			currency: currencyCode,
-		}).format(amount);
-	} catch {
-		return new Intl.NumberFormat(undefined, {
-			style: "currency",
-			currency: "USD",
-		}).format(amount);
-	}
 };

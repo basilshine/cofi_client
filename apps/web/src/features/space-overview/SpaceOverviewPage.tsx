@@ -79,7 +79,6 @@ const participantBelongsToUser = (
 export const SpaceOverviewPage = () => {
 	const { spaceId } = useParams<{ spaceId: string }>();
 	const { user } = useAuth();
-	const { formatMoney } = useUserFormat();
 	const { spaces, workspaceScope, selectedSpaceId, setSelectedSpaceId } =
 		useWorkspaceSpaces();
 
@@ -92,6 +91,7 @@ export const SpaceOverviewPage = () => {
 		if (!spaces || spaceId == null) return null;
 		return spaces.find((s) => String(s.id) === String(spaceId)) ?? null;
 	}, [spaces, spaceId]);
+	const { formatMoney } = useUserFormat(space?.currency);
 
 	useConsoleHeaderTitle("Overview", space?.name ?? null);
 

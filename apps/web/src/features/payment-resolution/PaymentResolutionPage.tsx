@@ -440,7 +440,7 @@ export const PaymentResolutionPage = () => {
 						<div className="rounded-2xl bg-[#f8f3e8] p-4 text-stone-950">
 							<p className="text-xs font-semibold text-stone-500">You owe</p>
 							<p className="mt-1 font-mono text-2xl font-semibold">
-								{formatMoney(context.summary.you_owe)}
+								{formatMoney(context.summary.you_owe, context.currency)}
 							</p>
 						</div>
 						<div className="rounded-2xl bg-[#e9f0dc] p-4 text-stone-950">
@@ -448,7 +448,7 @@ export const PaymentResolutionPage = () => {
 								Owed to you
 							</p>
 							<p className="mt-1 font-mono text-2xl font-semibold">
-								{formatMoney(context.summary.owed_to_you)}
+								{formatMoney(context.summary.owed_to_you, context.currency)}
 							</p>
 						</div>
 					</div>

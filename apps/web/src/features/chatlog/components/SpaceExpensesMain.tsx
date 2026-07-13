@@ -631,7 +631,10 @@ export const SpaceExpensesMain = ({
 								? buildReviewCaptureHref(spaceId, expense.source_document_id)
 								: null;
 						const entity = toExpenseRecordEntity(expense, {
-							amountLabel: formatMoney(expense.total),
+							amountLabel: formatMoney(
+								expense.space_total ?? expense.total,
+								expense.space_currency ?? expense.currency,
+							),
 							href: detailHref ?? undefined,
 							selected: isSelected,
 						});
@@ -692,7 +695,10 @@ export const SpaceExpensesMain = ({
 												</div>
 												<div className="flex shrink-0 flex-col items-end gap-2">
 													<p className="text-lg font-bold tabular-nums tracking-tight text-foreground sm:text-xl">
-														{formatMoney(expense.total)}
+														{formatMoney(
+															expense.space_total ?? expense.total,
+															expense.space_currency ?? expense.currency,
+														)}
 													</p>
 													{expense.status ? (
 														<span
@@ -843,7 +849,12 @@ export const SpaceExpensesMain = ({
 															entity={itemEntity}
 															trailing={
 																<span className="text-xs font-semibold tabular-nums text-muted-foreground">
-																	{formatMoney(it.amount)}
+																	{formatMoney(
+																		it.space_amount ?? it.amount,
+																		it.space_currency ??
+																			expense.space_currency ??
+																			expense.currency,
+																	)}
 																</span>
 															}
 														/>

@@ -180,7 +180,6 @@ export const SettingsHubPage = ({
 
 	const [weekStartsOn, setWeekStartsOn] = useState(1);
 	const [fiscalYearStartMonth, setFiscalYearStartMonth] = useState(1);
-	const [reportingCurrency, setReportingCurrency] = useState("");
 
 	const [taxPreferencesConsent, setTaxPreferencesConsent] = useState(false);
 	const [taxPrimaryCountry, setTaxPrimaryCountry] = useState("");
@@ -227,9 +226,6 @@ export const SettingsHubPage = ({
 				if (typeof fin.fiscalYearStartMonth === "number") {
 					const m = fin.fiscalYearStartMonth;
 					setFiscalYearStartMonth(m >= 1 && m <= 12 ? m : 1);
-				}
-				if (typeof fin.reportingCurrency === "string") {
-					setReportingCurrency(fin.reportingCurrency);
 				}
 			}
 			const tax = prefs.tax;
@@ -404,19 +400,11 @@ export const SettingsHubPage = ({
 			setErrorMessage("Timezone is required (IANA, e.g. Europe/London).");
 			return;
 		}
-		const reporting = reportingCurrency.trim().toUpperCase();
-		if (reporting !== "" && !/^[A-Z]{3}$/.test(reporting)) {
-			setErrorMessage(
-				"Reporting currency must be empty or a 3-letter ISO code.",
-			);
-			return;
-		}
 		const userPreferences: UserPreferencesPayload = {
 			version: 1,
 			financial: {
 				weekStartsOn,
 				fiscalYearStartMonth,
-				reportingCurrency: reporting === "" ? "" : reporting,
 			},
 			appearance: {
 				theme: selectedTheme,
@@ -680,7 +668,7 @@ export const SettingsHubPage = ({
 												</select>
 											</label>
 										</div>
-										<div className="grid gap-4 md:grid-cols-3">
+										<div className="grid gap-4 md:grid-cols-2">
 											<label className="space-y-1 text-sm">
 												<span className="text-muted-foreground">
 													Week starts on
@@ -718,18 +706,6 @@ export const SettingsHubPage = ({
 														</option>
 													))}
 												</select>
-											</label>
-											<label className="space-y-1 text-sm">
-												<span className="text-muted-foreground">
-													Reporting currency
-												</span>
-												<input
-													className={`${inputBase} uppercase`}
-													maxLength={3}
-													onChange={(e) => setReportingCurrency(e.target.value)}
-													type="text"
-													value={reportingCurrency}
-												/>
 											</label>
 										</div>
 										<div className="grid gap-3">

@@ -15,7 +15,7 @@ import {
 type SpaceExpenseDetailPanelProps = {
 	expenseId: string | number;
 	formatDateTime: (value: string) => string;
-	formatMoney: (value: number) => string;
+	formatMoney: (value: number, currency?: string | null) => string;
 	onClose: () => void;
 	onReloadList: () => void;
 	spaceId: string | number;
@@ -33,6 +33,10 @@ const splitDisplayName = (row: ExpenseSplitRow): string => {
 };
 
 const expenseTitle = (expense: ExpenseDetail): string => {
+	const vendor = expense.vendor?.name?.trim();
+	if (vendor) return vendor;
+	const payee = expense.payee_text?.trim();
+	if (payee) return payee;
 	const title = expense.title?.trim();
 	if (title && title.toLowerCase() !== "expense") return title;
 	const description = expense.description?.trim();
@@ -53,6 +57,7 @@ export const SpaceExpenseDetailPanel = ({
 	const [splits, setSplits] = useState<ExpenseSplitRow[] | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const expenseCurrency = expense?.space_currency ?? expense?.currency;
 
 	const load = async () => {
 		setIsLoading(true);
@@ -136,7 +141,7 @@ export const SpaceExpenseDetailPanel = ({
 										entity={{ label: "Expense", visualKey: "expense" }}
 									/>
 									<p className="mt-2 text-2xl font-bold tabular-nums text-foreground">
-										{formatMoney(total)}
+										{formatMoney(total, expenseCurrency)}
 									</p>
 									<div className="mt-2 flex flex-wrap items-center gap-2">
 										<span className={expenseStatusPillClass(status)}>
@@ -200,7 +205,10 @@ export const SpaceExpenseDetailPanel = ({
 												) : null}
 											</div>
 											<span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-												{formatMoney(Number(item.amount) || 0)}
+												{formatMoney(
+													Number(item.space_amount ?? item.amount) || 0,
+													item.space_currency ?? expenseCurrency,
+												)}
 											</span>
 										</div>
 									</li>
@@ -233,7 +241,7 @@ export const SpaceExpenseDetailPanel = ({
 											{splitDisplayName(row)}
 										</span>
 										<span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-											{formatMoney(Number(row.amount) || 0)}
+											{formatMoney(Number(row.amount) || 0, expenseCurrency)}
 										</span>
 									</li>
 								))}

@@ -1,3 +1,7 @@
+import type { components } from "./openapi-types";
+
+export type CurrencyCode = components["schemas"]["CurrencyCode"];
+
 export type AuthTokens = {
 	accessToken: string;
 	refreshToken?: string;
@@ -7,8 +11,6 @@ export type AuthTokens = {
 export type UserFinancialPreferences = {
 	weekStartsOn?: number;
 	fiscalYearStartMonth?: number;
-	/** Empty string means “use account currency”. */
-	reportingCurrency?: string;
 };
 
 export type UserTaxPreferences = {
@@ -51,7 +53,7 @@ export type User = {
 	country?: string;
 	language?: string;
 	timezone?: string;
-	currency?: string;
+	currency?: CurrencyCode;
 	dateFormat?: string;
 	emailNotifications?: boolean;
 	darkMode?: boolean;
@@ -65,7 +67,7 @@ export type ProfileUpdateRequest = {
 	country: string;
 	language: string;
 	timezone: string;
-	currency: string;
+	currency: CurrencyCode;
 	dateFormat: string;
 	emailNotifications: boolean;
 	darkMode: boolean;
@@ -76,6 +78,8 @@ export type ProfileUpdateRequest = {
 export type Space = {
 	id: string | number;
 	name: string;
+	/** Space reporting currency for summaries, review projections, and display. */
+	currency?: CurrencyCode;
 	/** Optional context shown on the dashboard and in future space settings. */
 	description?: string;
 	/** Tenant that owns this space (from API). */
@@ -211,7 +215,7 @@ export type PaymentObligation = {
 	payer_participant: PaymentResolutionParticipant;
 	recipient_participant: PaymentResolutionParticipant;
 	amount: number;
-	currency: string;
+	currency: CurrencyCode;
 	source_expense_id: number;
 	source_split_id: number;
 	source_document_id?: number | null;
@@ -241,6 +245,7 @@ export type PaymentLinkContext = {
 	proof_policy: "optional" | "required" | string;
 	space_id: number;
 	space_name: string;
+	currency: CurrencyCode;
 	expires_at: string;
 	claim_required: boolean;
 	selected_participant?: PaymentResolutionParticipant | null;
@@ -278,7 +283,7 @@ export type PaymentLinkSummary = {
 	claimed_participant?: PaymentResolutionParticipant | null;
 	obligation_count: number;
 	snapshot_total: number;
-	currency: string;
+	currency: CurrencyCode;
 	unpaid_count: number;
 	sent_count: number;
 	confirmed_count: number;
@@ -301,7 +306,7 @@ export type PaymentLinkObligationRef = {
 	payer_participant_id: number;
 	recipient_participant_id: number;
 	amount: number;
-	currency: string;
+	currency: CurrencyCode;
 	status: PaymentObligationStatus | string;
 	proof_required: boolean;
 	proof_count: number;
@@ -392,7 +397,7 @@ export type PromoCode = {
 	discount_type: PromoDiscountType | string;
 	discount_value?: number | null;
 	minimum_order_amount?: number | null;
-	currency?: string;
+	currency?: CurrencyCode;
 	valid_from?: string | null;
 	valid_until?: string | null;
 	conditions_text?: string;
@@ -442,7 +447,7 @@ export type SearchResult = {
 	matched_fields?: string[];
 	status?: string;
 	amount?: number;
-	currency?: string;
+	currency?: CurrencyCode;
 	occurred_at?: string;
 	created_at?: string;
 };
@@ -469,6 +474,10 @@ export type CaptureExpenseItemRecord = {
 	id: number;
 	name: string;
 	amount: number;
+	source_amount?: number | null;
+	source_currency?: CurrencyCode;
+	space_amount?: number | null;
+	space_currency?: CurrencyCode;
 };
 
 export type CaptureExpenseRecord = {
@@ -476,9 +485,21 @@ export type CaptureExpenseRecord = {
 	title: string;
 	description?: string;
 	status: string;
-	currency: string;
+	currency: CurrencyCode;
+	source_currency?: CurrencyCode;
+	space_currency?: CurrencyCode;
+	exchange_rate?: number | null;
+	exchange_rate_as_of?: string | null;
+	exchange_rate_provider?: string;
+	converted_at?: string | null;
+	rounding_mode?: string;
+	currency_precision?: number | null;
+	conversion_status?: string;
+	currency_decision?: string;
+	currency_source?: string;
 	expense_date: string;
 	total_amount: number;
+	space_total?: number;
 	created_by_user_id: number;
 	items?: CaptureExpenseItemRecord[];
 };
@@ -492,7 +513,7 @@ export type CaptureBenefitRecord = {
 	redeem_platform?: string;
 	discount_type?: string;
 	discount_value?: number | null;
-	currency?: string;
+	currency?: CurrencyCode;
 	valid_until?: string | null;
 	status: string;
 	created_by_user_id: number;
@@ -558,7 +579,7 @@ export type CapturePacket = {
 	merchant_text?: string;
 	document_date?: string | null;
 	total_amount?: number | null;
-	currency?: string;
+	currency?: CurrencyCode;
 	confidence: number;
 	candidate_count: number;
 	pending_count: number;
@@ -644,7 +665,7 @@ export type DocumentCandidate = {
 	merchant_text?: string;
 	document_date?: string | null;
 	total_amount?: number | null;
-	currency?: string;
+	currency?: CurrencyCode;
 };
 
 export type DocumentCandidateListResponse = {
@@ -669,6 +690,17 @@ export type CreateParticipantCandidateResponse = {
 export type CreateRecurringCandidateResponse = {
 	recurring: RecurringExpense;
 	candidate: DocumentCandidateState;
+};
+
+export type CurrencyDecisionRequest = {
+	transaction_currency?: "space" | "source" | "custom";
+	custom_currency?: CurrencyCode;
+	source_amount?: number;
+	source_currency?: CurrencyCode;
+};
+
+export type CreateExpenseCandidateRequest = {
+	currency_decision?: CurrencyDecisionRequest;
 };
 
 export type CreateExpenseCandidateResponse = {
@@ -736,6 +768,10 @@ export type SpaceInviteCreateResponse = {
 
 export type ExpenseRecordItem = {
 	amount: number;
+	source_amount?: number | null;
+	source_currency?: CurrencyCode;
+	space_amount?: number | null;
+	space_currency?: CurrencyCode;
 	name: string;
 	emotion?: string;
 	tags?: string[];
@@ -762,11 +798,24 @@ export type ExpenseRecord = {
 	/** Raw capture / voice text (global list endpoint). */
 	description?: string;
 	payee_text?: string;
-	currency?: string;
+	currency?: CurrencyCode;
+	source_currency?: CurrencyCode;
+	space_currency?: CurrencyCode;
+	exchange_rate?: number | null;
+	exchange_rate_as_of?: string | null;
+	exchange_rate_provider?: string;
+	converted_at?: string | null;
+	rounding_mode?: string;
+	currency_precision?: number | null;
+	conversion_status?: string;
+	currency_decision?: string;
+	currency_source?: string;
 	/** Calendar date of the expense (YYYY-MM-DD). */
 	expense_date?: string;
 	items: ExpenseRecordItem[];
 	total: number;
+	/** Total in Space reporting currency; falls back to total for legacy rows without space amounts. */
+	space_total?: number;
 	created_at?: string;
 	/** Capture/source document that created this expense record, when available. */
 	source_document_id?: number;
@@ -805,9 +854,20 @@ export type ExpenseDetail = {
 	user_id?: number;
 	/** Sum of line amounts (server-computed). */
 	amount?: number;
+	source_currency?: CurrencyCode;
+	space_currency?: CurrencyCode;
+	exchange_rate?: number | null;
+	exchange_rate_as_of?: string | null;
+	exchange_rate_provider?: string;
+	converted_at?: string | null;
+	rounding_mode?: string;
+	currency_precision?: number | null;
+	conversion_status?: string;
+	currency_decision?: string;
+	currency_source?: string;
 	title?: string;
 	payee_text?: string;
-	currency?: string;
+	currency?: CurrencyCode;
 	/** Calendar date of the expense (YYYY-MM-DD). */
 	expense_date?: string;
 	description?: string;
@@ -820,6 +880,10 @@ export type ExpenseDetail = {
 		id?: number;
 		name: string;
 		amount: number;
+		source_amount?: number | null;
+		source_currency?: CurrencyCode;
+		space_amount?: number | null;
+		space_currency?: CurrencyCode;
 		emotion?: string;
 		/** Per-line memo (optional). */
 		notes?: string;
@@ -841,7 +905,7 @@ export type ExpensePatch = {
 	description?: string;
 	title?: string;
 	payee_text?: string;
-	currency?: string;
+	currency?: CurrencyCode;
 	/** YYYY-MM-DD. Empty string resets the server to today’s UTC calendar date. */
 	expense_date?: string;
 	/** Omit to leave unchanged. Saved records can be marked approved or cancelled. */

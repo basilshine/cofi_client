@@ -142,8 +142,12 @@ export const ExpenseMessageCard = ({
 
 	const statusRaw = expense.status?.trim() || "approved";
 	const statusLabel = expenseStatusLabel(statusRaw);
+	const expenseCurrency = expense.space_currency ?? expense.currency;
 	const expenseEntity = toExpenseRecordEntity(expense, {
-		amountLabel: formatMoney(expense.total),
+		amountLabel: formatMoney(
+			expense.space_total ?? expense.total,
+			expenseCurrency,
+		),
 	});
 	const effectiveSourceDocumentId =
 		sourceDocumentId ?? expense.source_document_id ?? null;
@@ -212,7 +216,10 @@ export const ExpenseMessageCard = ({
 									{expenseEntity.title}
 								</div>
 								<div className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
-									{formatMoney(expense.total)}
+									{formatMoney(
+										expense.space_total ?? expense.total,
+										expenseCurrency,
+									)}
 								</div>
 							</div>
 							{expenseEntity.subtitle ? (
@@ -241,7 +248,10 @@ export const ExpenseMessageCard = ({
 											{expenseItemTitle(it, idx)}
 										</span>
 										<span className="shrink-0 tabular-nums text-muted-foreground">
-											{formatMoney(it.amount)}
+											{formatMoney(
+												it.space_amount ?? it.amount,
+												it.space_currency ?? expenseCurrency,
+											)}
 										</span>
 									</div>
 								))}
@@ -301,7 +311,7 @@ export const ExpenseMessageCard = ({
 						</span>
 					</div>
 					<div className="mt-0.5 text-sm font-semibold">
-						{formatMoney(expense.total)}
+						{formatMoney(expense.space_total ?? expense.total, expenseCurrency)}
 					</div>
 				</div>
 				<div className="shrink-0 text-[10px] text-muted-foreground">
@@ -318,7 +328,10 @@ export const ExpenseMessageCard = ({
 							key={`${idx}-${it.name}`}
 							trailing={
 								<span className="rounded-xl border border-[rgba(110,104,92,0.14)] bg-white/70 px-3 py-2 text-xs font-semibold tabular-nums text-foreground shadow-sm">
-									{formatMoney(it.amount)}
+									{formatMoney(
+										it.space_amount ?? it.amount,
+										it.space_currency ?? expenseCurrency,
+									)}
 								</span>
 							}
 						/>
