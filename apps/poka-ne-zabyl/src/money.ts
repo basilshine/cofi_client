@@ -78,3 +78,20 @@ export const expenseDisplayMoney = (
 			? code(expense.source_currency || expense.currency) || targetCurrency
 			: code(targetCurrency),
 });
+
+export const itemDisplayMoney = (
+	item: MoneyItem,
+	expense: MoneyExpense,
+	targetCurrency: string,
+) => {
+	const converted = itemAmountInCurrency(item, expense, targetCurrency);
+	return {
+		amount: converted ?? item.source_amount ?? item.amount ?? 0,
+		currency:
+			converted === null
+				? code(
+						item.source_currency || expense.source_currency || expense.currency,
+					) || targetCurrency
+				: code(targetCurrency),
+	};
+};

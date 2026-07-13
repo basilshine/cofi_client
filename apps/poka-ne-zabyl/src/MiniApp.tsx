@@ -23,6 +23,7 @@ import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
 	itemAmountInCurrency,
+	itemDisplayMoney,
 } from "./money";
 import { commonVendorName, findVendorByName, vendorFieldValue } from "./vendor";
 
@@ -105,6 +106,12 @@ type Expense = {
 	source_currency?: string;
 	space_currency?: string;
 	items: ExpenseItem[];
+};
+
+type ExpenseItemRow = {
+	expense: Expense;
+	item: ExpenseItem;
+	itemIndex: number;
 };
 
 type User = {
@@ -411,6 +418,7 @@ export const MiniApp = () => {
 	const [vendorID, setVendorID] = useState(0);
 	const [query, setQuery] = useState("");
 	const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+	const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 	const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 	const [editingProfile, setEditingProfile] = useState<User | null>(null);
@@ -657,33 +665,31 @@ export const MiniApp = () => {
 		}
 	};
 
-	const filteredExpenses = useMemo(() => {
+	const filteredItems = useMemo(() => {
 		const normalizedQuery = query.trim().toLocaleLowerCase("ru");
 		const start = periodStart(period);
-		return expenses.filter((expense) => {
+		return expenseItemRows(expenses).filter(({ expense, item }) => {
 			const date = new Date(`${expense.expense_date}T00:00:00`);
-			const categoryMatches =
-				categoryID === 0 ||
-				expense.items.some((item) => item.category_id === categoryID);
-			const vendorMatches =
-				vendorID === 0 ||
-				expense.vendor_id === vendorID ||
-				expense.items.some((item) => item.vendor_id === vendorID);
+			const itemVendorID = item.vendor_id || expense.vendor_id;
 			const text = [
+				item.name,
+				item.notes,
+				item.vendor_name,
+				item.vendor?.name,
 				expense.title,
 				expense.payee_text,
 				expense.vendor_name,
 				expense.vendor?.name,
-				...expense.items.map((item) => item.name),
-				...expense.items.map((item) => item.vendor_name || item.vendor?.name),
+				item.category_name,
+				item.category?.name,
 			]
 				.filter(Boolean)
 				.join(" ")
 				.toLocaleLowerCase("ru");
 			return (
 				(!start || date >= start) &&
-				categoryMatches &&
-				vendorMatches &&
+				(categoryID === 0 || item.category_id === categoryID) &&
+				(vendorID === 0 || itemVendorID === vendorID) &&
 				(!normalizedQuery || text.includes(normalizedQuery))
 			);
 		});
@@ -731,6 +737,12 @@ export const MiniApp = () => {
 	const saveExpense = async () => {
 		if (!editingExpense) return;
 		const creating = editingExpense.id === 0;
+		const editingSingleItem = editingItemIndex !== null;
+		const successNotice = creating
+			? "Расход добавлен"
+			: editingSingleItem
+				? "Покупка сохранена"
+				: "Расход сохранён";
 		if (previewMode) {
 			const saved = creating
 				? {
@@ -754,7 +766,8 @@ export const MiniApp = () => {
 						),
 			);
 			setEditingExpense(null);
-			setNotice(creating ? "Расход добавлен" : "Расход сохранён");
+			setEditingItemIndex(null);
+			setNotice(successNotice);
 			return;
 		}
 		setSaving(true);
@@ -852,11 +865,16 @@ export const MiniApp = () => {
 				);
 			}
 			setEditingExpense(null);
-			setNotice(creating ? "Расход добавлен" : "Расход сохранён");
+			setEditingItemIndex(null);
+			setNotice(successNotice);
 			await loadSpace();
 		} catch (err) {
 			setNotice(
-				err instanceof Error ? err.message : "Не удалось сохранить расход",
+				err instanceof Error
+					? err.message
+					: editingSingleItem
+						? "Не удалось сохранить покупку"
+						: "Не удалось сохранить расход",
 			);
 		} finally {
 			setSaving(false);
@@ -871,6 +889,7 @@ export const MiniApp = () => {
 				current.filter((expense) => expense.id !== editingExpense.id),
 			);
 			setEditingExpense(null);
+			setEditingItemIndex(null);
 			setNotice("Расход удалён");
 			return;
 		}
@@ -882,6 +901,7 @@ export const MiniApp = () => {
 				{ method: "DELETE" },
 			);
 			setEditingExpense(null);
+			setEditingItemIndex(null);
 			setNotice("Расход удалён");
 			await loadSpace();
 		} catch (err) {
@@ -1284,6 +1304,7 @@ export const MiniApp = () => {
 	const addExpense = () => {
 		const category =
 			categories.find((item) => item.key === "other") || categories[0];
+		setEditingItemIndex(null);
 		setEditingExpense({
 			id: 0,
 			user_id: user?.id || 0,
@@ -1294,6 +1315,14 @@ export const MiniApp = () => {
 			currency,
 			space_currency: currency,
 			items: [{ name: "", amount: 0, category_id: category?.id }],
+		});
+	};
+
+	const editExpenseItem = ({ expense, itemIndex }: ExpenseItemRow) => {
+		setEditingItemIndex(itemIndex);
+		setEditingExpense({
+			...expense,
+			items: expense.items.map((item) => ({ ...item })),
 		});
 	};
 
@@ -1381,7 +1410,7 @@ export const MiniApp = () => {
 						)}
 						{view === "expenses" && (
 							<ExpensesView
-								expenses={filteredExpenses}
+								items={filteredItems}
 								categories={categories}
 								vendors={vendors}
 								currency={currency}
@@ -1393,7 +1422,7 @@ export const MiniApp = () => {
 								onCategory={setCategoryID}
 								onVendor={setVendorID}
 								onQuery={setQuery}
-								onEdit={setEditingExpense}
+								onEdit={editExpenseItem}
 								onAdd={addExpense}
 							/>
 						)}
@@ -1504,7 +1533,7 @@ export const MiniApp = () => {
 				/>
 			</nav>
 
-			{editingExpense && (
+			{editingExpense && editingItemIndex === null && (
 				<ExpenseEditor
 					expense={editingExpense}
 					categories={categories}
@@ -1515,6 +1544,28 @@ export const MiniApp = () => {
 					onClose={() => setEditingExpense(null)}
 					onSave={saveExpense}
 					onDelete={editingExpense.id > 0 ? deleteExpense : undefined}
+				/>
+			)}
+			{editingExpense && editingItemIndex !== null && (
+				<ExpenseItemEditor
+					expense={editingExpense}
+					item={editingExpense.items[editingItemIndex]}
+					categories={categories}
+					vendors={vendors}
+					saving={saving}
+					onChange={(item) =>
+						setEditingExpense({
+							...editingExpense,
+							items: editingExpense.items.map((current, index) =>
+								index === editingItemIndex ? item : current,
+							),
+						})
+					}
+					onClose={() => {
+						setEditingExpense(null);
+						setEditingItemIndex(null);
+					}}
+					onSave={saveExpense}
 				/>
 			)}
 			{editingVendor && (
@@ -2027,7 +2078,7 @@ const Overview = ({
 };
 
 const ExpensesView = ({
-	expenses,
+	items,
 	categories,
 	vendors,
 	currency,
@@ -2042,7 +2093,7 @@ const ExpensesView = ({
 	onEdit,
 	onAdd,
 }: {
-	expenses: Expense[];
+	items: ExpenseItemRow[];
 	categories: Category[];
 	vendors: Vendor[];
 	currency: string;
@@ -2054,7 +2105,7 @@ const ExpensesView = ({
 	onCategory: (id: number) => void;
 	onVendor: (id: number) => void;
 	onQuery: (value: string) => void;
-	onEdit: (expense: Expense) => void;
+	onEdit: (item: ExpenseItemRow) => void;
 	onAdd: () => void;
 }) => (
 	<section className="mini-view">
@@ -2080,16 +2131,17 @@ const ExpensesView = ({
 			<div>
 				<small>Найдено</small>
 				<span>
-					{expenses.length} {expenseWord(expenses.length)}
+					{items.length} {itemWord(items.length)}
 				</span>
 			</div>
 			<div>
 				<small>Итого</small>
 				<strong>
 					{formatMoney(
-						expenses.reduce(
-							(sum, expense) =>
-								sum + (expenseAmountInCurrency(expense, currency) ?? 0),
+						items.reduce(
+							(sum, row) =>
+								sum +
+								(itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
 							0,
 						),
 						currency,
@@ -2133,8 +2185,61 @@ const ExpensesView = ({
 				))}
 			</select>
 		</div>
-		<ExpenseList expenses={expenses} currency={currency} onEdit={onEdit} />
+		<ExpenseItemList
+			items={items}
+			categories={categories}
+			currency={currency}
+			onEdit={onEdit}
+		/>
 	</section>
+);
+
+const ExpenseItemList = ({
+	items,
+	categories,
+	currency,
+	onEdit,
+}: {
+	items: ExpenseItemRow[];
+	categories: Category[];
+	currency: string;
+	onEdit: (item: ExpenseItemRow) => void;
+}) => (
+	<div className="mini-expenses">
+		{items.map((row) => {
+			const money = itemDisplayMoney(row.item, row.expense, currency);
+			const seller = expenseItemSellerName(row.item, row.expense);
+			const category =
+				row.item.category_name ||
+				row.item.category?.name ||
+				categories.find((current) => current.id === row.item.category_id)
+					?.name ||
+				"Другое";
+			return (
+				<button
+					key={`${row.expense.id}-${row.item.id || row.itemIndex}`}
+					type="button"
+					onClick={() => onEdit(row)}
+				>
+					<span className="mini-expense-icon">
+						<Receipt size={19} />
+					</span>
+					<span className="mini-expense-copy">
+						<b>{row.item.name || "Покупка"}</b>
+						<small>
+							<span className="mini-vendor-chip">{seller}</span>
+							{category}
+						</small>
+					</span>
+					<span className="mini-expense-amount">
+						<b>{formatMoney(money.amount, money.currency)}</b>
+						<small>{formatDate(row.expense.expense_date)}</small>
+					</span>
+				</button>
+			);
+		})}
+		{items.length === 0 && <Empty text="Ничего не найдено" />}
+	</div>
 );
 
 const ExpenseList = ({
@@ -2184,6 +2289,19 @@ const expenseSellerName = (expense: Expense) =>
 	expense.items.find((item) => item.vendor?.name)?.vendor?.name ||
 	expense.payee_text ||
 	"Продавец не определён";
+
+const expenseItemSellerName = (item: ExpenseItem, expense: Expense) =>
+	item.vendor_name ||
+	item.vendor?.name ||
+	expense.vendor_name ||
+	expense.vendor?.name ||
+	expense.payee_text ||
+	"Продавец не определён";
+
+const expenseItemRows = (expenses: Expense[]): ExpenseItemRow[] =>
+	expenses.flatMap((expense) =>
+		expense.items.map((item, itemIndex) => ({ expense, item, itemIndex })),
+	);
 
 const CategoriesView = ({
 	categories,
@@ -2681,6 +2799,135 @@ const ExpenseEditor = ({
 	);
 };
 
+const ExpenseItemEditor = ({
+	expense,
+	item,
+	categories,
+	vendors,
+	saving,
+	onChange,
+	onClose,
+	onSave,
+}: {
+	expense: Expense;
+	item: ExpenseItem;
+	categories: Category[];
+	vendors: Vendor[];
+	saving: boolean;
+	onChange: (item: ExpenseItem) => void;
+	onClose: () => void;
+	onSave: () => void;
+}) => {
+	const vendorName = vendorFieldValue(
+		item.vendor_name,
+		item.vendor?.name,
+		vendors.find((vendor) => vendor.id === item.vendor_id)?.name,
+		expenseItemSellerName(item, expense),
+	);
+
+	return (
+		<Modal title="Редактировать покупку" onClose={onClose}>
+			<p className="mini-field-note">
+				{expense.title || "Расход"} · {formatDate(expense.expense_date)}
+			</p>
+			<label>
+				Название
+				<input
+					value={item.name}
+					onChange={(event) => onChange({ ...item, name: event.target.value })}
+				/>
+			</label>
+			<label>
+				Сумма
+				<input
+					type="number"
+					min="0"
+					step="0.01"
+					value={item.amount}
+					onChange={(event) =>
+						onChange({ ...item, amount: Number(event.target.value) })
+					}
+				/>
+			</label>
+			<label>
+				Категория
+				<select
+					value={item.category_id || 0}
+					onChange={(event) => {
+						const category = categories.find(
+							(current) => current.id === Number(event.target.value),
+						);
+						onChange({
+							...item,
+							category_id: category?.id,
+							category_name: category?.name,
+							category: category
+								? { id: category.id, name: category.name }
+								: undefined,
+						});
+					}}
+				>
+					{categories.map((category) => (
+						<option key={category.id} value={category.id}>
+							{category.name}
+						</option>
+					))}
+				</select>
+			</label>
+			<label>
+				Продавец
+				<input
+					list="expense-item-vendors"
+					placeholder="Не определён"
+					value={vendorName}
+					onChange={(event) => {
+						const selectedVendor = findVendorByName(
+							vendors,
+							event.target.value,
+						);
+						onChange({
+							...item,
+							vendor_id: selectedVendor?.id,
+							vendor_name: selectedVendor?.name ?? event.target.value,
+							vendor: selectedVendor,
+						});
+					}}
+				/>
+				<datalist id="expense-item-vendors">
+					{vendors.flatMap((vendor) => [
+						<option key={`item-vendor-${vendor.id}`} value={vendor.name} />,
+						...(vendor.aliases || []).map((alias, index) => (
+							<option
+								key={`item-vendor-${vendor.id}-alias-${index}`}
+								value={alias.alias}
+								label={`→ ${vendor.name}`}
+							/>
+						)),
+					])}
+				</datalist>
+			</label>
+			<label>
+				Заметка
+				<textarea
+					rows={3}
+					value={item.notes || ""}
+					onChange={(event) => onChange({ ...item, notes: event.target.value })}
+				/>
+			</label>
+			<div className="mini-modal-actions">
+				<button
+					className="mini-save"
+					type="button"
+					disabled={saving || !item.name.trim() || item.amount <= 0}
+					onClick={onSave}
+				>
+					{saving ? "Сохраняем…" : "Сохранить"}
+				</button>
+			</div>
+		</Modal>
+	);
+};
+
 const VendorEditor = ({
 	vendor,
 	vendors,
@@ -3142,6 +3389,14 @@ const expenseWord = (count: number) =>
 				(count % 100 < 10 || count % 100 >= 20)
 			? "расхода"
 			: "расходов";
+const itemWord = (count: number) =>
+	count % 10 === 1 && count % 100 !== 11
+		? "покупка"
+		: count % 10 >= 2 &&
+				count % 10 <= 4 &&
+				(count % 100 < 10 || count % 100 >= 20)
+			? "покупки"
+			: "покупок";
 const memberRole = (role: string) =>
 	({ owner: "Владелец", admin: "Администратор", editor: "Редактор" })[role] ||
 	"Участник";

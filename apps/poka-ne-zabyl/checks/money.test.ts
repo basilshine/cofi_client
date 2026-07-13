@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { expenseAmountInCurrency, expenseDisplayMoney } from "../src/money.ts";
+import {
+	expenseAmountInCurrency,
+	expenseDisplayMoney,
+	itemDisplayMoney,
+} from "../src/money.ts";
 
 const expense = {
 	total: 320,
@@ -58,4 +62,27 @@ test("uses server reporting amounts for profile totals", () => {
 		amount: 25600,
 		currency: "RUB",
 	});
+});
+
+test("shows one expense item in the requested profile currency", () => {
+	const convertedExpense = {
+		total: 320,
+		currency: "USD",
+		reporting_total: 25600,
+		reporting_currency: "RUB",
+		items: [{ amount: 320, reporting_amount: 25600 }],
+	};
+
+	assert.deepEqual(
+		itemDisplayMoney(convertedExpense.items[0], convertedExpense, "RUB"),
+		{ amount: 25600, currency: "RUB" },
+	);
+	assert.deepEqual(
+		itemDisplayMoney(
+			{ amount: 12, source_currency: "EUR" },
+			{ currency: "EUR", items: [] },
+			"THB",
+		),
+		{ amount: 12, currency: "EUR" },
+	);
 });
