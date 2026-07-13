@@ -697,13 +697,7 @@ export const MiniApp = () => {
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
 	const currency = user?.currency || activeSpace?.currency || "RUB";
-	const overviewExpenses = useMemo(() => {
-		const start = periodStart("month");
-		return expenses.filter(
-			(expense) =>
-				!start || new Date(`${expense.expense_date}T00:00:00`) >= start,
-		);
-	}, [expenses]);
+	const overviewExpenses = expenses;
 	const overviewTotal = overviewExpenses.reduce(
 		(sum, expense) => sum + (expenseAmountInCurrency(expense, currency) ?? 0),
 		0,
@@ -2027,7 +2021,7 @@ const Overview = ({
 		<section className="mini-view">
 			<div className="mini-title">
 				<p>Привет{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p>
-				<h1>Расходы за месяц</h1>
+				<h1>Все расходы</h1>
 			</div>
 			<div className="mini-total">
 				<span>Всего</span>
@@ -2059,7 +2053,7 @@ const Overview = ({
 					</button>
 				))}
 				{categories.length === 0 && (
-					<Empty text="В этом месяце пока нет расходов" />
+					<Empty text="В этом пространстве пока нет расходов" />
 				)}
 			</div>
 			<div className="mini-section-head">
