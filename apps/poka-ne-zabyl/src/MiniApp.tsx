@@ -39,6 +39,7 @@ type Space = {
 	id: number;
 	tenant_id: number;
 	owner_user_id: number;
+	is_personal: boolean;
 	name: string;
 	description?: string;
 	currency: string;
@@ -452,6 +453,7 @@ export const MiniApp = () => {
 					id: 1,
 					tenant_id: 1,
 					owner_user_id: 1,
+					is_personal: true,
 					name: "Личные расходы",
 					currency: "RUB",
 				},
@@ -1075,19 +1077,23 @@ export const MiniApp = () => {
 	};
 
 	const deleteSpace = async () => {
-		if (!editingSpace?.id) return;
+		if (!editingSpace?.id || editingSpace.is_personal) return;
 		const owned = editingSpace.owner_user_id === user?.id;
 		if (
 			!window.confirm(
 				owned
-					? `Удалить «${editingSpace.name}» вместе со всеми расходами? Это действие нельзя отменить.`
+					? `Удалить «${editingSpace.name}»? Расходы и записи будут перенесены в «Личное».`
 					: `Покинуть пространство «${editingSpace.name}»?`,
 			)
 		)
 			return;
 		const remaining = spaces.filter(({ id }) => id !== editingSpace.id);
 		const nextSpaceID =
-			spaceID === editingSpace.id ? remaining[0]?.id || 0 : spaceID;
+			spaceID === editingSpace.id
+				? remaining.find(({ is_personal }) => is_personal)?.id ||
+					remaining[0]?.id ||
+					0
+				: spaceID;
 		if (!previewMode) {
 			setSaving(true);
 			try {
@@ -1268,10 +1274,11 @@ export const MiniApp = () => {
 								onEdit={(space) => setEditingSpace({ ...space })}
 								onAdd={() =>
 									setEditingSpace({
-										id: 0,
-										tenant_id: activeSpace?.tenant_id || 0,
-										owner_user_id: user?.id || 0,
-										name: "",
+								id: 0,
+								tenant_id: activeSpace?.tenant_id || 0,
+								owner_user_id: user?.id || 0,
+								is_personal: false,
+								name: "",
 										currency: user?.currency || "RUB",
 									})
 								}
@@ -1391,7 +1398,11 @@ export const MiniApp = () => {
 					onChange={setEditingSpace}
 					onClose={() => setEditingSpace(null)}
 					onSave={saveSpace}
-					onDelete={editingSpace.id ? deleteSpace : undefined}
+					onDelete={
+						editingSpace.id && !editingSpace.is_personal
+							? deleteSpace
+							: undefined
+					}
 				/>
 			)}
 		</div>
@@ -2628,6 +2639,7 @@ const SpaceEditor = ({
 		<label>
 			Название
 			<input
+				disabled={space.is_personal}
 				maxLength={120}
 				value={space.name}
 				onChange={(event) => onChange({ ...space, name: event.target.value })}
