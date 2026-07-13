@@ -872,6 +872,36 @@ export const MiniApp = () => {
 		}
 	};
 
+	const deleteExpense = async () => {
+		if (!editingExpense || editingExpense.id === 0) return;
+		if (!window.confirm(`Удалить расход «${editingExpense.title}»?`)) return;
+		if (previewMode) {
+			setExpenses((current) =>
+				current.filter((expense) => expense.id !== editingExpense.id),
+			);
+			setEditingExpense(null);
+			setNotice("Расход удалён");
+			return;
+		}
+		setSaving(true);
+		try {
+			await apiRequest(
+				`/spaces/${spaceID}/expenses/${editingExpense.id}`,
+				token,
+				{ method: "DELETE" },
+			);
+			setEditingExpense(null);
+			setNotice("Расход удалён");
+			await loadSpace();
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось удалить расход",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	const saveVendor = async () => {
 		if (!editingVendor) return;
 		const creating = editingVendor.id === 0;
@@ -1376,6 +1406,7 @@ export const MiniApp = () => {
 					onChange={setEditingExpense}
 					onClose={() => setEditingExpense(null)}
 					onSave={saveExpense}
+					onDelete={editingExpense.id > 0 ? deleteExpense : undefined}
 				/>
 			)}
 			{editingVendor && (
@@ -2289,6 +2320,7 @@ const ExpenseEditor = ({
 	onChange,
 	onClose,
 	onSave,
+	onDelete,
 }: {
 	expense: Expense;
 	categories: Category[];
@@ -2298,6 +2330,7 @@ const ExpenseEditor = ({
 	onChange: (expense: Expense) => void;
 	onClose: () => void;
 	onSave: () => void;
+	onDelete?: () => void;
 }) => {
 	const fallbackVendorName =
 		expense.payee_text ||
@@ -2475,18 +2508,31 @@ const ExpenseEditor = ({
 					</div>
 				))}
 			</div>
-			<button
-				className="mini-save"
-				type="button"
-				disabled={
-					saving ||
-					!expense.title.trim() ||
-					expense.items.some((item) => !item.name.trim() || item.amount <= 0)
-				}
-				onClick={onSave}
-			>
-				{saving ? "Сохраняем…" : "Сохранить"}
-			</button>
+			<div className="mini-modal-actions">
+				<button
+					className="mini-save"
+					type="button"
+					disabled={
+						saving ||
+						!expense.title.trim() ||
+						expense.items.some((item) => !item.name.trim() || item.amount <= 0)
+					}
+					onClick={onSave}
+				>
+					{saving ? "Сохраняем…" : "Сохранить"}
+				</button>
+				{onDelete && (
+					<button
+						className="mini-delete"
+						type="button"
+						disabled={saving}
+						onClick={onDelete}
+					>
+						<Trash size={18} />
+						Удалить расход
+					</button>
+				)}
+			</div>
 		</Modal>
 	);
 };
@@ -2773,30 +2819,37 @@ const Modal = ({
 	title,
 	children,
 	onClose,
-}: { title: string; children: React.ReactNode; onClose: () => void }) => (
-	<div
-		className="mini-modal-backdrop"
-		role="presentation"
-		onMouseDown={(event) => {
-			if (event.target === event.currentTarget) onClose();
-		}}
-	>
-		<section
-			className="mini-modal"
-			role="dialog"
-			aria-modal="true"
-			aria-label={title}
+}: { title: string; children: React.ReactNode; onClose: () => void }) => {
+	useEffect(() => {
+		document.body.classList.add("mini-modal-open");
+		return () => document.body.classList.remove("mini-modal-open");
+	}, []);
+
+	return (
+		<div
+			className="mini-modal-backdrop"
+			role="presentation"
+			onMouseDown={(event) => {
+				if (event.target === event.currentTarget) onClose();
+			}}
 		>
-			<header>
-				<h2>{title}</h2>
-				<button type="button" aria-label="Закрыть" onClick={onClose}>
-					<X size={21} />
-				</button>
-			</header>
-			{children}
-		</section>
-	</div>
-);
+			<section
+				className="mini-modal"
+				role="dialog"
+				aria-modal="true"
+				aria-label={title}
+			>
+				<header>
+					<h2>{title}</h2>
+					<button type="button" aria-label="Закрыть" onClick={onClose}>
+						<X size={21} />
+					</button>
+				</header>
+				{children}
+			</section>
+		</div>
+	);
+};
 
 const NavButton = ({
 	active,
