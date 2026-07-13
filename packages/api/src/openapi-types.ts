@@ -6331,7 +6331,9 @@ export interface components {
             /** @enum {string} */
             status?: "pending_review" | "confirmed" | "ignored" | "merged" | "projected" | "expired";
             amount?: number;
-            /** @description Candidate-derived preview amount when available, for example expense totals or item line amounts. */
+            /** Format: int64 */
+            vendor_id?: number;
+            /** @description Canonical seller name resolved while creating the candidate. */
             vendor_name?: string;
             /** @description Candidate-derived preview currency when available. */
             currency?: components["schemas"]["CurrencyCode"];
