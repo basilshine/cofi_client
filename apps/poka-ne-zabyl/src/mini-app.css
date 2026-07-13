@@ -809,6 +809,317 @@
 	background-size: 200% 100%;
 	animation: mini-pulse 1.2s infinite;
 }
+.mini-review-app {
+	padding: 0;
+	background: #eceae4;
+}
+.review-shell {
+	width: min(720px, 100%);
+	min-height: 100vh;
+	margin: 0 auto;
+	padding-bottom: calc(92px + env(safe-area-inset-bottom));
+}
+.review-topbar {
+	position: sticky;
+	z-index: 20;
+	top: 0;
+	display: grid;
+	grid-template-columns: 42px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 12px;
+	min-height: 66px;
+	padding: env(safe-area-inset-top) 16px 0;
+	border-bottom: 1px solid rgba(31, 33, 29, 0.1);
+	background: rgba(244, 241, 234, 0.96);
+	backdrop-filter: blur(18px);
+}
+.review-topbar > button {
+	display: grid;
+	width: 38px;
+	height: 38px;
+	place-items: center;
+	border: 0;
+	border-radius: 50%;
+	background: #e3e1da;
+	color: var(--mini-ink);
+}
+.review-topbar > div {
+	display: grid;
+	gap: 1px;
+}
+.review-topbar span {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.review-topbar b {
+	font-size: 16px;
+}
+.review-currency {
+	padding: 6px 8px;
+	border: 1px solid #cbc9c1;
+	border-radius: 5px;
+	color: var(--mini-ink) !important;
+	font-weight: 750;
+}
+.review-source {
+	position: relative;
+	margin: 0;
+	background: #262723;
+}
+.review-source img {
+	display: block;
+	width: 100%;
+	max-height: 34vh;
+	object-fit: contain;
+}
+.review-source figcaption {
+	position: absolute;
+	right: 12px;
+	bottom: 10px;
+	padding: 5px 8px;
+	border-radius: 4px;
+	background: rgba(25, 26, 23, 0.78);
+	color: white;
+	font-size: 11px;
+}
+.review-paper {
+	display: grid;
+	gap: 18px;
+	margin: 14px;
+	padding: 20px 16px 24px;
+	border: 1px solid #d7d4cb;
+	border-radius: 8px;
+	background: #fffefa;
+	box-shadow: 0 5px 20px rgba(31, 33, 29, 0.06);
+}
+.review-field {
+	display: grid;
+	gap: 6px;
+}
+.review-field > span {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.review-field input,
+.review-field select,
+.review-line input,
+.review-line select {
+	width: 100%;
+	min-height: 43px;
+	padding: 0 10px;
+	border: 1px solid #d6d4cc;
+	border-radius: 5px;
+	background: white;
+	color: var(--mini-ink);
+}
+.review-field--title input {
+	min-height: 48px;
+	font-size: 20px;
+	font-weight: 700;
+}
+.review-meta {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(138px, 0.72fr);
+	gap: 10px;
+}
+.review-lines-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-top: 4px;
+	border-top: 1px dashed #cbc9c0;
+}
+.review-lines-head h2 {
+	margin: 0;
+	font-size: 16px;
+}
+.review-lines-head span {
+	display: grid;
+	width: 28px;
+	height: 28px;
+	place-items: center;
+	border-radius: 50%;
+	background: #e8ece7;
+	color: var(--mini-green);
+	font-size: 12px;
+	font-weight: 750;
+}
+.review-lines {
+	display: grid;
+	gap: 10px;
+}
+.review-line {
+	display: grid;
+	grid-template-columns: 26px minmax(0, 1fr) 110px 38px;
+	gap: 7px;
+	align-items: center;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #ebe9e2;
+}
+.review-line-number {
+	color: #94978f;
+	font: 12px ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+.review-line-controls {
+	position: relative;
+}
+.review-line-controls input {
+	padding-right: 39px;
+	text-align: right;
+}
+.review-line-controls span {
+	position: absolute;
+	right: 8px;
+	top: 15px;
+	color: var(--mini-muted);
+	font-size: 10px;
+}
+.review-line > select {
+	grid-column: 2 / 4;
+	min-height: 38px;
+}
+.review-line > button {
+	display: grid;
+	grid-column: 4;
+	grid-row: 1 / 3;
+	width: 36px;
+	height: 36px;
+	place-items: center;
+	border: 0;
+	border-radius: 50%;
+	background: #f7ece9;
+	color: var(--mini-red);
+}
+.review-add-line {
+	display: inline-flex;
+	min-height: 42px;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	border: 1px dashed #aeb8b0;
+	border-radius: 6px;
+	background: #f6f7f3;
+	color: var(--mini-green);
+	font-weight: 700;
+}
+.review-total-row {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	padding-top: 17px;
+	border-top: 2px solid var(--mini-ink);
+}
+.review-total-row span {
+	font-weight: 700;
+}
+.review-total-row strong {
+	font-size: 25px;
+}
+.review-actions {
+	position: fixed;
+	z-index: 25;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+	border-top: 1px solid rgba(31, 33, 29, 0.1);
+	background: rgba(255, 254, 250, 0.96);
+	backdrop-filter: blur(18px);
+}
+.review-actions button,
+.review-saved > button {
+	width: min(692px, 100%);
+	min-height: 52px;
+	margin: 0 auto;
+	border: 0;
+	border-radius: 7px;
+	background: var(--mini-green);
+	color: white;
+	font-weight: 750;
+}
+.review-actions button:disabled {
+	opacity: 0.45;
+}
+.review-saved {
+	display: grid;
+	min-height: 100vh;
+	align-content: center;
+	justify-items: center;
+	gap: 9px;
+	padding: calc(24px + env(safe-area-inset-top)) 18px
+		calc(24px + env(safe-area-inset-bottom));
+}
+.review-saved-mark {
+	display: grid;
+	width: 72px;
+	height: 72px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-green);
+	color: white;
+	animation: review-mark-in 320ms ease-out both;
+}
+.review-saved > p {
+	margin: 8px 0 0;
+	color: var(--mini-green);
+	font-size: 12px;
+	font-weight: 750;
+	text-transform: uppercase;
+}
+.review-saved > h1 {
+	margin: 0 0 13px;
+	font-size: 28px;
+}
+.review-saved > article {
+	width: min(430px, 100%);
+	padding: 22px 18px;
+	border: 1px solid #d7d4cb;
+	border-radius: 8px;
+	background: #fffefa;
+	box-shadow: 0 8px 28px rgba(31, 33, 29, 0.08);
+}
+.review-saved article header,
+.review-saved article div,
+.review-saved article footer {
+	display: flex;
+	justify-content: space-between;
+	gap: 16px;
+}
+.review-saved article header {
+	padding-bottom: 15px;
+	border-bottom: 1px dashed #cbc9c0;
+}
+.review-saved article div {
+	padding: 11px 0;
+	border-bottom: 1px solid #eceae3;
+}
+.review-saved article footer {
+	align-items: baseline;
+	padding-top: 18px;
+	font-weight: 750;
+}
+.review-saved article footer strong {
+	font-size: 22px;
+}
+.review-saved > button {
+	width: min(430px, 100%);
+	margin-top: 15px;
+}
+@keyframes review-mark-in {
+	from {
+		transform: scale(0.72);
+		opacity: 0;
+	}
+	to {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.review-saved-mark {
+		animation: none;
+	}
+}
 @keyframes mini-pulse {
 	to {
 		background-position: -200% 0;

@@ -1787,6 +1787,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/integrations/telegram/review-messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Bind a bot review message to a captured source document
+         * @description Internal bot-only route. The Telegram chat must match the capture source context.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        source_document_id: number;
+                        /** Format: int64 */
+                        telegram_chat_id: number;
+                        /** Format: int64 */
+                        telegram_message_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Review message bound */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Missing or invalid internal API key */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Telegram chat does not match the capture source */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/expenses": {
         parameters: {
             query?: never;
@@ -6698,6 +6760,23 @@ export interface components {
         };
         CreateExpenseCandidateRequest: {
             currency_decision?: components["schemas"]["CurrencyDecisionRequest"];
+            review?: components["schemas"]["ExpenseCandidateReview"];
+        };
+        /** @description Optional user corrections applied atomically while the pending candidate is projected. */
+        ExpenseCandidateReview: {
+            title: string;
+            payee_text?: string;
+            /** Format: date */
+            expense_date?: string;
+            source_currency?: components["schemas"]["CurrencyCode"];
+            items: components["schemas"]["ExpenseCandidateReviewItem"][];
+        };
+        ExpenseCandidateReviewItem: {
+            name: string;
+            amount: number;
+            category_key?: string;
+            vendor_name?: string;
+            notes?: string;
         };
         CreateExpenseCandidateResponse: {
             expense?: components["schemas"]["Expense"];

@@ -30,7 +30,8 @@ type View =
 	| "vendors"
 	| "categories"
 	| "spaces"
-	| "profile";
+	| "profile"
+	| "review";
 type Period = "month" | "three-months" | "year" | "all";
 
 type Space = {
@@ -125,6 +126,37 @@ type AuthResponse = { token: string; user: User };
 type CaptureResponse = {
 	candidates?: { id: number; candidate_type: string }[];
 };
+
+type ReviewCandidate = {
+	id: number;
+	source_document_id: number;
+	candidate_type: string;
+	title: string;
+	status: string;
+	structured_data?: Record<string, unknown>;
+};
+
+type ReviewDraftItem = {
+	key: string;
+	name: string;
+	amount: number;
+	category_key: string;
+	vendor_name: string;
+	notes: string;
+};
+
+type ReviewDraft = {
+	candidateID: number;
+	sourceDocumentID: number;
+	title: string;
+	payeeText: string;
+	expenseDate: string;
+	sourceCurrency: string;
+	items: ReviewDraftItem[];
+};
+
+type ReviewTarget = { spaceID: number; candidateID: number };
+type CapturePacket = { media_object_id?: number; input_kind?: string };
 
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
 const previewMode =
@@ -254,7 +286,23 @@ const apiRequest = async <T,>(
 	return response.json() as Promise<T>;
 };
 
+const reviewTarget = (): ReviewTarget | null => {
+	const query = new URLSearchParams(window.location.search);
+	const directSpace = Number(query.get("space_id"));
+	const directCandidate = Number(query.get("candidate_id"));
+	if (query.get("view") === "review" && directSpace > 0 && directCandidate > 0)
+		return { spaceID: directSpace, candidateID: directCandidate };
+	const startParam =
+		query.get("tgWebAppStartParam") || WebApp.initDataUnsafe.start_param || "";
+	const match = /^r_(\d+)_(\d+)$/.exec(startParam);
+	if (!match) return null;
+	return { spaceID: Number(match[1]), candidateID: Number(match[2]) };
+};
+
+const requestedReview = reviewTarget();
+
 const initialView = (): View => {
+	if (requestedReview) return "review";
 	const requested = new URLSearchParams(window.location.search).get("view");
 	return requested === "expenses" ||
 		requested === "categories" ||
@@ -289,6 +337,11 @@ export const MiniApp = () => {
 	const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 	const [editingProfile, setEditingProfile] = useState<User | null>(null);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
+	const [reviewDraft, setReviewDraft] = useState<ReviewDraft | null>(null);
+	const [reviewMediaURL, setReviewMediaURL] = useState("");
+	const [savedReviewExpense, setSavedReviewExpense] = useState<Expense | null>(
+		null,
+	);
 	const [saving, setSaving] = useState(false);
 
 	useEffect(() => {
@@ -340,6 +393,34 @@ export const MiniApp = () => {
 			setCategories(previewCategories);
 			setVendors(previewVendors);
 			setQuota({ plan: "basic", limit: 100, used: 37, remaining: 63 });
+			if (requestedReview) {
+				setReviewDraft({
+					candidateID: requestedReview.candidateID,
+					sourceDocumentID: 77,
+					title: "Покупки в Ленте",
+					payeeText: "Лента",
+					expenseDate: new Date().toISOString().slice(0, 10),
+					sourceCurrency: "RUB",
+					items: [
+						{
+							key: "preview-milk",
+							name: "Молоко",
+							amount: 200,
+							category_key: "groceries",
+							vendor_name: "Лента",
+							notes: "",
+						},
+						{
+							key: "preview-kefir",
+							name: "Кефир",
+							amount: 100,
+							category_key: "groceries",
+							vendor_name: "Лента",
+							notes: "",
+						},
+					],
+				});
+			}
 			setLoading(false);
 			return;
 		}
@@ -362,7 +443,11 @@ export const MiniApp = () => {
 			setToken(auth.token);
 			setUser(auth.user);
 			setSpaces(availableSpaces);
-			setSpaceID(availableSpaces[0]?.id || 0);
+			setSpaceID(
+				availableSpaces.some((space) => space.id === requestedReview?.spaceID)
+					? requestedReview?.spaceID || 0
+					: availableSpaces[0]?.id || 0,
+			);
 			if (availableSpaces.length === 0)
 				setError("Сначала создайте пространство в боте.");
 		} catch (err) {
@@ -406,6 +491,9 @@ export const MiniApp = () => {
 			setQuota(quotaData);
 			setMembers(memberData.members || []);
 			setVendors(vendorData || []);
+			if (view === "review" && requestedReview) {
+				await loadReview(token, spaceID, requestedReview.candidateID);
+			}
 		} catch (err) {
 			setError(
 				err instanceof Error
@@ -414,6 +502,77 @@ export const MiniApp = () => {
 			);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const loadReview = async (
+		authToken: string,
+		reviewSpaceID: number,
+		candidateID: number,
+	) => {
+		const response = await apiRequest<{ candidates: ReviewCandidate[] }>(
+			`/spaces/${reviewSpaceID}/review/candidates?limit=100`,
+			authToken,
+		);
+		const candidate = response.candidates.find(
+			(item) => item.id === candidateID,
+		);
+		if (!candidate || candidate.candidate_type !== "expense_candidate")
+			throw new Error("Этот расход уже сохранён или больше недоступен");
+		setReviewDraft(reviewDraftFromCandidate(candidate, response.candidates));
+		const packets = await apiRequest<{ captures: CapturePacket[] }>(
+			`/spaces/${reviewSpaceID}/captures?limit=1&source_document_id=${candidate.source_document_id}`,
+			authToken,
+		);
+		const mediaID = packets.captures[0]?.media_object_id;
+		if (!mediaID) return;
+		const media = await fetch(`/api/v1/media/${mediaID}`, {
+			headers: { Authorization: `Bearer ${authToken}` },
+		});
+		if (!media.ok) return;
+		const blob = await media.blob();
+		if (blob.type.startsWith("image/"))
+			setReviewMediaURL(URL.createObjectURL(blob));
+	};
+
+	useEffect(
+		() => () => {
+			if (reviewMediaURL) URL.revokeObjectURL(reviewMediaURL);
+		},
+		[reviewMediaURL],
+	);
+
+	const saveReview = async () => {
+		if (!reviewDraft) return;
+		setSaving(true);
+		setError("");
+		try {
+			const payload = {
+				review: {
+					title: reviewDraft.title,
+					payee_text: reviewDraft.payeeText,
+					expense_date: reviewDraft.expenseDate,
+					source_currency: reviewDraft.sourceCurrency,
+					items: reviewDraft.items.map(({ key: _key, ...item }) => item),
+				},
+			};
+			if (previewMode) {
+				setSavedReviewExpense(reviewExpenseFromDraft(reviewDraft, currency));
+				return;
+			}
+			const result = await apiRequest<{ expense: Expense }>(
+				`/spaces/${spaceID}/review/candidates/${reviewDraft.candidateID}/create-expense`,
+				token,
+				{ method: "POST", body: JSON.stringify(payload) },
+			);
+			setSavedReviewExpense(result.expense);
+			WebApp.HapticFeedback.notificationOccurred("success");
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Не удалось сохранить расход",
+			);
+		} finally {
+			setSaving(false);
 		}
 	};
 
@@ -824,6 +983,34 @@ export const MiniApp = () => {
 
 	if (loading && !token) return <LoadingScreen />;
 	if (error && !token) return <TelegramEntry error={error} />;
+	if (view === "review") {
+		return (
+			<div className="mini-app mini-review-app">
+				{loading ? (
+					<LoadingScreen />
+				) : savedReviewExpense ? (
+					<ReviewSaved
+						expense={savedReviewExpense}
+						onClose={() => WebApp.close()}
+					/>
+				) : reviewDraft ? (
+					<ReviewEditor
+						draft={reviewDraft}
+						mediaURL={reviewMediaURL}
+						categories={categories}
+						vendors={vendors}
+						saving={saving}
+						error={error}
+						onChange={setReviewDraft}
+						onSave={saveReview}
+						onClose={() => WebApp.close()}
+					/>
+				) : (
+					<TelegramEntry error={error || "Кандидат не найден"} />
+				)}
+			</div>
+		);
+	}
 
 	return (
 		<div className="mini-app">
@@ -1048,6 +1235,343 @@ export const MiniApp = () => {
 		</div>
 	);
 };
+
+const reviewDraftFromCandidate = (
+	candidate: ReviewCandidate,
+	candidates: ReviewCandidate[],
+): ReviewDraft => {
+	const data = candidate.structured_data || {};
+	const rawItems = Array.isArray(data.items)
+		? data.items
+		: candidates
+				.filter(
+					(item) =>
+						item.source_document_id === candidate.source_document_id &&
+						item.candidate_type === "expense_item_candidate",
+				)
+				.map((item) => ({ ...item.structured_data, name: item.title }));
+	const sourceCurrency =
+		readString(data, "source_currency", "currency") || "RUB";
+	return {
+		candidateID: candidate.id,
+		sourceDocumentID: candidate.source_document_id,
+		title:
+			candidate.title ||
+			readString(data, "title", "description", "merchant_name") ||
+			"Расход",
+		payeeText: readString(
+			data,
+			"payee_text",
+			"merchant_name",
+			"merchant",
+			"vendor_name",
+		),
+		expenseDate:
+			readString(data, "expense_date", "date", "document_date").slice(0, 10) ||
+			new Date().toISOString().slice(0, 10),
+		sourceCurrency,
+		items: rawItems.map((raw, index) => {
+			const item = objectValue(raw);
+			return {
+				key: `${candidate.id}-${index}`,
+				name: readString(item, "name", "title", "description") || "Позиция",
+				amount: readNumber(item, "source_amount", "amount", "price"),
+				category_key: readString(item, "category_key", "category") || "other",
+				vendor_name:
+					readString(item, "vendor_name", "merchant_name", "merchant") ||
+					readString(data, "payee_text", "merchant_name", "merchant"),
+				notes: readString(item, "notes"),
+			};
+		}),
+	};
+};
+
+const objectValue = (value: unknown): Record<string, unknown> =>
+	value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+
+const readString = (value: Record<string, unknown>, ...keys: string[]) => {
+	for (const key of keys) {
+		if (typeof value[key] === "string" && value[key].trim())
+			return value[key].trim();
+	}
+	return "";
+};
+
+const readNumber = (value: Record<string, unknown>, ...keys: string[]) => {
+	for (const key of keys) {
+		const parsed = Number(value[key]);
+		if (Number.isFinite(parsed) && parsed > 0) return parsed;
+	}
+	return 0;
+};
+
+const reviewExpenseFromDraft = (
+	draft: ReviewDraft,
+	currency: string,
+): Expense => ({
+	id: Date.now(),
+	user_id: 1,
+	title: draft.title,
+	payee_text: draft.payeeText,
+	expense_date: draft.expenseDate,
+	currency,
+	items: draft.items.map((item, index) => ({
+		id: index + 1,
+		name: item.name,
+		amount: item.amount,
+		vendor_name: item.vendor_name,
+	})),
+});
+
+const ReviewEditor = ({
+	draft,
+	mediaURL,
+	categories,
+	vendors,
+	saving,
+	error,
+	onChange,
+	onSave,
+	onClose,
+}: {
+	draft: ReviewDraft;
+	mediaURL: string;
+	categories: Category[];
+	vendors: Vendor[];
+	saving: boolean;
+	error: string;
+	onChange: (draft: ReviewDraft) => void;
+	onSave: () => void;
+	onClose: () => void;
+}) => {
+	const total = draft.items.reduce((sum, item) => sum + Number(item.amount), 0);
+	const invalid =
+		!draft.title.trim() ||
+		draft.items.length === 0 ||
+		draft.items.some((item) => !item.name.trim() || item.amount <= 0);
+	return (
+		<main className="review-shell">
+			<header className="review-topbar">
+				<button type="button" aria-label="Закрыть" onClick={onClose}>
+					<X size={22} />
+				</button>
+				<div>
+					<span>Пока не забыл</span>
+					<b>Проверьте расход</b>
+				</div>
+				<span className="review-currency">{draft.sourceCurrency}</span>
+			</header>
+
+			{mediaURL && (
+				<figure className="review-source">
+					<img src={mediaURL} alt="Исходный чек" />
+					<figcaption>Исходный чек</figcaption>
+				</figure>
+			)}
+
+			<section className="review-paper">
+				<label className="review-field review-field--title">
+					<span>Название</span>
+					<input
+						value={draft.title}
+						onChange={(event) =>
+							onChange({ ...draft, title: event.target.value })
+						}
+					/>
+				</label>
+				<div className="review-meta">
+					<label className="review-field">
+						<span>Продавец</span>
+						<select
+							value={draft.payeeText}
+							onChange={(event) => {
+								const payeeText = event.target.value;
+								onChange({
+									...draft,
+									payeeText,
+									items: draft.items.map((item) => ({
+										...item,
+										vendor_name: item.vendor_name || payeeText,
+									})),
+								});
+							}}
+						>
+							<option value="">Не определён</option>
+							{draft.payeeText &&
+								!vendors.some((vendor) => vendor.name === draft.payeeText) && (
+									<option value={draft.payeeText}>{draft.payeeText}</option>
+								)}
+							{vendors.map((vendor) => (
+								<option key={vendor.id} value={vendor.name}>
+									{vendor.name}
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="review-field">
+						<span>Дата</span>
+						<input
+							type="date"
+							value={draft.expenseDate}
+							onChange={(event) =>
+								onChange({ ...draft, expenseDate: event.target.value })
+							}
+						/>
+					</label>
+				</div>
+
+				<div className="review-lines-head">
+					<h2>Позиции</h2>
+					<span>{draft.items.length}</span>
+				</div>
+				<div className="review-lines">
+					{draft.items.map((item, index) => (
+						<article key={item.key} className="review-line">
+							<div className="review-line-number">{index + 1}</div>
+							<input
+								aria-label={`Название позиции ${index + 1}`}
+								value={item.name}
+								onChange={(event) =>
+									onChange({
+										...draft,
+										items: draft.items.map((current, itemIndex) =>
+											itemIndex === index
+												? { ...current, name: event.target.value }
+												: current,
+										),
+									})
+								}
+							/>
+							<div className="review-line-controls">
+								<input
+									aria-label={`Цена позиции ${index + 1}`}
+									type="number"
+									min="0"
+									step="0.01"
+									value={item.amount}
+									onChange={(event) =>
+										onChange({
+											...draft,
+											items: draft.items.map((current, itemIndex) =>
+												itemIndex === index
+													? { ...current, amount: Number(event.target.value) }
+													: current,
+											),
+										})
+									}
+								/>
+								<span>{draft.sourceCurrency}</span>
+							</div>
+							<select
+								aria-label={`Категория позиции ${index + 1}`}
+								value={item.category_key || "other"}
+								onChange={(event) =>
+									onChange({
+										...draft,
+										items: draft.items.map((current, itemIndex) =>
+											itemIndex === index
+												? { ...current, category_key: event.target.value }
+												: current,
+										),
+									})
+								}
+							>
+								{categories.map((category) => (
+									<option key={category.id} value={category.key}>
+										{category.name}
+									</option>
+								))}
+							</select>
+							<button
+								type="button"
+								aria-label={`Удалить позицию ${index + 1}`}
+								onClick={() =>
+									onChange({
+										...draft,
+										items: draft.items.filter(
+											(_, itemIndex) => itemIndex !== index,
+										),
+									})
+								}
+							>
+								<Trash size={17} />
+							</button>
+						</article>
+					))}
+				</div>
+				<button
+					className="review-add-line"
+					type="button"
+					onClick={() =>
+						onChange({
+							...draft,
+							items: [
+								...draft.items,
+								{
+									key: crypto.randomUUID(),
+									name: "",
+									amount: 0,
+									category_key: "other",
+									vendor_name: draft.payeeText,
+									notes: "",
+								},
+							],
+						})
+					}
+				>
+					<Plus size={17} weight="bold" /> Добавить позицию
+				</button>
+				<div className="review-total-row">
+					<span>Итого</span>
+					<strong>{formatMoney(total, draft.sourceCurrency)}</strong>
+				</div>
+				{error && <div className="mini-alert">{error}</div>}
+			</section>
+			<footer className="review-actions">
+				<button type="button" disabled={saving || invalid} onClick={onSave}>
+					{saving ? "Сохраняем…" : "Сохранить расход"}
+				</button>
+			</footer>
+		</main>
+	);
+};
+
+const ReviewSaved = ({
+	expense,
+	onClose,
+}: { expense: Expense; onClose: () => void }) => (
+	<main className="review-saved">
+		<div className="review-saved-mark">
+			<Check size={34} weight="bold" />
+		</div>
+		<p>Готово</p>
+		<h1>Расход сохранён</h1>
+		<article>
+			<header>
+				<span>{expenseSellerName(expense)}</span>
+				<small>{formatDate(expense.expense_date)}</small>
+			</header>
+			{expense.items.map((item) => (
+				<div key={item.id || item.name}>
+					<span>{item.name}</span>
+					<b>{formatMoney(item.amount, expense.currency)}</b>
+				</div>
+			))}
+			<footer>
+				<span>Итого</span>
+				<strong>
+					{formatMoney(
+						expense.items.reduce((sum, item) => sum + item.amount, 0),
+						expense.currency,
+					)}
+				</strong>
+			</footer>
+		</article>
+		<button type="button" onClick={onClose}>
+			Закрыть
+		</button>
+	</main>
+);
 
 const Overview = ({
 	user,
