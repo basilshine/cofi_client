@@ -20,7 +20,7 @@
 	--mini-green: #315b49;
 	--mini-red: #a84c3e;
 	min-height: 100vh;
-	padding-bottom: calc(108px + env(safe-area-inset-bottom));
+	padding-bottom: calc(118px + env(safe-area-inset-bottom));
 	background: #f4f1ea;
 	font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -592,7 +592,7 @@
 	position: fixed;
 	z-index: 20;
 	right: 12px;
-	bottom: calc(18px + env(safe-area-inset-bottom));
+	bottom: calc(28px + env(safe-area-inset-bottom));
 	left: 12px;
 	display: grid;
 	grid-template-columns: repeat(5, 1fr);
@@ -711,6 +711,38 @@
 	color: var(--mini-muted);
 	font-size: 12px;
 	line-height: 1.45;
+}
+.mini-invite-block {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 13px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: #f6f5ef;
+}
+.mini-invite-block div {
+	display: grid;
+	gap: 3px;
+}
+.mini-invite-block small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	line-height: 1.35;
+}
+.mini-invite-block button {
+	display: inline-flex;
+	min-height: 42px;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	padding: 0 13px;
+	border: 0;
+	border-radius: 7px;
+	background: var(--mini-green);
+	color: white;
+	font-weight: 750;
 }
 .mini-editor-items {
 	display: grid;

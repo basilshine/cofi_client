@@ -5,6 +5,7 @@ import {
 	House,
 	MagnifyingGlass,
 	NotePencil,
+	PaperPlaneTilt,
 	PencilSimple,
 	Plus,
 	Receipt,
@@ -690,13 +691,20 @@ export const MiniApp = () => {
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
 	const currency = user?.currency || activeSpace?.currency || "RUB";
-	const total = filteredExpenses.reduce(
+	const overviewExpenses = useMemo(() => {
+		const start = periodStart("month");
+		return expenses.filter(
+			(expense) =>
+				!start || new Date(`${expense.expense_date}T00:00:00`) >= start,
+		);
+	}, [expenses]);
+	const overviewTotal = overviewExpenses.reduce(
 		(sum, expense) => sum + (expenseAmountInCurrency(expense, currency) ?? 0),
 		0,
 	);
 	const categoryTotals = useMemo(() => {
 		const totals = new Map<number, number>();
-		for (const expense of filteredExpenses) {
+		for (const expense of overviewExpenses) {
 			for (const item of expense.items) {
 				if (item.category_id)
 					totals.set(
@@ -713,24 +721,7 @@ export const MiniApp = () => {
 			}))
 			.filter((category) => category.filteredTotal > 0)
 			.sort((a, b) => b.filteredTotal - a.filteredTotal);
-	}, [categories, filteredExpenses, currency]);
-	const categoriesWithTotals = useMemo(() => {
-		const totals = new Map<number, number>();
-		for (const expense of expenses) {
-			for (const item of expense.items) {
-				if (!item.category_id) continue;
-				totals.set(
-					item.category_id,
-					(totals.get(item.category_id) || 0) +
-						(itemAmountInCurrency(item, expense, currency) ?? 0),
-				);
-			}
-		}
-		return categories.map((category) => ({
-			...category,
-			total: totals.get(category.id) || 0,
-		}));
-	}, [categories, expenses, currency]);
+	}, [categories, overviewExpenses, currency]);
 
 	const openCategory = (id: number) => {
 		setCategoryID(id);
@@ -1173,6 +1164,35 @@ export const MiniApp = () => {
 		setNotice(owned ? "Пространство удалено" : "Вы покинули пространство");
 	};
 
+	const shareSpaceInvite = async () => {
+		if (!editingSpace?.id) return;
+		if (previewMode) {
+			setNotice("В Telegram откроется выбор чата для приглашения");
+			return;
+		}
+		setSaving(true);
+		try {
+			const invite = await apiRequest<{ token: string }>(
+				`/spaces/${editingSpace.id}/invites`,
+				token,
+				{
+					method: "POST",
+					body: JSON.stringify({ channel: "telegram" }),
+				},
+			);
+			const inviteURL = `${BOT_URL}?start=invite_${invite.token}`;
+			const shareURL = `https://t.me/share/url?url=${encodeURIComponent(inviteURL)}&text=${encodeURIComponent(`Присоединяйся к пространству «${editingSpace.name}» в «Пока не забыл»`)}`;
+			WebApp.openTelegramLink(shareURL);
+			setNotice("Приглашение готово. Оно сработает для первого получателя");
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось создать приглашение",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	const addExpense = () => {
 		const category =
 			categories.find((item) => item.key === "other") || categories[0];
@@ -1263,10 +1283,10 @@ export const MiniApp = () => {
 						{view === "overview" && (
 							<Overview
 								user={user}
-								total={total}
+								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
-								expenses={filteredExpenses}
+								expenses={overviewExpenses}
 								onCategory={openCategory}
 								onExpenses={() => setView("expenses")}
 							/>
@@ -1300,8 +1320,7 @@ export const MiniApp = () => {
 						)}
 						{view === "categories" && (
 							<CategoriesView
-								categories={categoriesWithTotals}
-								currency={currency}
+								categories={categories}
 								onOpen={openCategory}
 								onEdit={(category) => setEditingCategory({ ...category })}
 								onAdd={() =>
@@ -1449,6 +1468,13 @@ export const MiniApp = () => {
 					onChange={setEditingSpace}
 					onClose={() => setEditingSpace(null)}
 					onSave={saveSpace}
+					onInvite={
+						editingSpace.id &&
+						!editingSpace.is_personal &&
+						editingSpace.owner_user_id === user?.id
+							? shareSpaceInvite
+							: undefined
+					}
 					onDelete={
 						editingSpace.id && !editingSpace.is_personal
 							? deleteSpace
@@ -2066,13 +2092,11 @@ const expenseSellerName = (expense: Expense) =>
 
 const CategoriesView = ({
 	categories,
-	currency,
 	onOpen,
 	onEdit,
 	onAdd,
 }: {
 	categories: Category[];
-	currency: string;
 	onOpen: (id: number) => void;
 	onEdit: (category: Category) => void;
 	onAdd: () => void;
@@ -2088,9 +2112,7 @@ const CategoriesView = ({
 				Добавить
 			</button>
 		</div>
-		<p className="mini-intro">
-			Сначала идут категории, которыми вы пользовались недавно.
-		</p>
+		<p className="mini-intro">Нажмите категорию, чтобы открыть её расходы.</p>
 		<div className="mini-categories">
 			{categories.map((category) => (
 				<article key={category.id}>
@@ -2108,7 +2130,6 @@ const CategoriesView = ({
 									: "Пока не использовалась"}
 							</small>
 						</span>
-						<em>{formatMoney(category.total, currency)}</em>
 					</button>
 					<button
 						className="mini-icon-button"
@@ -2746,6 +2767,7 @@ const SpaceEditor = ({
 	onChange,
 	onClose,
 	onSave,
+	onInvite,
 	onDelete,
 }: {
 	space: Space;
@@ -2754,6 +2776,7 @@ const SpaceEditor = ({
 	onChange: (space: Space) => void;
 	onClose: () => void;
 	onSave: () => void;
+	onInvite?: () => void;
 	onDelete?: () => void;
 }) => (
 	<Modal
@@ -2793,6 +2816,18 @@ const SpaceEditor = ({
 				? "После первого расхода валюта пространства фиксируется."
 				: "Валюту может менять только владелец пространства."}
 		</p>
+		{onInvite && (
+			<div className="mini-invite-block">
+				<div>
+					<b>Участники</b>
+					<small>Telegram откроет выбор контакта или чата.</small>
+				</div>
+				<button type="button" disabled={saving} onClick={onInvite}>
+					<PaperPlaneTilt size={18} weight="bold" />
+					Пригласить
+				</button>
+			</div>
+		)}
 		<div className="mini-modal-actions">
 			<button
 				className="mini-save"
