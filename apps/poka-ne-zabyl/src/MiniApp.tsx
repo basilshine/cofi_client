@@ -1,6 +1,7 @@
 import {
 	ChartDonut,
 	Check,
+	GearSix,
 	House,
 	MagnifyingGlass,
 	NotePencil,
@@ -10,20 +11,35 @@ import {
 	Tag,
 	Trash,
 	UserCircle,
+	UsersThree,
 	X,
 } from "@phosphor-icons/react";
 import WebApp from "@twa-dev/sdk";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./mini-app.css";
+import {
+	expenseAmountInCurrency,
+	expenseDisplayMoney,
+	itemAmountInCurrency,
+} from "./money";
 
-type View = "overview" | "expenses" | "categories" | "profile";
+type View = "overview" | "expenses" | "categories" | "spaces" | "profile";
 type Period = "month" | "three-months" | "year" | "all";
 
 type Space = {
 	id: number;
 	tenant_id: number;
+	owner_user_id: number;
 	name: string;
+	description?: string;
 	currency: string;
+};
+
+type SpaceMember = {
+	user_id: number;
+	name: string;
+	email: string;
+	role: string;
 };
 
 type Category = {
@@ -39,7 +55,10 @@ type ExpenseItem = {
 	id?: number;
 	name: string;
 	amount: number;
+	source_amount?: number;
+	source_currency?: string;
 	space_amount?: number;
+	space_currency?: string;
 	category_id?: number;
 	category_name?: string;
 	category?: { id: number; name: string };
@@ -56,6 +75,7 @@ type Expense = {
 	total?: number;
 	space_total?: number;
 	currency: string;
+	source_currency?: string;
 	space_currency?: string;
 	items: ExpenseItem[];
 };
@@ -63,8 +83,15 @@ type Expense = {
 type User = {
 	id: number;
 	name: string;
+	email: string;
 	telegramUsername?: string;
-	currency?: string;
+	country: string;
+	language: string;
+	timezone: string;
+	currency: string;
+	dateFormat: string;
+	emailNotifications: boolean;
+	darkMode: boolean;
 };
 
 type Quota = {
@@ -201,6 +228,7 @@ const initialView = (): View => {
 	const requested = new URLSearchParams(window.location.search).get("view");
 	return requested === "expenses" ||
 		requested === "categories" ||
+		requested === "spaces" ||
 		requested === "profile"
 		? requested
 		: "overview";
@@ -213,6 +241,7 @@ export const MiniApp = () => {
 	const [user, setUser] = useState<User | null>(null);
 	const [spaces, setSpaces] = useState<Space[]>([]);
 	const [spaceID, setSpaceID] = useState(0);
+	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [expenses, setExpenses] = useState<Expense[]>([]);
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [quota, setQuota] = useState<Quota | null>(null);
@@ -224,6 +253,8 @@ export const MiniApp = () => {
 	const [query, setQuery] = useState("");
 	const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+	const [editingProfile, setEditingProfile] = useState<User | null>(null);
+	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [saving, setSaving] = useState(false);
 
 	useEffect(() => {
@@ -243,11 +274,32 @@ export const MiniApp = () => {
 			setUser({
 				id: 1,
 				name: "Василий",
+				email: "telegram_1@telegram.local",
 				telegramUsername: "basil",
+				country: "RU",
+				language: "ru",
+				timezone: "Asia/Tomsk",
 				currency: "RUB",
+				dateFormat: "DD.MM.YYYY",
+				emailNotifications: false,
+				darkMode: false,
 			});
 			setSpaces([
-				{ id: 1, tenant_id: 1, name: "Личные расходы", currency: "RUB" },
+				{
+					id: 1,
+					tenant_id: 1,
+					owner_user_id: 1,
+					name: "Личные расходы",
+					currency: "RUB",
+				},
+			]);
+			setMembers([
+				{
+					user_id: 1,
+					name: "Василий",
+					email: "telegram_1@telegram.local",
+					role: "owner",
+				},
 			]);
 			setSpaceID(1);
 			setExpenses(previewExpenses);
@@ -297,20 +349,26 @@ export const MiniApp = () => {
 		setError("");
 		try {
 			// ponytail: the latest 200 records cover launch usage; add server filters when this ceiling becomes visible.
-			const [expenseData, categoryData, quotaData] = await Promise.all([
-				apiRequest<{ expenses: Expense[] }>(
-					`/spaces/${spaceID}/expenses?limit=200`,
-					token,
-				),
-				apiRequest<{ categories: Category[] }>(
-					`/spaces/${spaceID}/categories`,
-					token,
-				),
-				apiRequest<Quota>(`/quota?space_id=${spaceID}`, token),
-			]);
+			const [expenseData, categoryData, quotaData, memberData] =
+				await Promise.all([
+					apiRequest<{ expenses: Expense[] }>(
+						`/spaces/${spaceID}/expenses?limit=200`,
+						token,
+					),
+					apiRequest<{ categories: Category[] }>(
+						`/spaces/${spaceID}/categories`,
+						token,
+					),
+					apiRequest<Quota>(`/quota?space_id=${spaceID}`, token),
+					apiRequest<{ members: SpaceMember[] }>(
+						`/spaces/${spaceID}/members`,
+						token,
+					),
+				]);
 			setExpenses(expenseData.expenses || []);
 			setCategories(categoryData.categories || []);
 			setQuota(quotaData);
+			setMembers(memberData.members || []);
 		} catch (err) {
 			setError(
 				err instanceof Error
@@ -347,9 +405,9 @@ export const MiniApp = () => {
 	}, [expenses, period, categoryID, query]);
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
-	const currency = activeSpace?.currency || user?.currency || "RUB";
+	const currency = user?.currency || activeSpace?.currency || "RUB";
 	const total = filteredExpenses.reduce(
-		(sum, expense) => sum + expenseDisplayAmount(expense),
+		(sum, expense) => sum + (expenseAmountInCurrency(expense, currency) ?? 0),
 		0,
 	);
 	const categoryTotals = useMemo(() => {
@@ -359,7 +417,8 @@ export const MiniApp = () => {
 				if (item.category_id)
 					totals.set(
 						item.category_id,
-						(totals.get(item.category_id) || 0) + itemDisplayAmount(item),
+						(totals.get(item.category_id) || 0) +
+							(itemAmountInCurrency(item, expense, currency) ?? 0),
 					);
 			}
 		}
@@ -370,7 +429,24 @@ export const MiniApp = () => {
 			}))
 			.filter((category) => category.filteredTotal > 0)
 			.sort((a, b) => b.filteredTotal - a.filteredTotal);
-	}, [categories, filteredExpenses]);
+	}, [categories, filteredExpenses, currency]);
+	const categoriesWithTotals = useMemo(() => {
+		const totals = new Map<number, number>();
+		for (const expense of expenses) {
+			for (const item of expense.items) {
+				if (!item.category_id) continue;
+				totals.set(
+					item.category_id,
+					(totals.get(item.category_id) || 0) +
+						(itemAmountInCurrency(item, expense, currency) ?? 0),
+				);
+			}
+		}
+		return categories.map((category) => ({
+			...category,
+			total: totals.get(category.id) || 0,
+		}));
+	}, [categories, expenses, currency]);
 
 	const openCategory = (id: number) => {
 		setCategoryID(id);
@@ -564,6 +640,76 @@ export const MiniApp = () => {
 		}
 	};
 
+	const saveProfile = async () => {
+		if (!editingProfile) return;
+		if (previewMode) {
+			setUser(editingProfile);
+			setEditingProfile(null);
+			setNotice("Профиль сохранён");
+			return;
+		}
+		setSaving(true);
+		try {
+			const saved = await apiRequest<User>("/auth/profile", token, {
+				method: "PUT",
+				body: JSON.stringify(editingProfile),
+			});
+			setUser(saved);
+			setEditingProfile(null);
+			setNotice("Профиль сохранён");
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось сохранить профиль",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const saveSpace = async () => {
+		if (!editingSpace) return;
+		if (previewMode) {
+			setSpaces((current) =>
+				current.map((space) =>
+					space.id === editingSpace.id ? editingSpace : space,
+				),
+			);
+			setEditingSpace(null);
+			setNotice("Пространство сохранено");
+			return;
+		}
+		setSaving(true);
+		try {
+			const saved = await apiRequest<Space>(
+				`/spaces/${editingSpace.id}`,
+				token,
+				{
+					method: "PATCH",
+					body: JSON.stringify({
+						name: editingSpace.name,
+						...(editingSpace.owner_user_id === user?.id
+							? { currency: editingSpace.currency }
+							: {}),
+					}),
+				},
+			);
+			setSpaces((current) =>
+				current.map((space) => (space.id === saved.id ? saved : space)),
+			);
+			setEditingSpace(null);
+			setNotice("Пространство сохранено");
+			await loadSpace();
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: "Не удалось сохранить пространство",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	const addExpense = () => {
 		const category =
 			categories.find((item) => item.key === "other") || categories[0];
@@ -650,7 +796,7 @@ export const MiniApp = () => {
 						)}
 						{view === "categories" && (
 							<CategoriesView
-								categories={categories}
+								categories={categoriesWithTotals}
 								currency={currency}
 								onOpen={openCategory}
 								onEdit={(category) => setEditingCategory({ ...category })}
@@ -665,10 +811,35 @@ export const MiniApp = () => {
 								}
 							/>
 						)}
+						{view === "spaces" && (
+							<SpacesView
+								spaces={spaces}
+								activeSpaceID={spaceID}
+								members={members}
+								onSelect={setSpaceID}
+								onEdit={(space) => setEditingSpace({ ...space })}
+							/>
+						)}
 						{view === "profile" && (
 							<ProfileView
 								user={user}
 								quota={quota}
+								onEdit={() =>
+									user &&
+									setEditingProfile({
+										...user,
+										name:
+											user.name || WebApp.initDataUnsafe.user?.first_name || "",
+										country: user.country || "RU",
+										language: user.language || "ru",
+										timezone:
+											user.timezone ||
+											Intl.DateTimeFormat().resolvedOptions().timeZone ||
+											"Europe/Moscow",
+										currency: user.currency || "RUB",
+										dateFormat: user.dateFormat || "DD.MM.YYYY",
+									})
+								}
 								onUnavailable={() =>
 									setNotice("Оплата подключается и пока недоступна")
 								}
@@ -684,6 +855,12 @@ export const MiniApp = () => {
 					label="Главная"
 					icon={<House />}
 					onClick={() => setView("overview")}
+				/>
+				<NavButton
+					active={view === "spaces"}
+					label="Пространства"
+					icon={<UsersThree />}
+					onClick={() => setView("spaces")}
 				/>
 				<NavButton
 					active={view === "expenses"}
@@ -728,6 +905,25 @@ export const MiniApp = () => {
 							? deleteCategory
 							: undefined
 					}
+				/>
+			)}
+			{editingProfile && (
+				<ProfileEditor
+					user={editingProfile}
+					saving={saving}
+					onChange={setEditingProfile}
+					onClose={() => setEditingProfile(null)}
+					onSave={saveProfile}
+				/>
+			)}
+			{editingSpace && (
+				<SpaceEditor
+					space={editingSpace}
+					canEditCurrency={editingSpace.owner_user_id === user?.id}
+					saving={saving}
+					onChange={setEditingSpace}
+					onClose={() => setEditingSpace(null)}
+					onSave={saveSpace}
 				/>
 			)}
 		</div>
@@ -862,7 +1058,8 @@ const ExpensesView = ({
 				<strong>
 					{formatMoney(
 						expenses.reduce(
-							(sum, expense) => sum + expenseDisplayAmount(expense),
+							(sum, expense) =>
+								sum + (expenseAmountInCurrency(expense, currency) ?? 0),
 							0,
 						),
 						currency,
@@ -908,31 +1105,29 @@ const ExpenseList = ({
 	onEdit: (expense: Expense) => void;
 }) => (
 	<div className="mini-expenses">
-		{expenses.map((expense) => (
-			<button key={expense.id} type="button" onClick={() => onEdit(expense)}>
-				<span className="mini-expense-icon">
-					<Receipt size={19} />
-				</span>
-				<span className="mini-expense-copy">
-					<b>{expense.payee_text || expense.title || "Расход"}</b>
-					<small>
-						{expense.items
-							.map((item) => item.name)
-							.slice(0, 2)
-							.join(", ") || formatDate(expense.expense_date)}
-					</small>
-				</span>
-				<span className="mini-expense-amount">
-					<b>
-						{formatMoney(
-							expenseDisplayAmount(expense),
-							expense.space_currency || currency,
-						)}
-					</b>
-					<small>{formatDate(expense.expense_date)}</small>
-				</span>
-			</button>
-		))}
+		{expenses.map((expense) => {
+			const money = expenseDisplayMoney(expense, currency);
+			return (
+				<button key={expense.id} type="button" onClick={() => onEdit(expense)}>
+					<span className="mini-expense-icon">
+						<Receipt size={19} />
+					</span>
+					<span className="mini-expense-copy">
+						<b>{expense.payee_text || expense.title || "Расход"}</b>
+						<small>
+							{expense.items
+								.map((item) => item.name)
+								.slice(0, 2)
+								.join(", ") || formatDate(expense.expense_date)}
+						</small>
+					</span>
+					<span className="mini-expense-amount">
+						<b>{formatMoney(money.amount, money.currency)}</b>
+						<small>{formatDate(expense.expense_date)}</small>
+					</span>
+				</button>
+			);
+		})}
 		{expenses.length === 0 && <Empty text="Ничего не найдено" />}
 	</div>
 );
@@ -997,11 +1192,80 @@ const CategoriesView = ({
 	</section>
 );
 
+const SpacesView = ({
+	spaces,
+	activeSpaceID,
+	members,
+	onSelect,
+	onEdit,
+}: {
+	spaces: Space[];
+	activeSpaceID: number;
+	members: SpaceMember[];
+	onSelect: (id: number) => void;
+	onEdit: (space: Space) => void;
+}) => {
+	const activeSpace = spaces.find((space) => space.id === activeSpaceID);
+	return (
+		<section className="mini-view">
+			<div className="mini-title">
+				<p>Личные и общие</p>
+				<h1>Пространства</h1>
+			</div>
+			<div className="mini-spaces">
+				{spaces.map((space) => (
+					<article
+						className={space.id === activeSpaceID ? "active" : ""}
+						key={space.id}
+					>
+						<button type="button" onClick={() => onSelect(space.id)}>
+							<span>
+								<b>{space.name}</b>
+								<small>{space.currency}</small>
+							</span>
+							{space.id === activeSpaceID && <Check size={18} weight="bold" />}
+						</button>
+						<button
+							className="mini-icon-button"
+							type="button"
+							aria-label={`Настроить ${space.name}`}
+							onClick={() => onEdit(space)}
+						>
+							<GearSix size={19} />
+						</button>
+					</article>
+				))}
+			</div>
+			<div className="mini-section-head">
+				<h2>{activeSpace?.name || "Участники"}</h2>
+				<span>{members.length}</span>
+			</div>
+			<div className="mini-members">
+				{members.map((member) => (
+					<div key={member.user_id}>
+						<span>{(member.name || "У").slice(0, 1).toUpperCase()}</span>
+						<p>
+							<b>{member.name || "Пользователь"}</b>
+							<small>{memberRole(member.role)}</small>
+						</p>
+					</div>
+				))}
+			</div>
+		</section>
+	);
+};
+
 const ProfileView = ({
 	user,
 	quota,
+	onEdit,
 	onUnavailable,
-}: { user: User | null; quota: Quota | null; onUnavailable: () => void }) => {
+}: {
+	user: User | null;
+	quota: Quota | null;
+	onEdit: () => void;
+	onUnavailable: () => void;
+}) => {
 	const used = quota?.used || 0;
 	const limit = quota?.limit || 0;
 	const progress = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
@@ -1016,6 +1280,9 @@ const ProfileView = ({
 						{user?.telegramUsername ? `@${user.telegramUsername}` : "Telegram"}
 					</p>
 				</div>
+				<button type="button" aria-label="Изменить профиль" onClick={onEdit}>
+					<PencilSimple size={19} />
+				</button>
 			</div>
 			<div className="mini-plan">
 				<div>
@@ -1047,8 +1314,12 @@ const ProfileView = ({
 					<b>{user?.currency || "RUB"}</b>
 				</div>
 				<div>
-					<span>Вход</span>
-					<b>Telegram</b>
+					<span>Страна</span>
+					<b>{user?.country || "RU"}</b>
+				</div>
+				<div>
+					<span>Часовой пояс</span>
+					<b>{user?.timezone || "Europe/Moscow"}</b>
 				</div>
 			</div>
 		</section>
@@ -1247,6 +1518,160 @@ const CategoryEditor = ({
 	</Modal>
 );
 
+const ProfileEditor = ({
+	user,
+	saving,
+	onChange,
+	onClose,
+	onSave,
+}: {
+	user: User;
+	saving: boolean;
+	onChange: (user: User) => void;
+	onClose: () => void;
+	onSave: () => void;
+}) => (
+	<Modal title="Настройки профиля" onClose={onClose}>
+		<label>
+			Имя
+			<input
+				maxLength={120}
+				value={user.name}
+				onChange={(event) => onChange({ ...user, name: event.target.value })}
+			/>
+		</label>
+		<label>
+			Валюта
+			<input
+				list="currency-codes"
+				maxLength={3}
+				value={user.currency}
+				onChange={(event) =>
+					onChange({ ...user, currency: event.target.value.toUpperCase() })
+				}
+			/>
+		</label>
+		<label>
+			Страна
+			<input
+				list="country-codes"
+				maxLength={2}
+				value={user.country}
+				onChange={(event) =>
+					onChange({ ...user, country: event.target.value.toUpperCase() })
+				}
+			/>
+		</label>
+		<label>
+			Часовой пояс
+			<input
+				list="timezone-codes"
+				value={user.timezone}
+				onChange={(event) =>
+					onChange({ ...user, timezone: event.target.value })
+				}
+			/>
+		</label>
+		<ProfileOptions />
+		<button
+			className="mini-save"
+			type="button"
+			disabled={
+				saving ||
+				!user.name.trim() ||
+				user.currency.length !== 3 ||
+				!user.country.trim() ||
+				!user.timezone.trim()
+			}
+			onClick={onSave}
+		>
+			{saving ? "Сохраняем…" : "Сохранить"}
+		</button>
+	</Modal>
+);
+
+const SpaceEditor = ({
+	space,
+	canEditCurrency,
+	saving,
+	onChange,
+	onClose,
+	onSave,
+}: {
+	space: Space;
+	canEditCurrency: boolean;
+	saving: boolean;
+	onChange: (space: Space) => void;
+	onClose: () => void;
+	onSave: () => void;
+}) => (
+	<Modal title="Настройки пространства" onClose={onClose}>
+		<label>
+			Название
+			<input
+				maxLength={120}
+				value={space.name}
+				onChange={(event) => onChange({ ...space, name: event.target.value })}
+			/>
+		</label>
+		<label>
+			Валюта пространства
+			<input
+				disabled={!canEditCurrency}
+				list="currency-codes"
+				maxLength={3}
+				value={space.currency}
+				onChange={(event) =>
+					onChange({ ...space, currency: event.target.value.toUpperCase() })
+				}
+			/>
+		</label>
+		<ProfileOptions />
+		<p className="mini-field-note">
+			{canEditCurrency
+				? "После первого расхода валюта пространства фиксируется."
+				: "Валюту может менять только владелец пространства."}
+		</p>
+		<button
+			className="mini-save"
+			type="button"
+			disabled={
+				saving || !space.name.trim() || space.currency.trim().length !== 3
+			}
+			onClick={onSave}
+		>
+			{saving ? "Сохраняем…" : "Сохранить"}
+		</button>
+	</Modal>
+);
+
+const ProfileOptions = () => (
+	<>
+		<datalist id="currency-codes">
+			<option value="RUB" />
+			<option value="USD" />
+			<option value="EUR" />
+			<option value="KZT" />
+			<option value="THB" />
+		</datalist>
+		<datalist id="country-codes">
+			<option value="RU" />
+			<option value="KZ" />
+			<option value="TH" />
+			<option value="GE" />
+			<option value="TR" />
+		</datalist>
+		<datalist id="timezone-codes">
+			<option value="Europe/Moscow" />
+			<option value="Asia/Tomsk" />
+			<option value="Asia/Novosibirsk" />
+			<option value="Asia/Yekaterinburg" />
+			<option value="Asia/Almaty" />
+			<option value="Asia/Bangkok" />
+		</datalist>
+	</>
+);
+
 const Modal = ({
 	title,
 	children,
@@ -1333,15 +1758,6 @@ const periodStart = (period: Period) => {
 	return new Date(now.getFullYear(), 0, 1);
 };
 
-const itemDisplayAmount = (item: ExpenseItem) =>
-	item.space_amount ?? item.amount ?? 0;
-
-const expenseDisplayAmount = (expense: Expense) =>
-	expense.space_total ??
-	expense.total ??
-	expense.amount ??
-	expense.items.reduce((sum, item) => sum + itemDisplayAmount(item), 0);
-
 const formatMoney = (amount: number, currency: string) =>
 	new Intl.NumberFormat("ru-RU", {
 		style: "currency",
@@ -1360,6 +1776,9 @@ const expenseWord = (count: number) =>
 				(count % 100 < 10 || count % 100 >= 20)
 			? "расхода"
 			: "расходов";
+const memberRole = (role: string) =>
+	({ owner: "Владелец", admin: "Администратор", editor: "Редактор" })[role] ||
+	"Участник";
 function isoDay(offset: number) {
 	const date = new Date();
 	date.setDate(date.getDate() + offset);
