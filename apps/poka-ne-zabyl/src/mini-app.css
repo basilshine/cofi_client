@@ -19,7 +19,8 @@
 }
 .mini-app button,
 .mini-app input,
-.mini-app select {
+.mini-app select,
+.mini-app textarea {
 	font: inherit;
 	letter-spacing: 0;
 }
@@ -1153,5 +1154,12 @@
 		width: min(520px, calc(100% - 32px));
 		max-height: 82vh;
 		border-radius: 8px;
+	}
+}
+@media (max-width: 699px) {
+	.mini-app input,
+	.mini-app select,
+	.mini-app textarea {
+		font-size: 16px;
 	}
 }

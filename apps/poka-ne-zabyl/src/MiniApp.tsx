@@ -224,6 +224,12 @@ const timezoneOptions = [
 ] as const;
 type CapturePacket = { media_object_id?: number; input_kind?: string };
 
+const dismissKeyboard = (event: React.PointerEvent<HTMLElement>) => {
+	if ((event.target as HTMLElement).closest("input, textarea, select")) return;
+	if (document.activeElement instanceof HTMLElement)
+		document.activeElement.blur();
+};
+
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
 const previewMode =
 	["localhost", "127.0.0.1"].includes(window.location.hostname) &&
@@ -1109,7 +1115,7 @@ export const MiniApp = () => {
 	if (error && !token) return <TelegramEntry error={error} />;
 	if (view === "review") {
 		return (
-			<div className="mini-app mini-review-app">
+			<div className="mini-app mini-review-app" onPointerDown={dismissKeyboard}>
 				{loading ? (
 					<LoadingScreen />
 				) : savedReviewExpense ? (
@@ -1137,7 +1143,7 @@ export const MiniApp = () => {
 	}
 
 	return (
-		<div className="mini-app">
+		<div className="mini-app" onPointerDown={dismissKeyboard}>
 			<header className="mini-header">
 				<div className="mini-brand">
 					<NotePencil size={19} weight="bold" />
