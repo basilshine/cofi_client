@@ -1008,6 +1008,16 @@
 	background: transparent;
 	color: inherit;
 }
+.capture-status button.capture-status-action {
+	width: auto;
+	min-width: 84px;
+	padding: 0 10px;
+	border: 1px solid rgba(252, 249, 242, 0.55);
+	border-radius: 6px;
+	background: rgba(252, 249, 242, 0.12);
+	font-size: 12px;
+	font-weight: 700;
+}
 .capture-spinner {
 	display: block;
 	box-sizing: border-box;

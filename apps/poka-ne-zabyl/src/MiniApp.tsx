@@ -298,11 +298,13 @@ const timezoneOptions = [
 ] as const;
 type CapturePacket = {
 	source_document_id: number;
+	space_id?: number;
 	media_object_id?: number;
 	input_kind?: string;
 	source_type?: string;
 	document_type?: string;
 	processing_status?: "pending" | "processing" | "succeeded" | "failed";
+	pending_count?: number;
 	source_text?: string;
 	created_at?: string;
 };
@@ -589,6 +591,16 @@ export const MiniApp = () => {
 			})
 			.slice(0, 200);
 	}, [expenses]);
+	const readyCapture = useMemo(
+		() =>
+			captures.find(
+				(capture) =>
+					capture.processing_status === "succeeded" &&
+					(capture.pending_count || 0) > 0,
+			) || null,
+		[captures],
+	);
+	const showReadyCapture = readyCapture && view !== "review";
 
 	useEffect(() => {
 		document.body.classList.add("mini-body");
@@ -831,6 +843,40 @@ export const MiniApp = () => {
 			setReviewMediaURL(URL.createObjectURL(blob));
 	};
 
+	const openReadyCapture = async () => {
+		if (!token || !readyCapture) return;
+		setSaving(true);
+		setCaptureFailure("");
+		try {
+			const reviewSpaceID = readyCapture.space_id || spaceID;
+			const response = await apiRequest<{ candidates: ReviewCandidate[] }>(
+				`/spaces/${reviewSpaceID}/review/candidates?limit=100&source_document_id=${readyCapture.source_document_id}`,
+				token,
+			);
+			const candidate = response.candidates.find(
+				(item) => item.candidate_type === "expense_candidate",
+			);
+			if (!candidate) throw new Error("Расход уже сохранён или недоступен");
+			setSavedReviewExpense(null);
+			setReviewDraft(null);
+			setReviewMediaURL("");
+			await loadReview(
+				token,
+				reviewSpaceID,
+				candidate.id,
+				readyCapture.source_document_id,
+			);
+			setSpaceID(reviewSpaceID);
+			setView("review");
+		} catch (err) {
+			setCaptureFailure(
+				err instanceof Error ? err.message : "Не удалось открыть результат",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	const submitCapture = async (submission: CaptureSubmission) => {
 		setCaptureSubmitting(true);
 		setCaptureError("");
@@ -951,6 +997,20 @@ export const MiniApp = () => {
 			window.clearTimeout(timer);
 		};
 	}, [token, pendingCapture?.sourceDocumentID, pendingCapture?.spaceID]);
+
+	useEffect(() => {
+		if (!token || pendingCapture || captureSubmitting || previewMode) return;
+		const queued = captures.find(
+			(capture) =>
+				capture.processing_status === "pending" ||
+				capture.processing_status === "processing",
+		);
+		if (!queued) return;
+		setPendingCapture({
+			sourceDocumentID: queued.source_document_id,
+			spaceID: queued.space_id || spaceID,
+		});
+	}, [token, captures, pendingCapture, captureSubmitting, spaceID]);
 
 	const closeReview = () => {
 		if (requestedReview) {
@@ -2029,7 +2089,10 @@ export const MiniApp = () => {
 				)}
 			</main>
 
-			{(captureSubmitting || pendingCapture || captureFailure) && (
+			{(captureSubmitting ||
+				pendingCapture ||
+				captureFailure ||
+				showReadyCapture) && (
 				<div
 					className={`capture-status${captureFailure ? " is-error" : ""}`}
 					role="status"
@@ -2037,6 +2100,8 @@ export const MiniApp = () => {
 				>
 					{captureFailure ? (
 						<X size={20} />
+					) : showReadyCapture && !captureSubmitting && !pendingCapture ? (
+						<Check size={20} weight="bold" />
 					) : (
 						<span className="capture-spinner" />
 					)}
@@ -2044,15 +2109,32 @@ export const MiniApp = () => {
 						<strong>
 							{captureFailure
 								? "Расход не разобран"
-								: captureSubmitting
-									? "Отправляем расход…"
-									: "Разбираем расход…"}
+								: showReadyCapture && !captureSubmitting && !pendingCapture
+									? "Расход готов"
+									: captureSubmitting
+										? "Отправляем расход…"
+										: "Разбираем расход…"}
 						</strong>
 						<small>
-							{captureFailure || "Можно продолжать пользоваться приложением"}
+							{captureFailure ||
+								(showReadyCapture && !captureSubmitting && !pendingCapture
+									? "Проверьте распознанные данные"
+									: "Можно продолжать пользоваться приложением")}
 						</small>
 					</div>
-					{captureFailure && (
+					{showReadyCapture &&
+					!captureSubmitting &&
+					!pendingCapture &&
+					!captureFailure ? (
+						<button
+							className="capture-status-action"
+							type="button"
+							disabled={saving}
+							onClick={() => void openReadyCapture()}
+						>
+							Проверить
+						</button>
+					) : captureFailure ? (
 						<button
 							type="button"
 							aria-label="Скрыть сообщение"
@@ -2060,7 +2142,7 @@ export const MiniApp = () => {
 						>
 							<X size={17} />
 						</button>
-					)}
+					) : null}
 				</div>
 			)}
 
