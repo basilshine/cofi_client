@@ -538,6 +538,18 @@ export const MiniApp = () => {
 	const [saving, setSaving] = useState(false);
 	const [homeScreenStatus, setHomeScreenStatus] =
 		useState<HomeScreenStatus>("unsupported");
+	const itemNameSuggestions = useMemo(() => {
+		const seen = new Set<string>();
+		return expenses
+			.flatMap((expense) => expense.items.map((item) => item.name.trim()))
+			.filter((name) => {
+				const key = name.toLocaleLowerCase("ru");
+				if (!name || seen.has(key)) return false;
+				seen.add(key);
+				return true;
+			})
+			.slice(0, 200);
+	}, [expenses]);
 
 	useEffect(() => {
 		document.body.classList.add("mini-body");
@@ -1844,6 +1856,7 @@ export const MiniApp = () => {
 					expense={editingExpense}
 					categories={categories}
 					vendors={vendors}
+					itemNameSuggestions={itemNameSuggestions}
 					creating={editingExpense.id === 0}
 					saving={saving}
 					capture={captureForExpense(editingExpense, captures)}
@@ -3262,6 +3275,7 @@ const ExpenseEditor = ({
 	expense,
 	categories,
 	vendors,
+	itemNameSuggestions,
 	creating,
 	saving,
 	capture,
@@ -3275,6 +3289,7 @@ const ExpenseEditor = ({
 	expense: Expense;
 	categories: Category[];
 	vendors: Vendor[];
+	itemNameSuggestions: string[];
 	creating: boolean;
 	saving: boolean;
 	capture?: CapturePacket;
@@ -3285,6 +3300,7 @@ const ExpenseEditor = ({
 	onSource: () => void;
 	onDelete?: () => void;
 }) => {
+	const itemNameListID = useId();
 	const fallbackVendorName = vendorFieldValue(
 		expense.vendor_name,
 		expense.payee_text,
@@ -3343,6 +3359,7 @@ const ExpenseEditor = ({
 			<label>
 				{creating ? "На что потратили" : "Название"}
 				<input
+					list={itemNameListID}
 					value={expense.title}
 					onChange={(event) =>
 						onChange({
@@ -3356,6 +3373,11 @@ const ExpenseEditor = ({
 						})
 					}
 				/>
+				<datalist id={itemNameListID}>
+					{itemNameSuggestions.map((name) => (
+						<option key={name} value={name} />
+					))}
+				</datalist>
 			</label>
 			<div className="mini-field">
 				<span>Где покупали</span>
