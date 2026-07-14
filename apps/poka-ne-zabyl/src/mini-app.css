@@ -46,7 +46,8 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
-	padding: env(safe-area-inset-top) 18px 0;
+	padding: max(env(safe-area-inset-top), var(--tg-safe-area-inset-top, 0px))
+		18px 0;
 	border-bottom: 1px solid rgba(23, 27, 45, 0.08);
 	background: rgba(244, 239, 228, 0.94);
 	backdrop-filter: blur(16px);
@@ -755,7 +756,13 @@
 	position: fixed;
 	z-index: 20;
 	right: 12px;
-	bottom: calc(28px + env(safe-area-inset-bottom));
+	bottom: calc(
+		28px +
+		max(
+			env(safe-area-inset-bottom),
+			var(--tg-content-safe-area-inset-bottom, 0px)
+		)
+	);
 	left: 12px;
 	display: grid;
 	grid-template-columns: repeat(5, 1fr);

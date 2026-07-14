@@ -110,6 +110,9 @@ const telegramWebApp = WebApp as typeof WebApp & {
 	checkHomeScreenStatus?: (
 		callback: (status: Exclude<HomeScreenStatus, "checking">) => void,
 	) => void;
+	disableVerticalSwipes?: () => void;
+	requestFullscreen?: () => void;
+	isFullscreen?: boolean;
 	onEvent: (eventType: "homeScreenAdded", handler: () => void) => void;
 	offEvent: (eventType: "homeScreenAdded", handler: () => void) => void;
 };
@@ -578,6 +581,19 @@ export const MiniApp = () => {
 		WebApp.expand();
 		WebApp.setHeaderColor("#f4efe4");
 		WebApp.setBackgroundColor("#f4efe4");
+		if (
+			telegramWebApp.isVersionAtLeast("7.7") &&
+			telegramWebApp.disableVerticalSwipes
+		) {
+			telegramWebApp.disableVerticalSwipes();
+		}
+		if (
+			telegramWebApp.isVersionAtLeast("8.0") &&
+			telegramWebApp.requestFullscreen &&
+			!telegramWebApp.isFullscreen
+		) {
+			telegramWebApp.requestFullscreen();
+		}
 		if (
 			telegramWebApp.isVersionAtLeast("8.0") &&
 			telegramWebApp.checkHomeScreenStatus
