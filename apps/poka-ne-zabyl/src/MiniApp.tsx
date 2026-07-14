@@ -1060,6 +1060,59 @@ export const MiniApp = () => {
 		}
 	};
 
+	const deleteExpenseItem = async () => {
+		if (!editingExpense || editingItemIndex === null || editingExpense.id === 0)
+			return;
+		const item = editingExpense.items[editingItemIndex];
+		if (!item?.id) return;
+		const deletesExpense = editingExpense.items.length === 1;
+		const message = deletesExpense
+			? `Это последняя покупка. Удалить её вместе с расходом «${editingExpense.title}»?`
+			: `Удалить покупку «${item.name}»?`;
+		if (!window.confirm(message)) return;
+		if (previewMode) {
+			if (deletesExpense) {
+				setExpenses((current) =>
+					current.filter((expense) => expense.id !== editingExpense.id),
+				);
+			} else {
+				const items = editingExpense.items.filter(
+					(_, index) => index !== editingItemIndex,
+				);
+				const total = items.reduce((sum, current) => sum + current.amount, 0);
+				setExpenses((current) =>
+					current.map((expense) =>
+						expense.id === editingExpense.id
+							? { ...editingExpense, items, total, space_total: total }
+							: expense,
+					),
+				);
+			}
+			setEditingExpense(null);
+			setEditingItemIndex(null);
+			setNotice(deletesExpense ? "Расход удалён" : "Покупка удалена");
+			return;
+		}
+		setSaving(true);
+		try {
+			const result = await apiRequest<{ expense_deleted: boolean }>(
+				`/spaces/${spaceID}/expenses/${editingExpense.id}/items/${item.id}`,
+				token,
+				{ method: "DELETE" },
+			);
+			setEditingExpense(null);
+			setEditingItemIndex(null);
+			setNotice(result.expense_deleted ? "Расход удалён" : "Покупка удалена");
+			await loadSpace();
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось удалить покупку",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	const saveVendor = async () => {
 		if (!editingVendor) return;
 		const creating = editingVendor.id === 0;
@@ -1735,6 +1788,11 @@ export const MiniApp = () => {
 					}}
 					onSave={saveExpense}
 					onSource={() => openExpenseSource(editingExpense)}
+					onDelete={
+						editingExpense.id > 0 && editingExpense.items[editingItemIndex]?.id
+							? deleteExpenseItem
+							: undefined
+					}
 				/>
 			)}
 			{sourceViewer && (
@@ -3313,6 +3371,7 @@ const ExpenseItemEditor = ({
 	onClose,
 	onSave,
 	onSource,
+	onDelete,
 }: {
 	expense: Expense;
 	item: ExpenseItem;
@@ -3325,6 +3384,7 @@ const ExpenseItemEditor = ({
 	onClose: () => void;
 	onSave: () => void;
 	onSource: () => void;
+	onDelete?: () => void;
 }) => {
 	const vendorName = vendorFieldValue(
 		item.vendor_name,
@@ -3427,6 +3487,17 @@ const ExpenseItemEditor = ({
 				>
 					{saving ? "Сохраняем…" : "Сохранить"}
 				</button>
+				{onDelete && (
+					<button
+						className="mini-delete"
+						type="button"
+						disabled={saving}
+						onClick={onDelete}
+					>
+						<Trash size={18} />
+						Удалить покупку
+					</button>
+				)}
 			</div>
 		</Modal>
 	);
