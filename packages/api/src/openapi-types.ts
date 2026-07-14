@@ -6599,6 +6599,8 @@ export interface components {
             title?: string;
             source_type?: string;
             input_kind?: string;
+            /** @description Original text input or extracted transcript available to authorized space members. */
+            source_text?: string;
             document_type?: string;
             merchant_text?: string;
             /** Format: date-time */

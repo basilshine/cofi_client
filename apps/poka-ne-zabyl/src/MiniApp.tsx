@@ -1,9 +1,12 @@
 import {
+	Camera,
 	ChartDonut,
+	ChatCircleText,
 	Check,
 	GearSix,
 	House,
 	MagnifyingGlass,
+	Microphone,
 	NotePencil,
 	PaperPlaneTilt,
 	PencilSimple,
@@ -19,6 +22,7 @@ import {
 import WebApp from "@twa-dev/sdk";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import "./mini-app.css";
+import { captureSourceKind } from "./capture-source";
 import { groupRowsByExpense } from "./expense-groups";
 import {
 	expenseAmountInCurrency,
@@ -109,6 +113,7 @@ type Expense = {
 	space_total?: number;
 	reporting_total?: number;
 	reporting_currency?: string;
+	source_document_id?: number;
 	currency: string;
 	source_currency?: string;
 	space_currency?: string;
@@ -242,7 +247,21 @@ const timezoneOptions = [
 	["Europe/London", "Лондон"],
 	["America/New_York", "Нью-Йорк"],
 ] as const;
-type CapturePacket = { media_object_id?: number; input_kind?: string };
+type CapturePacket = {
+	source_document_id: number;
+	media_object_id?: number;
+	input_kind?: string;
+	source_type?: string;
+	document_type?: string;
+	source_text?: string;
+	created_at?: string;
+};
+
+type SourceViewer = {
+	capture: CapturePacket;
+	mediaURL?: string;
+	mediaType?: string;
+};
 
 const dismissKeyboard = (event: React.PointerEvent<HTMLElement>) => {
 	if ((event.target as HTMLElement).closest("input, textarea, select")) return;
@@ -299,6 +318,7 @@ const previewCategories: Category[] = [
 const previewExpenses: Expense[] = [
 	{
 		id: 1,
+		source_document_id: 101,
 		user_id: 1,
 		title: "Покупки на неделю",
 		payee_text: "Лента",
@@ -310,6 +330,7 @@ const previewExpenses: Expense[] = [
 	},
 	{
 		id: 2,
+		source_document_id: 102,
 		user_id: 1,
 		title: "Корм для кошек",
 		payee_text: "Белый кролик",
@@ -323,6 +344,7 @@ const previewExpenses: Expense[] = [
 	},
 	{
 		id: 3,
+		source_document_id: 103,
 		user_id: 1,
 		title: "Танцы",
 		payee_text: "Студия движения",
@@ -334,6 +356,7 @@ const previewExpenses: Expense[] = [
 	},
 	{
 		id: 4,
+		source_document_id: 104,
 		user_id: 1,
 		title: "Такси домой",
 		payee_text: "Яндекс Go",
@@ -354,6 +377,34 @@ const previewVendors: Vendor[] = [
 	{ id: 3, name: "Студия движения", aliases: [] },
 	{ id: 4, name: "Яндекс Go", aliases: [] },
 ];
+const previewCaptures: CapturePacket[] = [
+	{
+		source_document_id: 101,
+		input_kind: "image",
+		source_type: "receipt",
+		source_text: "Фото чека из Ленты",
+	},
+	{
+		source_document_id: 102,
+		input_kind: "text",
+		source_text: "Корм и наполнитель 1360, Белый кролик",
+	},
+	{
+		source_document_id: 103,
+		input_kind: "voice",
+		source_text: "Абонемент на танцы 2600 рублей",
+	},
+	{
+		source_document_id: 104,
+		input_kind: "text",
+		source_text: "Такси домой 680 рублей",
+	},
+];
+
+const captureForExpense = (expense: Expense, captures: CapturePacket[]) =>
+	captures.find(
+		(capture) => capture.source_document_id === expense.source_document_id,
+	);
 
 const apiRequest = async <T,>(
 	path: string,
@@ -414,6 +465,7 @@ export const MiniApp = () => {
 	const [spaceID, setSpaceID] = useState(0);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [expenses, setExpenses] = useState<Expense[]>([]);
+	const [captures, setCaptures] = useState<CapturePacket[]>([]);
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [vendors, setVendors] = useState<Vendor[]>([]);
 	const [quota, setQuota] = useState<Quota | null>(null);
@@ -437,6 +489,8 @@ export const MiniApp = () => {
 	const [savedReviewExpense, setSavedReviewExpense] = useState<Expense | null>(
 		null,
 	);
+	const [sourceViewer, setSourceViewer] = useState<SourceViewer | null>(null);
+	const [sourceLoading, setSourceLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
 
 	useEffect(() => {
@@ -486,6 +540,7 @@ export const MiniApp = () => {
 			]);
 			setSpaceID(1);
 			setExpenses(previewExpenses);
+			setCaptures(previewCaptures);
 			setCategories(previewCategories);
 			setVendors(previewVendors);
 			setQuota({ plan: "basic", limit: 100, used: 37, remaining: 63 });
@@ -567,24 +622,35 @@ export const MiniApp = () => {
 		setError("");
 		try {
 			// ponytail: the latest 200 records cover launch usage; add server filters when this ceiling becomes visible.
-			const [expenseData, categoryData, quotaData, memberData, vendorData] =
-				await Promise.all([
-					apiRequest<{ expenses: Expense[] }>(
-						`/spaces/${spaceID}/expenses?limit=200&currency=${encodeURIComponent(user?.currency || "RUB")}`,
-						token,
-					),
-					apiRequest<{ categories: Category[] }>(
-						`/spaces/${spaceID}/categories`,
-						token,
-					),
-					apiRequest<Quota>(`/quota?space_id=${spaceID}`, token),
-					apiRequest<{ members: SpaceMember[] }>(
-						`/spaces/${spaceID}/members`,
-						token,
-					),
-					apiRequest<Vendor[]>(`/spaces/${spaceID}/vendors`, token),
-				]);
+			const [
+				expenseData,
+				categoryData,
+				quotaData,
+				memberData,
+				vendorData,
+				captureData,
+			] = await Promise.all([
+				apiRequest<{ expenses: Expense[] }>(
+					`/spaces/${spaceID}/expenses?limit=200&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+					token,
+				),
+				apiRequest<{ categories: Category[] }>(
+					`/spaces/${spaceID}/categories`,
+					token,
+				),
+				apiRequest<Quota>(`/quota?space_id=${spaceID}`, token),
+				apiRequest<{ members: SpaceMember[] }>(
+					`/spaces/${spaceID}/members`,
+					token,
+				),
+				apiRequest<Vendor[]>(`/spaces/${spaceID}/vendors`, token),
+				apiRequest<{ captures: CapturePacket[] }>(
+					`/spaces/${spaceID}/captures?limit=100`,
+					token,
+				),
+			]);
 			setExpenses(expenseData.expenses || []);
+			setCaptures(captureData.captures || []);
 			setCategories(categoryData.categories || []);
 			setQuota(quotaData);
 			setMembers(memberData.members || []);
@@ -633,11 +699,64 @@ export const MiniApp = () => {
 			setReviewMediaURL(URL.createObjectURL(blob));
 	};
 
+	const openExpenseSource = async (expense: Expense) => {
+		if (sourceLoading) return;
+		if (!expense.source_document_id) {
+			setNotice("У этого расхода нет сохранённого исходника");
+			return;
+		}
+		setSourceLoading(true);
+		setError("");
+		try {
+			let capture = captureForExpense(expense, captures);
+			if (!capture && !previewMode) {
+				const response = await apiRequest<{ captures: CapturePacket[] }>(
+					`/spaces/${spaceID}/captures?limit=1&source_document_id=${expense.source_document_id}`,
+					token,
+				);
+				capture = response.captures.find(
+					(item) => item.source_document_id === expense.source_document_id,
+				);
+				if (capture)
+					setCaptures((current) => [...current, capture as CapturePacket]);
+			}
+			if (!capture) throw new Error("Исходный материал не найден");
+
+			const viewer: SourceViewer = { capture };
+			if (capture.media_object_id && !previewMode) {
+				const response = await fetch(
+					`/api/v1/media/${capture.media_object_id}`,
+					{
+						headers: { Authorization: `Bearer ${token}` },
+					},
+				);
+				if (!response.ok) throw new Error("Не удалось загрузить исходный файл");
+				const blob = await response.blob();
+				viewer.mediaURL = URL.createObjectURL(blob);
+				viewer.mediaType = blob.type;
+			}
+			setSourceViewer(viewer);
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Не удалось открыть исходник",
+			);
+		} finally {
+			setSourceLoading(false);
+		}
+	};
+
 	useEffect(
 		() => () => {
 			if (reviewMediaURL) URL.revokeObjectURL(reviewMediaURL);
 		},
 		[reviewMediaURL],
+	);
+
+	useEffect(
+		() => () => {
+			if (sourceViewer?.mediaURL) URL.revokeObjectURL(sourceViewer.mediaURL);
+		},
+		[sourceViewer?.mediaURL],
 	);
 
 	const saveReview = async () => {
@@ -1432,6 +1551,7 @@ export const MiniApp = () => {
 								currency={currency}
 								categories={categoryTotals}
 								expenses={overviewExpenses}
+								captures={captures}
 								onCategory={openCategory}
 								onExpense={openExpense}
 								onExpenses={openAllExpenses}
@@ -1442,6 +1562,7 @@ export const MiniApp = () => {
 								items={filteredItems}
 								categories={categories}
 								vendors={vendors}
+								captures={captures}
 								currency={currency}
 								period={period}
 								expense={expenses.find((expense) => expense.id === expenseID)}
@@ -1455,6 +1576,7 @@ export const MiniApp = () => {
 								onVendor={setVendorID}
 								onGrouping={setGroupByExpense}
 								onQuery={setQuery}
+								onSource={openExpenseSource}
 								onEdit={editExpenseItem}
 								onAdd={addExpense}
 							/>
@@ -1573,9 +1695,12 @@ export const MiniApp = () => {
 					vendors={vendors}
 					creating={editingExpense.id === 0}
 					saving={saving}
+					capture={captureForExpense(editingExpense, captures)}
+					sourceLoading={sourceLoading}
 					onChange={setEditingExpense}
 					onClose={() => setEditingExpense(null)}
 					onSave={saveExpense}
+					onSource={() => openExpenseSource(editingExpense)}
 					onDelete={editingExpense.id > 0 ? deleteExpense : undefined}
 				/>
 			)}
@@ -1586,6 +1711,8 @@ export const MiniApp = () => {
 					categories={categories}
 					vendors={vendors}
 					saving={saving}
+					capture={captureForExpense(editingExpense, captures)}
+					sourceLoading={sourceLoading}
 					onChange={(item) =>
 						setEditingExpense({
 							...editingExpense,
@@ -1599,6 +1726,13 @@ export const MiniApp = () => {
 						setEditingItemIndex(null);
 					}}
 					onSave={saveExpense}
+					onSource={() => openExpenseSource(editingExpense)}
+				/>
+			)}
+			{sourceViewer && (
+				<CaptureSourceViewer
+					viewer={sourceViewer}
+					onClose={() => setSourceViewer(null)}
 				/>
 			)}
 			{editingVendor && (
@@ -2131,6 +2265,7 @@ const Overview = ({
 	currency,
 	categories,
 	expenses,
+	captures,
 	onCategory,
 	onExpense,
 	onExpenses,
@@ -2140,6 +2275,7 @@ const Overview = ({
 	currency: string;
 	categories: Array<Category & { filteredTotal: number }>;
 	expenses: Expense[];
+	captures: CapturePacket[];
 	onCategory: (id: number) => void;
 	onExpense: (id: number) => void;
 	onExpenses: () => void;
@@ -2192,6 +2328,7 @@ const Overview = ({
 			</div>
 			<ExpenseList
 				expenses={expenses.slice(0, 4)}
+				captures={captures}
 				currency={currency}
 				onEdit={(expense) => onExpense(expense.id)}
 			/>
@@ -2203,6 +2340,7 @@ const ExpensesView = ({
 	items,
 	categories,
 	vendors,
+	captures,
 	currency,
 	period,
 	expense,
@@ -2216,12 +2354,14 @@ const ExpensesView = ({
 	onVendor,
 	onGrouping,
 	onQuery,
+	onSource,
 	onEdit,
 	onAdd,
 }: {
 	items: ExpenseItemRow[];
 	categories: Category[];
 	vendors: Vendor[];
+	captures: CapturePacket[];
 	currency: string;
 	period: Period;
 	expense?: Expense;
@@ -2235,6 +2375,7 @@ const ExpensesView = ({
 	onVendor: (id: number) => void;
 	onGrouping: (group: boolean) => void;
 	onQuery: (value: string) => void;
+	onSource: (expense: Expense) => void;
 	onEdit: (item: ExpenseItemRow) => void;
 	onAdd: () => void;
 }) => (
@@ -2263,10 +2404,19 @@ const ExpensesView = ({
 					<small>Выбран расход</small>
 					<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
 				</span>
-				<button type="button" onClick={onClearExpense}>
-					<X size={15} />
-					Все
-				</button>
+				<div className="mini-expense-scope-actions">
+					<button type="button" onClick={() => onSource(expense)}>
+						<SourceIcon
+							capture={captureForExpense(expense, captures)}
+							size={15}
+						/>
+						Исходник
+					</button>
+					<button type="button" onClick={onClearExpense}>
+						<X size={15} />
+						Все
+					</button>
+				</div>
 			</div>
 		)}
 		<div className="mini-result">
@@ -2349,13 +2499,16 @@ const ExpensesView = ({
 			<GroupedExpenseItemList
 				items={items}
 				categories={categories}
+				captures={captures}
 				currency={currency}
+				onSource={onSource}
 				onEdit={onEdit}
 			/>
 		) : (
 			<ExpenseItemList
 				items={items}
 				categories={categories}
+				captures={captures}
 				currency={currency}
 				onEdit={onEdit}
 			/>
@@ -2366,11 +2519,13 @@ const ExpensesView = ({
 const ExpenseItemList = ({
 	items,
 	categories,
+	captures,
 	currency,
 	onEdit,
 }: {
 	items: ExpenseItemRow[];
 	categories: Category[];
+	captures: CapturePacket[];
 	currency: string;
 	onEdit: (item: ExpenseItemRow) => void;
 }) => (
@@ -2384,6 +2539,7 @@ const ExpenseItemList = ({
 				categories.find((current) => current.id === row.item.category_id)
 					?.name ||
 				"Другое";
+			const capture = captureForExpense(row.expense, captures);
 			return (
 				<button
 					key={`${row.expense.id}-${row.item.id || row.itemIndex}`}
@@ -2391,7 +2547,7 @@ const ExpenseItemList = ({
 					onClick={() => onEdit(row)}
 				>
 					<span className="mini-expense-icon">
-						<Receipt size={19} />
+						<SourceIcon capture={capture} size={19} />
 					</span>
 					<span className="mini-expense-copy">
 						<b>{row.item.name || "Покупка"}</b>
@@ -2414,12 +2570,16 @@ const ExpenseItemList = ({
 const GroupedExpenseItemList = ({
 	items,
 	categories,
+	captures,
 	currency,
+	onSource,
 	onEdit,
 }: {
 	items: ExpenseItemRow[];
 	categories: Category[];
+	captures: CapturePacket[];
 	currency: string;
+	onSource: (expense: Expense) => void;
 	onEdit: (item: ExpenseItemRow) => void;
 }) => {
 	const groups = groupRowsByExpense(items);
@@ -2442,11 +2602,24 @@ const GroupedExpenseItemList = ({
 									{itemWord(rows.length)}
 								</small>
 							</span>
-							<strong>{formatMoney(total, currency)}</strong>
+							<div className="mini-expense-group-actions">
+								<button
+									type="button"
+									aria-label="Открыть исходный материал"
+									onClick={() => onSource(expense)}
+								>
+									<SourceIcon
+										capture={captureForExpense(expense, captures)}
+										size={17}
+									/>
+								</button>
+								<strong>{formatMoney(total, currency)}</strong>
+							</div>
 						</header>
 						<ExpenseItemList
 							items={rows}
 							categories={categories}
+							captures={captures}
 							currency={currency}
 							onEdit={onEdit}
 						/>
@@ -2460,10 +2633,12 @@ const GroupedExpenseItemList = ({
 
 const ExpenseList = ({
 	expenses,
+	captures,
 	currency,
 	onEdit,
 }: {
 	expenses: Expense[];
+	captures: CapturePacket[];
 	currency: string;
 	onEdit: (expense: Expense) => void;
 }) => (
@@ -2471,10 +2646,11 @@ const ExpenseList = ({
 		{expenses.map((expense) => {
 			const money = expenseDisplayMoney(expense, currency);
 			const seller = expenseSellerName(expense);
+			const capture = captureForExpense(expense, captures);
 			return (
 				<button key={expense.id} type="button" onClick={() => onEdit(expense)}>
 					<span className="mini-expense-icon">
-						<Receipt size={19} />
+						<SourceIcon capture={capture} size={19} />
 					</span>
 					<span className="mini-expense-copy">
 						<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
@@ -2496,6 +2672,94 @@ const ExpenseList = ({
 		{expenses.length === 0 && <Empty text="Ничего не найдено" />}
 	</div>
 );
+
+const SourceIcon = ({
+	capture,
+	size,
+}: {
+	capture?: CapturePacket;
+	size: number;
+}) => {
+	const kind = captureSourceKind(capture);
+	const label =
+		kind === "image"
+			? "Источник: фото"
+			: kind === "voice"
+				? "Источник: голосовое сообщение"
+				: kind === "text"
+					? "Источник: текст"
+					: "Источник не указан";
+	switch (kind) {
+		case "image":
+			return <Camera size={size} aria-label={label} />;
+		case "voice":
+			return <Microphone size={size} aria-label={label} />;
+		case "text":
+			return <ChatCircleText size={size} aria-label={label} />;
+		default:
+			return <Receipt size={size} aria-label={label} />;
+	}
+};
+
+const captureSourceLabel = (capture: CapturePacket) => {
+	switch (captureSourceKind(capture)) {
+		case "image":
+			return "Фото";
+		case "voice":
+			return "Голосовое сообщение";
+		default:
+			return "Текстовое сообщение";
+	}
+};
+
+const CaptureSourceViewer = ({
+	viewer,
+	onClose,
+}: {
+	viewer: SourceViewer;
+	onClose: () => void;
+}) => {
+	const kind = captureSourceKind(viewer.capture);
+	return (
+		<Modal title="Исходный материал" onClose={onClose}>
+			<div className="mini-source-summary">
+				<span>
+					<SourceIcon capture={viewer.capture} size={22} />
+				</span>
+				<div>
+					<b>{captureSourceLabel(viewer.capture)}</b>
+					{viewer.capture.created_at && (
+						<small>{formatDate(viewer.capture.created_at)}</small>
+					)}
+				</div>
+			</div>
+			{kind === "image" && viewer.mediaURL && (
+				<img
+					className="mini-source-image"
+					src={viewer.mediaURL}
+					alt="Исходное изображение расхода"
+				/>
+			)}
+			{kind === "voice" && viewer.mediaURL && (
+				<>
+					{/* biome-ignore lint/a11y/useMediaCaption: transcript is rendered below when the provider returned one. */}
+					<audio className="mini-source-audio" controls src={viewer.mediaURL} />
+				</>
+			)}
+			{viewer.capture.source_text && (
+				<div className="mini-source-text">
+					<small>
+						{kind === "text" ? "Исходный текст" : "Распознанный текст"}
+					</small>
+					<p>{viewer.capture.source_text}</p>
+				</div>
+			)}
+			{!viewer.mediaURL && !viewer.capture.source_text && (
+				<Empty text="Исходный материал недоступен" />
+			)}
+		</Modal>
+	);
+};
 
 const expenseSellerName = (expense: Expense) =>
 	expense.vendor_name ||
@@ -2782,9 +3046,12 @@ const ExpenseEditor = ({
 	vendors,
 	creating,
 	saving,
+	capture,
+	sourceLoading,
 	onChange,
 	onClose,
 	onSave,
+	onSource,
 	onDelete,
 }: {
 	expense: Expense;
@@ -2792,9 +3059,12 @@ const ExpenseEditor = ({
 	vendors: Vendor[];
 	creating: boolean;
 	saving: boolean;
+	capture?: CapturePacket;
+	sourceLoading: boolean;
 	onChange: (expense: Expense) => void;
 	onClose: () => void;
 	onSave: () => void;
+	onSource: () => void;
 	onDelete?: () => void;
 }) => {
 	const fallbackVendorName = vendorFieldValue(
@@ -2841,6 +3111,17 @@ const ExpenseEditor = ({
 			title={creating ? "Новый расход" : "Редактировать расход"}
 			onClose={onClose}
 		>
+			{expense.source_document_id && (
+				<button
+					className="mini-source-open"
+					type="button"
+					disabled={sourceLoading}
+					onClick={onSource}
+				>
+					<SourceIcon capture={capture} size={18} />
+					{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
+				</button>
+			)}
 			<label>
 				{creating ? "На что потратили" : "Название"}
 				<input
@@ -3005,18 +3286,24 @@ const ExpenseItemEditor = ({
 	categories,
 	vendors,
 	saving,
+	capture,
+	sourceLoading,
 	onChange,
 	onClose,
 	onSave,
+	onSource,
 }: {
 	expense: Expense;
 	item: ExpenseItem;
 	categories: Category[];
 	vendors: Vendor[];
 	saving: boolean;
+	capture?: CapturePacket;
+	sourceLoading: boolean;
 	onChange: (item: ExpenseItem) => void;
 	onClose: () => void;
 	onSave: () => void;
+	onSource: () => void;
 }) => {
 	const vendorName = vendorFieldValue(
 		item.vendor_name,
@@ -3030,6 +3317,17 @@ const ExpenseItemEditor = ({
 			<p className="mini-field-note">
 				{expense.title || "Расход"} · {formatDate(expense.expense_date)}
 			</p>
+			{expense.source_document_id && (
+				<button
+					className="mini-source-open"
+					type="button"
+					disabled={sourceLoading}
+					onClick={onSource}
+				>
+					<SourceIcon capture={capture} size={18} />
+					{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
+				</button>
+			)}
 			<label>
 				Название
 				<input
