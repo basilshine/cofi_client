@@ -1,7 +1,7 @@
 .mini-body {
 	width: 100%;
 	overflow-x: hidden;
-	overscroll-behavior-x: none;
+	overscroll-behavior: none;
 	background: #f4efe4;
 	color: #171b2d;
 }
@@ -21,6 +21,10 @@
 	--mini-red: #b53627;
 	--mini-signal: #ff5a3d;
 	--mini-soft: #eef1fa;
+	--mini-safe-top: calc(
+		max(env(safe-area-inset-top), var(--tg-safe-area-inset-top, 0px)) +
+		var(--tg-content-safe-area-inset-top, 0px)
+	);
 	min-height: 100vh;
 	padding-bottom: calc(118px + env(safe-area-inset-bottom));
 	background: #f4efe4;
@@ -46,8 +50,7 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
-	padding: max(env(safe-area-inset-top), var(--tg-safe-area-inset-top, 0px))
-		18px 0;
+	padding: var(--mini-safe-top) 18px 0;
 	border-bottom: 1px solid rgba(23, 27, 45, 0.08);
 	background: rgba(244, 239, 228, 0.94);
 	backdrop-filter: blur(16px);
@@ -1134,7 +1137,7 @@
 .mini-toast {
 	position: fixed;
 	z-index: 40;
-	top: calc(70px + env(safe-area-inset-top));
+	top: calc(70px + var(--mini-safe-top));
 	right: 14px;
 	left: 14px;
 	display: flex;
@@ -1219,7 +1222,7 @@
 	align-items: center;
 	gap: 12px;
 	min-height: 66px;
-	padding: env(safe-area-inset-top) 16px 0;
+	padding: var(--mini-safe-top) 16px 0;
 	border-bottom: 1px solid rgba(23, 27, 45, 0.1);
 	background: rgba(244, 239, 228, 0.96);
 	backdrop-filter: blur(18px);
@@ -1444,7 +1447,7 @@
 	align-content: center;
 	justify-items: center;
 	gap: 9px;
-	padding: calc(24px + env(safe-area-inset-top)) 18px
+	padding: calc(24px + var(--mini-safe-top)) 18px
 		calc(24px + env(safe-area-inset-bottom));
 }
 .review-saved-mark {
