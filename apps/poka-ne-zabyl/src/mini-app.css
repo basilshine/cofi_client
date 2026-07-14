@@ -951,6 +951,73 @@
 	background: var(--mini-soft);
 	color: var(--mini-green);
 }
+.capture-status {
+	position: fixed;
+	z-index: 30;
+	right: 14px;
+	bottom: calc(
+		108px +
+		max(
+			env(safe-area-inset-bottom),
+			var(--tg-content-safe-area-inset-bottom, 0px)
+		)
+	);
+	left: 14px;
+	display: grid;
+	grid-template-columns: 24px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	max-width: 520px;
+	min-height: 58px;
+	margin: 0 auto;
+	padding: 10px 12px;
+	border: 1px solid #2038a8;
+	border-radius: 8px;
+	background: var(--mini-green);
+	box-shadow: 0 10px 28px rgba(23, 27, 45, 0.2);
+	color: var(--mini-paper);
+}
+.capture-status.is-error {
+	border-color: #c7362c;
+	background: var(--mini-red);
+}
+.capture-status > div {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.capture-status strong,
+.capture-status small {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.capture-status strong {
+	font-size: 13px;
+}
+.capture-status small {
+	opacity: 0.82;
+	font-size: 11px;
+}
+.capture-status button {
+	display: grid;
+	width: 34px;
+	height: 34px;
+	place-items: center;
+	border: 0;
+	background: transparent;
+	color: inherit;
+}
+.capture-spinner {
+	display: block;
+	box-sizing: border-box;
+	width: 20px;
+	height: 20px;
+	border: 2px solid rgba(252, 249, 242, 0.38);
+	border-top-color: var(--mini-paper);
+	border-radius: 50%;
+	animation: capture-spin 800ms linear infinite;
+}
 .capture-mic.recording {
 	background: #fff0ec;
 	color: var(--mini-signal);
@@ -1628,6 +1695,11 @@
 @keyframes mini-pulse {
 	to {
 		background-position: -200% 0;
+	}
+}
+@keyframes capture-spin {
+	to {
+		transform: rotate(360deg);
 	}
 }
 @media (min-width: 700px) {

@@ -192,11 +192,14 @@ type Quota = {
 
 type AuthResponse = { token: string; user: User };
 type CaptureResponse = {
+	source_document_id?: number;
+	processing_status?: "pending" | "processing" | "succeeded" | "failed";
 	candidates?: { id: number; candidate_type: string }[];
 };
 type CaptureSubmission =
 	| { kind: "text"; text: string }
 	| { kind: "image" | "voice"; file: File };
+type PendingCapture = { sourceDocumentID: number; spaceID: number };
 
 type ReviewCandidate = {
 	id: number;
@@ -299,6 +302,7 @@ type CapturePacket = {
 	input_kind?: string;
 	source_type?: string;
 	document_type?: string;
+	processing_status?: "pending" | "processing" | "succeeded" | "failed";
 	source_text?: string;
 	created_at?: string;
 };
@@ -558,6 +562,11 @@ export const MiniApp = () => {
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [captureOpen, setCaptureOpen] = useState(false);
 	const [captureError, setCaptureError] = useState("");
+	const [captureSubmitting, setCaptureSubmitting] = useState(false);
+	const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(
+		null,
+	);
+	const [captureFailure, setCaptureFailure] = useState("");
 	const [reviewDraft, setReviewDraft] = useState<ReviewDraft | null>(null);
 	const [reviewMediaURL, setReviewMediaURL] = useState("");
 	const [savedReviewExpense, setSavedReviewExpense] = useState<Expense | null>(
@@ -792,9 +801,13 @@ export const MiniApp = () => {
 		authToken: string,
 		reviewSpaceID: number,
 		candidateID: number,
+		sourceDocumentID?: number,
 	) => {
+		const sourceFilter = sourceDocumentID
+			? `&source_document_id=${sourceDocumentID}`
+			: "";
 		const response = await apiRequest<{ candidates: ReviewCandidate[] }>(
-			`/spaces/${reviewSpaceID}/review/candidates?limit=100`,
+			`/spaces/${reviewSpaceID}/review/candidates?limit=100${sourceFilter}`,
 			authToken,
 		);
 		const candidate = response.candidates.find(
@@ -819,8 +832,9 @@ export const MiniApp = () => {
 	};
 
 	const submitCapture = async (submission: CaptureSubmission) => {
-		setSaving(true);
+		setCaptureSubmitting(true);
 		setCaptureError("");
+		setCaptureFailure("");
 		try {
 			if (previewMode) {
 				setCaptureOpen(false);
@@ -843,6 +857,7 @@ export const MiniApp = () => {
 						text: submission.text.trim(),
 						channel: "mini_app",
 						source_context: sourceContext,
+						wait_for_result: false,
 					}),
 				});
 			} else {
@@ -851,30 +866,91 @@ export const MiniApp = () => {
 				body.append("space_id", String(spaceID));
 				body.append("channel", "mini_app");
 				body.append("source_context", JSON.stringify(sourceContext));
+				body.append("wait_for_result", "false");
 				body.append("file", submission.file, submission.file.name);
 				captured = await apiRequest<CaptureResponse>("/capture", token, {
 					method: "POST",
 					body,
 				});
 			}
-			const candidate = captured.candidates?.find(
-				(item) => item.candidate_type === "expense_candidate",
-			);
-			if (!candidate) throw new Error("Не удалось распознать расход");
-			setSavedReviewExpense(null);
-			setReviewDraft(null);
-			setReviewMediaURL("");
-			await loadReview(token, spaceID, candidate.id);
+			if (!captured.source_document_id)
+				throw new Error("Сервер не подтвердил загрузку расхода");
+			setPendingCapture({
+				sourceDocumentID: captured.source_document_id,
+				spaceID,
+			});
 			setCaptureOpen(false);
-			setView("review");
 		} catch (err) {
-			setCaptureError(
-				err instanceof Error ? err.message : "Не удалось обработать расход",
-			);
+			const message =
+				err instanceof Error ? err.message : "Не удалось обработать расход";
+			setCaptureError(message);
+			setCaptureFailure(message);
 		} finally {
-			setSaving(false);
+			setCaptureSubmitting(false);
 		}
 	};
+
+	useEffect(() => {
+		if (!token || !pendingCapture || previewMode) return;
+		let cancelled = false;
+		let timer = 0;
+		const poll = async () => {
+			try {
+				const packets = await apiRequest<{ captures: CapturePacket[] }>(
+					`/spaces/${pendingCapture.spaceID}/captures?limit=1&source_document_id=${pendingCapture.sourceDocumentID}`,
+					token,
+				);
+				if (cancelled) return;
+				const packet = packets.captures[0];
+				if (packet?.processing_status === "failed") {
+					setPendingCapture(null);
+					setCaptureFailure("Не удалось разобрать расход. Попробуйте ещё раз");
+					return;
+				}
+				if (packet?.processing_status === "succeeded") {
+					const candidates = await apiRequest<{
+						candidates: ReviewCandidate[];
+					}>(
+						`/spaces/${pendingCapture.spaceID}/review/candidates?limit=100&source_document_id=${pendingCapture.sourceDocumentID}`,
+						token,
+					);
+					if (cancelled) return;
+					const candidate = candidates.candidates.find(
+						(item) => item.candidate_type === "expense_candidate",
+					);
+					if (!candidate) {
+						setPendingCapture(null);
+						setCaptureFailure("Не удалось распознать расход");
+						return;
+					}
+					setSavedReviewExpense(null);
+					setReviewDraft(null);
+					setReviewMediaURL("");
+					setEditingExpense(null);
+					setEditingItemIndex(null);
+					await loadReview(
+						token,
+						pendingCapture.spaceID,
+						candidate.id,
+						pendingCapture.sourceDocumentID,
+					);
+					if (cancelled) return;
+					setSpaceID(pendingCapture.spaceID);
+					setPendingCapture(null);
+					setView("review");
+					return;
+				}
+			} catch {
+				// A temporary network failure should not lose a persisted capture.
+			}
+			if (!cancelled) timer = window.setTimeout(poll, 2_000);
+		};
+		void poll();
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [token, pendingCapture?.sourceDocumentID, pendingCapture?.spaceID]);
 
 	const closeReview = () => {
 		if (requestedReview) {
@@ -1737,7 +1813,12 @@ export const MiniApp = () => {
 	};
 
 	const openCapture = () => {
+		if (captureSubmitting || pendingCapture) {
+			setNotice("Текущий расход ещё разбирается");
+			return;
+		}
 		setCaptureError("");
+		setCaptureFailure("");
 		setCaptureOpen(true);
 	};
 
@@ -1948,6 +2029,41 @@ export const MiniApp = () => {
 				)}
 			</main>
 
+			{(captureSubmitting || pendingCapture || captureFailure) && (
+				<div
+					className={`capture-status${captureFailure ? " is-error" : ""}`}
+					role="status"
+					aria-live="polite"
+				>
+					{captureFailure ? (
+						<X size={20} />
+					) : (
+						<span className="capture-spinner" />
+					)}
+					<div>
+						<strong>
+							{captureFailure
+								? "Расход не разобран"
+								: captureSubmitting
+									? "Отправляем расход…"
+									: "Разбираем расход…"}
+						</strong>
+						<small>
+							{captureFailure || "Можно продолжать пользоваться приложением"}
+						</small>
+					</div>
+					{captureFailure && (
+						<button
+							type="button"
+							aria-label="Скрыть сообщение"
+							onClick={() => setCaptureFailure("")}
+						>
+							<X size={17} />
+						</button>
+					)}
+				</div>
+			)}
+
 			<nav className="mini-nav" aria-label="Разделы приложения">
 				<NavButton
 					active={view === "overview"}
@@ -1983,7 +2099,7 @@ export const MiniApp = () => {
 
 			{captureOpen && (
 				<CaptureComposer
-					saving={saving}
+					saving={captureSubmitting}
 					error={captureError}
 					onClose={() => setCaptureOpen(false)}
 					onManual={() => {
