@@ -854,7 +854,8 @@
 	font-size: 12px;
 }
 .mini-modal input,
-.mini-modal select {
+.mini-modal select,
+.mini-modal textarea {
 	box-sizing: border-box;
 	width: 100%;
 	min-width: 0;
@@ -865,9 +866,112 @@
 	background: var(--mini-paper);
 	color: var(--mini-ink);
 }
+.mini-modal textarea {
+	min-height: 132px;
+	padding: 12px;
+	resize: vertical;
+}
 .mini-modal input:disabled {
 	background: var(--mini-soft);
 	color: var(--mini-muted);
+}
+.capture-choice {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 9px;
+}
+.capture-choice button {
+	display: grid;
+	min-height: 82px;
+	place-items: center;
+	align-content: center;
+	gap: 7px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-soft);
+	color: var(--mini-ink);
+	font-weight: 700;
+}
+.capture-choice button:active {
+	border-color: var(--mini-green);
+	color: var(--mini-green);
+}
+.capture-choice button:disabled,
+.capture-actions button:disabled,
+.capture-record:disabled {
+	opacity: 0.5;
+}
+.capture-choice svg {
+	color: var(--mini-green);
+}
+.capture-composer {
+	display: grid;
+	gap: 13px;
+}
+.capture-actions {
+	display: grid;
+	grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+	gap: 9px;
+}
+.capture-actions button,
+.capture-record {
+	display: inline-flex;
+	min-height: 46px;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-soft);
+	color: var(--mini-ink);
+	font-weight: 700;
+}
+.capture-actions .capture-submit {
+	border-color: var(--mini-green);
+	background: var(--mini-green);
+	color: var(--mini-paper);
+}
+.capture-voice {
+	justify-items: center;
+	padding-top: 6px;
+}
+.capture-voice > strong {
+	font-variant-numeric: tabular-nums;
+}
+.capture-voice audio,
+.capture-voice .capture-actions {
+	width: 100%;
+}
+.capture-mic {
+	display: grid;
+	width: 76px;
+	height: 76px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+}
+.capture-mic.recording {
+	background: #fff0ec;
+	color: var(--mini-signal);
+	box-shadow: 0 0 0 7px rgba(255, 90, 61, 0.12);
+}
+.capture-record {
+	width: 100%;
+}
+.capture-record.recording {
+	border-color: var(--mini-signal);
+	background: #fff0ec;
+	color: var(--mini-red);
+}
+.capture-file-input {
+	display: none !important;
+}
+.capture-processing {
+	padding: 12px;
+	text-align: center;
+	color: var(--mini-green);
+	font-weight: 700;
 }
 .mini-source-open {
 	display: inline-flex;

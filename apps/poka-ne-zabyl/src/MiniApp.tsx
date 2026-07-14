@@ -194,6 +194,9 @@ type AuthResponse = { token: string; user: User };
 type CaptureResponse = {
 	candidates?: { id: number; candidate_type: string }[];
 };
+type CaptureSubmission =
+	| { kind: "text"; text: string }
+	| { kind: "image" | "voice"; file: File };
 
 type ReviewCandidate = {
 	id: number;
@@ -481,7 +484,9 @@ const apiRequest = async <T,>(
 	const response = await fetch(`/api/v1${path}`, {
 		...init,
 		headers: {
-			"Content-Type": "application/json",
+			...(init?.body instanceof FormData
+				? {}
+				: { "Content-Type": "application/json" }),
 			...(token ? { Authorization: `Bearer ${token}` } : {}),
 			...init?.headers,
 		},
@@ -551,6 +556,8 @@ export const MiniApp = () => {
 	const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 	const [editingProfile, setEditingProfile] = useState<User | null>(null);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
+	const [captureOpen, setCaptureOpen] = useState(false);
+	const [captureError, setCaptureError] = useState("");
 	const [reviewDraft, setReviewDraft] = useState<ReviewDraft | null>(null);
 	const [reviewMediaURL, setReviewMediaURL] = useState("");
 	const [savedReviewExpense, setSavedReviewExpense] = useState<Expense | null>(
@@ -809,6 +816,76 @@ export const MiniApp = () => {
 		const blob = await media.blob();
 		if (blob.type.startsWith("image/"))
 			setReviewMediaURL(URL.createObjectURL(blob));
+	};
+
+	const submitCapture = async (submission: CaptureSubmission) => {
+		setSaving(true);
+		setCaptureError("");
+		try {
+			if (previewMode) {
+				setCaptureOpen(false);
+				setNotice("Расход отправлен на разбор");
+				return;
+			}
+			const captureID = crypto.randomUUID();
+			const sourceContext = {
+				source: "mini_app",
+				telegram_chat_id: user?.id || 0,
+				telegram_message_id: captureID,
+			};
+			let captured: CaptureResponse;
+			if (submission.kind === "text") {
+				captured = await apiRequest<CaptureResponse>("/capture", token, {
+					method: "POST",
+					body: JSON.stringify({
+						input_kind: "text",
+						space_id: spaceID,
+						text: submission.text.trim(),
+						channel: "mini_app",
+						source_context: sourceContext,
+					}),
+				});
+			} else {
+				const body = new FormData();
+				body.append("input_kind", submission.kind);
+				body.append("space_id", String(spaceID));
+				body.append("channel", "mini_app");
+				body.append("source_context", JSON.stringify(sourceContext));
+				body.append("file", submission.file, submission.file.name);
+				captured = await apiRequest<CaptureResponse>("/capture", token, {
+					method: "POST",
+					body,
+				});
+			}
+			const candidate = captured.candidates?.find(
+				(item) => item.candidate_type === "expense_candidate",
+			);
+			if (!candidate) throw new Error("Не удалось распознать расход");
+			setSavedReviewExpense(null);
+			setReviewDraft(null);
+			setReviewMediaURL("");
+			await loadReview(token, spaceID, candidate.id);
+			setCaptureOpen(false);
+			setView("review");
+		} catch (err) {
+			setCaptureError(
+				err instanceof Error ? err.message : "Не удалось обработать расход",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const closeReview = () => {
+		if (requestedReview) {
+			WebApp.close();
+			return;
+		}
+		setReviewDraft(null);
+		setSavedReviewExpense(null);
+		setReviewMediaURL("");
+		setView("expenses");
+		void loadSpace();
 	};
 
 	const openExpenseSource = async (expense: Expense) => {
@@ -1659,6 +1736,11 @@ export const MiniApp = () => {
 		});
 	};
 
+	const openCapture = () => {
+		setCaptureError("");
+		setCaptureOpen(true);
+	};
+
 	const editExpenseItem = ({ expense, itemIndex }: ExpenseItemRow) => {
 		setEditingItemIndex(itemIndex);
 		setEditingExpense({
@@ -1675,10 +1757,7 @@ export const MiniApp = () => {
 				{loading ? (
 					<LoadingScreen />
 				) : savedReviewExpense ? (
-					<ReviewSaved
-						expense={savedReviewExpense}
-						onClose={() => WebApp.close()}
-					/>
+					<ReviewSaved expense={savedReviewExpense} onClose={closeReview} />
 				) : reviewDraft ? (
 					<ReviewEditor
 						draft={reviewDraft}
@@ -1689,7 +1768,7 @@ export const MiniApp = () => {
 						error={error}
 						onChange={setReviewDraft}
 						onSave={saveReview}
-						onClose={() => WebApp.close()}
+						onClose={closeReview}
 					/>
 				) : (
 					<TelegramEntry error={error || "Кандидат не найден"} />
@@ -1772,7 +1851,7 @@ export const MiniApp = () => {
 								onQuery={setQuery}
 								onSource={openExpenseSource}
 								onEdit={editExpenseItem}
-								onAdd={addExpense}
+								onAdd={openCapture}
 							/>
 						)}
 						{view === "vendors" && (
@@ -1901,6 +1980,19 @@ export const MiniApp = () => {
 					onClick={() => setView("profile")}
 				/>
 			</nav>
+
+			{captureOpen && (
+				<CaptureComposer
+					saving={saving}
+					error={captureError}
+					onClose={() => setCaptureOpen(false)}
+					onManual={() => {
+						setCaptureOpen(false);
+						addExpense();
+					}}
+					onSubmit={submitCapture}
+				/>
+			)}
 
 			{editingExpense && editingItemIndex === null && (
 				<ExpenseEditor
@@ -3334,6 +3426,289 @@ const ProfileView = ({
 				</button>
 			</div>
 		</section>
+	);
+};
+
+const CaptureComposer = ({
+	saving,
+	error,
+	onClose,
+	onManual,
+	onSubmit,
+}: {
+	saving: boolean;
+	error: string;
+	onClose: () => void;
+	onManual: () => void;
+	onSubmit: (submission: CaptureSubmission) => Promise<void>;
+}) => {
+	const [mode, setMode] = useState<"choose" | "text" | "voice">("choose");
+	const [text, setText] = useState("");
+	const [recording, setRecording] = useState(false);
+	const [seconds, setSeconds] = useState(0);
+	const [voiceFile, setVoiceFile] = useState<File | null>(null);
+	const [voiceURL, setVoiceURL] = useState("");
+	const [localError, setLocalError] = useState("");
+	const photoInput = useRef<HTMLInputElement>(null);
+	const recorder = useRef<MediaRecorder | null>(null);
+	const stream = useRef<MediaStream | null>(null);
+	const chunks = useRef<Blob[]>([]);
+	const timer = useRef(0);
+	const timeout = useRef(0);
+
+	const clearRecordingTimers = () => {
+		window.clearInterval(timer.current);
+		window.clearTimeout(timeout.current);
+	};
+	const stopTracks = () => {
+		for (const track of stream.current?.getTracks() || []) track.stop();
+		stream.current = null;
+	};
+	const stopRecording = () => {
+		if (recorder.current?.state === "recording") recorder.current.stop();
+	};
+
+	useEffect(
+		() => () => {
+			clearRecordingTimers();
+			if (recorder.current?.state === "recording") {
+				recorder.current.onstop = null;
+				recorder.current.stop();
+			}
+			stopTracks();
+		},
+		[],
+	);
+
+	useEffect(
+		() => () => {
+			if (voiceURL) URL.revokeObjectURL(voiceURL);
+		},
+		[voiceURL],
+	);
+
+	const startRecording = async () => {
+		setLocalError("");
+		if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+			setLocalError("Запись голоса не поддерживается на этом устройстве");
+			return;
+		}
+		try {
+			const audioStream = await navigator.mediaDevices.getUserMedia({
+				audio: true,
+			});
+			stream.current = audioStream;
+			const mimeType = [
+				"audio/webm;codecs=opus",
+				"audio/mp4",
+				"audio/webm",
+			].find((type) => MediaRecorder.isTypeSupported(type));
+			const nextRecorder = new MediaRecorder(
+				audioStream,
+				mimeType ? { mimeType } : undefined,
+			);
+			chunks.current = [];
+			nextRecorder.ondataavailable = (event) => {
+				if (event.data.size > 0) chunks.current.push(event.data);
+			};
+			nextRecorder.onstop = () => {
+				clearRecordingTimers();
+				stopTracks();
+				setRecording(false);
+				const type = nextRecorder.mimeType || mimeType || "audio/webm";
+				const blob = new Blob(chunks.current, { type });
+				if (blob.size === 0) {
+					setLocalError("Не удалось записать голос");
+					return;
+				}
+				const extension = type.includes("mp4") ? "m4a" : "webm";
+				const file = new File([blob], `voice.${extension}`, { type });
+				setVoiceFile(file);
+				setVoiceURL(URL.createObjectURL(file));
+			};
+			recorder.current = nextRecorder;
+			setVoiceFile(null);
+			setVoiceURL("");
+			setSeconds(0);
+			setRecording(true);
+			const startedAt = Date.now();
+			timer.current = window.setInterval(
+				() =>
+					setSeconds(Math.min(60, Math.floor((Date.now() - startedAt) / 1000))),
+				250,
+			);
+			timeout.current = window.setTimeout(() => nextRecorder.stop(), 60_000);
+			nextRecorder.start();
+		} catch {
+			clearRecordingTimers();
+			stopTracks();
+			setRecording(false);
+			setLocalError("Разрешите доступ к микрофону и попробуйте ещё раз");
+		}
+	};
+
+	const selectPhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+		const file = event.target.files?.[0];
+		event.target.value = "";
+		if (!file) return;
+		if (!file.type.startsWith("image/")) {
+			setLocalError("Выберите фотографию");
+			return;
+		}
+		if (file.size > 15 * 1024 * 1024) {
+			setLocalError("Фотография должна быть меньше 15 МБ");
+			return;
+		}
+		setLocalError("");
+		await onSubmit({ kind: "image", file });
+	};
+
+	const title =
+		mode === "text"
+			? "Написать расход"
+			: mode === "voice"
+				? "Записать голосом"
+				: "Добавить расход";
+	return (
+		<Modal title={title} onClose={onClose}>
+			{mode === "choose" && (
+				<div className="capture-choice">
+					<button
+						type="button"
+						disabled={saving}
+						onClick={() => setMode("text")}
+					>
+						<ChatCircleText size={25} />
+						<span>Текст</span>
+					</button>
+					<button
+						type="button"
+						disabled={saving}
+						onClick={() => setMode("voice")}
+					>
+						<Microphone size={25} />
+						<span>Голос</span>
+					</button>
+					<button
+						type="button"
+						disabled={saving}
+						onClick={() => photoInput.current?.click()}
+					>
+						<Camera size={25} />
+						<span>Фото</span>
+					</button>
+					<button type="button" disabled={saving} onClick={onManual}>
+						<NotePencil size={25} />
+						<span>Вручную</span>
+					</button>
+				</div>
+			)}
+
+			{mode === "text" && (
+				<div className="capture-composer">
+					<textarea
+						maxLength={2000}
+						placeholder="Кофе 350, такси 620"
+						value={text}
+						onChange={(event) => setText(event.target.value)}
+					/>
+					<div className="capture-actions">
+						<button
+							type="button"
+							disabled={saving}
+							onClick={() => setMode("choose")}
+						>
+							Назад
+						</button>
+						<button
+							className="capture-submit"
+							type="button"
+							disabled={saving || !text.trim()}
+							onClick={() => void onSubmit({ kind: "text", text })}
+						>
+							<PaperPlaneTilt size={18} />
+							{saving ? "Разбираем…" : "Отправить"}
+						</button>
+					</div>
+				</div>
+			)}
+
+			{mode === "voice" && (
+				<div className="capture-composer capture-voice">
+					<div className={`capture-mic${recording ? " recording" : ""}`}>
+						<Microphone size={34} weight="fill" />
+					</div>
+					<strong aria-live="polite">
+						{recording
+							? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} / 1:00`
+							: "До 1 минуты"}
+					</strong>
+					{voiceURL && (
+						// biome-ignore lint/a11y/useMediaCaption: no transcript exists before upload
+						<audio controls src={voiceURL} />
+					)}
+					{!recording && !voiceFile && (
+						<button
+							className="capture-record"
+							type="button"
+							onClick={() => void startRecording()}
+						>
+							Начать запись
+						</button>
+					)}
+					{recording && (
+						<button
+							className="capture-record recording"
+							type="button"
+							onClick={stopRecording}
+						>
+							Остановить
+						</button>
+					)}
+					<div className="capture-actions">
+						<button
+							type="button"
+							disabled={saving || recording}
+							onClick={() => {
+								setVoiceFile(null);
+								setVoiceURL("");
+								setMode("choose");
+							}}
+						>
+							Назад
+						</button>
+						{voiceFile && (
+							<button
+								className="capture-submit"
+								type="button"
+								disabled={saving}
+								onClick={() =>
+									void onSubmit({ kind: "voice", file: voiceFile })
+								}
+							>
+								<PaperPlaneTilt size={18} />
+								{saving ? "Разбираем…" : "Отправить"}
+							</button>
+						)}
+					</div>
+				</div>
+			)}
+
+			<input
+				ref={photoInput}
+				className="capture-file-input"
+				type="file"
+				accept="image/*"
+				capture="environment"
+				onChange={(event) => void selectPhoto(event)}
+			/>
+			{saving && mode === "choose" && (
+				<div className="capture-processing">Разбираем расход…</div>
+			)}
+			{(localError || error) && (
+				<div className="mini-alert">{localError || error}</div>
+			)}
+		</Modal>
 	);
 };
 
