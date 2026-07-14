@@ -139,6 +139,9 @@
 	font-size: 17px;
 }
 .mini-section-head > button {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
 	border: 0;
 	background: none;
 	color: var(--mini-green);

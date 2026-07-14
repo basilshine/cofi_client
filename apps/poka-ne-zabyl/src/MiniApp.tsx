@@ -1419,8 +1419,8 @@ export const MiniApp = () => {
 		setNotice(owned ? "Пространство удалено" : "Вы покинули пространство");
 	};
 
-	const shareSpaceInvite = async () => {
-		if (!editingSpace?.id) return;
+	const shareSpaceInvite = async (space: Space) => {
+		if (!space.id) return;
 		if (previewMode) {
 			setNotice("В Telegram откроется выбор чата для приглашения");
 			return;
@@ -1428,7 +1428,7 @@ export const MiniApp = () => {
 		setSaving(true);
 		try {
 			const invite = await apiRequest<{ token: string }>(
-				`/spaces/${editingSpace.id}/invites`,
+				`/spaces/${space.id}/invites`,
 				token,
 				{
 					method: "POST",
@@ -1436,7 +1436,7 @@ export const MiniApp = () => {
 				},
 			);
 			const inviteURL = `${BOT_URL}?start=invite_${invite.token}`;
-			const shareURL = `https://t.me/share/url?url=${encodeURIComponent(inviteURL)}&text=${encodeURIComponent(`Присоединяйся к пространству «${editingSpace.name}» в «Пока не забыл»`)}`;
+			const shareURL = `https://t.me/share/url?url=${encodeURIComponent(inviteURL)}&text=${encodeURIComponent(`Присоединяйся к пространству «${space.name}» в «Пока не забыл»`)}`;
 			WebApp.openTelegramLink(shareURL);
 			setNotice("Приглашение готово. Оно сработает для первого получателя");
 		} catch (err) {
@@ -1612,6 +1612,14 @@ export const MiniApp = () => {
 								members={members}
 								onSelect={setSpaceID}
 								onEdit={(space) => setEditingSpace({ ...space })}
+								onInvite={
+									activeSpace &&
+									!activeSpace.is_personal &&
+									activeSpace.owner_user_id === user?.id
+										? shareSpaceInvite
+										: undefined
+								}
+								inviting={saving}
 								onAdd={() =>
 									setEditingSpace({
 										id: 0,
@@ -1782,7 +1790,7 @@ export const MiniApp = () => {
 						editingSpace.id &&
 						!editingSpace.is_personal &&
 						editingSpace.owner_user_id === user?.id
-							? shareSpaceInvite
+							? () => shareSpaceInvite(editingSpace)
 							: undefined
 					}
 					onDelete={
@@ -2892,6 +2900,8 @@ const SpacesView = ({
 	members,
 	onSelect,
 	onEdit,
+	onInvite,
+	inviting,
 	onAdd,
 }: {
 	spaces: Space[];
@@ -2899,6 +2909,8 @@ const SpacesView = ({
 	members: SpaceMember[];
 	onSelect: (id: number) => void;
 	onEdit: (space: Space) => void;
+	onInvite?: (space: Space) => void;
+	inviting: boolean;
 	onAdd: () => void;
 }) => {
 	const activeSpace = spaces.find((space) => space.id === activeSpaceID);
@@ -2940,8 +2952,17 @@ const SpacesView = ({
 			</div>
 			{spaces.length === 0 && <Empty text="Создайте первое пространство" />}
 			<div className="mini-section-head">
-				<h2>{activeSpace?.name || "Участники"}</h2>
-				<span>{members.length}</span>
+				<h2>Участники · {members.length}</h2>
+				{onInvite && activeSpace && (
+					<button
+						type="button"
+						disabled={inviting}
+						onClick={() => onInvite(activeSpace)}
+					>
+						<PaperPlaneTilt size={17} weight="bold" />
+						Пригласить
+					</button>
+				)}
 			</div>
 			<div className="mini-members">
 				{members.map((member) => (
