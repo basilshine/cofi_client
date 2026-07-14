@@ -19,6 +19,7 @@ import {
 import WebApp from "@twa-dev/sdk";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import "./mini-app.css";
+import { groupRowsByExpense } from "./expense-groups";
 import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
@@ -422,6 +423,8 @@ export const MiniApp = () => {
 	const [period, setPeriod] = useState<Period>("month");
 	const [categoryID, setCategoryID] = useState(0);
 	const [vendorID, setVendorID] = useState(0);
+	const [expenseID, setExpenseID] = useState(0);
+	const [groupByExpense, setGroupByExpense] = useState(false);
 	const [query, setQuery] = useState("");
 	const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 	const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
@@ -694,12 +697,13 @@ export const MiniApp = () => {
 				.toLocaleLowerCase("ru");
 			return (
 				(!start || date >= start) &&
+				(expenseID === 0 || expense.id === expenseID) &&
 				(categoryID === 0 || item.category_id === categoryID) &&
 				(vendorID === 0 || itemVendorID === vendorID) &&
 				(!normalizedQuery || text.includes(normalizedQuery))
 			);
 		});
-	}, [expenses, period, categoryID, vendorID, query]);
+	}, [expenses, period, expenseID, categoryID, vendorID, query]);
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
 	const currency = user?.currency || activeSpace?.currency || "RUB";
@@ -730,7 +734,31 @@ export const MiniApp = () => {
 	}, [categories, overviewExpenses, currency]);
 
 	const openCategory = (id: number) => {
+		setPeriod("all");
 		setCategoryID(id);
+		setVendorID(0);
+		setExpenseID(0);
+		setQuery("");
+		setGroupByExpense(false);
+		setView("expenses");
+	};
+
+	const openExpense = (id: number) => {
+		setPeriod("all");
+		setCategoryID(0);
+		setVendorID(0);
+		setExpenseID(id);
+		setQuery("");
+		setGroupByExpense(false);
+		setView("expenses");
+	};
+
+	const openAllExpenses = () => {
+		setPeriod("all");
+		setCategoryID(0);
+		setVendorID(0);
+		setExpenseID(0);
+		setQuery("");
 		setView("expenses");
 	};
 
@@ -1405,7 +1433,8 @@ export const MiniApp = () => {
 								categories={categoryTotals}
 								expenses={overviewExpenses}
 								onCategory={openCategory}
-								onExpenses={() => setView("expenses")}
+								onExpense={openExpense}
+								onExpenses={openAllExpenses}
 							/>
 						)}
 						{view === "expenses" && (
@@ -1415,12 +1444,16 @@ export const MiniApp = () => {
 								vendors={vendors}
 								currency={currency}
 								period={period}
+								expense={expenses.find((expense) => expense.id === expenseID)}
 								categoryID={categoryID}
 								vendorID={vendorID}
+								groupByExpense={groupByExpense}
 								query={query}
 								onPeriod={setPeriod}
+								onClearExpense={() => setExpenseID(0)}
 								onCategory={setCategoryID}
 								onVendor={setVendorID}
+								onGrouping={setGroupByExpense}
 								onQuery={setQuery}
 								onEdit={editExpenseItem}
 								onAdd={addExpense}
@@ -1517,7 +1550,7 @@ export const MiniApp = () => {
 					active={view === "expenses"}
 					label="Расходы"
 					icon={<Receipt />}
-					onClick={() => setView("expenses")}
+					onClick={openAllExpenses}
 				/>
 				<NavButton
 					active={view === "categories"}
@@ -2099,6 +2132,7 @@ const Overview = ({
 	categories,
 	expenses,
 	onCategory,
+	onExpense,
 	onExpenses,
 }: {
 	user: User | null;
@@ -2107,6 +2141,7 @@ const Overview = ({
 	categories: Array<Category & { filteredTotal: number }>;
 	expenses: Expense[];
 	onCategory: (id: number) => void;
+	onExpense: (id: number) => void;
 	onExpenses: () => void;
 }) => {
 	const max = categories[0]?.filteredTotal || 1;
@@ -2158,7 +2193,7 @@ const Overview = ({
 			<ExpenseList
 				expenses={expenses.slice(0, 4)}
 				currency={currency}
-				onEdit={() => onExpenses()}
+				onEdit={(expense) => onExpense(expense.id)}
 			/>
 		</section>
 	);
@@ -2170,12 +2205,16 @@ const ExpensesView = ({
 	vendors,
 	currency,
 	period,
+	expense,
 	categoryID,
 	vendorID,
+	groupByExpense,
 	query,
 	onPeriod,
+	onClearExpense,
 	onCategory,
 	onVendor,
+	onGrouping,
 	onQuery,
 	onEdit,
 	onAdd,
@@ -2185,12 +2224,16 @@ const ExpensesView = ({
 	vendors: Vendor[];
 	currency: string;
 	period: Period;
+	expense?: Expense;
 	categoryID: number;
 	vendorID: number;
+	groupByExpense: boolean;
 	query: string;
 	onPeriod: (period: Period) => void;
+	onClearExpense: () => void;
 	onCategory: (id: number) => void;
 	onVendor: (id: number) => void;
+	onGrouping: (group: boolean) => void;
 	onQuery: (value: string) => void;
 	onEdit: (item: ExpenseItemRow) => void;
 	onAdd: () => void;
@@ -2214,6 +2257,18 @@ const ExpensesView = ({
 				placeholder="Магазин или покупка"
 			/>
 		</label>
+		{expense && (
+			<div className="mini-expense-scope">
+				<span>
+					<small>Выбран расход</small>
+					<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
+				</span>
+				<button type="button" onClick={onClearExpense}>
+					<X size={15} />
+					Все
+				</button>
+			</div>
+		)}
 		<div className="mini-result">
 			<div>
 				<small>Найдено</small>
@@ -2272,12 +2327,39 @@ const ExpensesView = ({
 				))}
 			</select>
 		</div>
-		<ExpenseItemList
-			items={items}
-			categories={categories}
-			currency={currency}
-			onEdit={onEdit}
-		/>
+		<div className="mini-expense-mode" role="group" aria-label="Вид расходов">
+			<button
+				className={!groupByExpense ? "active" : ""}
+				type="button"
+				aria-pressed={!groupByExpense}
+				onClick={() => onGrouping(false)}
+			>
+				Позиции
+			</button>
+			<button
+				className={groupByExpense ? "active" : ""}
+				type="button"
+				aria-pressed={groupByExpense}
+				onClick={() => onGrouping(true)}
+			>
+				По расходам
+			</button>
+		</div>
+		{groupByExpense ? (
+			<GroupedExpenseItemList
+				items={items}
+				categories={categories}
+				currency={currency}
+				onEdit={onEdit}
+			/>
+		) : (
+			<ExpenseItemList
+				items={items}
+				categories={categories}
+				currency={currency}
+				onEdit={onEdit}
+			/>
+		)}
 	</section>
 );
 
@@ -2328,6 +2410,53 @@ const ExpenseItemList = ({
 		{items.length === 0 && <Empty text="Ничего не найдено" />}
 	</div>
 );
+
+const GroupedExpenseItemList = ({
+	items,
+	categories,
+	currency,
+	onEdit,
+}: {
+	items: ExpenseItemRow[];
+	categories: Category[];
+	currency: string;
+	onEdit: (item: ExpenseItemRow) => void;
+}) => {
+	const groups = groupRowsByExpense(items);
+	return (
+		<div className="mini-expense-groups">
+			{groups.map((rows) => {
+				const expense = rows[0].expense;
+				const total = rows.reduce(
+					(sum, row) =>
+						sum + (itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
+					0,
+				);
+				return (
+					<section key={expense.id}>
+						<header>
+							<span>
+								<b>{expense.title || rows[0].item.name || "Расход"}</b>
+								<small>
+									{formatDate(expense.expense_date)} · {rows.length}{" "}
+									{itemWord(rows.length)}
+								</small>
+							</span>
+							<strong>{formatMoney(total, currency)}</strong>
+						</header>
+						<ExpenseItemList
+							items={rows}
+							categories={categories}
+							currency={currency}
+							onEdit={onEdit}
+						/>
+					</section>
+				);
+			})}
+			{groups.length === 0 && <Empty text="Ничего не найдено" />}
+		</div>
+	);
+};
 
 const ExpenseList = ({
 	expenses,

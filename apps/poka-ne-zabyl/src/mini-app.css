@@ -246,6 +246,42 @@
 	background: transparent;
 	color: var(--mini-ink);
 }
+.mini-expense-scope {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 10px 12px;
+	border-left: 3px solid var(--mini-green);
+	background: #eef0e9;
+}
+.mini-expense-scope > span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-expense-scope small {
+	color: var(--mini-muted);
+	font-size: 10px;
+}
+.mini-expense-scope b {
+	overflow: hidden;
+	font-size: 13px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-expense-scope button {
+	display: inline-flex;
+	min-height: 34px;
+	align-items: center;
+	gap: 4px;
+	padding: 0 9px;
+	border: 0;
+	background: transparent;
+	color: var(--mini-green);
+	font-weight: 700;
+}
 .mini-filters {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
@@ -265,6 +301,62 @@
 }
 .mini-filters--three select:last-child {
 	grid-column: 1 / -1;
+}
+.mini-expense-mode {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	padding: 3px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: #ecebe5;
+}
+.mini-expense-mode button {
+	min-height: 36px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--mini-muted);
+	font-weight: 650;
+}
+.mini-expense-mode button.active {
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	box-shadow: 0 1px 4px rgba(31, 33, 29, 0.1);
+}
+.mini-expense-groups {
+	display: grid;
+	gap: 18px;
+}
+.mini-expense-groups > section {
+	display: grid;
+	gap: 8px;
+}
+.mini-expense-groups > section > header {
+	display: flex;
+	min-width: 0;
+	align-items: end;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 0 2px;
+}
+.mini-expense-groups header span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-expense-groups header b {
+	overflow: hidden;
+	font-size: 14px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-expense-groups header small {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.mini-expense-groups header strong {
+	flex: none;
+	font-size: 14px;
 }
 .mini-link-button,
 .mini-back-link {
