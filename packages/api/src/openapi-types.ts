@@ -2586,6 +2586,10 @@ export interface paths {
                 content: {
                     "application/json": {
                         name: string;
+                        aliases?: string[];
+                        /** @enum {string|null} */
+                        budget_period?: "week" | "month" | null;
+                        budget_amount?: number | null;
                     };
                 };
             };
@@ -2686,6 +2690,10 @@ export interface paths {
                 content: {
                     "application/json": {
                         name: string;
+                        aliases?: string[];
+                        /** @enum {string|null} */
+                        budget_period?: "week" | "month" | null;
+                        budget_amount?: number | null;
                     };
                 };
             };
@@ -6807,6 +6815,13 @@ export interface components {
             total?: number;
             /** Format: date-time */
             last_used?: string | null;
+            aliases?: string[];
+            /** @enum {string} */
+            budget_period?: "week" | "month";
+            budget_amount?: number | null;
+            budget_spent?: number;
+            budget_remaining?: number | null;
+            budget_percent?: number;
         };
         CategoryItem: {
             /** Format: int64 */
@@ -6937,6 +6952,20 @@ export interface components {
         CreateExpenseCandidateResponse: {
             expense?: components["schemas"]["Expense"];
             candidate?: components["schemas"]["DocumentCandidateState"];
+            budget_warnings?: components["schemas"]["CategoryBudgetWarning"][];
+        };
+        CategoryBudgetWarning: {
+            /** Format: int64 */
+            category_id?: number;
+            category_name?: string;
+            /** @enum {integer} */
+            threshold?: 25 | 50 | 75 | 100;
+            spent?: number;
+            limit?: number;
+            remaining?: number;
+            currency?: components["schemas"]["CurrencyCode"];
+            /** @enum {string} */
+            period?: "week" | "month";
         };
         CreateParticipantCandidateResponse: {
             participant?: components["schemas"]["SpaceParticipant"];

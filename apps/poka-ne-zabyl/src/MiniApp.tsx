@@ -72,6 +72,31 @@ type Category = {
 	count: number;
 	total: number;
 	last_used?: string | null;
+	aliases?: string[];
+	alias_text?: string;
+	budget_period?: "week" | "month" | "";
+	budget_amount?: number | null;
+	budget_spent?: number;
+	budget_remaining?: number | null;
+	budget_percent?: number;
+};
+
+type BudgetWarning = {
+	category_name: string;
+	threshold: number;
+	spent: number;
+	limit: number;
+	remaining: number;
+	currency: string;
+	period: "week" | "month";
+};
+
+type HomeScreenStatus = "unsupported" | "unknown" | "added" | "missed";
+const telegramWebApp = WebApp as typeof WebApp & {
+	addToHomeScreen?: () => void;
+	checkHomeScreenStatus?: (
+		callback: (status: HomeScreenStatus) => void,
+	) => void;
 };
 
 type VendorAlias = { id?: number; alias: string };
@@ -270,6 +295,19 @@ const dismissKeyboard = (event: React.PointerEvent<HTMLElement>) => {
 };
 
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
+const aliasesFromText = (value: string) =>
+	Array.from(
+		new Set(
+			value
+				.split(",")
+				.map((alias) => alias.trim())
+				.filter(Boolean),
+		),
+	);
+const budgetWarningText = (warning: BudgetWarning) =>
+	warning.threshold >= 100
+		? `Лимит «${warning.category_name}» исчерпан`
+		: `В «${warning.category_name}» осталось ${formatMoney(warning.remaining, warning.currency)}`;
 const previewMode =
 	["localhost", "127.0.0.1"].includes(window.location.hostname) &&
 	new URLSearchParams(window.location.search).get("preview") === "1";
@@ -281,6 +319,12 @@ const previewCategories: Category[] = [
 		count: 8,
 		total: 12460,
 		last_used: new Date().toISOString(),
+		aliases: ["Продукты", "Супермаркет"],
+		budget_period: "month",
+		budget_amount: 20000,
+		budget_spent: 12460,
+		budget_remaining: 7540,
+		budget_percent: 62.3,
 	},
 	{
 		id: 2,
@@ -492,6 +536,8 @@ export const MiniApp = () => {
 	const [sourceViewer, setSourceViewer] = useState<SourceViewer | null>(null);
 	const [sourceLoading, setSourceLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
+	const [homeScreenStatus, setHomeScreenStatus] =
+		useState<HomeScreenStatus>("unsupported");
 
 	useEffect(() => {
 		document.body.classList.add("mini-body");
@@ -505,6 +551,9 @@ export const MiniApp = () => {
 		WebApp.expand();
 		WebApp.setHeaderColor("#f4f1ea");
 		WebApp.setBackgroundColor("#f4f1ea");
+		if (telegramWebApp.checkHomeScreenStatus) {
+			telegramWebApp.checkHomeScreenStatus(setHomeScreenStatus);
+		}
 		if (previewMode) {
 			setToken("preview");
 			setUser({
@@ -777,12 +826,18 @@ export const MiniApp = () => {
 				setSavedReviewExpense(reviewExpenseFromDraft(reviewDraft, currency));
 				return;
 			}
-			const result = await apiRequest<{ expense: Expense }>(
+			const result = await apiRequest<{
+				expense: Expense;
+				budget_warnings?: BudgetWarning[];
+			}>(
 				`/spaces/${spaceID}/review/candidates/${reviewDraft.candidateID}/create-expense`,
 				token,
 				{ method: "POST", body: JSON.stringify(payload) },
 			);
 			setSavedReviewExpense(result.expense);
+			if (result.budget_warnings?.[0]) {
+				setNotice(budgetWarningText(result.budget_warnings[0]));
+			}
 			WebApp.HapticFeedback.notificationOccurred("success");
 		} catch (err) {
 			setError(
@@ -881,6 +936,12 @@ export const MiniApp = () => {
 		setView("expenses");
 	};
 
+	const installOnHomeScreen = () => {
+		if (!telegramWebApp.addToHomeScreen) return;
+		telegramWebApp.addToHomeScreen();
+		setNotice("Подтвердите добавление приложения на главный экран");
+	};
+
 	const saveExpense = async () => {
 		if (!editingExpense) return;
 		const creating = editingExpense.id === 0;
@@ -919,6 +980,7 @@ export const MiniApp = () => {
 		}
 		setSaving(true);
 		try {
+			let saveNotice = successNotice;
 			const sellerName = (
 				editingExpense.payee_text ||
 				vendors.find((vendor) => vendor.id === editingExpense.vendor_id)
@@ -983,11 +1045,16 @@ export const MiniApp = () => {
 					(item) => item.candidate_type === "expense_candidate",
 				);
 				if (!candidate) throw new Error("Не удалось подготовить расход");
-				await apiRequest(
+				const projected = await apiRequest<{
+					budget_warnings?: BudgetWarning[];
+				}>(
 					`/spaces/${spaceID}/review/candidates/${candidate.id}/create-expense`,
 					token,
 					{ method: "POST", body: "{}" },
 				);
+				if (projected.budget_warnings?.[0]) {
+					saveNotice = budgetWarningText(projected.budget_warnings[0]);
+				}
 			} else {
 				await apiRequest(
 					`/spaces/${spaceID}/expenses/${editingExpense.id}`,
@@ -1013,7 +1080,7 @@ export const MiniApp = () => {
 			}
 			setEditingExpense(null);
 			setEditingItemIndex(null);
-			setNotice(successNotice);
+			setNotice(saveNotice);
 			await loadSpace();
 		} catch (err) {
 			setNotice(
@@ -1268,6 +1335,9 @@ export const MiniApp = () => {
 		}
 		setSaving(true);
 		try {
+			const aliases = aliasesFromText(
+				editingCategory.alias_text ?? editingCategory.aliases?.join(", ") ?? "",
+			);
 			await apiRequest(
 				creating
 					? `/spaces/${spaceID}/categories`
@@ -1275,7 +1345,15 @@ export const MiniApp = () => {
 				token,
 				{
 					method: creating ? "POST" : "PUT",
-					body: JSON.stringify({ name: editingCategory.name }),
+					body: JSON.stringify({
+						name: editingCategory.name,
+						aliases,
+						budget_period: editingCategory.budget_period || undefined,
+						budget_amount:
+							(editingCategory.budget_amount || 0) > 0
+								? editingCategory.budget_amount
+								: undefined,
+					}),
 				},
 			);
 			setEditingCategory(null);
@@ -1645,8 +1723,14 @@ export const MiniApp = () => {
 						{view === "categories" && (
 							<CategoriesView
 								categories={categories}
+								currency={activeSpace?.currency || currency}
 								onOpen={openCategory}
-								onEdit={(category) => setEditingCategory({ ...category })}
+								onEdit={(category) =>
+									setEditingCategory({
+										...category,
+										alias_text: category.aliases?.join(", ") || "",
+									})
+								}
 								onAdd={() =>
 									setEditingCategory({
 										id: 0,
@@ -1654,6 +1738,10 @@ export const MiniApp = () => {
 										name: "",
 										count: 0,
 										total: 0,
+										aliases: [],
+										alias_text: "",
+										budget_period: "",
+										budget_amount: null,
 									})
 								}
 							/>
@@ -1690,6 +1778,8 @@ export const MiniApp = () => {
 								user={user}
 								quota={quota}
 								vendorsCount={vendors.length}
+								homeScreenStatus={homeScreenStatus}
+								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
 								onEdit={() =>
 									user &&
@@ -2121,10 +2211,10 @@ const ReviewEditor = ({
 				</label>
 				<div className="review-meta">
 					<div className="review-field">
-						<span>Продавец всего расхода</span>
+						<span>Где покупали</span>
 						<VendorAutocomplete
 							vendors={vendors}
-							ariaLabel="Продавец всего расхода"
+							ariaLabel="Где покупали"
 							placeholder={
 								sharedVendorName === null ? "Разные продавцы" : "Не определён"
 							}
@@ -2221,8 +2311,8 @@ const ReviewEditor = ({
 							<VendorAutocomplete
 								className="review-line-vendor"
 								vendors={vendors}
-								ariaLabel={`Продавец позиции ${index + 1}`}
-								placeholder="Продавец позиции"
+								ariaLabel={`Где купили позицию ${index + 1}`}
+								placeholder="Где купили"
 								value={item.vendor_name}
 								onChange={(vendorName) => {
 									applyItems(
@@ -2531,7 +2621,7 @@ const ExpensesView = ({
 				))}
 			</select>
 			<select
-				aria-label="Продавец"
+				aria-label="Где купили"
 				value={vendorID}
 				onChange={(event) => onVendor(Number(event.target.value))}
 			>
@@ -2834,7 +2924,7 @@ const expenseSellerName = (expense: Expense) =>
 		?.vendor_name ||
 	expense.items.find((item) => item.vendor?.name)?.vendor?.name ||
 	expense.payee_text ||
-	"Продавец не определён";
+	"Место покупки не указано";
 
 const expenseItemSellerName = (item: ExpenseItem, expense: Expense) =>
 	item.vendor_name ||
@@ -2842,7 +2932,7 @@ const expenseItemSellerName = (item: ExpenseItem, expense: Expense) =>
 	expense.vendor_name ||
 	expense.vendor?.name ||
 	expense.payee_text ||
-	"Продавец не определён";
+	"Место покупки не указано";
 
 const expenseItemRows = (expenses: Expense[]): ExpenseItemRow[] =>
 	expenses.flatMap((expense) =>
@@ -2851,11 +2941,13 @@ const expenseItemRows = (expenses: Expense[]): ExpenseItemRow[] =>
 
 const CategoriesView = ({
 	categories,
+	currency,
 	onOpen,
 	onEdit,
 	onAdd,
 }: {
 	categories: Category[];
+	currency: string;
 	onOpen: (id: number) => void;
 	onEdit: (category: Category) => void;
 	onAdd: () => void;
@@ -2884,10 +2976,21 @@ const CategoriesView = ({
 						<span>
 							<b>{category.name}</b>
 							<small>
-								{category.last_used
-									? `Последний расход ${formatDate(category.last_used)}`
-									: "Пока не использовалась"}
+								{category.budget_amount
+									? `Осталось ${formatMoney(category.budget_remaining || 0, currency)} · ${category.budget_period === "week" ? "на неделю" : "на месяц"}`
+									: category.last_used
+										? `Последний расход ${formatDate(category.last_used)}`
+										: "Пока не использовалась"}
 							</small>
+							{category.budget_amount && (
+								<span className="mini-category-budget">
+									<i
+										style={{
+											width: `${Math.min(100, category.budget_percent || 0)}%`,
+										}}
+									/>
+								</span>
+							)}
 						</span>
 					</button>
 					<button
@@ -3041,15 +3144,19 @@ const ProfileView = ({
 	user,
 	quota,
 	vendorsCount,
+	homeScreenStatus,
 	onEdit,
 	onManageVendors,
+	onInstall,
 	onUnavailable,
 }: {
 	user: User | null;
 	quota: Quota | null;
 	vendorsCount: number;
+	homeScreenStatus: HomeScreenStatus;
 	onEdit: () => void;
 	onManageVendors: () => void;
+	onInstall: () => void;
 	onUnavailable: () => void;
 }) => {
 	const used = quota?.used || 0;
@@ -3114,6 +3221,15 @@ const ProfileView = ({
 					</span>
 					<b>{vendorsCount}</b>
 				</button>
+				{homeScreenStatus !== "unsupported" && homeScreenStatus !== "added" && (
+					<button type="button" onClick={onInstall}>
+						<span>
+							<House size={18} />
+							Добавить на главный экран
+						</span>
+						<Plus size={18} weight="bold" />
+					</button>
+				)}
 			</div>
 		</section>
 	);
@@ -3219,10 +3335,10 @@ const ExpenseEditor = ({
 				/>
 			</label>
 			<div className="mini-field">
-				<span>Продавец всего расхода</span>
+				<span>Где покупали</span>
 				<VendorAutocomplete
 					vendors={vendors}
-					ariaLabel="Продавец всего расхода"
+					ariaLabel="Где покупали"
 					placeholder={
 						sharedVendorName === null ? "Разные продавцы" : "Не определён"
 					}
@@ -3322,8 +3438,8 @@ const ExpenseEditor = ({
 						<VendorAutocomplete
 							className="mini-editor-vendor"
 							vendors={vendors}
-							ariaLabel="Продавец позиции"
-							placeholder="Продавец позиции"
+							ariaLabel="Где купили позицию"
+							placeholder="Где купили"
 							value={itemVendorName(item)}
 							onChange={(vendorName) => updateItemVendor(index, vendorName)}
 						/>
@@ -3454,10 +3570,10 @@ const ExpenseItemEditor = ({
 				</select>
 			</label>
 			<div className="mini-field">
-				<span>Продавец</span>
+				<span>Где купили</span>
 				<VendorAutocomplete
 					vendors={vendors}
-					ariaLabel="Продавец"
+					ariaLabel="Где купили"
 					placeholder="Не определён"
 					value={vendorName}
 					onChange={(value) => {
@@ -3640,11 +3756,64 @@ const CategoryEditor = ({
 				}
 			/>
 		</label>
+		<label>
+			Синонимы
+			<input
+				maxLength={500}
+				placeholder="Например: маникюр, косметика, салон"
+				value={category.alias_text ?? category.aliases?.join(", ") ?? ""}
+				onChange={(event) =>
+					onChange({ ...category, alias_text: event.target.value })
+				}
+			/>
+			<small className="mini-field-hint">
+				Через запятую. Один синоним может принадлежать только одной категории.
+			</small>
+		</label>
+		<label>
+			Лимит
+			<select
+				value={category.budget_period || ""}
+				onChange={(event) =>
+					onChange({
+						...category,
+						budget_period: event.target.value as "" | "week" | "month",
+						budget_amount: event.target.value ? category.budget_amount : null,
+					})
+				}
+			>
+				<option value="">Без лимита</option>
+				<option value="week">На неделю</option>
+				<option value="month">На месяц</option>
+			</select>
+		</label>
+		{category.budget_period && (
+			<label>
+				Сумма лимита
+				<input
+					type="number"
+					min="1"
+					step="1"
+					placeholder="Например, 15000"
+					value={category.budget_amount || ""}
+					onChange={(event) =>
+						onChange({
+							...category,
+							budget_amount: Number(event.target.value) || null,
+						})
+					}
+				/>
+			</label>
+		)}
 		<div className="mini-modal-actions">
 			<button
 				className="mini-save"
 				type="button"
-				disabled={saving || !category.name.trim()}
+				disabled={
+					saving ||
+					!category.name.trim() ||
+					(Boolean(category.budget_period) && !category.budget_amount)
+				}
 				onClick={onSave}
 			>
 				{saving ? "Сохраняем…" : "Сохранить"}
