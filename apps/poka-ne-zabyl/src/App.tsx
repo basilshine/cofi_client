@@ -4,7 +4,6 @@ import {
 	ChatCircleText,
 	Check,
 	Microphone,
-	NotePencil,
 	Receipt,
 	TelegramLogo,
 	UsersThree,
@@ -52,10 +51,20 @@ export const App = () => {
 	}
 };
 
+const BrandMark = () => (
+	<svg aria-hidden="true" viewBox="0 0 44 44">
+		<path d="M21 22C7 20 5 12 10 10c5-2 11 5 11 12Z" />
+		<path d="M21 22C16 8 20 3 24 6c4 3 1 11-3 16Z" />
+		<path d="M21 22c-2 14 4 18 7 13 2-4-2-10-7-13Z" />
+		<path d="m21 22 8 8L41 12" className="brand__check" />
+		<circle cx="21" cy="22" r="2.4" />
+	</svg>
+);
+
 const Brand = ({ inverse = false }: { inverse?: boolean }) => (
 	<a className={`brand ${inverse ? "brand--inverse" : ""}`} href="/">
-		<span className="brand__mark" aria-hidden="true">
-			<NotePencil size={20} weight="bold" />
+		<span className="brand__mark">
+			<BrandMark />
 		</span>
 		<span>Пока не забыл</span>
 	</a>
@@ -75,167 +84,267 @@ const TelegramButton = ({ light = false }: { light?: boolean }) => (
 
 const LandingPage = () => {
 	usePageTitle("Пока не забыл — расходы в Telegram");
+	useEffect(() => {
+		const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			for (const element of elements) element.classList.add("is-visible");
+			return;
+		}
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (!entry.isIntersecting) continue;
+					entry.target.classList.add("is-visible");
+					observer.unobserve(entry.target);
+				}
+			},
+			{ threshold: 0.18 },
+		);
+		for (const element of elements) observer.observe(element);
+		return () => observer.disconnect();
+	}, []);
+
 	return (
-		<main>
+		<main className="landing-page">
 			<section className="hero">
-				<div className="hero__image" aria-hidden="true" />
-				<div className="hero__shade" aria-hidden="true" />
 				<header className="hero__nav shell">
-					<Brand inverse />
+					<Brand />
 					<nav aria-label="Основная навигация">
-						<a href="#how">Как работает</a>
-						<a href="#plans">Тарифы</a>
-						<TelegramButton light />
+						<a href="#how">Как это работает</a>
+						<a href="#shared">Для компании</a>
+						<TelegramButton />
 					</nav>
 				</header>
-				<div className="hero__content shell">
-					<p className="hero__kicker">Учёт расходов без таблиц</p>
-					<h1>Пока не забыл</h1>
-					<p className="hero__lead">
-						Напишите покупку в Telegram. Бот разберёт сообщение, голосовое или
-						чек и подготовит расход к сохранению.
-					</p>
-					<div className="hero__actions">
-						<TelegramButton />
-						<a className="text-link text-link--inverse" href="#how">
-							Посмотреть пример <ArrowRight size={18} />
-						</a>
-					</div>
-				</div>
-			</section>
-
-			<section className="capture-section" id="how">
-				<div className="shell capture-layout">
-					<div className="section-copy">
-						<p className="section-label">Как есть</p>
-						<h2>Расходы пишутся так, как вы говорите</h2>
-						<p>
-							Не нужно сначала выбирать категорию, магазин и дату. Отправьте то,
-							что помните, а детали проверьте перед сохранением.
+				<div className="hero__stage shell">
+					<div className="hero__copy">
+						<p className="hero__kicker">Расходы в Telegram</p>
+						<h1>
+							Расходы,
+							<br />
+							пока не забылись
+						</h1>
+						<p className="hero__lead">
+							Напишите, скажите или сфотографируйте. Бот разберёт покупку и даст
+							проверить перед сохранением.
 						</p>
-						<div
-							className="input-modes"
-							aria-label="Способы добавления расходов"
-						>
-							<span>
-								<ChatCircleText size={22} /> Текст
-							</span>
-							<span>
-								<Microphone size={22} /> Голос
-							</span>
-							<span>
-								<Camera size={22} /> Фото
-							</span>
+						<div className="hero__actions">
+							<TelegramButton />
+							<a className="text-link" href="#how">
+								Как это работает <ArrowRight size={18} />
+							</a>
 						</div>
+						<p className="hero__trust">Работает в личных и групповых чатах</p>
 					</div>
 
-					<div className="capture-sheet" aria-label="Пример разбора расхода">
-						<div className="capture-sheet__top">
-							<span>Сегодня</span>
-							<span>Telegram</span>
+					<div className="hero-demo" aria-label="Пример записи расхода">
+						<div className="hero-demo__blue" aria-hidden="true" />
+						<div className="demo-message demo-message--text">
+							<ChatCircleText size={22} />
+							<span>Кофе и круассан 550 ₽</span>
 						</div>
-						<p className="message message--user">Лента 2840, продукты</p>
-						<div className="message message--bot">
-							<span className="message__check">
-								<Check size={17} weight="bold" />
+						<div className="demo-message demo-message--voice">
+							<Microphone size={22} />
+							<span className="voice-wave" aria-label="Голосовое сообщение">
+								{voiceBars.map((bar) => (
+									<i key={bar.id} style={{ height: bar.height }} />
+								))}
 							</span>
-							<div>
-								<strong>Запомнил</strong>
-								<dl>
-									<div>
-										<dt>Сумма</dt>
-										<dd>2 840 ₽</dd>
-									</div>
-									<div>
-										<dt>Категория</dt>
-										<dd>Продукты</dd>
-									</div>
-								</dl>
-							</div>
 						</div>
-						<p className="pen-note">проверил, сохранил, пошёл дальше</p>
+						<svg className="demo-path" aria-hidden="true" viewBox="0 0 520 520">
+							<defs>
+								<filter
+									id="rough-ink"
+									x="-10%"
+									y="-10%"
+									width="120%"
+									height="120%"
+								>
+									<feTurbulence
+										type="fractalNoise"
+										baseFrequency="0.018 0.075"
+										numOctaves="1"
+										seed="8"
+										result="noise"
+									/>
+									<feDisplacementMap
+										in="SourceGraphic"
+										in2="noise"
+										scale="2.2"
+									/>
+								</filter>
+								<linearGradient id="ink-transition" x1="-240" x2="285">
+									<stop offset="0" stopColor="#244ad7" />
+									<stop offset=".7" stopColor="#3657da" />
+									<stop offset="1" stopColor="#aebcff" />
+								</linearGradient>
+							</defs>
+							<g filter="url(#rough-ink)">
+								<path
+									className="demo-path__halo demo-path__segment-1"
+									pathLength="1"
+									d="M-240 35C-176 8-111 14-104 48C-98 75-136 84-148 59C-164 25-91 12-22 49C48 87 99 145 190 172C220 181 251 185 285 188"
+								/>
+								<path
+									className="demo-path__ink demo-path__segment-1"
+									pathLength="1"
+									d="M-240 35C-176 8-111 14-104 48C-98 75-136 84-148 59C-164 25-91 12-22 49C48 87 99 145 190 172C220 181 251 185 285 188"
+								/>
+								<path
+									className="demo-path__halo demo-path__segment-2"
+									pathLength="1"
+									d="M285 188C365 195 438 183 448 234C456 273 421 295 394 279C373 267 384 244 404 251C427 261 407 313 329 337"
+								/>
+								<path
+									className="demo-path__ink demo-path__segment-2"
+									pathLength="1"
+									d="M285 188C365 195 438 183 448 234C456 273 421 295 394 279C373 267 384 244 404 251C427 261 407 313 329 337"
+								/>
+								<path
+									className="demo-path__halo demo-path__segment-3"
+									pathLength="1"
+									d="M329 337C275 356 238 357 232 390C228 417 260 434 281 415C298 400 285 383 271 394C255 407 299 446 444 451"
+								/>
+								<path
+									className="demo-path__ink demo-path__segment-3"
+									pathLength="1"
+									d="M329 337C275 356 238 357 232 390C228 417 260 434 281 415C298 400 285 383 271 394C255 407 299 446 444 451"
+								/>
+							</g>
+							<circle className="demo-path__dot" cx="329" cy="337" r="6" />
+						</svg>
+						<span className="demo-note demo-note--said">сказал</span>
+						<span className="demo-note demo-note--checked">проверил</span>
+						<span className="demo-note demo-note--saved">запомнил</span>
+						<div className="expense-slip">
+							<p>Расход</p>
+							<strong>550 ₽</strong>
+							<span>Кофейня · сегодня</span>
+							<b>
+								<Check size={20} weight="bold" />
+							</b>
+						</div>
 					</div>
 				</div>
 			</section>
 
-			<section className="shared-section">
+			<section className="steps-section" id="how">
+				<div className="shell" data-reveal>
+					<div className="section-heading">
+						<p className="section-label">Три коротких шага</p>
+						<h2>Сказали. Проверили. Запомнили.</h2>
+						<p>
+							Без таблиц, обязательных форм и попыток вспомнить всё вечером.
+						</p>
+					</div>
+					<div className="steps-list">
+						<article>
+							<span>01</span>
+							<ChatCircleText size={30} />
+							<h3>Отправьте как удобно</h3>
+							<p>Текст, голосовое или фотографию чека прямо в Telegram.</p>
+						</article>
+						<article>
+							<span>02</span>
+							<NoteReviewIcon />
+							<h3>Проверьте детали</h3>
+							<p>
+								Сумму, магазин, дату и категорию можно поправить до сохранения.
+							</p>
+						</article>
+						<article>
+							<span>03</span>
+							<Check size={30} weight="bold" />
+							<h3>Продолжайте свои дела</h3>
+							<p>Подтверждённый расход появится в истории и сводках.</p>
+						</article>
+					</div>
+				</div>
+			</section>
+
+			<section className="review-section">
+				<div className="shell review-layout" data-reveal>
+					<div className="review-copy">
+						<p className="section-label">Сначала проверка</p>
+						<h2>Бот не решает за вас</h2>
+						<p>
+							Он предлагает готовую запись. Вы подтверждаете её, исправляете или
+							отменяете.
+						</p>
+						<ul>
+							<li>
+								<Check size={18} /> Показывает, что распознал
+							</li>
+							<li>
+								<Check size={18} /> Не прячет сумму и категорию
+							</li>
+							<li>
+								<Check size={18} /> Сохраняет только после подтверждения
+							</li>
+						</ul>
+					</div>
+					<div className="review-card">
+						<div className="review-card__source">
+							<Camera size={20} /> Фото чека
+						</div>
+						<p>Покупки на неделю</p>
+						<strong>2 840 ₽</strong>
+						<dl>
+							<div>
+								<dt>Магазин</dt>
+								<dd>Лента</dd>
+							</div>
+							<div>
+								<dt>Категория</dt>
+								<dd>Продукты</dd>
+							</div>
+							<div>
+								<dt>Дата</dt>
+								<dd>Сегодня</dd>
+							</div>
+						</dl>
+						<div className="review-card__actions">
+							<button type="button">Исправить</button>
+							<button type="button">Сохранить</button>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section className="shared-section" id="shared">
 				<div className="shell shared-layout">
-					<div>
+					<div data-reveal>
 						<UsersThree size={42} weight="light" />
-						<h2>Один бот для себя и для общих расходов</h2>
-					</div>
-					<div className="shared-list">
+						<h2>
+							Для себя.
+							<br />И для своих.
+						</h2>
 						<p>
-							<span>01</span> Пишите боту лично, чтобы вести свои расходы.
-						</p>
-						<p>
-							<span>02</span> Добавьте его в группу для поездки, дома или
-							компании.
-						</p>
-						<p>
-							<span>03</span> Когда нужно, бот поможет разобрать доли и долги.
+							Личный учёт остаётся простым. Общие расходы подключаются только
+							когда нужны.
 						</p>
 					</div>
-				</div>
-			</section>
-
-			<section className="plans-section" id="plans">
-				<div className="shell">
-					<div className="section-copy section-copy--narrow">
-						<p className="section-label">Тарифы</p>
-						<h2>Все возможности доступны сразу</h2>
-						<p>Тарифы отличаются только количеством обработок.</p>
-					</div>
-					<div className="plans" aria-label="Тарифные планы">
-						<article className="plan">
-							<div>
-								<p className="plan__name">Базовый</p>
-								<p className="plan__price">0 ₽</p>
-							</div>
-							<p>Для спокойного знакомства и нерегулярных расходов.</p>
-							<ul>
-								<li>
-									<Check size={18} /> Текст, голос и фотографии
-								</li>
-								<li>
-									<Check size={18} /> Личные и групповые расходы
-								</li>
-								<li>
-									<Check size={18} /> Стартовый лимит обработок
-								</li>
-							</ul>
-						</article>
-						<article className="plan plan--plus">
-							<div>
-								<p className="plan__name">Плюс</p>
-								<p className="plan__price">
-									249 ₽ <small>за 30 дней</small>
-								</p>
-							</div>
-							<p>Для тех, кто записывает расходы каждый день.</p>
-							<ul>
-								<li>
-									<Check size={18} /> Все возможности Базового
-								</li>
-								<li>
-									<Check size={18} /> Увеличенный лимит обработок
-								</li>
-								<li>
-									<Check size={18} /> Возможность докупить пакет
-								</li>
-							</ul>
-						</article>
-					</div>
-					<div className="plans-action">
-						<TelegramButton />
-						<p>Точный остаток и условия покупки бот показывает до оплаты.</p>
+					<div className="shared-chat" data-reveal>
+						<p>
+							<b>Маша</b>
+							<span>Билеты 12 400, на двоих</span>
+						</p>
+						<p>
+							<b>Пока не забыл</b>
+							<span>По 6 200 ₽. Добавить в общие расходы?</span>
+						</p>
+						<div>
+							<Check size={18} /> Доли и баланс останутся в этом пространстве
+						</div>
 					</div>
 				</div>
 			</section>
 
 			<section className="faq-section">
-				<div className="shell faq-layout">
-					<h2>Коротко о важном</h2>
+				<div className="shell faq-layout" data-reveal>
+					<div>
+						<p className="section-label">Коротко о важном</p>
+						<h2>До первого расхода</h2>
+					</div>
 					<div>
 						<details>
 							<summary>Бот сам сохраняет всё без проверки?</summary>
@@ -245,14 +354,14 @@ const LandingPage = () => {
 							</p>
 						</details>
 						<details>
-							<summary>Что будет, когда закончится лимит?</summary>
+							<summary>Можно пользоваться только лично?</summary>
 							<p>
-								Бот заранее предупредит, покажет дату обновления и предложит
-								перейти на Плюс или докупить пакет.
+								Да. Групповой чат и общие расходы — дополнительный сценарий, а
+								не обязательное условие.
 							</p>
 						</details>
 						<details>
-							<summary>Где хранятся расходы и чеки?</summary>
+							<summary>Где хранятся данные и чеки?</summary>
 							<p>
 								Основные данные и исходные файлы российского запуска размещаются
 								на инфраструктуре в России.
@@ -262,10 +371,33 @@ const LandingPage = () => {
 				</div>
 			</section>
 
+			<section className="final-cta">
+				<div className="shell final-cta__inner" data-reveal>
+					<span className="final-cta__mark">
+						<BrandMark />
+					</span>
+					<p>Покупка уже случилась.</p>
+					<h2>Запишите, пока не забыли.</h2>
+					<TelegramButton light />
+				</div>
+			</section>
+
 			<SiteFooter />
 		</main>
 	);
 };
+
+const voiceBars = Array.from({ length: 15 }, (_, index) => ({
+	id: `bar-${index}`,
+	height: `${8 + ((index * 11) % 25)}px`,
+}));
+
+const NoteReviewIcon = () => (
+	<svg aria-hidden="true" className="note-review-icon" viewBox="0 0 32 32">
+		<path d="M7 5h18v22H7z" />
+		<path d="m11 17 3 3 7-8" />
+	</svg>
+);
 
 const LegalHeader = () => (
 	<header className="legal-header shell">
