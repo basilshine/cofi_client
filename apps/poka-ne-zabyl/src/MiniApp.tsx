@@ -307,7 +307,12 @@ type SourceViewer = {
 };
 
 const dismissKeyboard = (event: React.PointerEvent<HTMLElement>) => {
-	if ((event.target as HTMLElement).closest("input, textarea, select")) return;
+	if (
+		(event.target as HTMLElement).closest(
+			"input, textarea, select, [role=listbox]",
+		)
+	)
+		return;
 	if (document.activeElement instanceof HTMLElement)
 		document.activeElement.blur();
 };
