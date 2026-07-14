@@ -569,8 +569,8 @@ export const MiniApp = () => {
 		started.current = true;
 		WebApp.ready();
 		WebApp.expand();
-		WebApp.setHeaderColor("#f4f1ea");
-		WebApp.setBackgroundColor("#f4f1ea");
+		WebApp.setHeaderColor("#f4efe4");
+		WebApp.setBackgroundColor("#f4efe4");
 		if (telegramWebApp.checkHomeScreenStatus) {
 			telegramWebApp.checkHomeScreenStatus(setHomeScreenStatus);
 		}
