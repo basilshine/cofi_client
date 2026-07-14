@@ -696,8 +696,10 @@
 	border-radius: 50%;
 	background: #eeeee9;
 }
-.mini-modal > label {
+.mini-modal > label,
+.mini-modal > .mini-field {
 	display: grid;
+	min-width: 0;
 	gap: 7px;
 	color: var(--mini-muted);
 	font-size: 12px;
@@ -717,6 +719,69 @@
 .mini-modal input:disabled {
 	background: #efeee9;
 	color: var(--mini-muted);
+}
+.vendor-autocomplete {
+	position: relative;
+	min-width: 0;
+}
+.vendor-autocomplete > input {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
+}
+.vendor-autocomplete-list {
+	position: absolute;
+	z-index: 30;
+	top: calc(100% + 4px);
+	right: 0;
+	left: 0;
+	display: grid;
+	max-height: 220px;
+	overflow-y: auto;
+	padding: 5px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: white;
+	box-shadow: 0 10px 28px rgba(31, 33, 29, 0.16);
+}
+.vendor-autocomplete-list > div {
+	display: grid;
+	gap: 2px;
+	padding: 9px 10px;
+	border-radius: 5px;
+	color: var(--mini-ink);
+	cursor: pointer;
+}
+.vendor-autocomplete-list > div.active,
+.vendor-autocomplete-list > div:active {
+	background: #eef0e9;
+}
+.vendor-autocomplete-list b {
+	font-size: 13px;
+	font-weight: 700;
+}
+.vendor-autocomplete-list small {
+	overflow: hidden;
+	color: var(--mini-muted);
+	font-size: 11px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.review-field input[type="date"],
+.mini-modal input[type="date"] {
+	display: block;
+	box-sizing: border-box;
+	inline-size: 100%;
+	max-inline-size: 100%;
+	min-inline-size: 0;
+	-webkit-appearance: none;
+	appearance: none;
+}
+.review-field input[type="date"]::-webkit-date-and-time-value,
+.mini-modal input[type="date"]::-webkit-date-and-time-value {
+	min-width: 0;
+	text-align: left;
 }
 .mini-modal textarea {
 	box-sizing: border-box;
@@ -1281,9 +1346,7 @@
 	}
 	.review-field input[type="date"],
 	.mini-modal input[type="date"] {
-		display: block;
-		inline-size: 100%;
-		max-inline-size: 100%;
+		font-size: 16px;
 	}
 	.mini-app input,
 	.mini-app select,

@@ -17,7 +17,7 @@ import {
 	X,
 } from "@phosphor-icons/react";
 import WebApp from "@twa-dev/sdk";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import "./mini-app.css";
 import {
 	expenseAmountInCurrency,
@@ -26,7 +26,12 @@ import {
 	itemAmountInCurrency,
 	itemDisplayMoney,
 } from "./money";
-import { commonVendorName, findVendorByName, vendorFieldValue } from "./vendor";
+import {
+	commonVendorName,
+	findVendorByName,
+	vendorFieldValue,
+	vendorSuggestions,
+} from "./vendor";
 
 type View =
 	| "overview"
@@ -1715,6 +1720,109 @@ const reviewExpenseFromDraft = (
 	})),
 });
 
+const VendorAutocomplete = ({
+	vendors,
+	value,
+	onChange,
+	placeholder,
+	ariaLabel,
+	className,
+}: {
+	vendors: Vendor[];
+	value: string;
+	onChange: (value: string) => void;
+	placeholder?: string;
+	ariaLabel?: string;
+	className?: string;
+}) => {
+	const listID = useId();
+	const [open, setOpen] = useState(false);
+	const [activeIndex, setActiveIndex] = useState(-1);
+	const suggestions = vendorSuggestions(vendors, value);
+	const selectVendor = (vendor: Vendor) => {
+		onChange(vendor.name);
+		setOpen(false);
+		setActiveIndex(-1);
+	};
+
+	return (
+		<div className={`vendor-autocomplete${className ? ` ${className}` : ""}`}>
+			<input
+				role="combobox"
+				aria-label={ariaLabel}
+				aria-autocomplete="list"
+				aria-expanded={open && suggestions.length > 0}
+				aria-controls={listID}
+				aria-activedescendant={
+					activeIndex >= 0 ? `${listID}-option-${activeIndex}` : undefined
+				}
+				placeholder={placeholder}
+				value={value}
+				onFocus={() => setOpen(true)}
+				onBlur={() => window.setTimeout(() => setOpen(false), 100)}
+				onChange={(event) => {
+					onChange(event.target.value);
+					setOpen(true);
+					setActiveIndex(-1);
+				}}
+				onKeyDown={(event) => {
+					if (event.key === "Escape") {
+						setOpen(false);
+						return;
+					}
+					if (
+						suggestions.length > 0 &&
+						(event.key === "ArrowDown" || event.key === "ArrowUp")
+					) {
+						event.preventDefault();
+						setOpen(true);
+						setActiveIndex((current) => {
+							const direction = event.key === "ArrowDown" ? 1 : -1;
+							return (
+								(current + direction + suggestions.length) % suggestions.length
+							);
+						});
+					}
+					if (event.key === "Enter" && activeIndex >= 0) {
+						event.preventDefault();
+						selectVendor(suggestions[activeIndex]);
+					}
+				}}
+			/>
+			{open && suggestions.length > 0 && (
+				<div
+					id={listID}
+					className="vendor-autocomplete-list"
+					role="listbox"
+					tabIndex={-1}
+				>
+					{suggestions.map((vendor, index) => (
+						<div
+							id={`${listID}-option-${index}`}
+							key={vendor.id}
+							className={index === activeIndex ? "active" : undefined}
+							role="option"
+							aria-selected={index === activeIndex}
+							tabIndex={-1}
+							onPointerDown={(event) => {
+								event.preventDefault();
+								selectVendor(vendor);
+							}}
+						>
+							<b>{vendor.name}</b>
+							{vendor.aliases?.length ? (
+								<small>
+									{vendor.aliases.map((alias) => alias.alias).join(", ")}
+								</small>
+							) : null}
+						</div>
+					))}
+				</div>
+			)}
+		</div>
+	);
+};
+
 const ReviewEditor = ({
 	draft,
 	mediaURL,
@@ -1779,44 +1887,30 @@ const ReviewEditor = ({
 					/>
 				</label>
 				<div className="review-meta">
-					<label className="review-field">
+					<div className="review-field">
 						<span>Продавец всего расхода</span>
-						<input
-							list="review-vendors"
+						<VendorAutocomplete
+							vendors={vendors}
+							ariaLabel="Продавец всего расхода"
 							placeholder={
 								sharedVendorName === null ? "Разные продавцы" : "Не определён"
 							}
 							value={sharedVendorName ?? ""}
-							onChange={(event) => {
-								const payeeText = event.target.value;
-								const selectedVendor = findVendorByName(vendors, payeeText);
-								const displayName = selectedVendor?.name ?? payeeText;
+							onChange={(vendorName) => {
 								onChange({
 									...draft,
-									payeeText: displayName,
+									payeeText: vendorName,
 									items: draft.items.map((item) => ({
 										...item,
-										vendor_name: displayName,
+										vendor_name: vendorName,
 									})),
 								});
 							}}
 						/>
-						<datalist id="review-vendors">
-							{vendors.flatMap((vendor) => [
-								<option key={`vendor-${vendor.id}`} value={vendor.name} />,
-								...(vendor.aliases || []).map((alias, index) => (
-									<option
-										key={`vendor-${vendor.id}-alias-${index}`}
-										value={alias.alias}
-										label={`→ ${vendor.name}`}
-									/>
-								)),
-							])}
-						</datalist>
 						<small className="review-field-hint">
 							Изменение применится ко всем позициям
 						</small>
-					</label>
+					</div>
 					<label className="review-field">
 						<span>Дата</span>
 						<input
@@ -1891,21 +1985,19 @@ const ReviewEditor = ({
 									</option>
 								))}
 							</select>
-							<input
+							<VendorAutocomplete
 								className="review-line-vendor"
-								list="review-vendors"
-								aria-label={`Продавец позиции ${index + 1}`}
+								vendors={vendors}
+								ariaLabel={`Продавец позиции ${index + 1}`}
 								placeholder="Продавец позиции"
 								value={item.vendor_name}
-								onChange={(event) => {
-									const vendorName = event.target.value;
-									const selectedVendor = findVendorByName(vendors, vendorName);
+								onChange={(vendorName) => {
 									applyItems(
 										draft.items.map((current, itemIndex) =>
 											itemIndex === index
 												? {
 														...current,
-														vendor_name: selectedVendor?.name ?? vendorName,
+														vendor_name: vendorName,
 													}
 												: current,
 										),
@@ -2591,15 +2683,13 @@ const ExpenseEditor = ({
 		);
 	const sharedVendorName = commonVendorName(expense.items.map(itemVendorName));
 	const updateItemVendor = (index: number, vendorName: string) => {
-		const selectedVendor = findVendorByName(vendors, vendorName);
-		const displayName = selectedVendor?.name ?? vendorName;
 		const items = expense.items.map((item, itemIndex) =>
 			itemIndex === index
 				? {
 						...item,
-						vendor_id: selectedVendor?.id,
-						vendor_name: displayName,
-						vendor: selectedVendor,
+						vendor_id: undefined,
+						vendor_name: vendorName,
+						vendor: undefined,
 					}
 				: item,
 		);
@@ -2639,29 +2729,27 @@ const ExpenseEditor = ({
 					}
 				/>
 			</label>
-			<label>
-				Продавец всего расхода
-				<input
-					list="expense-vendors"
+			<div className="mini-field">
+				<span>Продавец всего расхода</span>
+				<VendorAutocomplete
+					vendors={vendors}
+					ariaLabel="Продавец всего расхода"
 					placeholder={
 						sharedVendorName === null ? "Разные продавцы" : "Не определён"
 					}
 					value={sharedVendorName ?? ""}
-					onChange={(event) => {
-						const payeeText = event.target.value;
-						const selectedVendor = findVendorByName(vendors, payeeText);
-						const displayName = selectedVendor?.name ?? payeeText;
+					onChange={(vendorName) => {
 						onChange({
 							...expense,
-							payee_text: displayName,
-							vendor_name: displayName,
-							vendor_id: selectedVendor?.id,
-							vendor: selectedVendor,
+							payee_text: vendorName,
+							vendor_name: vendorName,
+							vendor_id: undefined,
+							vendor: undefined,
 							items: expense.items.map((item) => ({
 								...item,
-								vendor_id: selectedVendor?.id,
-								vendor_name: displayName,
-								vendor: selectedVendor,
+								vendor_id: undefined,
+								vendor_name: vendorName,
+								vendor: undefined,
 							})),
 						});
 					}}
@@ -2669,19 +2757,7 @@ const ExpenseEditor = ({
 				<small className="mini-field-hint">
 					Изменение применится ко всем позициям
 				</small>
-				<datalist id="expense-vendors">
-					{vendors.flatMap((vendor) => [
-						<option key={`vendor-${vendor.id}`} value={vendor.name} />,
-						...(vendor.aliases || []).map((alias, index) => (
-							<option
-								key={`vendor-${vendor.id}-alias-${index}`}
-								value={alias.alias}
-								label={`→ ${vendor.name}`}
-							/>
-						)),
-					])}
-				</datalist>
-			</label>
+			</div>
 			{!creating && (
 				<label>
 					Дата
@@ -2754,13 +2830,13 @@ const ExpenseEditor = ({
 								</option>
 							))}
 						</select>
-						<input
+						<VendorAutocomplete
 							className="mini-editor-vendor"
-							list="expense-vendors"
-							aria-label="Продавец позиции"
+							vendors={vendors}
+							ariaLabel="Продавец позиции"
 							placeholder="Продавец позиции"
 							value={itemVendorName(item)}
-							onChange={(event) => updateItemVendor(index, event.target.value)}
+							onChange={(vendorName) => updateItemVendor(index, vendorName)}
 						/>
 					</div>
 				))}
@@ -2869,38 +2945,23 @@ const ExpenseItemEditor = ({
 					))}
 				</select>
 			</label>
-			<label>
-				Продавец
-				<input
-					list="expense-item-vendors"
+			<div className="mini-field">
+				<span>Продавец</span>
+				<VendorAutocomplete
+					vendors={vendors}
+					ariaLabel="Продавец"
 					placeholder="Не определён"
 					value={vendorName}
-					onChange={(event) => {
-						const selectedVendor = findVendorByName(
-							vendors,
-							event.target.value,
-						);
+					onChange={(value) => {
 						onChange({
 							...item,
-							vendor_id: selectedVendor?.id,
-							vendor_name: selectedVendor?.name ?? event.target.value,
-							vendor: selectedVendor,
+							vendor_id: undefined,
+							vendor_name: value,
+							vendor: undefined,
 						});
 					}}
 				/>
-				<datalist id="expense-item-vendors">
-					{vendors.flatMap((vendor) => [
-						<option key={`item-vendor-${vendor.id}`} value={vendor.name} />,
-						...(vendor.aliases || []).map((alias, index) => (
-							<option
-								key={`item-vendor-${vendor.id}-alias-${index}`}
-								value={alias.alias}
-								label={`→ ${vendor.name}`}
-							/>
-						)),
-					])}
-				</datalist>
-			</label>
+			</div>
 			<label>
 				Заметка
 				<textarea
