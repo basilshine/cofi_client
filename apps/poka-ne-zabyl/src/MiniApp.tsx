@@ -2176,9 +2176,11 @@ const VendorAutocomplete = ({
 							role="option"
 							aria-selected={index === activeIndex}
 							tabIndex={-1}
-							onPointerDown={(event) => {
-								event.preventDefault();
-								selectVendor(vendor);
+							onPointerDown={(event) => event.preventDefault()}
+							onClick={() => selectVendor(vendor)}
+							onKeyDown={(event) => {
+								if (event.key === "Enter" || event.key === " ")
+									selectVendor(vendor);
 							}}
 						>
 							<b>{vendor.name}</b>
@@ -3416,9 +3418,11 @@ const ExpenseEditor = ({
 						});
 					}}
 				/>
-				<small className="mini-field-hint">
-					Изменение применится ко всем позициям
-				</small>
+				{!creating && expense.items.length > 1 && (
+					<small className="mini-field-hint">
+						Изменение применится ко всем позициям
+					</small>
+				)}
 			</div>
 			{!creating && (
 				<label>
@@ -3433,7 +3437,7 @@ const ExpenseEditor = ({
 				</label>
 			)}
 			<div className="mini-editor-items">
-				<span>{creating ? "Сумма и категория" : "Позиции"}</span>
+				{!creating && <span>Позиции</span>}
 				{expense.items.map((item, index) => (
 					<div
 						key={item.id || index}
@@ -3455,6 +3459,7 @@ const ExpenseEditor = ({
 								}
 							/>
 						)}
+						{creating && <span className="mini-editor-label">Сумма</span>}
 						<AmountInput
 							ariaLabel="Сумма позиции"
 							amount={item.amount}
@@ -3467,6 +3472,7 @@ const ExpenseEditor = ({
 								})
 							}
 						/>
+						{creating && <span className="mini-editor-label">Категория</span>}
 						<select
 							aria-label="Категория позиции"
 							value={item.category_id || 0}
@@ -3487,14 +3493,16 @@ const ExpenseEditor = ({
 								</option>
 							))}
 						</select>
-						<VendorAutocomplete
-							className="mini-editor-vendor"
-							vendors={vendors}
-							ariaLabel="Где купили позицию"
-							placeholder="Где купили"
-							value={itemVendorName(item)}
-							onChange={(vendorName) => updateItemVendor(index, vendorName)}
-						/>
+						{!creating && (
+							<VendorAutocomplete
+								className="mini-editor-vendor"
+								vendors={vendors}
+								ariaLabel="Где купили позицию"
+								placeholder="Где купили"
+								value={itemVendorName(item)}
+								onChange={(vendorName) => updateItemVendor(index, vendorName)}
+							/>
+						)}
 					</div>
 				))}
 			</div>

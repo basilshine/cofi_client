@@ -934,6 +934,7 @@
 	display: grid;
 	max-height: 220px;
 	overflow-y: auto;
+	touch-action: pan-y;
 	padding: 5px;
 	border: 1px solid var(--mini-line);
 	border-radius: 7px;
@@ -1057,6 +1058,10 @@
 }
 .mini-editor-item--new {
 	grid-template-columns: 1fr;
+}
+.mini-editor-label {
+	color: var(--mini-muted);
+	font-size: 12px;
 }
 .mini-save:disabled {
 	opacity: 0.45;
