@@ -46,7 +46,15 @@ type View =
 	| "spaces"
 	| "profile"
 	| "review";
-type Period = "month" | "three-months" | "year" | "all";
+type Period =
+	| "today"
+	| "three-days"
+	| "week"
+	| "month"
+	| "three-months"
+	| "six-months"
+	| "year"
+	| "all";
 
 type Space = {
 	id: number;
@@ -2639,8 +2647,12 @@ const ExpensesView = ({
 				value={period}
 				onChange={(event) => onPeriod(event.target.value as Period)}
 			>
+				<option value="today">Сегодня</option>
+				<option value="three-days">3 дня</option>
+				<option value="week">Неделя</option>
 				<option value="month">Этот месяц</option>
 				<option value="three-months">3 месяца</option>
+				<option value="six-months">6 месяцев</option>
 				<option value="year">Этот год</option>
 				<option value="all">Всё время</option>
 			</select>
@@ -4142,9 +4154,17 @@ const TelegramEntry = ({ error }: { error: string }) => (
 const periodStart = (period: Period) => {
 	if (period === "all") return null;
 	const now = new Date();
+	if (period === "today")
+		return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	if (period === "three-days")
+		return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2);
+	if (period === "week")
+		return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
 	if (period === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
 	if (period === "three-months")
 		return new Date(now.getFullYear(), now.getMonth() - 2, 1);
+	if (period === "six-months")
+		return new Date(now.getFullYear(), now.getMonth() - 5, 1);
 	return new Date(now.getFullYear(), 0, 1);
 };
 
