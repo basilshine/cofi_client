@@ -22,6 +22,7 @@ import "./mini-app.css";
 import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
+	formatMoney,
 	itemAmountInCurrency,
 	itemDisplayMoney,
 } from "./money";
@@ -3361,12 +3362,6 @@ const periodStart = (period: Period) => {
 	return new Date(now.getFullYear(), 0, 1);
 };
 
-const formatMoney = (amount: number, currency: string) =>
-	new Intl.NumberFormat("ru-RU", {
-		style: "currency",
-		currency: currency || "RUB",
-		maximumFractionDigits: 0,
-	}).format(amount || 0);
 const formatDate = (value: string) =>
 	new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(
 		new Date(value),

@@ -3,8 +3,14 @@ import test from "node:test";
 import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
+	formatMoney,
 	itemDisplayMoney,
 } from "../src/money.ts";
+
+test("keeps kopecks without padding whole ruble amounts", () => {
+	assert.equal(formatMoney(13.99, "RUB"), "13,99 ₽");
+	assert.equal(formatMoney(14, "RUB"), "14 ₽");
+});
 
 const expense = {
 	total: 320,

@@ -21,6 +21,14 @@ export type MoneyExpense = {
 
 const code = (value?: string) => value?.trim().toUpperCase() || "";
 
+export const formatMoney = (amount: number, currency: string) =>
+	new Intl.NumberFormat("ru-RU", {
+		style: "currency",
+		currency: currency || "RUB",
+		minimumFractionDigits: 0,
+		maximumFractionDigits: 2,
+	}).format(amount || 0);
+
 const sourceTotal = (expense: MoneyExpense) =>
 	expense.items.length > 0
 		? expense.items.reduce(
