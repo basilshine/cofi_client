@@ -309,6 +309,14 @@ type CapturePacket = {
 	created_at?: string;
 };
 
+type SpaceActivityItem = {
+	id: number;
+	action: string;
+	read_state: "read" | "pending";
+	actor: { id: number; display_name: string };
+	metadata: Record<string, unknown>;
+};
+
 type SourceViewer = {
 	capture: CapturePacket;
 	mediaURL?: string;
@@ -997,6 +1005,84 @@ export const MiniApp = () => {
 			window.clearTimeout(timer);
 		};
 	}, [token, pendingCapture?.sourceDocumentID, pendingCapture?.spaceID]);
+
+	useEffect(() => {
+		if (!token || !user || !spaceID || previewMode) return;
+		let cancelled = false;
+		let timer = 0;
+		const poll = async () => {
+			try {
+				const activity = await apiRequest<{ items: SpaceActivityItem[] }>(
+					`/spaces/${spaceID}/activity?limit=5`,
+					token,
+				);
+				if (cancelled) return;
+				const pending = activity.items.filter(
+					(item) => item.read_state === "pending",
+				);
+				const added = pending.find(
+					(item) =>
+						item.action === "expense_confirmed" && item.actor.id !== user.id,
+				);
+				if (added) {
+					const expenseID = Number(added.metadata.expense_id);
+					if (expenseID > 0) {
+						const expense = await apiRequest<Expense>(
+							`/spaces/${spaceID}/expenses/${expenseID}`,
+							token,
+						);
+						if (cancelled) return;
+						const money = expenseDisplayMoney(
+							expense,
+							expense.space_currency || expense.currency,
+						);
+						const items = expense.items
+							.slice(0, 2)
+							.map((item) => item.name)
+							.join(", ");
+						setNotice(
+							`${added.actor.display_name} добавил: ${expense.title}${items ? ` · ${items}` : ""} · ${formatMoney(money.amount, money.currency)}`,
+						);
+						await loadSpace();
+					}
+				}
+				if (pending.length > 0) {
+					await apiRequest(`/spaces/${spaceID}/activity/read`, token, {
+						method: "PUT",
+						body: JSON.stringify({
+							up_to_audit_event_id: Math.max(...pending.map((item) => item.id)),
+						}),
+					});
+				}
+			} catch {
+				// A notification must never interrupt expense work.
+			}
+			// ponytail: polling is enough for the MVP; switch to the existing WS client when active concurrency matters.
+			if (!cancelled) timer = window.setTimeout(poll, 15_000);
+		};
+		const start = async () => {
+			try {
+				const response = await apiRequest<{
+					channels: { channel: string; enabled: boolean }[];
+				}>("/me/notification-channels", token);
+				if (
+					cancelled ||
+					!response.channels.some(
+						(channel) => channel.channel === "in_app" && channel.enabled,
+					)
+				)
+					return;
+				await poll();
+			} catch {
+				// Preferences are optional; keep the app usable when unavailable.
+			}
+		};
+		void start();
+		return () => {
+			cancelled = true;
+			window.clearTimeout(timer);
+		};
+	}, [token, user?.id, spaceID]);
 
 	useEffect(() => {
 		if (!token || pendingCapture || captureSubmitting || previewMode) return;
