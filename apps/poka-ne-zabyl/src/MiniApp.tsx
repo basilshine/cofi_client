@@ -2025,6 +2025,34 @@ const readNumber = (value: Record<string, unknown>, ...keys: string[]) => {
 	return 0;
 };
 
+const AmountInput = ({
+	amount,
+	ariaLabel,
+	id,
+	onChange,
+}: {
+	amount: number;
+	ariaLabel: string;
+	id?: string;
+	onChange: (amount: number) => void;
+}) => {
+	const [value, setValue] = useState(() => (amount > 0 ? String(amount) : ""));
+	return (
+		<input
+			aria-label={ariaLabel}
+			id={id}
+			inputMode="decimal"
+			value={value}
+			onChange={(event) => {
+				const next = event.target.value.replace(",", ".");
+				if (!/^\d*(?:\.\d{0,2})?$/.test(next)) return;
+				setValue(next);
+				onChange(next === "" || next === "." ? 0 : Number(next));
+			}}
+		/>
+	);
+};
+
 const reviewExpenseFromDraft = (
 	draft: ReviewDraft,
 	currency: string,
@@ -2269,19 +2297,14 @@ const ReviewEditor = ({
 								}
 							/>
 							<div className="review-line-controls">
-								<input
-									aria-label={`Цена позиции ${index + 1}`}
-									type="number"
-									min="0"
-									step="0.01"
-									value={item.amount}
-									onChange={(event) =>
+								<AmountInput
+									ariaLabel={`Цена позиции ${index + 1}`}
+									amount={item.amount}
+									onChange={(amount) =>
 										onChange({
 											...draft,
 											items: draft.items.map((current, itemIndex) =>
-												itemIndex === index
-													? { ...current, amount: Number(event.target.value) }
-													: current,
+												itemIndex === index ? { ...current, amount } : current,
 											),
 										})
 									}
@@ -3398,19 +3421,14 @@ const ExpenseEditor = ({
 								}
 							/>
 						)}
-						<input
-							aria-label="Сумма позиции"
-							type="number"
-							min="0"
-							step="0.01"
-							value={item.amount}
-							onChange={(event) =>
+						<AmountInput
+							ariaLabel="Сумма позиции"
+							amount={item.amount}
+							onChange={(amount) =>
 								onChange({
 									...expense,
 									items: expense.items.map((current, itemIndex) =>
-										itemIndex === index
-											? { ...current, amount: Number(event.target.value) }
-											: current,
+										itemIndex === index ? { ...current, amount } : current,
 									),
 								})
 							}
@@ -3532,16 +3550,13 @@ const ExpenseItemEditor = ({
 					onChange={(event) => onChange({ ...item, name: event.target.value })}
 				/>
 			</label>
-			<label>
+			<label htmlFor="expense-item-amount">
 				Сумма
-				<input
-					type="number"
-					min="0"
-					step="0.01"
-					value={item.amount}
-					onChange={(event) =>
-						onChange({ ...item, amount: Number(event.target.value) })
-					}
+				<AmountInput
+					ariaLabel="Сумма"
+					amount={item.amount}
+					id="expense-item-amount"
+					onChange={(amount) => onChange({ ...item, amount })}
 				/>
 			</label>
 			<label>
