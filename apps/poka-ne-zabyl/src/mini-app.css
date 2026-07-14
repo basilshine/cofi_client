@@ -665,6 +665,10 @@
 .mini-profile-list > button + button {
 	border-top: 1px solid var(--mini-line);
 }
+.mini-profile-list > button:disabled {
+	cursor: not-allowed;
+	opacity: 0.62;
+}
 .mini-profile-list > button > span {
 	display: inline-flex;
 	align-items: center;

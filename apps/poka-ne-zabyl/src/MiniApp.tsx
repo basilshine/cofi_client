@@ -99,12 +99,19 @@ type BudgetWarning = {
 	period: "week" | "month";
 };
 
-type HomeScreenStatus = "unsupported" | "unknown" | "added" | "missed";
+type HomeScreenStatus =
+	| "checking"
+	| "unsupported"
+	| "unknown"
+	| "added"
+	| "missed";
 const telegramWebApp = WebApp as typeof WebApp & {
 	addToHomeScreen?: () => void;
 	checkHomeScreenStatus?: (
-		callback: (status: HomeScreenStatus) => void,
+		callback: (status: Exclude<HomeScreenStatus, "checking">) => void,
 	) => void;
+	onEvent: (eventType: "homeScreenAdded", handler: () => void) => void;
+	offEvent: (eventType: "homeScreenAdded", handler: () => void) => void;
 };
 
 type VendorAlias = { id?: number; alias: string };
@@ -545,7 +552,7 @@ export const MiniApp = () => {
 	const [sourceLoading, setSourceLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [homeScreenStatus, setHomeScreenStatus] =
-		useState<HomeScreenStatus>("unsupported");
+		useState<HomeScreenStatus>("checking");
 	const itemNameSuggestions = useMemo(() => {
 		const seen = new Set<string>();
 		return expenses
@@ -571,8 +578,13 @@ export const MiniApp = () => {
 		WebApp.expand();
 		WebApp.setHeaderColor("#f4efe4");
 		WebApp.setBackgroundColor("#f4efe4");
-		if (telegramWebApp.checkHomeScreenStatus) {
+		if (
+			telegramWebApp.isVersionAtLeast("8.0") &&
+			telegramWebApp.checkHomeScreenStatus
+		) {
 			telegramWebApp.checkHomeScreenStatus(setHomeScreenStatus);
+		} else {
+			setHomeScreenStatus("unsupported");
 		}
 		if (previewMode) {
 			setToken("preview");
@@ -651,6 +663,16 @@ export const MiniApp = () => {
 			return;
 		}
 		void login();
+	}, []);
+
+	useEffect(() => {
+		const handleHomeScreenAdded = () => {
+			setHomeScreenStatus("added");
+			setNotice("Приложение добавлено на главный экран");
+		};
+		telegramWebApp.onEvent("homeScreenAdded", handleHomeScreenAdded);
+		return () =>
+			telegramWebApp.offEvent("homeScreenAdded", handleHomeScreenAdded);
 	}, []);
 
 	const login = async () => {
@@ -3213,6 +3235,17 @@ const ProfileView = ({
 	const limit = quota?.limit || 0;
 	const progress = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
 	const plus = ["medium", "plus"].includes(quota?.plan || "");
+	const installDisabled = ["checking", "unsupported", "added"].includes(
+		homeScreenStatus,
+	);
+	const installStatus =
+		homeScreenStatus === "checking"
+			? "Проверяем"
+			: homeScreenStatus === "unsupported"
+				? "Недоступно"
+				: homeScreenStatus === "added"
+					? "Добавлено"
+					: "Добавить";
 	return (
 		<section className="mini-view">
 			<div className="mini-profile-head">
@@ -3271,15 +3304,13 @@ const ProfileView = ({
 					</span>
 					<b>{vendorsCount}</b>
 				</button>
-				{homeScreenStatus !== "unsupported" && homeScreenStatus !== "added" && (
-					<button type="button" onClick={onInstall}>
-						<span>
-							<House size={18} />
-							Добавить на главный экран
-						</span>
-						<Plus size={18} weight="bold" />
-					</button>
-				)}
+				<button type="button" onClick={onInstall} disabled={installDisabled}>
+					<span>
+						<House size={18} />
+						Ярлык на экран телефона
+					</span>
+					<b>{installStatus}</b>
+				</button>
 			</div>
 		</section>
 	);
