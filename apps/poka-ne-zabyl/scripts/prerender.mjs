@@ -17,6 +17,17 @@ const { PUBLIC_PAGE_SEO, render } = await import(
 );
 const template = await readFile(join(distDir, "index.html"), "utf8");
 const origin = "https://poka-ne-zabyl.ru";
+const metrikaCounterId = 110761833;
+
+const metrikaScript = `<script type="text/javascript">
+	(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+	m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
+	k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+	(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");
+	ym(${metrikaCounterId},"init",{clickmap:true,trackLinks:true,accurateTrackBounce:true});
+</script>`;
+
+const metrikaNoScript = `<noscript><div><img src="https://mc.yandex.ru/watch/${metrikaCounterId}" style="position:absolute; left:-9999px;" alt="" /></div></noscript>`;
 
 const escapeAttribute = (value) =>
 	value
@@ -91,15 +102,18 @@ const withHead = (html, head) =>
 	withoutDefaultSeo(html).replace("</head>", `${head}\n\t</head>`);
 
 for (const seo of PUBLIC_PAGE_SEO) {
-	const html = withHead(template, pageHead(seo)).replace(
-		'<div id="root"></div>',
-		`<div id="root">${render(seo.path)}</div>`,
-	);
+	const html = withHead(template, `${pageHead(seo)}\n${metrikaScript}`)
+		.replace(
+			'<div id="root"></div>',
+			`<div id="root">${render(seo.path)}</div>`,
+		)
+		.replace("</body>", `${metrikaNoScript}\n\t</body>`);
 	const output = seo.path === "/" ? "index.html" : `${seo.path.slice(1)}.html`;
 	await writeFile(join(distDir, output), html);
 
 	assert(html.includes(`<link rel="canonical" href="${origin}${seo.path}"`));
 	assert(html.includes("<h1"), `${seo.path} must contain rendered content`);
+	assert(html.includes(`ym(${metrikaCounterId},"init"`));
 }
 
 const noindexShell = (title) =>
