@@ -16,6 +16,7 @@ import {
 	Plus,
 	Receipt,
 	ShoppingBagOpen,
+	SignOut,
 	Storefront,
 	Tag,
 	Trash,
@@ -1583,6 +1584,18 @@ export const MiniApp = () => {
 		);
 	};
 
+	const logoutBrowser = async () => {
+		try {
+			await apiRequest("/auth/logout", token, {
+				method: "POST",
+				body: "{}",
+			});
+			window.location.reload();
+		} catch {
+			setNotice("Не удалось выйти. Попробуйте ещё раз");
+		}
+	};
+
 	const saveExpense = async () => {
 		if (!editingExpense) return;
 		const creating = editingExpense.id === 0;
@@ -2775,6 +2788,9 @@ export const MiniApp = () => {
 								onManageVendors={() => setView("vendors")}
 								onManageSpaces={() => setView("spaces")}
 								onLinkEmail={() => setEmailLinkOpen(true)}
+								onLogout={
+									!WebApp.initData && !previewMode ? logoutBrowser : undefined
+								}
 								onEdit={() =>
 									user &&
 									setEditingProfile({
@@ -4786,6 +4802,7 @@ const ProfileView = ({
 	onManageVendors,
 	onManageSpaces,
 	onLinkEmail,
+	onLogout,
 	onInstall,
 	onUnavailable,
 }: {
@@ -4799,6 +4816,7 @@ const ProfileView = ({
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
 	onLinkEmail: () => void;
+	onLogout?: () => void;
 	onInstall: () => void;
 	onUnavailable: () => void;
 }) => {
@@ -4914,6 +4932,14 @@ const ProfileView = ({
 					</span>
 					<b>{installStatus}</b>
 				</button>
+				{onLogout && (
+					<button type="button" onClick={onLogout}>
+						<span>
+							<SignOut size={18} />
+							Выйти
+						</span>
+					</button>
+				)}
 			</div>
 		</section>
 	);
