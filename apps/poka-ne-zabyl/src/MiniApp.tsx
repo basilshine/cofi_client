@@ -4667,6 +4667,24 @@ const ExpenseEditor = ({
 					{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
 				</button>
 			)}
+			{creating && (
+				<label htmlFor="new-expense-amount">
+					Сумма
+					<AmountInput
+						ariaLabel="Сумма"
+						amount={expense.items[0]?.amount || 0}
+						id="new-expense-amount"
+						onChange={(amount) =>
+							onChange({
+								...expense,
+								items: expense.items.map((item, index) =>
+									index === 0 ? { ...item, amount } : item,
+								),
+							})
+						}
+					/>
+				</label>
+			)}
 			<label>
 				{creating ? "На что потратили" : "Название"}
 				<input
@@ -4756,19 +4774,20 @@ const ExpenseEditor = ({
 								}
 							/>
 						)}
-						{creating && <span className="mini-editor-label">Сумма</span>}
-						<AmountInput
-							ariaLabel="Сумма позиции"
-							amount={item.amount}
-							onChange={(amount) =>
-								onChange({
-									...expense,
-									items: expense.items.map((current, itemIndex) =>
-										itemIndex === index ? { ...current, amount } : current,
-									),
-								})
-							}
-						/>
+						{!creating && (
+							<AmountInput
+								ariaLabel="Сумма позиции"
+								amount={item.amount}
+								onChange={(amount) =>
+									onChange({
+										...expense,
+										items: expense.items.map((current, itemIndex) =>
+											itemIndex === index ? { ...current, amount } : current,
+										),
+									})
+								}
+							/>
+						)}
 						{creating && <span className="mini-editor-label">Категория</span>}
 						<select
 							aria-label="Категория позиции"
