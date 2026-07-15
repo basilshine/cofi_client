@@ -1,13 +1,15 @@
 import {
 	ArrowRight,
-	Camera,
+	ChartDonut,
 	ChatCircleText,
 	Check,
 	Microphone,
+	Paperclip,
 	Receipt,
 	TelegramLogo,
 	UsersThree,
 } from "@phosphor-icons/react";
+import type { CSSProperties } from "react";
 import { useEffect } from "react";
 import { MiniApp } from "./MiniApp";
 
@@ -28,7 +30,13 @@ export const App = () => {
 	const path = window.location.pathname.replace(/\/+$/, "") || "/";
 
 	useEffect(() => {
-		window.scrollTo(0, 0);
+		if (!window.location.hash) {
+			window.scrollTo(0, 0);
+			return;
+		}
+		requestAnimationFrame(() =>
+			document.getElementById(window.location.hash.slice(1))?.scrollIntoView(),
+		);
 	}, []);
 
 	switch (path) {
@@ -82,6 +90,155 @@ const TelegramButton = ({ light = false }: { light?: boolean }) => (
 	</a>
 );
 
+const captureStories = [
+	{
+		type: "voice",
+		label: "Голосом",
+		prompt: "Кофе и круассан, 550 рублей",
+		title: "Кофейня",
+		amount: "550 ₽",
+		detail: "Еда · сегодня",
+		offset: "0s",
+	},
+	{
+		type: "text",
+		label: "Текстом",
+		prompt: "Такси 780 ₽ домой",
+		title: "Такси",
+		amount: "780 ₽",
+		detail: "Транспорт · сегодня",
+		offset: "-12s",
+	},
+	{
+		type: "photo",
+		label: "Фото чека",
+		prompt: "Чек из магазина",
+		title: "Пятёрочка",
+		amount: "2 840 ₽",
+		detail: "Продукты · сегодня",
+		offset: "-6s",
+	},
+] as const;
+
+const CaptureStory = () => (
+	<div className="capture-story" aria-label="Три способа записать расход">
+		{captureStories.map((story) => (
+			<div
+				aria-hidden="true"
+				className={`story-scene capture-scene capture-scene--${story.type}`}
+				key={story.type}
+				style={{ "--scene-offset": story.offset } as CSSProperties}
+			>
+				<div className="capture-source">
+					<span className="capture-source__label">{story.label}</span>
+					{story.type === "voice" && (
+						<>
+							<div className="comic-bubble">
+								<span>{story.prompt}</span>
+							</div>
+							<div className="story-composer story-composer--voice">
+								<Microphone size={22} weight="fill" />
+								<div className="story-wave" aria-hidden="true">
+									{voiceBars.slice(0, 11).map((bar) => (
+										<i key={bar.id} style={{ height: bar.height }} />
+									))}
+								</div>
+								<time>0:04</time>
+							</div>
+						</>
+					)}
+					{story.type === "text" && (
+						<div className="story-composer">
+							<Paperclip size={21} />
+							<span className="typed-line">{story.prompt}</span>
+							<span className="composer-send-dot" />
+						</div>
+					)}
+					{story.type === "photo" && (
+						<div className="story-photo">
+							<div>
+								<Receipt size={48} weight="light" />
+								<span>2 840 ₽</span>
+							</div>
+							<p>
+								<Paperclip size={18} /> {story.prompt}
+							</p>
+						</div>
+					)}
+				</div>
+				<div className="capture-result">
+					<div className="capture-result__top">
+						<span>
+							<Check size={16} weight="bold" /> Распознано
+						</span>
+						<small>{story.label}</small>
+					</div>
+					<p>{story.title}</p>
+					<strong>{story.amount}</strong>
+					<span>{story.detail}</span>
+					<span className="capture-result__action">Проверить и сохранить</span>
+				</div>
+			</div>
+		))}
+	</div>
+);
+
+const sharedStories = [
+	{
+		name: "Маша",
+		first: "Билеты 12 400, на двоих",
+		secondName: "Антон",
+		second: "Да, делим поровну",
+		result: "По 6 200 ₽ каждому",
+		offset: "0s",
+	},
+	{
+		name: "Дима",
+		first: "Ужин 4 800, я оплатил",
+		secondName: "Лена",
+		second: "Нас было четверо",
+		result: "По 1 200 ₽ с человека",
+		offset: "-12s",
+	},
+	{
+		name: "Оля",
+		first: "Подарок маме 9 000",
+		secondName: "Саша",
+		second: "Запиши 4 000 на меня",
+		result: "Оля 5 000 ₽ · Саша 4 000 ₽",
+		offset: "-6s",
+	},
+] as const;
+
+const SharedStory = () => (
+	<div className="shared-story" data-reveal aria-label="Примеры общих расходов">
+		{sharedStories.map((story) => (
+			<div
+				aria-hidden="true"
+				className="story-scene shared-scene"
+				key={story.first}
+				style={{ "--scene-offset": story.offset } as CSSProperties}
+			>
+				<p>
+					<b>{story.name}</b>
+					<span>{story.first}</span>
+				</p>
+				<p>
+					<b>{story.secondName}</b>
+					<span>{story.second}</span>
+				</p>
+				<div className="shared-result">
+					<span>
+						<Check size={17} weight="bold" /> Пока не забыл
+					</span>
+					<strong>{story.result}</strong>
+					<small>Добавлено в общие расходы</small>
+				</div>
+			</div>
+		))}
+	</div>
+);
+
 const LandingPage = () => {
 	usePageTitle("Пока не забыл — расходы в Telegram");
 	useEffect(() => {
@@ -111,6 +268,7 @@ const LandingPage = () => {
 					<Brand />
 					<nav aria-label="Основная навигация">
 						<a href="#how">Как это работает</a>
+						<a href="#mini-app">Mini App</a>
 						<a href="#shared">Для компании</a>
 						<TelegramButton />
 					</nav>
@@ -261,7 +419,7 @@ const LandingPage = () => {
 				</div>
 			</section>
 
-			<section className="review-section">
+			<section className="review-section" id="review">
 				<div className="shell review-layout" data-reveal>
 					<div className="review-copy">
 						<p className="section-label">Сначала проверка</p>
@@ -282,29 +440,76 @@ const LandingPage = () => {
 							</li>
 						</ul>
 					</div>
-					<div className="review-card">
-						<div className="review-card__source">
-							<Camera size={20} /> Фото чека
+					<CaptureStory />
+				</div>
+			</section>
+
+			<section className="miniapp-section" id="mini-app">
+				<div className="shell miniapp-layout">
+					<div className="miniapp-copy" data-reveal>
+						<p className="section-label">Mini App в Telegram</p>
+						<h2>Расходы видно. Порядок — тоже.</h2>
+						<p>
+							Откройте приложение прямо из бота: посмотрите месяц, найдите
+							покупку и проверьте, сколько осталось до лимита.
+						</p>
+						<div className="limit-promise">
+							<ChartDonut size={28} weight="light" />
+							<div>
+								<strong>Лимиты по категориям</strong>
+								<span>
+									Задайте сумму на неделю или месяц. Прогресс всегда на главном
+									экране.
+								</span>
+							</div>
 						</div>
-						<p>Покупки на неделю</p>
-						<strong>2 840 ₽</strong>
-						<dl>
-							<div>
-								<dt>Магазин</dt>
-								<dd>Лента</dd>
+						<ul className="miniapp-points">
+							<li>
+								<Check size={17} weight="bold" /> Сводка месяца без таблиц
+							</li>
+							<li>
+								<Check size={17} weight="bold" /> Последние покупки под рукой
+							</li>
+							<li>
+								<Check size={17} weight="bold" /> Личное и общее — отдельно
+							</li>
+						</ul>
+					</div>
+
+					<div className="app-showcase" data-reveal>
+						<figure className="app-shot app-shot--overview">
+							<div className="app-shot__speaker" aria-hidden="true" />
+							<img
+								alt="Главный экран Mini App со сводкой расходов и лимитом на продукты"
+								decoding="async"
+								height="1040"
+								loading="lazy"
+								src="/mini-app-overview.png"
+								width="520"
+							/>
+							<figcaption>Главная · месяц и последние покупки</figcaption>
+						</figure>
+						<figure className="app-shot app-shot--categories">
+							<div className="app-shot__speaker" aria-hidden="true" />
+							<div className="app-shot__crop">
+								<img
+									alt="Экран категорий Mini App с настройкой месячного лимита"
+									decoding="async"
+									height="1040"
+									loading="lazy"
+									src="/mini-app-categories.png"
+									width="520"
+								/>
 							</div>
-							<div>
-								<dt>Категория</dt>
-								<dd>Продукты</dd>
-							</div>
-							<div>
-								<dt>Дата</dt>
-								<dd>Сегодня</dd>
-							</div>
-						</dl>
-						<div className="review-card__actions">
-							<button type="button">Исправить</button>
-							<button type="button">Сохранить</button>
+							<figcaption>Категории · лимиты на неделю или месяц</figcaption>
+						</figure>
+						<div className="app-limit-callout">
+							<span>Продукты</span>
+							<strong>12 460 ₽ из 20 000 ₽</strong>
+							<span className="app-limit-callout__bar">
+								<b />
+							</span>
+							<small>Осталось 7 540 ₽</small>
 						</div>
 					</div>
 				</div>
@@ -323,19 +528,7 @@ const LandingPage = () => {
 							когда нужны.
 						</p>
 					</div>
-					<div className="shared-chat" data-reveal>
-						<p>
-							<b>Маша</b>
-							<span>Билеты 12 400, на двоих</span>
-						</p>
-						<p>
-							<b>Пока не забыл</b>
-							<span>По 6 200 ₽. Добавить в общие расходы?</span>
-						</p>
-						<div>
-							<Check size={18} /> Доли и баланс останутся в этом пространстве
-						</div>
-					</div>
+					<SharedStory />
 				</div>
 			</section>
 
