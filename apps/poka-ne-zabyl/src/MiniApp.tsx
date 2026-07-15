@@ -27,6 +27,15 @@ import "./mini-app.css";
 import { captureSourceKind } from "./capture-source";
 import { groupRowsByExpense } from "./expense-groups";
 import {
+	type UILanguage,
+	languageOptions,
+	localizedCategoryName,
+	localizedCurrencyName,
+	localizedRegionName,
+	normalizeUILanguage,
+	uiText,
+} from "./mini-i18n";
+import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
 	formatMoney,
@@ -616,6 +625,9 @@ export const MiniApp = () => {
 	const [saving, setSaving] = useState(false);
 	const [homeScreenStatus, setHomeScreenStatus] =
 		useState<HomeScreenStatus>("checking");
+	const language = normalizeUILanguage(
+		user?.language || WebApp.initDataUnsafe.user?.language_code,
+	);
 	const itemNameSuggestions = useMemo(() => {
 		const seen = new Set<string>();
 		return expenses
@@ -1751,7 +1763,7 @@ export const MiniApp = () => {
 						),
 			);
 			setEditingCategory(null);
-			setNotice(creating ? "Категория добавлена" : "Категория переименована");
+			setNotice(uiText(language, creating ? "categoryAdded" : "categorySaved"));
 			return;
 		}
 		setSaving(true);
@@ -1778,7 +1790,7 @@ export const MiniApp = () => {
 				},
 			);
 			setEditingCategory(null);
-			setNotice(creating ? "Категория добавлена" : "Категория переименована");
+			setNotice(uiText(language, creating ? "categoryAdded" : "categorySaved"));
 			await loadSpace();
 		} catch (err) {
 			setNotice(
@@ -1841,12 +1853,88 @@ export const MiniApp = () => {
 		}
 	};
 
+	const mergeCategory = async (targetCategoryID: number) => {
+		if (!editingCategory || editingCategory.key === "other") return;
+		const target = categories.find(
+			(category) => category.id === targetCategoryID,
+		);
+		if (!target) return;
+		if (
+			!window.confirm(
+				`${uiText(language, "mergeConfirm")} «${localizedCategoryName(editingCategory, language)}» → «${localizedCategoryName(target, language)}»?`,
+			)
+		)
+			return;
+		if (previewMode) {
+			const source = editingCategory;
+			setCategories((current) =>
+				current
+					.filter((category) => category.id !== source.id)
+					.map((category) =>
+						category.id === target.id
+							? {
+									...category,
+									count: category.count + source.count,
+									total: category.total + source.total,
+									aliases: Array.from(
+										new Set([
+											...(category.aliases || []),
+											source.name,
+											...(source.aliases || []),
+										]),
+									),
+									...(!category.budget_amount && source.budget_amount
+										? {
+												budget_period: source.budget_period,
+												budget_amount: source.budget_amount,
+											}
+										: {}),
+								}
+							: category,
+					),
+			);
+			setExpenses((current) =>
+				current.map((expense) => ({
+					...expense,
+					items: expense.items.map((item) =>
+						item.category_id === source.id
+							? { ...item, category_id: target.id }
+							: item,
+					),
+				})),
+			);
+			setEditingCategory(null);
+			setNotice(uiText(language, "mergeSuccess"));
+			return;
+		}
+		setSaving(true);
+		try {
+			await apiRequest(
+				`/spaces/${spaceID}/categories/${editingCategory.id}/merge`,
+				token,
+				{
+					method: "POST",
+					body: JSON.stringify({ target_category_id: targetCategoryID }),
+				},
+			);
+			setEditingCategory(null);
+			setNotice(uiText(language, "mergeSuccess"));
+			await loadSpace();
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : uiText(language, "mergeFailed"),
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	const saveProfile = async () => {
 		if (!editingProfile) return;
 		if (previewMode) {
 			setUser(editingProfile);
 			setEditingProfile(null);
-			setNotice("Профиль сохранён");
+			setNotice(uiText(language, "profileSaved"));
 			return;
 		}
 		setSaving(true);
@@ -1857,7 +1945,7 @@ export const MiniApp = () => {
 			});
 			setUser(saved);
 			setEditingProfile(null);
-			setNotice("Профиль сохранён");
+			setNotice(uiText(language, "profileSaved"));
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : "Не удалось сохранить профиль",
@@ -2065,6 +2153,7 @@ export const MiniApp = () => {
 				) : reviewDraft ? (
 					<ReviewEditor
 						draft={reviewDraft}
+						language={language}
 						mediaURL={reviewMediaURL}
 						categories={categories}
 						vendors={vendors}
@@ -2090,11 +2179,11 @@ export const MiniApp = () => {
 			<header className="mini-header">
 				<div className="mini-brand">
 					<NotePencil size={19} weight="bold" />
-					<span>Пока не забыл</span>
+					<span>{uiText(language, "brand")}</span>
 				</div>
 				{spaces.length > 1 ? (
 					<select
-						aria-label="Пространство"
+						aria-label={uiText(language, "space")}
 						value={spaceID}
 						onChange={(event) => setSpaceID(Number(event.target.value))}
 					>
@@ -2139,6 +2228,7 @@ export const MiniApp = () => {
 						{view === "overview" && (
 							<Overview
 								user={user}
+								language={language}
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
@@ -2159,6 +2249,7 @@ export const MiniApp = () => {
 						{view === "expenses" && (
 							<ExpensesView
 								items={filteredItems}
+								language={language}
 								categories={categories}
 								vendors={vendors}
 								captures={captures}
@@ -2192,6 +2283,7 @@ export const MiniApp = () => {
 							<CategoriesView
 								categories={categories}
 								currency={activeSpace?.currency || currency}
+								language={language}
 								onOpen={openCategory}
 								onEdit={(category) =>
 									setEditingCategory({
@@ -2245,6 +2337,7 @@ export const MiniApp = () => {
 						{view === "profile" && (
 							<ProfileView
 								user={user}
+								language={language}
 								quota={quota}
 								vendorsCount={vendors.length}
 								spacesCount={spaces.length}
@@ -2345,35 +2438,35 @@ export const MiniApp = () => {
 				</div>
 			)}
 
-			<nav className="mini-nav" aria-label="Разделы приложения">
+			<nav className="mini-nav" aria-label={uiText(language, "navLabel")}>
 				<NavButton
 					active={view === "overview"}
-					label="Главная"
+					label={uiText(language, "navOverview")}
 					icon={<House />}
 					onClick={() => setView("overview")}
 				/>
 				<NavButton
 					active={view === "expenses"}
-					label="Расходы"
+					label={uiText(language, "navExpenses")}
 					icon={<Receipt />}
 					onClick={openAllExpenses}
 				/>
 				<NavButton
 					active={false}
 					primary
-					label="Добавить"
+					label={uiText(language, "navAdd")}
 					icon={<Plus weight="bold" />}
 					onClick={() => openCapture()}
 				/>
 				<NavButton
 					active={view === "categories"}
-					label="Категории"
+					label={uiText(language, "navCategories")}
 					icon={<Tag />}
 					onClick={() => setView("categories")}
 				/>
 				<NavButton
 					active={view === "profile" || view === "vendors" || view === "spaces"}
-					label="Профиль"
+					label={uiText(language, "navProfile")}
 					icon={<UserCircle />}
 					onClick={() => setView("profile")}
 				/>
@@ -2396,6 +2489,7 @@ export const MiniApp = () => {
 			{editingExpense && editingItemIndex === null && (
 				<ExpenseEditor
 					expense={editingExpense}
+					language={language}
 					categories={categories}
 					vendors={vendors}
 					itemNameSuggestions={itemNameSuggestions}
@@ -2413,6 +2507,7 @@ export const MiniApp = () => {
 			{editingExpense && editingItemIndex !== null && (
 				<ExpenseItemEditor
 					expense={editingExpense}
+					language={language}
 					item={editingExpense.items[editingItemIndex]}
 					categories={categories}
 					vendors={vendors}
@@ -2461,10 +2556,13 @@ export const MiniApp = () => {
 			{editingCategory && (
 				<CategoryEditor
 					category={editingCategory}
+					categories={categories}
+					language={language}
 					saving={saving}
 					onChange={setEditingCategory}
 					onClose={() => setEditingCategory(null)}
 					onSave={saveCategory}
+					onMerge={mergeCategory}
 					onDelete={
 						editingCategory.id > 0 && editingCategory.key !== "other"
 							? deleteCategory
@@ -2737,6 +2835,7 @@ const VendorAutocomplete = ({
 
 const ReviewEditor = ({
 	draft,
+	language,
 	mediaURL,
 	categories,
 	vendors,
@@ -2747,6 +2846,7 @@ const ReviewEditor = ({
 	onClose,
 }: {
 	draft: ReviewDraft;
+	language: UILanguage;
 	mediaURL: string;
 	categories: Category[];
 	vendors: Vendor[];
@@ -2787,7 +2887,7 @@ const ReviewEditor = ({
 					<X size={22} />
 				</button>
 				<div>
-					<span>Пока не забыл</span>
+					<span>{uiText(language, "brand")}</span>
 					<b>{mediaURL ? "Проверьте чек" : "Проверьте расход"}</b>
 				</div>
 				<span className="review-currency">{draft.sourceCurrency}</span>
@@ -2939,7 +3039,7 @@ const ReviewEditor = ({
 							>
 								{categories.map((category) => (
 									<option key={category.id} value={category.key}>
-										{category.name}
+										{localizedCategoryName(category, language)}
 									</option>
 								))}
 							</select>
@@ -3054,6 +3154,7 @@ const ReviewSaved = ({
 
 const Overview = ({
 	user,
+	language,
 	total,
 	currency,
 	categories,
@@ -3071,6 +3172,7 @@ const Overview = ({
 	onManual,
 }: {
 	user: User | null;
+	language: UILanguage;
 	total: number;
 	currency: string;
 	categories: Array<Category & { filteredTotal: number }>;
@@ -3092,7 +3194,7 @@ const Overview = ({
 	}
 
 	const max = categories[0]?.filteredTotal || 1;
-	const month = new Intl.DateTimeFormat("ru-RU", { month: "long" }).format(
+	const month = new Intl.DateTimeFormat(language, { month: "long" }).format(
 		new Date(),
 	);
 	const monthName = month.slice(0, 1).toUpperCase() + month.slice(1);
@@ -3136,7 +3238,7 @@ const Overview = ({
 								onClick={() => onCategory(category.id, "month")}
 							>
 								<span>
-									<b>{category.name}</b>
+									<b>{localizedCategoryName(category, language)}</b>
 									<em>{formatMoney(category.filteredTotal, currency)}</em>
 								</span>
 								<i
@@ -3176,7 +3278,7 @@ const Overview = ({
 											}
 										>
 											<span>
-												<b>{category.name}</b>
+												<b>{localizedCategoryName(category, language)}</b>
 												<em>
 													{formatMoney(spent, currency)} из{" "}
 													{formatMoney(limit, currency)}
@@ -3259,6 +3361,7 @@ const FirstExpenseEmpty = ({
 
 const ExpensesView = ({
 	items,
+	language,
 	categories,
 	vendors,
 	captures,
@@ -3280,6 +3383,7 @@ const ExpensesView = ({
 	onAdd,
 }: {
 	items: ExpenseItemRow[];
+	language: UILanguage;
 	categories: Category[];
 	vendors: Vendor[];
 	captures: CapturePacket[];
@@ -3399,7 +3503,7 @@ const ExpensesView = ({
 				<div className="mini-filter-chips" aria-label="Активные фильтры">
 					{activeCategory && (
 						<button type="button" onClick={() => onCategory(0)}>
-							{activeCategory.name}
+							{localizedCategoryName(activeCategory, language)}
 							<X size={13} />
 						</button>
 					)}
@@ -3422,7 +3526,7 @@ const ExpensesView = ({
 							<option value={0}>Все категории</option>
 							{categories.map((category) => (
 								<option key={category.id} value={category.id}>
-									{category.name}
+									{localizedCategoryName(category, language)}
 								</option>
 							))}
 						</select>
@@ -3755,12 +3859,14 @@ const expenseItemRows = (expenses: Expense[]): ExpenseItemRow[] =>
 const CategoriesView = ({
 	categories,
 	currency,
+	language,
 	onOpen,
 	onEdit,
 	onAdd,
 }: {
 	categories: Category[];
 	currency: string;
+	language: UILanguage;
 	onOpen: (id: number) => void;
 	onEdit: (category: Category) => void;
 	onAdd: () => void;
@@ -3768,15 +3874,15 @@ const CategoriesView = ({
 	<section className="mini-view mini-categories-view">
 		<div className="mini-title-row">
 			<div className="mini-title">
-				<p>Порядок в расходах</p>
-				<h1>Категории</h1>
+				<p>{uiText(language, "categoriesEyebrow")}</p>
+				<h1>{uiText(language, "categoriesTitle")}</h1>
 			</div>
 			<button className="mini-add-button" type="button" onClick={onAdd}>
 				<Plus size={18} weight="bold" />
-				Добавить
+				{uiText(language, "add")}
 			</button>
 		</div>
-		<p className="mini-intro">Нажмите категорию, чтобы открыть её расходы.</p>
+		<p className="mini-intro">{uiText(language, "categoriesIntro")}</p>
 		<div className="mini-categories">
 			{categories.map((category) => (
 				<article
@@ -3790,11 +3896,11 @@ const CategoriesView = ({
 					>
 						<span className="mini-category-dot" />
 						<span>
-							<b>{category.name}</b>
+							<b>{localizedCategoryName(category, language)}</b>
 							<small>
 								{category.budget_amount
-									? `Осталось ${formatMoney(category.budget_remaining || 0, currency)} · ${category.budget_period === "week" ? "на неделю" : "на месяц"}`
-									: "Лимит не установлен"}
+									? `${uiText(language, "remaining")} ${formatMoney(category.budget_remaining || 0, currency)} · ${uiText(language, category.budget_period === "week" ? "forWeek" : "forMonth")}`
+									: uiText(language, "limitNotSet")}
 							</small>
 							{category.budget_amount && (
 								<span className="mini-category-budget">
@@ -3812,8 +3918,8 @@ const CategoriesView = ({
 						type="button"
 						aria-label={
 							category.budget_amount
-								? `Настроить ${category.name}`
-								: `Установить лимит для ${category.name}`
+								? `${uiText(language, "configure")} ${localizedCategoryName(category, language)}`
+								: `${uiText(language, "setLimitFor")} ${localizedCategoryName(category, language)}`
 						}
 						onClick={() => onEdit(category)}
 					>
@@ -3822,7 +3928,7 @@ const CategoriesView = ({
 						) : (
 							<>
 								<Plus size={16} weight="bold" />
-								<span>Лимит</span>
+								<span>{uiText(language, "limit")}</span>
 							</>
 						)}
 					</button>
@@ -3973,6 +4079,7 @@ const SpacesView = ({
 
 const ProfileView = ({
 	user,
+	language,
 	quota,
 	vendorsCount,
 	spacesCount,
@@ -3984,6 +4091,7 @@ const ProfileView = ({
 	onUnavailable,
 }: {
 	user: User | null;
+	language: UILanguage;
 	quota: Quota | null;
 	vendorsCount: number;
 	spacesCount: number;
@@ -4003,30 +4111,36 @@ const ProfileView = ({
 	);
 	const installStatus =
 		homeScreenStatus === "checking"
-			? "Проверяем"
+			? uiText(language, "checking")
 			: homeScreenStatus === "unsupported"
-				? "Недоступно"
+				? uiText(language, "unavailable")
 				: homeScreenStatus === "added"
-					? "Добавлено"
-					: "Добавить";
+					? uiText(language, "added")
+					: uiText(language, "add");
 	return (
 		<section className="mini-view mini-profile-view">
 			<div className="mini-profile-head">
-				<span>{(user?.name || "П").slice(0, 1).toUpperCase()}</span>
+				<span>
+					{(user?.name || uiText(language, "user")).slice(0, 1).toUpperCase()}
+				</span>
 				<div>
-					<h1>{user?.name || "Пользователь"}</h1>
+					<h1>{user?.name || uiText(language, "user")}</h1>
 					<p>
 						{user?.telegramUsername ? `@${user.telegramUsername}` : "Telegram"}
 					</p>
 				</div>
-				<button type="button" aria-label="Изменить профиль" onClick={onEdit}>
+				<button
+					type="button"
+					aria-label={uiText(language, "editProfile")}
+					onClick={onEdit}
+				>
 					<PencilSimple size={19} />
 				</button>
 			</div>
 			<div className="mini-plan">
 				<div>
-					<span>Ваш тариф</span>
-					<strong>{plus ? "Плюс" : "Базовый"}</strong>
+					<span>{uiText(language, "plan")}</span>
+					<strong>{uiText(language, plus ? "plus" : "basic")}</strong>
 				</div>
 				<b>{plus ? "249 ₽ / 30 дней" : "0 ₽"}</b>
 				<div className="mini-progress">
@@ -4034,50 +4148,58 @@ const ProfileView = ({
 				</div>
 				<p>
 					<span>
-						Использовано {used} из {limit}
+						{uiText(language, "used")} {used} / {limit}
 					</span>
-					<span>Осталось {quota?.remaining ?? limit}</span>
+					<span>
+						{uiText(language, "left")} {quota?.remaining ?? limit}
+					</span>
 				</p>
 			</div>
 			<div className="mini-profile-actions">
 				<button type="button" onClick={onUnavailable}>
-					{plus ? "Продлить подписку" : "Подключить Плюс"}
+					{uiText(language, plus ? "extend" : "connectPlus")}
 				</button>
 				<button className="secondary" type="button" onClick={onUnavailable}>
-					Докупить пакет
+					{uiText(language, "buyPack")}
 				</button>
 			</div>
 			<div className="mini-profile-list">
 				<div>
-					<span>Валюта</span>
+					<span>{uiText(language, "currency")}</span>
 					<b>{user?.currency || "RUB"}</b>
 				</div>
 				<div>
-					<span>Страна</span>
-					<b>{countryName(user?.country || "RU")}</b>
+					<span>{uiText(language, "country")}</span>
+					<b>{localizedRegionName(user?.country || "RU", language)}</b>
 				</div>
 				<div>
-					<span>Часовой пояс</span>
-					<b>{timezoneName(user?.timezone || "Europe/Moscow")}</b>
+					<span>{uiText(language, "language")}</span>
+					<b>{languageOptions.find(([code]) => code === language)?.[1]}</b>
+				</div>
+				<div>
+					<span>{uiText(language, "timezone")}</span>
+					<b>
+						{localizedTimezoneName(user?.timezone || "Europe/Moscow", language)}
+					</b>
 				</div>
 				<button type="button" onClick={onManageSpaces}>
 					<span>
 						<UsersThree size={18} />
-						Пространства
+						{uiText(language, "spaces")}
 					</span>
 					<b>{spacesCount}</b>
 				</button>
 				<button type="button" onClick={onManageVendors}>
 					<span>
 						<Storefront size={18} />
-						Продавцы и названия
+						{uiText(language, "vendors")}
 					</span>
 					<b>{vendorsCount}</b>
 				</button>
 				<button type="button" onClick={onInstall} disabled={installDisabled}>
 					<span>
 						<House size={18} />
-						Ярлык на экран телефона
+						{uiText(language, "homeShortcut")}
 					</span>
 					<b>{installStatus}</b>
 				</button>
@@ -4402,6 +4524,7 @@ const CaptureComposer = ({
 
 const ExpenseEditor = ({
 	expense,
+	language,
 	categories,
 	vendors,
 	itemNameSuggestions,
@@ -4416,6 +4539,7 @@ const ExpenseEditor = ({
 	onDelete,
 }: {
 	expense: Expense;
+	language: UILanguage;
 	categories: Category[];
 	vendors: Vendor[];
 	itemNameSuggestions: string[];
@@ -4604,7 +4728,7 @@ const ExpenseEditor = ({
 						>
 							{categories.map((category) => (
 								<option key={category.id} value={category.id}>
-									{category.name}
+									{localizedCategoryName(category, language)}
 								</option>
 							))}
 						</select>
@@ -4652,6 +4776,7 @@ const ExpenseEditor = ({
 
 const ExpenseItemEditor = ({
 	expense,
+	language,
 	item,
 	categories,
 	vendors,
@@ -4665,6 +4790,7 @@ const ExpenseItemEditor = ({
 	onDelete,
 }: {
 	expense: Expense;
+	language: UILanguage;
 	item: ExpenseItem;
 	categories: Category[];
 	vendors: Vendor[];
@@ -4736,7 +4862,7 @@ const ExpenseItemEditor = ({
 				>
 					{categories.map((category) => (
 						<option key={category.id} value={category.id}>
-							{category.name}
+							{localizedCategoryName(category, language)}
 						</option>
 					))}
 				</select>
@@ -4901,109 +5027,154 @@ const VendorEditor = ({
 
 const CategoryEditor = ({
 	category,
+	categories,
+	language,
 	saving,
 	onChange,
 	onClose,
 	onSave,
+	onMerge,
 	onDelete,
 }: {
 	category: Category;
+	categories: Category[];
+	language: UILanguage;
 	saving: boolean;
 	onChange: (category: Category) => void;
 	onClose: () => void;
 	onSave: () => void;
+	onMerge: (targetCategoryID: number) => void;
 	onDelete?: () => void;
-}) => (
-	<Modal
-		title={category.id === 0 ? "Новая категория" : "Название категории"}
-		onClose={onClose}
-	>
-		<label>
-			Название
-			<input
-				maxLength={80}
-				value={category.name}
-				onChange={(event) =>
-					onChange({ ...category, name: event.target.value })
-				}
-			/>
-		</label>
-		<label>
-			Синонимы
-			<input
-				maxLength={500}
-				placeholder="Например: маникюр, косметика, салон"
-				value={category.alias_text ?? category.aliases?.join(", ") ?? ""}
-				onChange={(event) =>
-					onChange({ ...category, alias_text: event.target.value })
-				}
-			/>
-			<small className="mini-field-hint">
-				Через запятую. Один синоним может принадлежать только одной категории.
-			</small>
-		</label>
-		<label>
-			Лимит
-			<select
-				value={category.budget_period || ""}
-				onChange={(event) =>
-					onChange({
-						...category,
-						budget_period: event.target.value as "" | "week" | "month",
-						budget_amount: event.target.value ? category.budget_amount : null,
-					})
-				}
-			>
-				<option value="">Без лимита</option>
-				<option value="week">На неделю</option>
-				<option value="month">На месяц</option>
-			</select>
-		</label>
-		{category.budget_period && (
+}) => {
+	const [targetCategoryID, setTargetCategoryID] = useState(0);
+	const mergeTargets = categories.filter((item) => item.id !== category.id);
+	return (
+		<Modal
+			title={uiText(
+				language,
+				category.id === 0 ? "newCategory" : "editCategory",
+			)}
+			closeLabel={uiText(language, "close")}
+			onClose={onClose}
+		>
 			<label>
-				Сумма лимита
+				{uiText(language, "name")}
 				<input
-					type="number"
-					min="1"
-					step="1"
-					placeholder="Например, 15000"
-					value={category.budget_amount || ""}
+					maxLength={80}
+					value={category.name}
 					onChange={(event) =>
-						onChange({
-							...category,
-							budget_amount: Number(event.target.value) || null,
-						})
+						onChange({ ...category, name: event.target.value })
 					}
 				/>
 			</label>
-		)}
-		<div className="mini-modal-actions">
-			<button
-				className="mini-save"
-				type="button"
-				disabled={
-					saving ||
-					!category.name.trim() ||
-					(Boolean(category.budget_period) && !category.budget_amount)
-				}
-				onClick={onSave}
-			>
-				{saving ? "Сохраняем…" : "Сохранить"}
-			</button>
-			{onDelete && (
-				<button
-					className="mini-delete"
-					type="button"
-					disabled={saving}
-					onClick={onDelete}
+			<label>
+				{uiText(language, "synonyms")}
+				<input
+					maxLength={500}
+					placeholder={uiText(language, "synonymsPlaceholder")}
+					value={category.alias_text ?? category.aliases?.join(", ") ?? ""}
+					onChange={(event) =>
+						onChange({ ...category, alias_text: event.target.value })
+					}
+				/>
+				<small className="mini-field-hint">
+					{uiText(language, "synonymsHint")}
+				</small>
+			</label>
+			<label>
+				{uiText(language, "budget")}
+				<select
+					value={category.budget_period || ""}
+					onChange={(event) =>
+						onChange({
+							...category,
+							budget_period: event.target.value as "" | "week" | "month",
+							budget_amount: event.target.value ? category.budget_amount : null,
+						})
+					}
 				>
-					<Trash size={18} />
-					Удалить категорию
-				</button>
+					<option value="">{uiText(language, "noBudget")}</option>
+					<option value="week">{uiText(language, "weekly")}</option>
+					<option value="month">{uiText(language, "monthly")}</option>
+				</select>
+			</label>
+			{category.budget_period && (
+				<label>
+					{uiText(language, "budgetAmount")}
+					<input
+						type="number"
+						min="1"
+						step="1"
+						placeholder={uiText(language, "budgetPlaceholder")}
+						value={category.budget_amount || ""}
+						onChange={(event) =>
+							onChange({
+								...category,
+								budget_amount: Number(event.target.value) || null,
+							})
+						}
+					/>
+				</label>
 			)}
-		</div>
-	</Modal>
-);
+			<div className="mini-modal-actions">
+				<button
+					className="mini-save"
+					type="button"
+					disabled={
+						saving ||
+						!category.name.trim() ||
+						(Boolean(category.budget_period) && !category.budget_amount)
+					}
+					onClick={onSave}
+				>
+					{uiText(language, saving ? "saving" : "save")}
+				</button>
+				{category.id > 0 &&
+					category.key !== "other" &&
+					mergeTargets.length > 0 && (
+						<div className="mini-vendor-merge">
+							<strong>{uiText(language, "mergeCategories")}</strong>
+							<label>
+								{uiText(language, "mergeWith")}
+								<select
+									value={targetCategoryID}
+									onChange={(event) =>
+										setTargetCategoryID(Number(event.target.value))
+									}
+								>
+									<option value={0}>{uiText(language, "mergeSelect")}</option>
+									{mergeTargets.map((target) => (
+										<option key={target.id} value={target.id}>
+											{localizedCategoryName(target, language)}
+										</option>
+									))}
+								</select>
+							</label>
+							<small>{uiText(language, "mergeHint")}</small>
+							<button
+								type="button"
+								disabled={saving || !targetCategoryID}
+								onClick={() => onMerge(targetCategoryID)}
+							>
+								{uiText(language, "merge")}
+							</button>
+						</div>
+					)}
+				{onDelete && (
+					<button
+						className="mini-delete"
+						type="button"
+						disabled={saving}
+						onClick={onDelete}
+					>
+						<Trash size={18} />
+						{uiText(language, "deleteCategory")}
+					</button>
+				)}
+			</div>
+		</Modal>
+	);
+};
 
 const ProfileEditor = ({
 	user,
@@ -5017,84 +5188,109 @@ const ProfileEditor = ({
 	onChange: (user: User) => void;
 	onClose: () => void;
 	onSave: () => void;
-}) => (
-	<Modal title="Настройки профиля" onClose={onClose}>
-		<label>
-			Имя
-			<input
-				maxLength={120}
-				value={user.name}
-				onChange={(event) => onChange({ ...user, name: event.target.value })}
-			/>
-		</label>
-		<label>
-			Валюта
-			<select
-				value={user.currency}
-				onChange={(event) =>
-					onChange({ ...user, currency: event.target.value })
-				}
-			>
-				{!currencyOptions.some(([code]) => code === user.currency) && (
-					<option value={user.currency}>{user.currency}</option>
-				)}
-				{currencyOptions.map(([code, name]) => (
-					<option key={code} value={code}>
-						{code} — {name}
-					</option>
-				))}
-			</select>
-		</label>
-		<label>
-			Страна
-			<select
-				value={user.country}
-				onChange={(event) => onChange({ ...user, country: event.target.value })}
-			>
-				{!countryOptions.some(([code]) => code === user.country) && (
-					<option value={user.country}>{user.country}</option>
-				)}
-				{countryOptions.map(([code, name]) => (
-					<option key={code} value={code}>
-						{name}
-					</option>
-				))}
-			</select>
-		</label>
-		<label>
-			Часовой пояс
-			<select
-				value={user.timezone}
-				onChange={(event) =>
-					onChange({ ...user, timezone: event.target.value })
-				}
-			>
-				{!timezoneOptions.some(([zone]) => zone === user.timezone) && (
-					<option value={user.timezone}>{user.timezone}</option>
-				)}
-				{timezoneOptions.map(([zone, name]) => (
-					<option key={zone} value={zone}>
-						{name}
-					</option>
-				))}
-			</select>
-		</label>
-		<button
-			className="mini-save"
-			type="button"
-			disabled={
-				saving ||
-				!user.name.trim() ||
-				user.currency.length !== 3 ||
-				!user.country.trim() ||
-				!user.timezone.trim()
-			}
-			onClick={onSave}
+}) => {
+	const language = normalizeUILanguage(user.language);
+	return (
+		<Modal
+			title={uiText(language, "profileSettings")}
+			closeLabel={uiText(language, "close")}
+			onClose={onClose}
 		>
-			{saving ? "Сохраняем…" : "Сохранить"}
-		</button>
-	</Modal>
-);
+			<label>
+				{uiText(language, "name")}
+				<input
+					maxLength={120}
+					value={user.name}
+					onChange={(event) => onChange({ ...user, name: event.target.value })}
+				/>
+			</label>
+			<label>
+				{uiText(language, "currency")}
+				<select
+					value={user.currency}
+					onChange={(event) =>
+						onChange({ ...user, currency: event.target.value })
+					}
+				>
+					{!currencyOptions.some(([code]) => code === user.currency) && (
+						<option value={user.currency}>{user.currency}</option>
+					)}
+					{currencyOptions.map(([code]) => (
+						<option key={code} value={code}>
+							{code} — {localizedCurrencyName(code, language)}
+						</option>
+					))}
+				</select>
+			</label>
+			<label>
+				{uiText(language, "country")}
+				<select
+					value={user.country}
+					onChange={(event) =>
+						onChange({ ...user, country: event.target.value })
+					}
+				>
+					{!countryOptions.some(([code]) => code === user.country) && (
+						<option value={user.country}>{user.country}</option>
+					)}
+					{countryOptions.map(([code]) => (
+						<option key={code} value={code}>
+							{localizedRegionName(code, language)}
+						</option>
+					))}
+				</select>
+			</label>
+			<label>
+				{uiText(language, "language")}
+				<select
+					value={language}
+					onChange={(event) =>
+						onChange({ ...user, language: event.target.value })
+					}
+				>
+					{languageOptions.map(([code, name]) => (
+						<option key={code} value={code}>
+							{name}
+						</option>
+					))}
+				</select>
+			</label>
+			<label>
+				{uiText(language, "timezone")}
+				<select
+					value={user.timezone}
+					onChange={(event) =>
+						onChange({ ...user, timezone: event.target.value })
+					}
+				>
+					{!timezoneOptions.some(([zone]) => zone === user.timezone) && (
+						<option value={user.timezone}>{user.timezone}</option>
+					)}
+					{timezoneOptions.map(([zone, name]) => (
+						<option key={zone} value={zone}>
+							{language === "ru" ? name : zone}
+						</option>
+					))}
+				</select>
+			</label>
+			<button
+				className="mini-save"
+				type="button"
+				disabled={
+					saving ||
+					!user.name.trim() ||
+					user.currency.length !== 3 ||
+					!user.country.trim() ||
+					!user.language.trim() ||
+					!user.timezone.trim()
+				}
+				onClick={onSave}
+			>
+				{uiText(language, saving ? "saving" : "save")}
+			</button>
+		</Modal>
+	);
+};
 
 const SpaceEditor = ({
 	space,
@@ -5192,9 +5388,15 @@ const SpaceEditor = ({
 
 const Modal = ({
 	title,
+	closeLabel = "Закрыть",
 	children,
 	onClose,
-}: { title: string; children: React.ReactNode; onClose: () => void }) => {
+}: {
+	title: string;
+	closeLabel?: string;
+	children: React.ReactNode;
+	onClose: () => void;
+}) => {
 	useEffect(() => {
 		document.body.classList.add("mini-modal-open");
 		const keepActiveControlVisible = () => {
@@ -5231,7 +5433,7 @@ const Modal = ({
 			>
 				<header>
 					<h2>{title}</h2>
-					<button type="button" aria-label="Закрыть" onClick={onClose}>
+					<button type="button" aria-label={closeLabel} onClick={onClose}>
 						<X size={21} />
 					</button>
 				</header>
@@ -5277,23 +5479,33 @@ const LoadingRows = () => (
 		<i />
 	</div>
 );
-const LoadingScreen = () => (
-	<div className="mini-loading">
-		<NotePencil size={28} />
-		<span>Загружаем расходы…</span>
-	</div>
-);
-const TelegramEntry = ({ error }: { error: string }) => (
-	<main className="mini-entry">
-		<div className="mini-brand">
-			<NotePencil size={22} weight="bold" />
-			<span>Пока не забыл</span>
+const LoadingScreen = () => {
+	const language = normalizeUILanguage(
+		WebApp.initDataUnsafe.user?.language_code,
+	);
+	return (
+		<div className="mini-loading">
+			<NotePencil size={28} />
+			<span>{uiText(language, "loadingExpenses")}</span>
 		</div>
-		<h1>Всё под рукой</h1>
-		<p>{error}</p>
-		<a href={BOT_URL}>Открыть бота</a>
-	</main>
-);
+	);
+};
+const TelegramEntry = ({ error }: { error: string }) => {
+	const language = normalizeUILanguage(
+		WebApp.initDataUnsafe.user?.language_code,
+	);
+	return (
+		<main className="mini-entry">
+			<div className="mini-brand">
+				<NotePencil size={22} weight="bold" />
+				<span>{uiText(language, "brand")}</span>
+			</div>
+			<h1>{uiText(language, "entryTitle")}</h1>
+			<p>{error}</p>
+			<a href={BOT_URL}>{uiText(language, "openBot")}</a>
+		</main>
+	);
+};
 
 const periodStart = (period: Period) => {
 	if (period === "all") return null;
@@ -5316,10 +5528,10 @@ const formatDate = (value: string) =>
 	new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(
 		new Date(value),
 	);
-const countryName = (code: string) =>
-	countryOptions.find(([value]) => value === code)?.[1] || code;
-const timezoneName = (timezone: string) =>
-	timezoneOptions.find(([value]) => value === timezone)?.[1] || timezone;
+const localizedTimezoneName = (timezone: string, language: UILanguage) =>
+	language === "ru"
+		? timezoneOptions.find(([value]) => value === timezone)?.[1] || timezone
+		: timezone;
 const expenseWord = (count: number) =>
 	count % 10 === 1 && count % 100 !== 11
 		? "расход"
