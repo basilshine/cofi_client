@@ -31,6 +31,7 @@ import {
 	itemAmountInCurrency,
 	itemDisplayMoney,
 } from "./money";
+import { shouldUseFullscreen } from "./telegram-platform";
 import {
 	commonVendorName,
 	findVendorByName,
@@ -622,17 +623,20 @@ export const MiniApp = () => {
 	useEffect(() => {
 		if (started.current) return;
 		started.current = true;
+		const useFullscreen = shouldUseFullscreen(telegramWebApp.platform);
 		WebApp.ready();
-		WebApp.expand();
+		if (useFullscreen) WebApp.expand();
 		WebApp.setHeaderColor("#f4efe4");
 		WebApp.setBackgroundColor("#f4efe4");
 		if (
+			useFullscreen &&
 			telegramWebApp.isVersionAtLeast("7.7") &&
 			telegramWebApp.disableVerticalSwipes
 		) {
 			telegramWebApp.disableVerticalSwipes();
 		}
 		if (
+			useFullscreen &&
 			telegramWebApp.isVersionAtLeast("8.0") &&
 			telegramWebApp.requestFullscreen &&
 			!telegramWebApp.isFullscreen
