@@ -3452,7 +3452,10 @@ const CategoriesView = ({
 		<p className="mini-intro">Нажмите категорию, чтобы открыть её расходы.</p>
 		<div className="mini-categories">
 			{categories.map((category) => (
-				<article key={category.id}>
+				<article
+					className={category.budget_amount ? undefined : "has-no-budget"}
+					key={category.id}
+				>
 					<button
 						className="mini-category-open"
 						type="button"
@@ -3464,9 +3467,7 @@ const CategoriesView = ({
 							<small>
 								{category.budget_amount
 									? `Осталось ${formatMoney(category.budget_remaining || 0, currency)} · ${category.budget_period === "week" ? "на неделю" : "на месяц"}`
-									: category.last_used
-										? `Последний расход ${formatDate(category.last_used)}`
-										: "Пока не использовалась"}
+									: "Лимит не установлен"}
 							</small>
 							{category.budget_amount && (
 								<span className="mini-category-budget">
@@ -3480,12 +3481,23 @@ const CategoriesView = ({
 						</span>
 					</button>
 					<button
-						className="mini-icon-button"
+						className={`mini-icon-button${category.budget_amount ? "" : " mini-limit-button"}`}
 						type="button"
-						aria-label={`Переименовать ${category.name}`}
+						aria-label={
+							category.budget_amount
+								? `Настроить ${category.name}`
+								: `Установить лимит для ${category.name}`
+						}
 						onClick={() => onEdit(category)}
 					>
-						<PencilSimple size={18} />
+						{category.budget_amount ? (
+							<PencilSimple size={18} />
+						) : (
+							<>
+								<Plus size={16} weight="bold" />
+								<span>Лимит</span>
+							</>
+						)}
 					</button>
 				</article>
 			))}
