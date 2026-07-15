@@ -3077,106 +3077,116 @@ const Overview = ({
 	);
 	const monthName = month.slice(0, 1).toUpperCase() + month.slice(1);
 	return (
-		<section className="mini-view">
+		<section className="mini-view mini-overview">
 			<div className="mini-title">
 				<p>Привет{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p>
 				<h1>{monthName}</h1>
 			</div>
-			<div className="mini-total">
-				<span>В этом месяце</span>
-				<strong>{formatMoney(total, currency)}</strong>
-				<small>
-					{expenses.length} {expenseWord(expenses.length)}
-				</small>
-			</div>
-			{hasReadyCapture && (
-				<button className="mini-review-prompt" type="button" onClick={onReview}>
-					<span>
-						<Check size={20} weight="bold" />
-						<b>Расход готов</b>
-					</span>
-					<em>Проверить</em>
-				</button>
-			)}
-			<div className="mini-section-head">
-				<h2>По категориям</h2>
-				<ChartDonut size={20} />
-			</div>
-			<div className="mini-category-bars">
-				{categories.slice(0, 5).map((category) => (
-					<button
-						key={category.id}
-						type="button"
-						onClick={() => onCategory(category.id, "month")}
-					>
-						<span>
-							<b>{category.name}</b>
-							<em>{formatMoney(category.filteredTotal, currency)}</em>
-						</span>
-						<i
-							style={{
-								width: `${Math.max(8, (category.filteredTotal / max) * 100)}%`,
-							}}
-						/>
-					</button>
-				))}
-				{categories.length === 0 && (
-					<Empty text="В этом месяце расходов пока нет" />
-				)}
-			</div>
-			{budgets.length > 0 && (
-				<>
+			<div className="mini-overview-grid">
+				<div className="mini-overview-summary">
+					<div className="mini-total">
+						<span>В этом месяце</span>
+						<strong>{formatMoney(total, currency)}</strong>
+						<small>
+							{expenses.length} {expenseWord(expenses.length)}
+						</small>
+					</div>
+					{hasReadyCapture && (
+						<button
+							className="mini-review-prompt"
+							type="button"
+							onClick={onReview}
+						>
+							<span>
+								<Check size={20} weight="bold" />
+								<b>Расход готов</b>
+							</span>
+							<em>Проверить</em>
+						</button>
+					)}
 					<div className="mini-section-head">
-						<h2>Лимиты</h2>
+						<h2>По категориям</h2>
+						<ChartDonut size={20} />
 					</div>
-					<div className="mini-budget-list">
-						{budgets.map((category) => {
-							const limit = category.budget_amount || 0;
-							const spent = category.budget_spent || 0;
-							const percent = Math.min(
-								100,
-								category.budget_percent ||
-									(limit > 0 ? (spent / limit) * 100 : 0),
-							);
-							return (
-								<button
-									key={category.id}
-									type="button"
-									onClick={() =>
-										onCategory(
-											category.id,
-											category.budget_period === "week" ? "week" : "month",
-										)
-									}
-								>
-									<span>
-										<b>{category.name}</b>
-										<em>
-											{formatMoney(spent, currency)} из{" "}
-											{formatMoney(limit, currency)}
-										</em>
-									</span>
-									<i>
-										<b style={{ width: `${percent}%` }} />
-									</i>
-								</button>
-							);
-						})}
+					<div className="mini-category-bars">
+						{categories.slice(0, 5).map((category) => (
+							<button
+								key={category.id}
+								type="button"
+								onClick={() => onCategory(category.id, "month")}
+							>
+								<span>
+									<b>{category.name}</b>
+									<em>{formatMoney(category.filteredTotal, currency)}</em>
+								</span>
+								<i
+									style={{
+										width: `${Math.max(8, (category.filteredTotal / max) * 100)}%`,
+									}}
+								/>
+							</button>
+						))}
+						{categories.length === 0 && (
+							<Empty text="В этом месяце расходов пока нет" />
+						)}
 					</div>
-				</>
-			)}
-			<div className="mini-section-head">
-				<h2>Последние</h2>
-				<button type="button" onClick={onExpenses}>
-					Все
-				</button>
+					{budgets.length > 0 && (
+						<>
+							<div className="mini-section-head">
+								<h2>Лимиты</h2>
+							</div>
+							<div className="mini-budget-list">
+								{budgets.map((category) => {
+									const limit = category.budget_amount || 0;
+									const spent = category.budget_spent || 0;
+									const percent = Math.min(
+										100,
+										category.budget_percent ||
+											(limit > 0 ? (spent / limit) * 100 : 0),
+									);
+									return (
+										<button
+											key={category.id}
+											type="button"
+											onClick={() =>
+												onCategory(
+													category.id,
+													category.budget_period === "week" ? "week" : "month",
+												)
+											}
+										>
+											<span>
+												<b>{category.name}</b>
+												<em>
+													{formatMoney(spent, currency)} из{" "}
+													{formatMoney(limit, currency)}
+												</em>
+											</span>
+											<i>
+												<b style={{ width: `${percent}%` }} />
+											</i>
+										</button>
+									);
+								})}
+							</div>
+						</>
+					)}
+				</div>
+				<div className="mini-overview-recent">
+					<div className="mini-section-head">
+						<h2>Последние</h2>
+						<button type="button" onClick={onExpenses}>
+							Все
+						</button>
+					</div>
+					<ExpenseList
+						expenses={latestExpenses.slice(0, 4)}
+						captures={captures}
+						currency={currency}
+						onEdit={(expense) => onExpense(expense.id)}
+					/>
+				</div>
 			</div>
-			<ExpenseList
-				expenses={latestExpenses.slice(0, 4)}
-				captures={captures}
-				currency={currency}
-				onEdit={(expense) => onExpense(expense.id)}
-			/>
 		</section>
 	);
 };
@@ -3277,7 +3287,7 @@ const ExpensesView = ({
 		Number(Boolean(activeCategory)) + Number(Boolean(activeVendor));
 
 	return (
-		<section className="mini-view">
+		<section className="mini-view mini-expenses-view">
 			<div className="mini-title-row">
 				<div className="mini-title">
 					<p>История</p>
@@ -3735,7 +3745,7 @@ const CategoriesView = ({
 	onEdit: (category: Category) => void;
 	onAdd: () => void;
 }) => (
-	<section className="mini-view">
+	<section className="mini-view mini-categories-view">
 		<div className="mini-title-row">
 			<div className="mini-title">
 				<p>Порядок в расходах</p>
@@ -3813,7 +3823,7 @@ const VendorsView = ({
 	onEdit: (vendor: Vendor) => void;
 	onAdd: () => void;
 }) => (
-	<section className="mini-view">
+	<section className="mini-view mini-vendors-view">
 		<div className="mini-title-row">
 			<div className="mini-title">
 				<button className="mini-back-link" type="button" onClick={onBack}>
@@ -3873,7 +3883,7 @@ const SpacesView = ({
 }) => {
 	const activeSpace = spaces.find((space) => space.id === activeSpaceID);
 	return (
-		<section className="mini-view">
+		<section className="mini-view mini-spaces-view">
 			<button className="mini-back-link" type="button" onClick={onBack}>
 				<ArrowLeft size={18} />
 				Профиль
@@ -3980,7 +3990,7 @@ const ProfileView = ({
 					? "Добавлено"
 					: "Добавить";
 	return (
-		<section className="mini-view">
+		<section className="mini-view mini-profile-view">
 			<div className="mini-profile-head">
 				<span>{(user?.name || "П").slice(0, 1).toUpperCase()}</span>
 				<div>
