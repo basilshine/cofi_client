@@ -2603,6 +2603,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/plans/{planId}/postpone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Postpone a planned purchase until tomorrow */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                    planId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Planned purchase postponed in the acting user's time zone */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchasePlan"];
+                    };
+                };
+                /** @description Planned purchase not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/recurring": {
         parameters: {
             query?: never;
@@ -6642,6 +6689,8 @@ export interface components {
             status: "planned" | "completed";
             /** Format: int64 */
             expense_id?: number | null;
+            /** Format: date-time */
+            reminder_sent_at?: string | null;
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */

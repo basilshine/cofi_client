@@ -192,6 +192,7 @@ type PurchasePlan = {
 	due_date?: string | null;
 	status: "planned" | "completed";
 	expense_id?: number | null;
+	reminder_sent_at?: string | null;
 };
 
 type User = {
@@ -598,8 +599,26 @@ const reviewTarget = (): ReviewTarget | null => {
 
 const requestedReview = reviewTarget();
 
+type PlanTarget = { spaceID: number; planID: number };
+
+const planTarget = (): PlanTarget | null => {
+	const query = new URLSearchParams(window.location.search);
+	const directSpace = Number(query.get("space_id"));
+	const directPlan = Number(query.get("plan_id"));
+	if (directSpace > 0 && directPlan > 0)
+		return { spaceID: directSpace, planID: directPlan };
+	const startParam =
+		query.get("tgWebAppStartParam") || WebApp.initDataUnsafe.start_param || "";
+	const match = /^p_(\d+)_(\d+)$/.exec(startParam);
+	if (!match) return null;
+	return { spaceID: Number(match[1]), planID: Number(match[2]) };
+};
+
+const requestedPlan = planTarget();
+
 const initialView = (): View => {
 	if (requestedReview) return "review";
+	if (requestedPlan) return "expenses";
 	const requested = new URLSearchParams(window.location.search).get("view");
 	return requested === "expenses" ||
 		requested === "categories" ||
@@ -612,6 +631,7 @@ const initialView = (): View => {
 
 export const MiniApp = () => {
 	const started = useRef(false);
+	const openedRequestedPlan = useRef(false);
 	const loadSequence = useRef(0);
 	const [view, setView] = useState<View>(initialView);
 	const [token, setToken] = useState("");
@@ -637,8 +657,9 @@ export const MiniApp = () => {
 	const [expenseID, setExpenseID] = useState(0);
 	const [groupByExpense, setGroupByExpense] = useState(false);
 	const [query, setQuery] = useState("");
-	const [expenseSection, setExpenseSection] =
-		useState<ExpenseSection>("history");
+	const [expenseSection, setExpenseSection] = useState<ExpenseSection>(
+		requestedPlan ? "plans" : "history",
+	);
 	const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 	const [editingPlan, setEditingPlan] = useState<PurchasePlan | null>(null);
 	const [completingPlanID, setCompletingPlanID] = useState(0);
@@ -841,8 +862,11 @@ export const MiniApp = () => {
 			setUser(auth.user);
 			setSpaces(availableSpaces);
 			setSpaceID(
-				availableSpaces.some((space) => space.id === requestedReview?.spaceID)
-					? requestedReview?.spaceID || 0
+				availableSpaces.some(
+					(space) =>
+						space.id === (requestedReview?.spaceID || requestedPlan?.spaceID),
+				)
+					? requestedReview?.spaceID || requestedPlan?.spaceID || 0
 					: availableSpaces[0]?.id || 0,
 			);
 			if (availableSpaces.length === 0) {
@@ -2338,6 +2362,42 @@ export const MiniApp = () => {
 		});
 	};
 
+	useEffect(() => {
+		if (
+			!requestedPlan ||
+			openedRequestedPlan.current ||
+			requestedPlan.spaceID !== spaceID ||
+			plans.length === 0 ||
+			categories.length === 0
+		)
+			return;
+		const plan = plans.find((item) => item.id === requestedPlan.planID);
+		if (!plan) return;
+		openedRequestedPlan.current = true;
+		setExpenseSection("plans");
+		setView("expenses");
+		buyPlan(plan);
+	}, [spaceID, plans, categories]);
+
+	const planAgain = () => {
+		if (!editingExpense || editingItemIndex === null) return;
+		const item = editingExpense.items[editingItemIndex];
+		setEditingExpense(null);
+		setEditingItemIndex(null);
+		setEditingPlan({
+			id: 0,
+			tenant_id: activeSpace?.tenant_id || 0,
+			space_id: spaceID,
+			created_by_user_id: user?.id || 0,
+			title: item.name,
+			expected_amount: item.space_amount ?? item.amount,
+			currency: activeSpace?.currency || currency,
+			category_id: item.category_id || null,
+			due_date: null,
+			status: "planned",
+		});
+	};
+
 	const addExpense = () => {
 		setCompletingPlanID(0);
 		const category =
@@ -2473,12 +2533,19 @@ export const MiniApp = () => {
 								budgets={overviewBudgets}
 								expenses={overviewExpenses}
 								latestExpenses={expenses}
+								plans={plans}
 								captures={captures}
 								hasAnyExpenses={expenses.length > 0}
 								hasReadyCapture={Boolean(showReadyCapture)}
 								onCategory={openCategory}
 								onExpense={openExpense}
 								onExpenses={openAllExpenses}
+								onPlans={() => {
+									setExpenseSection("plans");
+									setView("expenses");
+								}}
+								onEditPlan={(plan) => setEditingPlan({ ...plan })}
+								onBuyPlan={buyPlan}
 								onReview={() => void openReadyCapture()}
 								onCapture={openCapture}
 								onManual={addExpense}
@@ -2791,6 +2858,7 @@ export const MiniApp = () => {
 					}}
 					onSave={saveExpense}
 					onSource={() => openExpenseSource(editingExpense)}
+					onPlanAgain={planAgain}
 					onDelete={
 						editingExpense.id > 0 && editingExpense.items[editingItemIndex]?.id
 							? deleteExpenseItem
@@ -3424,12 +3492,16 @@ const Overview = ({
 	budgets,
 	expenses,
 	latestExpenses,
+	plans,
 	captures,
 	hasAnyExpenses,
 	hasReadyCapture,
 	onCategory,
 	onExpense,
 	onExpenses,
+	onPlans,
+	onEditPlan,
+	onBuyPlan,
 	onReview,
 	onCapture,
 	onManual,
@@ -3442,17 +3514,21 @@ const Overview = ({
 	budgets: Category[];
 	expenses: Expense[];
 	latestExpenses: Expense[];
+	plans: PurchasePlan[];
 	captures: CapturePacket[];
 	hasAnyExpenses: boolean;
 	hasReadyCapture: boolean;
 	onCategory: (id: number, period?: Period) => void;
 	onExpense: (id: number) => void;
 	onExpenses: () => void;
+	onPlans: () => void;
+	onEditPlan: (plan: PurchasePlan) => void;
+	onBuyPlan: (plan: PurchasePlan) => void;
 	onReview: () => void;
 	onCapture: (mode?: CaptureMode) => void;
 	onManual: () => void;
 }) => {
-	if (!hasAnyExpenses) {
+	if (!hasAnyExpenses && plans.length === 0) {
 		return <FirstExpenseEmpty onCapture={onCapture} onManual={onManual} />;
 	}
 
@@ -3461,6 +3537,17 @@ const Overview = ({
 		new Date(),
 	);
 	const monthName = month.slice(0, 1).toUpperCase() + month.slice(1);
+	const upcomingPlans = [...plans]
+		.sort((left, right) => {
+			if (!left.due_date) return 1;
+			if (!right.due_date) return -1;
+			return left.due_date.localeCompare(right.due_date);
+		})
+		.slice(0, 3);
+	const plannedTotal = plans.reduce(
+		(sum, plan) => sum + (plan.expected_amount || 0),
+		0,
+	);
 	return (
 		<section className="mini-view mini-overview">
 			<div className="mini-title">
@@ -3488,6 +3575,46 @@ const Overview = ({
 							</span>
 							<em>Проверить</em>
 						</button>
+					)}
+					{upcomingPlans.length > 0 && (
+						<section className="mini-home-plans">
+							<div className="mini-section-head">
+								<span>
+									<h2>{uiText(language, "upcomingPlans")}</h2>
+									{plannedTotal > 0 && (
+										<small>
+											{uiText(language, "plannedTotal")}{" "}
+											{formatMoney(plannedTotal, currency)}
+										</small>
+									)}
+								</span>
+								<button type="button" onClick={onPlans}>
+									{uiText(language, "all")}
+								</button>
+							</div>
+							<div className="mini-home-plan-list">
+								{upcomingPlans.map((plan) => (
+									<div key={plan.id}>
+										<button type="button" onClick={() => onEditPlan(plan)}>
+											<b>{plan.title}</b>
+											<small>
+												{plan.due_date
+													? formatPlanDate(plan.due_date, language)
+													: uiText(language, "someday")}
+											</small>
+										</button>
+										<button
+											className="mini-home-plan-buy"
+											type="button"
+											onClick={() => onBuyPlan(plan)}
+											aria-label={uiText(language, "bought")}
+										>
+											<Check size={17} weight="bold" />
+										</button>
+									</div>
+								))}
+							</div>
+						</section>
 					)}
 					<div className="mini-section-head">
 						<h2>По категориям</h2>
@@ -5347,6 +5474,7 @@ const ExpenseItemEditor = ({
 	onClose,
 	onSave,
 	onSource,
+	onPlanAgain,
 	onDelete,
 }: {
 	expense: Expense;
@@ -5361,6 +5489,7 @@ const ExpenseItemEditor = ({
 	onClose: () => void;
 	onSave: () => void;
 	onSource: () => void;
+	onPlanAgain: () => void;
 	onDelete?: () => void;
 }) => {
 	const vendorName = vendorFieldValue(
@@ -5460,6 +5589,15 @@ const ExpenseItemEditor = ({
 					onClick={onSave}
 				>
 					{saving ? "Сохраняем…" : "Сохранить"}
+				</button>
+				<button
+					className="mini-secondary-action"
+					type="button"
+					disabled={saving}
+					onClick={onPlanAgain}
+				>
+					<CalendarBlank size={18} />
+					{uiText(language, "planAgain")}
 				</button>
 				{onDelete && (
 					<button
