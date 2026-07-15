@@ -6408,6 +6408,8 @@ const TelegramEntry = ({ error }: { error: string }) => {
 	);
 };
 
+const OTP_POSITIONS = [0, 1, 2, 3, 4, 5] as const;
+
 const BrowserEntry = ({
 	error,
 	onTelegramAuth,
@@ -6423,8 +6425,18 @@ const BrowserEntry = ({
 	const [email, setEmail] = useState("");
 	const [code, setCode] = useState("");
 	const [codeSent, setCodeSent] = useState(false);
+	const [resendSeconds, setResendSeconds] = useState(0);
 	const [loading, setLoading] = useState(false);
 	const [localError, setLocalError] = useState("");
+
+	useEffect(() => {
+		if (!codeSent || resendSeconds <= 0) return;
+		const timer = window.setTimeout(
+			() => setResendSeconds((seconds) => Math.max(0, seconds - 1)),
+			1000,
+		);
+		return () => window.clearTimeout(timer);
+	}, [codeSent, resendSeconds]);
 
 	const requestCode = async () => {
 		setLoading(true);
@@ -6435,6 +6447,7 @@ const BrowserEntry = ({
 				body: JSON.stringify({ name: name.trim(), email: email.trim() }),
 			});
 			setCodeSent(true);
+			setResendSeconds(60);
 		} catch (requestError) {
 			const message =
 				requestError instanceof Error
@@ -6484,154 +6497,184 @@ const BrowserEntry = ({
 
 	return (
 		<main className="mini-entry mini-browser-entry">
-			<div className="mini-brand">
-				<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
-				<span>Пока не забыл</span>
-			</div>
-			<h1>Ваши расходы рядом</h1>
-			<p>Откройте те же пространства, покупки и планы.</p>
-			<div
-				className="browser-auth-tabs"
-				role="tablist"
-				aria-label="Способ входа"
-			>
-				<button
-					type="button"
-					className={method === "telegram" ? "active" : ""}
-					onClick={() => setMethod("telegram")}
+			<section className="browser-entry-brand">
+				<div className="mini-brand">
+					<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+					<span>Пока не забыл</span>
+				</div>
+				<div>
+					<h1>Ваши расходы рядом</h1>
+					<p>Откройте те же пространства, покупки и планы.</p>
+				</div>
+			</section>
+			<section className="browser-auth-panel">
+				<div
+					className="browser-auth-tabs"
+					role="tablist"
+					aria-label="Способ входа"
 				>
-					Telegram
-				</button>
-				<button
-					type="button"
-					className={method === "email" ? "active" : ""}
-					onClick={() => setMethod("email")}
-				>
-					Почта
-				</button>
-			</div>
-			{method === "telegram" ? (
-				<>
-					<TelegramLoginButton onAuth={onTelegramAuth} />
-					<small>Первый вход и создание аккаунта</small>
-				</>
-			) : (
-				<div className="browser-email-auth">
-					<div className="browser-email-modes" aria-label="Действие с почтой">
-						<button
-							type="button"
-							className={emailMode === "login" ? "active" : ""}
-							onClick={() => {
-								setEmailMode("login");
-								setCodeSent(false);
-								setCode("");
-								setLocalError("");
-							}}
-						>
-							Войти
-						</button>
-						<button
-							type="button"
-							className={emailMode === "register" ? "active" : ""}
-							onClick={() => {
-								setEmailMode("register");
-								setCodeSent(false);
-								setCode("");
-								setLocalError("");
-							}}
-						>
-							Регистрация
-						</button>
-					</div>
-					{emailMode === "register" && (
-						<label>
-							Имя
-							<input
-								type="text"
-								autoComplete="name"
-								value={name}
-								disabled={codeSent}
-								onChange={(event) => setName(event.target.value)}
-								placeholder="Как к вам обращаться"
-							/>
-						</label>
-					)}
-					<label>
+					<button
+						type="button"
+						className={method === "telegram" ? "active" : ""}
+						onClick={() => setMethod("telegram")}
+					>
+						Telegram
+					</button>
+					<button
+						type="button"
+						className={method === "email" ? "active" : ""}
+						onClick={() => setMethod("email")}
+					>
 						Почта
-						<input
-							type="email"
-							autoComplete="email"
-							inputMode="email"
-							value={email}
-							disabled={codeSent}
-							onChange={(event) => setEmail(event.target.value)}
-							placeholder="name@example.com"
-						/>
-					</label>
-					{codeSent ? (
-						<>
-							<label>
-								Код из письма — 6 цифр
-								<input
-									className="browser-code-input"
-									type="text"
-									inputMode="numeric"
-									autoComplete="one-time-code"
-									maxLength={6}
-									placeholder="000000"
-									value={code}
-									onChange={(event) =>
-										setCode(event.target.value.replace(/\D/g, ""))
-									}
-								/>
-							</label>
+					</button>
+				</div>
+				{method === "telegram" ? (
+					<div className="browser-telegram-auth">
+						<TelegramLoginButton onAuth={onTelegramAuth} />
+						<small>Первый вход и создание аккаунта</small>
+					</div>
+				) : (
+					<div className="browser-email-auth">
+						<div className="browser-email-modes" aria-label="Действие с почтой">
 							<button
 								type="button"
-								disabled={loading || code.length !== 6}
-								onClick={confirmCode}
-							>
-								{loading
-									? "Проверяем…"
-									: emailMode === "register"
-										? "Создать аккаунт"
-										: "Войти"}
-							</button>
-							<button
-								className="browser-auth-link"
-								type="button"
+								className={emailMode === "login" ? "active" : ""}
 								onClick={() => {
+									setEmailMode("login");
 									setCodeSent(false);
+									setResendSeconds(0);
 									setCode("");
+									setLocalError("");
 								}}
 							>
-								Изменить почту
+								Войти
 							</button>
-						</>
-					) : (
-						<button
-							type="button"
-							disabled={
-								loading ||
-								!email.includes("@") ||
-								(emailMode === "register" && !name.trim())
-							}
-							onClick={requestCode}
-						>
-							{loading ? "Отправляем…" : "Получить код"}
-						</button>
-					)}
-					<small>
-						{codeSent
-							? "Код действует 10 минут. Проверьте также папку «Спам»."
-							: emailMode === "register"
-								? "Пароль не нужен — вход всегда подтверждается кодом из письма."
-								: "Введите почту, которую указывали при регистрации или привязали в профиле."}
-					</small>
-				</div>
-			)}
-			{localError || error ? (
-				<p className="mini-entry-error">{localError || error}</p>
-			) : null}
+							<button
+								type="button"
+								className={emailMode === "register" ? "active" : ""}
+								onClick={() => {
+									setEmailMode("register");
+									setCodeSent(false);
+									setResendSeconds(0);
+									setCode("");
+									setLocalError("");
+								}}
+							>
+								Регистрация
+							</button>
+						</div>
+						{emailMode === "register" && (
+							<label>
+								Имя
+								<input
+									type="text"
+									autoComplete="name"
+									value={name}
+									disabled={codeSent}
+									onChange={(event) => setName(event.target.value)}
+									placeholder="Как к вам обращаться"
+								/>
+							</label>
+						)}
+						<label>
+							Почта
+							<input
+								type="email"
+								autoComplete="email"
+								inputMode="email"
+								value={email}
+								disabled={codeSent}
+								onChange={(event) => setEmail(event.target.value)}
+								placeholder="name@example.com"
+							/>
+						</label>
+						{codeSent ? (
+							<>
+								<label className="browser-code-field">
+									<span>Код из письма</span>
+									<div className="browser-otp-field">
+										<input
+											className="browser-code-input"
+											type="text"
+											inputMode="numeric"
+											autoComplete="one-time-code"
+											maxLength={6}
+											value={code}
+											onChange={(event) =>
+												setCode(event.target.value.replace(/\D/g, ""))
+											}
+										/>
+										<div className="browser-otp-cells" aria-hidden="true">
+											{OTP_POSITIONS.map((index) => (
+												<span
+													key={`otp-${index}`}
+													className={`browser-otp-cell${code[index] ? " filled" : ""}${index === code.length && code.length < 6 ? " active" : ""}`}
+												>
+													{code[index] || ""}
+												</span>
+											))}
+										</div>
+									</div>
+								</label>
+								<button
+									type="button"
+									disabled={loading || code.length !== 6}
+									onClick={confirmCode}
+								>
+									{loading
+										? "Проверяем…"
+										: emailMode === "register"
+											? "Создать аккаунт"
+											: "Войти"}
+								</button>
+								<button
+									className="browser-auth-link"
+									type="button"
+									onClick={() => {
+										setCodeSent(false);
+										setResendSeconds(0);
+										setCode("");
+									}}
+								>
+									Изменить почту
+								</button>
+								<button
+									className="browser-auth-link browser-resend-code"
+									type="button"
+									disabled={loading || resendSeconds > 0}
+									onClick={requestCode}
+								>
+									{resendSeconds > 0
+										? `Отправить снова через 0:${String(resendSeconds).padStart(2, "0")}`
+										: "Отправить код ещё раз"}
+								</button>
+							</>
+						) : (
+							<button
+								type="button"
+								disabled={
+									loading ||
+									!email.includes("@") ||
+									(emailMode === "register" && !name.trim())
+								}
+								onClick={requestCode}
+							>
+								{loading ? "Отправляем…" : "Получить код"}
+							</button>
+						)}
+						<small>
+							{codeSent
+								? "Код действует 10 минут. Проверьте также папку «Спам»."
+								: emailMode === "register"
+									? "Пароль не нужен — вход всегда подтверждается кодом из письма."
+									: "Введите почту, которую указывали при регистрации или привязали в профиле."}
+						</small>
+					</div>
+				)}
+				{localError || error ? (
+					<p className="mini-entry-error">{localError || error}</p>
+				) : null}
+			</section>
 		</main>
 	);
 };

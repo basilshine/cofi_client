@@ -1978,41 +1978,115 @@
 	padding: 0 18px;
 }
 .mini-browser-entry {
+	--mini-ink: #171b2d;
+	--mini-muted: #70758a;
+	--mini-paper: #fcf9f2;
+	--mini-line: #dde2ee;
+	--mini-green: #2945c7;
+	--mini-red: #b53627;
+	--mini-signal: #ff5a3d;
+	--mini-soft: #eef1fa;
+	display: grid;
+	width: 100%;
 	min-height: 100dvh;
+	place-content: stretch;
+	justify-items: stretch;
+	gap: 0;
+	padding: 0;
+	background: var(--mini-paper);
+	text-align: left;
 }
-.mini-browser-entry > small,
+.browser-entry-brand {
+	display: grid;
+	min-height: 230px;
+	align-content: space-between;
+	gap: 36px;
+	padding: 30px 24px 58px;
+	background: var(--mini-green);
+	color: var(--mini-paper);
+}
+.browser-entry-brand .mini-brand {
+	font-size: 18px;
+}
+.browser-entry-brand .mini-brand-mark {
+	width: 46px;
+	height: 46px;
+	border-radius: 8px;
+	box-shadow: 0 8px 24px rgb(10 26 102 / 28%);
+}
+.browser-entry-brand h1 {
+	max-width: 420px;
+	margin: 0;
+	color: var(--mini-paper);
+	font-size: clamp(34px, 9vw, 48px);
+	line-height: 0.98;
+	text-wrap: balance;
+}
+.browser-entry-brand p {
+	max-width: 370px;
+	margin-top: 16px;
+	color: rgb(252 249 242 / 78%);
+	font-size: 15px;
+	line-height: 1.45;
+}
+.browser-auth-panel {
+	display: grid;
+	width: calc(100% - 32px);
+	max-width: 400px;
+	align-content: center;
+	gap: 18px;
+	margin: -30px auto 28px;
+	padding: 22px;
+	border: 1px solid rgb(23 27 45 / 8%);
+	border-radius: 8px;
+	background: var(--mini-paper);
+	box-shadow: 0 20px 50px rgb(23 27 45 / 12%), 0 2px 8px rgb(23 27 45 / 6%);
+}
+.browser-telegram-auth,
+.browser-email-auth {
+	display: grid;
+	gap: 12px;
+}
+.browser-telegram-auth {
+	justify-items: center;
+	padding: 16px 0 4px;
+}
+.browser-telegram-auth small,
 .browser-email-auth small {
 	max-width: 320px;
 	color: var(--mini-muted);
 	line-height: 1.4;
+	text-align: center;
 }
 .browser-auth-tabs {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	width: min(100%, 320px);
+	width: 100%;
 	padding: 3px;
 	border: 1px solid var(--mini-line);
 	border-radius: 8px;
-	background: var(--mini-soft);
+	background: #e8ecf8;
 }
 .browser-auth-tabs button {
-	min-height: 40px;
+	min-height: 44px;
 	border: 0;
 	border-radius: 6px;
 	background: transparent;
 	color: var(--mini-muted);
 	font-weight: 700;
+	transition-property: background-color, color, box-shadow, transform;
+	transition-duration: 160ms;
+	transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 .browser-auth-tabs button.active {
-	background: var(--mini-paper);
-	color: var(--mini-ink);
-	box-shadow: 0 1px 4px rgb(23 27 45 / 10%);
+	background: var(--mini-green);
+	color: var(--mini-paper);
+	box-shadow: 0 5px 14px rgb(41 69 199 / 24%);
 }
-.browser-email-auth {
-	display: grid;
-	width: min(100%, 320px);
-	gap: 12px;
-	text-align: left;
+.browser-auth-tabs button:active,
+.browser-email-modes button:active,
+.browser-email-auth > button:active {
+	transform: scale(0.96);
 }
 .browser-email-modes {
 	display: grid;
@@ -2031,8 +2105,8 @@
 	font-weight: 700;
 }
 .browser-email-modes button.active {
-	background: #fff;
-	color: var(--mini-ink);
+	background: var(--mini-paper);
+	color: var(--mini-green);
 	box-shadow: 0 1px 3px rgb(23 27 45 / 10%);
 }
 .browser-email-auth label {
@@ -2047,7 +2121,7 @@
 	padding: 0 13px;
 	border: 2px solid rgba(23, 27, 45, 0.32);
 	border-radius: 7px;
-	background: #fff;
+	background: #fffefa;
 	color: var(--mini-ink);
 	font-size: 16px;
 }
@@ -2056,11 +2130,52 @@
 	background: var(--mini-soft);
 	color: var(--mini-ink);
 }
+.browser-code-field {
+	gap: 8px !important;
+}
+.browser-otp-field {
+	position: relative;
+}
 .browser-email-auth .browser-code-input {
-	font-size: 22px;
+	position: absolute;
+	z-index: 2;
+	inset: 0;
+	min-height: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	caret-color: transparent;
+	opacity: 0;
+}
+.browser-otp-cells {
+	display: grid;
+	grid-template-columns: repeat(6, minmax(0, 1fr));
+	gap: 7px;
+}
+.browser-otp-cell {
+	display: grid;
+	min-width: 0;
+	height: 52px;
+	place-items: center;
+	border: 2px solid rgb(23 27 45 / 20%);
+	border-radius: 7px;
+	background: #fffefa;
+	color: var(--mini-ink);
+	font-size: 21px;
 	font-variant-numeric: tabular-nums;
-	font-weight: 750;
-	text-align: center;
+	font-weight: 800;
+	transition-property: border-color, background-color, box-shadow, transform;
+	transition-duration: 160ms;
+	transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.browser-otp-cell.filled {
+	border-color: rgb(41 69 199 / 62%);
+	background: #eef1fa;
+}
+.browser-otp-field:focus-within .browser-otp-cell.active {
+	border-color: var(--mini-signal);
+	box-shadow: 0 0 0 3px rgb(255 90 61 / 14%);
+	transform: translateY(-1px);
 }
 .browser-email-auth > button {
 	min-height: 48px;
@@ -2069,24 +2184,61 @@
 	background: var(--mini-green);
 	color: var(--mini-paper);
 	font-weight: 750;
+	box-shadow: 0 8px 20px rgb(41 69 199 / 20%);
+	transition-property: opacity, box-shadow, transform;
+	transition-duration: 160ms;
+	transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 .browser-email-auth > button:disabled {
 	opacity: 0.55;
 }
 .browser-email-auth .browser-auth-link {
-	min-height: 32px;
+	min-height: 40px;
 	background: transparent;
 	color: var(--mini-green);
+	box-shadow: none;
 }
-.browser-email-auth small {
-	text-align: center;
+.browser-email-auth .browser-resend-code {
+	margin-top: -8px;
+	color: var(--mini-muted);
+	font-size: 13px;
+}
+.browser-email-auth .browser-resend-code:not(:disabled) {
+	color: var(--mini-green);
 }
 .telegram-login {
 	min-height: 40px;
 }
 .mini-entry-error {
+	margin: 0 auto;
 	color: var(--mini-red) !important;
 	font-size: 13px;
+	text-align: center;
+}
+@media (min-width: 760px) {
+	.mini-browser-entry {
+		width: min(960px, calc(100% - 32px));
+		min-height: min(700px, calc(100dvh - 32px));
+		grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+		margin: 16px auto;
+		overflow: hidden;
+		border-radius: 8px;
+		box-shadow: 0 24px 70px rgb(23 27 45 / 14%);
+	}
+	.browser-entry-brand {
+		min-height: 100%;
+		padding: 42px 44px;
+	}
+	.browser-entry-brand h1 {
+		font-size: 54px;
+	}
+	.browser-auth-panel {
+		width: min(100% - 48px, 400px);
+		margin: auto;
+		padding: 26px;
+		border: 0;
+		box-shadow: none;
+	}
 }
 .mini-modal-note,
 .mini-form-error {
