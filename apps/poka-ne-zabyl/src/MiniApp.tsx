@@ -1,4 +1,5 @@
 import {
+	ArrowLeft,
 	Camera,
 	ChartDonut,
 	ChatCircleText,
@@ -31,6 +32,7 @@ import {
 	itemAmountInCurrency,
 	itemDisplayMoney,
 } from "./money";
+import { expensesForMonth } from "./overview";
 import { shouldUseFullscreen } from "./telegram-platform";
 import {
 	commonVendorName,
@@ -47,6 +49,7 @@ type View =
 	| "spaces"
 	| "profile"
 	| "review";
+type CaptureMode = "choose" | "text" | "voice" | "photo";
 type Period =
 	| "today"
 	| "three-days"
@@ -573,6 +576,7 @@ export const MiniApp = () => {
 	const [editingProfile, setEditingProfile] = useState<User | null>(null);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [captureOpen, setCaptureOpen] = useState(false);
+	const [captureMode, setCaptureMode] = useState<CaptureMode>("choose");
 	const [captureError, setCaptureError] = useState("");
 	const [captureSubmitting, setCaptureSubmitting] = useState(false);
 	const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(
@@ -1262,7 +1266,7 @@ export const MiniApp = () => {
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
 	const currency = user?.currency || activeSpace?.currency || "RUB";
-	const overviewExpenses = expenses;
+	const overviewExpenses = expensesForMonth(expenses);
 	const overviewTotal = overviewExpenses.reduce(
 		(sum, expense) => sum + (expenseAmountInCurrency(expense, currency) ?? 0),
 		0,
@@ -1287,9 +1291,17 @@ export const MiniApp = () => {
 			.filter((category) => category.filteredTotal > 0)
 			.sort((a, b) => b.filteredTotal - a.filteredTotal);
 	}, [categories, overviewExpenses, currency]);
+	const overviewBudgets = useMemo(
+		() =>
+			categories
+				.filter((category) => (category.budget_amount || 0) > 0)
+				.sort((a, b) => (b.budget_percent || 0) - (a.budget_percent || 0))
+				.slice(0, 3),
+		[categories],
+	);
 
-	const openCategory = (id: number) => {
-		setPeriod("all");
+	const openCategory = (id: number, nextPeriod: Period = "all") => {
+		setPeriod(nextPeriod);
 		setCategoryID(id);
 		setVendorID(0);
 		setExpenseID(0);
@@ -1990,13 +2002,14 @@ export const MiniApp = () => {
 		});
 	};
 
-	const openCapture = () => {
+	const openCapture = (mode: CaptureMode = "choose") => {
 		if (captureSubmitting || pendingCapture) {
 			setNotice("Текущий расход ещё разбирается");
 			return;
 		}
 		setCaptureError("");
 		setCaptureFailure("");
+		setCaptureMode(mode);
 		setCaptureOpen(true);
 	};
 
@@ -2082,11 +2095,18 @@ export const MiniApp = () => {
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
+								budgets={overviewBudgets}
 								expenses={overviewExpenses}
+								latestExpenses={expenses}
 								captures={captures}
+								hasAnyExpenses={expenses.length > 0}
+								hasReadyCapture={Boolean(showReadyCapture)}
 								onCategory={openCategory}
 								onExpense={openExpense}
 								onExpenses={openAllExpenses}
+								onReview={() => void openReadyCapture()}
+								onCapture={openCapture}
+								onManual={addExpense}
 							/>
 						)}
 						{view === "expenses" && (
@@ -2153,6 +2173,7 @@ export const MiniApp = () => {
 								activeSpaceID={spaceID}
 								members={members}
 								onSelect={setSpaceID}
+								onBack={() => setView("profile")}
 								onEdit={(space) => setEditingSpace({ ...space })}
 								onInvite={
 									activeSpace &&
@@ -2179,9 +2200,11 @@ export const MiniApp = () => {
 								user={user}
 								quota={quota}
 								vendorsCount={vendors.length}
+								spacesCount={spaces.length}
 								homeScreenStatus={homeScreenStatus}
 								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
+								onManageSpaces={() => setView("spaces")}
 								onEdit={() =>
 									user &&
 									setEditingProfile({
@@ -2210,7 +2233,7 @@ export const MiniApp = () => {
 			{(captureSubmitting ||
 				pendingCapture ||
 				captureFailure ||
-				showReadyCapture) && (
+				(showReadyCapture && view !== "overview")) && (
 				<div
 					className={`capture-status${captureFailure ? " is-error" : ""}`}
 					role="status"
@@ -2283,16 +2306,17 @@ export const MiniApp = () => {
 					onClick={() => setView("overview")}
 				/>
 				<NavButton
-					active={view === "spaces"}
-					label="Пространства"
-					icon={<UsersThree />}
-					onClick={() => setView("spaces")}
-				/>
-				<NavButton
 					active={view === "expenses"}
 					label="Расходы"
 					icon={<Receipt />}
 					onClick={openAllExpenses}
+				/>
+				<NavButton
+					active={false}
+					primary
+					label="Добавить"
+					icon={<Plus weight="bold" />}
+					onClick={() => openCapture()}
 				/>
 				<NavButton
 					active={view === "categories"}
@@ -2301,7 +2325,7 @@ export const MiniApp = () => {
 					onClick={() => setView("categories")}
 				/>
 				<NavButton
-					active={view === "profile" || view === "vendors"}
+					active={view === "profile" || view === "vendors" || view === "spaces"}
 					label="Профиль"
 					icon={<UserCircle />}
 					onClick={() => setView("profile")}
@@ -2310,6 +2334,7 @@ export const MiniApp = () => {
 
 			{captureOpen && (
 				<CaptureComposer
+					initialMode={captureMode}
 					saving={captureSubmitting}
 					error={captureError}
 					onClose={() => setCaptureOpen(false)}
@@ -2928,36 +2953,67 @@ const Overview = ({
 	total,
 	currency,
 	categories,
+	budgets,
 	expenses,
+	latestExpenses,
 	captures,
+	hasAnyExpenses,
+	hasReadyCapture,
 	onCategory,
 	onExpense,
 	onExpenses,
+	onReview,
+	onCapture,
+	onManual,
 }: {
 	user: User | null;
 	total: number;
 	currency: string;
 	categories: Array<Category & { filteredTotal: number }>;
+	budgets: Category[];
 	expenses: Expense[];
+	latestExpenses: Expense[];
 	captures: CapturePacket[];
-	onCategory: (id: number) => void;
+	hasAnyExpenses: boolean;
+	hasReadyCapture: boolean;
+	onCategory: (id: number, period?: Period) => void;
 	onExpense: (id: number) => void;
 	onExpenses: () => void;
+	onReview: () => void;
+	onCapture: (mode?: CaptureMode) => void;
+	onManual: () => void;
 }) => {
+	if (!hasAnyExpenses) {
+		return <FirstExpenseEmpty onCapture={onCapture} onManual={onManual} />;
+	}
+
 	const max = categories[0]?.filteredTotal || 1;
+	const month = new Intl.DateTimeFormat("ru-RU", { month: "long" }).format(
+		new Date(),
+	);
+	const monthName = month.slice(0, 1).toUpperCase() + month.slice(1);
 	return (
 		<section className="mini-view">
 			<div className="mini-title">
 				<p>Привет{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p>
-				<h1>Все расходы</h1>
+				<h1>{monthName}</h1>
 			</div>
 			<div className="mini-total">
-				<span>Всего</span>
+				<span>В этом месяце</span>
 				<strong>{formatMoney(total, currency)}</strong>
 				<small>
 					{expenses.length} {expenseWord(expenses.length)}
 				</small>
 			</div>
+			{hasReadyCapture && (
+				<button className="mini-review-prompt" type="button" onClick={onReview}>
+					<span>
+						<Check size={20} weight="bold" />
+						<b>Расход готов</b>
+					</span>
+					<em>Проверить</em>
+				</button>
+			)}
 			<div className="mini-section-head">
 				<h2>По категориям</h2>
 				<ChartDonut size={20} />
@@ -2967,7 +3023,7 @@ const Overview = ({
 					<button
 						key={category.id}
 						type="button"
-						onClick={() => onCategory(category.id)}
+						onClick={() => onCategory(category.id, "month")}
 					>
 						<span>
 							<b>{category.name}</b>
@@ -2981,9 +3037,50 @@ const Overview = ({
 					</button>
 				))}
 				{categories.length === 0 && (
-					<Empty text="В этом пространстве пока нет расходов" />
+					<Empty text="В этом месяце расходов пока нет" />
 				)}
 			</div>
+			{budgets.length > 0 && (
+				<>
+					<div className="mini-section-head">
+						<h2>Лимиты</h2>
+					</div>
+					<div className="mini-budget-list">
+						{budgets.map((category) => {
+							const limit = category.budget_amount || 0;
+							const spent = category.budget_spent || 0;
+							const percent = Math.min(
+								100,
+								category.budget_percent ||
+									(limit > 0 ? (spent / limit) * 100 : 0),
+							);
+							return (
+								<button
+									key={category.id}
+									type="button"
+									onClick={() =>
+										onCategory(
+											category.id,
+											category.budget_period === "week" ? "week" : "month",
+										)
+									}
+								>
+									<span>
+										<b>{category.name}</b>
+										<em>
+											{formatMoney(spent, currency)} из{" "}
+											{formatMoney(limit, currency)}
+										</em>
+									</span>
+									<i>
+										<b style={{ width: `${percent}%` }} />
+									</i>
+								</button>
+							);
+						})}
+					</div>
+				</>
+			)}
 			<div className="mini-section-head">
 				<h2>Последние</h2>
 				<button type="button" onClick={onExpenses}>
@@ -2991,7 +3088,7 @@ const Overview = ({
 				</button>
 			</div>
 			<ExpenseList
-				expenses={expenses.slice(0, 4)}
+				expenses={latestExpenses.slice(0, 4)}
 				captures={captures}
 				currency={currency}
 				onEdit={(expense) => onExpense(expense.id)}
@@ -2999,6 +3096,52 @@ const Overview = ({
 		</section>
 	);
 };
+
+const FirstExpenseEmpty = ({
+	onCapture,
+	onManual,
+}: {
+	onCapture: (mode?: CaptureMode) => void;
+	onManual: () => void;
+}) => (
+	<section className="mini-first-expense">
+		<div className="mini-first-expense-mark">
+			<NotePencil size={30} weight="bold" />
+		</div>
+		<div className="mini-first-expense-copy">
+			<p>Личное пространство готово</p>
+			<h1>Добавьте первый расход</h1>
+			<span>Напишите сумму, скажите её голосом или сфотографируйте чек.</span>
+		</div>
+		<button
+			className="mini-first-expense-primary"
+			type="button"
+			onClick={() => onCapture()}
+		>
+			<Plus size={20} weight="bold" />
+			Добавить расход
+		</button>
+		<div className="mini-first-expense-label">Или сразу</div>
+		<div className="mini-first-expense-actions">
+			<button type="button" onClick={() => onCapture("text")}>
+				<ChatCircleText size={22} />
+				Текст
+			</button>
+			<button type="button" onClick={() => onCapture("voice")}>
+				<Microphone size={22} />
+				Голос
+			</button>
+			<button type="button" onClick={() => onCapture("photo")}>
+				<Camera size={22} />
+				Фото
+			</button>
+			<button type="button" onClick={onManual}>
+				<NotePencil size={22} />
+				Вручную
+			</button>
+		</div>
+	</section>
+);
 
 const ExpensesView = ({
 	items,
@@ -3584,6 +3727,7 @@ const SpacesView = ({
 	activeSpaceID,
 	members,
 	onSelect,
+	onBack,
 	onEdit,
 	onInvite,
 	inviting,
@@ -3593,6 +3737,7 @@ const SpacesView = ({
 	activeSpaceID: number;
 	members: SpaceMember[];
 	onSelect: (id: number) => void;
+	onBack: () => void;
 	onEdit: (space: Space) => void;
 	onInvite?: (space: Space) => void;
 	inviting: boolean;
@@ -3601,6 +3746,10 @@ const SpacesView = ({
 	const activeSpace = spaces.find((space) => space.id === activeSpaceID);
 	return (
 		<section className="mini-view">
+			<button className="mini-back-link" type="button" onClick={onBack}>
+				<ArrowLeft size={18} />
+				Профиль
+			</button>
 			<div className="mini-title-row">
 				<div className="mini-title">
 					<p>Личные и общие</p>
@@ -3668,18 +3817,22 @@ const ProfileView = ({
 	user,
 	quota,
 	vendorsCount,
+	spacesCount,
 	homeScreenStatus,
 	onEdit,
 	onManageVendors,
+	onManageSpaces,
 	onInstall,
 	onUnavailable,
 }: {
 	user: User | null;
 	quota: Quota | null;
 	vendorsCount: number;
+	spacesCount: number;
 	homeScreenStatus: HomeScreenStatus;
 	onEdit: () => void;
 	onManageVendors: () => void;
+	onManageSpaces: () => void;
 	onInstall: () => void;
 	onUnavailable: () => void;
 }) => {
@@ -3749,6 +3902,13 @@ const ProfileView = ({
 					<span>Часовой пояс</span>
 					<b>{timezoneName(user?.timezone || "Europe/Moscow")}</b>
 				</div>
+				<button type="button" onClick={onManageSpaces}>
+					<span>
+						<UsersThree size={18} />
+						Пространства
+					</span>
+					<b>{spacesCount}</b>
+				</button>
 				<button type="button" onClick={onManageVendors}>
 					<span>
 						<Storefront size={18} />
@@ -3769,19 +3929,21 @@ const ProfileView = ({
 };
 
 const CaptureComposer = ({
+	initialMode,
 	saving,
 	error,
 	onClose,
 	onManual,
 	onSubmit,
 }: {
+	initialMode: CaptureMode;
 	saving: boolean;
 	error: string;
 	onClose: () => void;
 	onManual: () => void;
 	onSubmit: (submission: CaptureSubmission) => Promise<void>;
 }) => {
-	const [mode, setMode] = useState<"choose" | "text" | "voice">("choose");
+	const [mode, setMode] = useState<CaptureMode>(initialMode);
 	const [text, setText] = useState("");
 	const [recording, setRecording] = useState(false);
 	const [seconds, setSeconds] = useState(0);
@@ -3907,7 +4069,9 @@ const CaptureComposer = ({
 			? "Написать расход"
 			: mode === "voice"
 				? "Записать голосом"
-				: "Добавить расход";
+				: mode === "photo"
+					? "Фото чека"
+					: "Добавить расход";
 	return (
 		<Modal title={title} onClose={onClose}>
 			{mode === "choose" && (
@@ -4029,6 +4193,33 @@ const CaptureComposer = ({
 								{saving ? "Разбираем…" : "Отправить"}
 							</button>
 						)}
+					</div>
+				</div>
+			)}
+
+			{mode === "photo" && (
+				<div className="capture-composer capture-photo">
+					<div className="capture-photo-mark">
+						<Camera size={34} weight="bold" />
+					</div>
+					<strong>Сфотографируйте чек</strong>
+					<small>Убедитесь, что видны все позиции и итог</small>
+					<button
+						className="capture-record"
+						type="button"
+						disabled={saving}
+						onClick={() => photoInput.current?.click()}
+					>
+						Выбрать фото
+					</button>
+					<div className="capture-actions capture-photo-actions">
+						<button
+							type="button"
+							disabled={saving}
+							onClick={() => setMode("choose")}
+						>
+							Назад
+						</button>
 					</div>
 				</div>
 			)}
@@ -4879,17 +5070,23 @@ const Modal = ({
 
 const NavButton = ({
 	active,
+	primary = false,
 	label,
 	icon,
 	onClick,
 }: {
 	active: boolean;
+	primary?: boolean;
 	label: string;
 	icon: React.ReactNode;
 	onClick: () => void;
 }) => (
-	<button className={active ? "active" : ""} type="button" onClick={onClick}>
-		{icon}
+	<button
+		className={`${active ? "active " : ""}${primary ? "mini-nav-add" : ""}`.trim()}
+		type="button"
+		onClick={onClick}
+	>
+		<span className="mini-nav-icon">{icon}</span>
 		<span>{label}</span>
 	</button>
 );
