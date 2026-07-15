@@ -1858,6 +1858,24 @@
 	font-size: 12px;
 	line-height: 1.45;
 }
+
+.mini-review-kind {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	padding: 11px 12px;
+	border: 1px solid color-mix(in srgb, var(--mini-green) 28%, transparent);
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--mini-green) 8%, var(--mini-paper));
+	color: var(--mini-ink);
+	font-size: 13px;
+	font-weight: 650;
+}
+
+.mini-review-kind svg {
+	flex: 0 0 auto;
+	color: var(--mini-green);
+}
 .mini-invite-block {
 	display: flex;
 	align-items: center;

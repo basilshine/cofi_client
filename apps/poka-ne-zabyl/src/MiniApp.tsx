@@ -259,7 +259,12 @@ type CaptureResponse = {
 type CaptureSubmission =
 	| { kind: "text"; text: string }
 	| { kind: "image" | "voice"; file: File };
-type PendingCapture = { sourceDocumentID: number; spaceID: number };
+type CapturePurpose = "expense" | "purchase_plan";
+type PendingCapture = {
+	sourceDocumentID: number;
+	spaceID: number;
+	purpose: CapturePurpose;
+};
 
 type ReviewCandidate = {
 	id: number;
@@ -368,6 +373,7 @@ type CapturePacket = {
 	pending_count?: number;
 	source_text?: string;
 	created_at?: string;
+	source_context?: Record<string, unknown>;
 };
 
 type SpaceActivityItem = {
@@ -596,6 +602,19 @@ const previewReviewCandidates: ReviewCandidate[] = [
 			items: [{ name: "Продукты", amount: 7173.33, category_key: "groceries" }],
 		},
 	},
+	{
+		id: 78,
+		source_document_id: 106,
+		candidate_type: "purchase_plan_candidate",
+		title: "Кроссовки для танцев",
+		status: "pending_review",
+		structured_data: {
+			title: "Кроссовки для танцев",
+			expected_amount: 8200,
+			category_key: "hobbies",
+			due_date: isoDay(5),
+		},
+	},
 ];
 
 const captureForExpense = (expense: Expense, captures: CapturePacket[]) =>
@@ -734,6 +753,8 @@ export const MiniApp = () => {
 	);
 	const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 	const [editingPlan, setEditingPlan] = useState<PurchasePlan | null>(null);
+	const [editingPlanCandidate, setEditingPlanCandidate] =
+		useState<ReviewCandidate | null>(null);
 	const [completingPlanID, setCompletingPlanID] = useState(0);
 	const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -746,6 +767,8 @@ export const MiniApp = () => {
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [captureOpen, setCaptureOpen] = useState(false);
 	const [captureMode, setCaptureMode] = useState<CaptureMode>("choose");
+	const [capturePurpose, setCapturePurpose] =
+		useState<CapturePurpose>("expense");
 	const [captureError, setCaptureError] = useState("");
 	const [captureSubmitting, setCaptureSubmitting] = useState(false);
 	const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(
@@ -784,7 +807,8 @@ export const MiniApp = () => {
 		() =>
 			reviewCandidates.filter(
 				(candidate) =>
-					candidate.candidate_type === "expense_candidate" &&
+					(candidate.candidate_type === "expense_candidate" ||
+						candidate.candidate_type === "purchase_plan_candidate") &&
 					candidate.status === "pending_review",
 			),
 		[reviewCandidates],
@@ -1151,8 +1175,36 @@ export const MiniApp = () => {
 			setReviewMediaURL(URL.createObjectURL(blob));
 	};
 
-	const openReviewCandidate = async (candidate: ReviewCandidate) => {
+	const openReviewCandidate = async (
+		candidate: ReviewCandidate,
+		reviewSpaceID = spaceID,
+	) => {
 		if (!token) return;
+		if (candidate.candidate_type === "purchase_plan_candidate") {
+			const data = candidate.structured_data || {};
+			const reviewSpace =
+				spaces.find((item) => item.id === reviewSpaceID) || activeSpace;
+			const categoryKey = readString(data, "category_key", "category");
+			const category = categories.find((item) => item.key === categoryKey);
+			setDismissedCaptureSourceID(candidate.source_document_id);
+			setEditingPlanCandidate(candidate);
+			setEditingPlan({
+				id: 0,
+				tenant_id: reviewSpace?.tenant_id || 0,
+				space_id: reviewSpaceID,
+				created_by_user_id: user?.id || 0,
+				title: readString(data, "title", "name") || candidate.title,
+				expected_amount:
+					readNumber(data, "expected_amount", "total", "amount") || null,
+				currency:
+					readString(data, "currency") || reviewSpace?.currency || currency,
+				category_id: category?.id || null,
+				due_date:
+					readString(data, "due_date", "planned_date", "expense_date") || null,
+				status: "planned",
+			});
+			return;
+		}
 		setDismissedCaptureSourceID(candidate.source_document_id);
 		setSaving(true);
 		setCaptureFailure("");
@@ -1165,7 +1217,7 @@ export const MiniApp = () => {
 			} else {
 				await loadReview(
 					token,
-					spaceID,
+					reviewSpaceID,
 					candidate.id,
 					candidate.source_document_id,
 				);
@@ -1187,7 +1239,15 @@ export const MiniApp = () => {
 
 	const deleteReadyCandidate = async () => {
 		if (!token || !readyCandidate || saving) return;
-		if (!window.confirm("Удалить этот распознанный расход?")) return;
+		const isPlan = readyCandidate.candidate_type === "purchase_plan_candidate";
+		if (
+			!window.confirm(
+				isPlan
+					? "Удалить этот распознанный план?"
+					: "Удалить этот распознанный расход?",
+			)
+		)
+			return;
 		const sourceDocumentID = readyCandidate.source_document_id;
 		setSaving(true);
 		setCaptureFailure("");
@@ -1208,10 +1268,16 @@ export const MiniApp = () => {
 				),
 			);
 			setDismissedCaptureSourceID(sourceDocumentID);
-			setNotice("Распознанный расход удалён");
+			setNotice(
+				isPlan ? "Распознанный план удалён" : "Распознанный расход удалён",
+			);
 		} catch (err) {
 			setCaptureFailure(
-				err instanceof Error ? err.message : "Не удалось удалить расход",
+				err instanceof Error
+					? err.message
+					: isPlan
+						? "Не удалось удалить план"
+						: "Не удалось удалить расход",
 			);
 		} finally {
 			setSaving(false);
@@ -1219,13 +1285,18 @@ export const MiniApp = () => {
 	};
 
 	const submitCapture = async (submission: CaptureSubmission) => {
+		const purpose = capturePurpose;
 		setCaptureSubmitting(true);
 		setCaptureError("");
 		setCaptureFailure("");
 		try {
 			if (previewMode) {
 				setCaptureOpen(false);
-				setNotice("Расход отправлен на разбор");
+				setNotice(
+					purpose === "purchase_plan"
+						? "План отправлен на разбор"
+						: "Расход отправлен на разбор",
+				);
 				return;
 			}
 			const captureID = crypto.randomUUID();
@@ -1233,6 +1304,7 @@ export const MiniApp = () => {
 				source: "mini_app",
 				telegram_chat_id: user?.id || 0,
 				telegram_message_id: captureID,
+				capture_target: purpose,
 			};
 			let captured: CaptureResponse;
 			if (submission.kind === "text") {
@@ -1265,11 +1337,16 @@ export const MiniApp = () => {
 			setPendingCapture({
 				sourceDocumentID: captured.source_document_id,
 				spaceID,
+				purpose,
 			});
 			setCaptureOpen(false);
 		} catch (err) {
 			const message =
-				err instanceof Error ? err.message : "Не удалось обработать расход";
+				err instanceof Error
+					? err.message
+					: purpose === "purchase_plan"
+						? "Не удалось обработать план"
+						: "Не удалось обработать расход";
 			setCaptureError(message);
 			setCaptureFailure(message);
 		} finally {
@@ -1291,7 +1368,11 @@ export const MiniApp = () => {
 				const packet = packets.captures[0];
 				if (packet?.processing_status === "failed") {
 					setPendingCapture(null);
-					setCaptureFailure("Не удалось разобрать расход. Попробуйте ещё раз");
+					setCaptureFailure(
+						pendingCapture.purpose === "purchase_plan"
+							? "Не удалось разобрать план. Попробуйте ещё раз"
+							: "Не удалось разобрать расход. Попробуйте ещё раз",
+					);
 					return;
 				}
 				if (packet?.processing_status === "succeeded") {
@@ -1302,29 +1383,48 @@ export const MiniApp = () => {
 						token,
 					);
 					if (cancelled) return;
+					const candidateType =
+						pendingCapture.purpose === "purchase_plan"
+							? "purchase_plan_candidate"
+							: "expense_candidate";
 					const candidate = candidates.candidates.find(
-						(item) => item.candidate_type === "expense_candidate",
+						(item) => item.candidate_type === candidateType,
 					);
 					if (!candidate) {
 						setPendingCapture(null);
-						setCaptureFailure("Не удалось распознать расход");
+						setCaptureFailure(
+							pendingCapture.purpose === "purchase_plan"
+								? "Не удалось распознать план"
+								: "Не удалось распознать расход",
+						);
 						return;
 					}
+					setReviewCandidates((current) => [
+						...current.filter(
+							(item) =>
+								item.source_document_id !== pendingCapture.sourceDocumentID,
+						),
+						...candidates.candidates,
+					]);
 					setSavedReviewExpense(null);
 					setReviewDraft(null);
 					setReviewMediaURL("");
 					setEditingExpense(null);
 					setEditingItemIndex(null);
-					await loadReview(
-						token,
-						pendingCapture.spaceID,
-						candidate.id,
-						pendingCapture.sourceDocumentID,
-					);
-					if (cancelled) return;
 					setSpaceID(pendingCapture.spaceID);
 					setPendingCapture(null);
-					setView("review");
+					if (pendingCapture.purpose === "purchase_plan") {
+						await openReviewCandidate(candidate, pendingCapture.spaceID);
+					} else {
+						await loadReview(
+							token,
+							pendingCapture.spaceID,
+							candidate.id,
+							pendingCapture.sourceDocumentID,
+						);
+						if (cancelled) return;
+						setView("review");
+					}
 					return;
 				}
 			} catch {
@@ -1337,7 +1437,12 @@ export const MiniApp = () => {
 			cancelled = true;
 			window.clearTimeout(timer);
 		};
-	}, [token, pendingCapture?.sourceDocumentID, pendingCapture?.spaceID]);
+	}, [
+		token,
+		pendingCapture?.sourceDocumentID,
+		pendingCapture?.spaceID,
+		pendingCapture?.purpose,
+	]);
 
 	useEffect(() => {
 		if (!token || !user || !spaceID || previewMode) return;
@@ -1428,6 +1533,10 @@ export const MiniApp = () => {
 		setPendingCapture({
 			sourceDocumentID: queued.source_document_id,
 			spaceID: queued.space_id || spaceID,
+			purpose:
+				queued.source_context?.capture_target === "purchase_plan"
+					? "purchase_plan"
+					: "expense",
 		});
 	}, [token, captures, pendingCapture, captureSubmitting, spaceID]);
 
@@ -2466,6 +2575,7 @@ export const MiniApp = () => {
 	};
 
 	const addPlan = () => {
+		setEditingPlanCandidate(null);
 		setEditingPlan({
 			id: 0,
 			tenant_id: activeSpace?.tenant_id || 0,
@@ -2482,6 +2592,7 @@ export const MiniApp = () => {
 
 	const savePlan = async () => {
 		if (!editingPlan) return;
+		const planSpaceID = editingPlan.space_id || spaceID;
 		const payload = {
 			title: editingPlan.title.trim(),
 			expected_amount: editingPlan.expected_amount || null,
@@ -2498,6 +2609,7 @@ export const MiniApp = () => {
 					: [...current, saved],
 			);
 			setEditingPlan(null);
+			setEditingPlanCandidate(null);
 			setNotice(
 				editingPlan.id
 					? uiText(language, "planSaved")
@@ -2507,20 +2619,39 @@ export const MiniApp = () => {
 		}
 		setSaving(true);
 		try {
-			const saved = await apiRequest<PurchasePlan>(
-				`/spaces/${spaceID}/plans${editingPlan.id ? `/${editingPlan.id}` : ""}`,
-				token,
-				{
-					method: editingPlan.id ? "PUT" : "POST",
-					body: JSON.stringify(payload),
-				},
-			);
+			const response = editingPlanCandidate
+				? await apiRequest<{ plan: PurchasePlan }>(
+						`/spaces/${planSpaceID}/review/candidates/${editingPlanCandidate.id}/create-plan`,
+						token,
+						{
+							method: "POST",
+							body: JSON.stringify({ review: payload }),
+						},
+					)
+				: await apiRequest<PurchasePlan>(
+						`/spaces/${planSpaceID}/plans${editingPlan.id ? `/${editingPlan.id}` : ""}`,
+						token,
+						{
+							method: editingPlan.id ? "PUT" : "POST",
+							body: JSON.stringify(payload),
+						},
+					);
+			const saved = "plan" in response ? response.plan : response;
 			setPlans((current) =>
 				editingPlan.id
 					? current.map((plan) => (plan.id === saved.id ? saved : plan))
 					: [...current, saved],
 			);
 			setEditingPlan(null);
+			if (editingPlanCandidate) {
+				const sourceDocumentID = editingPlanCandidate.source_document_id;
+				setReviewCandidates((current) =>
+					current.filter(
+						(candidate) => candidate.source_document_id !== sourceDocumentID,
+					),
+				);
+				setEditingPlanCandidate(null);
+			}
 			setNotice(
 				editingPlan.id
 					? uiText(language, "planSaved")
@@ -2565,6 +2696,42 @@ export const MiniApp = () => {
 		} finally {
 			setSaving(false);
 		}
+	};
+
+	const deletePlanCandidate = async () => {
+		if (!editingPlanCandidate || !editingPlan || saving) return;
+		if (!window.confirm("Удалить этот распознанный план?")) return;
+		const sourceDocumentID = editingPlanCandidate.source_document_id;
+		if (!previewMode) {
+			setSaving(true);
+			try {
+				await apiRequest(
+					`/spaces/${editingPlan.space_id || spaceID}/review/captures/${sourceDocumentID}`,
+					token,
+					{ method: "DELETE" },
+				);
+			} catch (err) {
+				setNotice(
+					err instanceof Error ? err.message : "Не удалось удалить план",
+				);
+				setSaving(false);
+				return;
+			}
+			setSaving(false);
+		}
+		setReviewCandidates((current) =>
+			current.filter(
+				(candidate) => candidate.source_document_id !== sourceDocumentID,
+			),
+		);
+		setCaptures((current) =>
+			current.filter(
+				(capture) => capture.source_document_id !== sourceDocumentID,
+			),
+		);
+		setEditingPlan(null);
+		setEditingPlanCandidate(null);
+		setNotice("Распознанный план удалён");
 	};
 
 	const buyPlan = (plan: PurchasePlan) => {
@@ -2646,14 +2813,18 @@ export const MiniApp = () => {
 		});
 	};
 
-	const openCapture = (mode: CaptureMode = "choose") => {
+	const openCapture = (
+		mode: CaptureMode = "choose",
+		purpose: CapturePurpose = "expense",
+	) => {
 		if (captureSubmitting || pendingCapture) {
-			setNotice("Текущий расход ещё разбирается");
+			setNotice("Текущий запрос ещё разбирается");
 			return;
 		}
 		setCaptureError("");
 		setCaptureFailure("");
 		setCaptureMode(mode);
+		setCapturePurpose(purpose);
 		setCaptureOpen(true);
 	};
 
@@ -2821,7 +2992,7 @@ export const MiniApp = () => {
 								onEdit={editExpenseItem}
 								onAdd={openCapture}
 								onSection={setExpenseSection}
-								onAddPlan={addPlan}
+								onAddPlan={() => openCapture("choose", "purchase_plan")}
 								onEditPlan={(plan) => setEditingPlan({ ...plan })}
 								onBuyPlan={buyPlan}
 							/>
@@ -2949,12 +3120,21 @@ export const MiniApp = () => {
 					<div>
 						<strong>
 							{captureFailure
-								? "Расход не разобран"
+								? pendingCapture?.purpose === "purchase_plan" ||
+									readyCandidate?.candidate_type === "purchase_plan_candidate"
+									? "План не разобран"
+									: "Расход не разобран"
 								: showReadyCandidate && !captureSubmitting && !pendingCapture
-									? "Расход готов"
+									? readyCandidate?.candidate_type === "purchase_plan_candidate"
+										? "План готов"
+										: "Расход готов"
 									: captureSubmitting
-										? "Отправляем расход…"
-										: "Разбираем расход…"}
+										? capturePurpose === "purchase_plan"
+											? "Отправляем план…"
+											: "Отправляем расход…"
+										: pendingCapture?.purpose === "purchase_plan"
+											? "Разбираем план…"
+											: "Разбираем расход…"}
 						</strong>
 						<small>
 							{captureFailure ||
@@ -2979,7 +3159,11 @@ export const MiniApp = () => {
 							<button
 								type="button"
 								disabled={saving}
-								aria-label="Удалить распознанный расход"
+								aria-label={
+									readyCandidate.candidate_type === "purchase_plan_candidate"
+										? "Удалить распознанный план"
+										: "Удалить распознанный расход"
+								}
 								title="Удалить"
 								onClick={() => void deleteReadyCandidate()}
 							>
@@ -3034,13 +3218,15 @@ export const MiniApp = () => {
 
 			{captureOpen && (
 				<CaptureComposer
+					purpose={capturePurpose}
 					initialMode={captureMode}
 					saving={captureSubmitting}
 					error={captureError}
 					onClose={() => setCaptureOpen(false)}
 					onManual={() => {
 						setCaptureOpen(false);
-						addExpense();
+						if (capturePurpose === "purchase_plan") addPlan();
+						else addExpense();
 					}}
 					onSubmit={submitCapture}
 				/>
@@ -3081,10 +3267,20 @@ export const MiniApp = () => {
 					language={language}
 					categories={categories}
 					saving={saving}
+					fromCandidate={Boolean(editingPlanCandidate)}
 					onChange={setEditingPlan}
-					onClose={() => setEditingPlan(null)}
+					onClose={() => {
+						setEditingPlan(null);
+						setEditingPlanCandidate(null);
+					}}
 					onSave={savePlan}
-					onDelete={editingPlan.id ? deletePlan : undefined}
+					onDelete={
+						editingPlanCandidate
+							? deletePlanCandidate
+							: editingPlan.id
+								? deletePlan
+								: undefined
+					}
 				/>
 			)}
 			{editingExpense && editingItemIndex !== null && (
@@ -3852,8 +4048,11 @@ const Overview = ({
 							<div className="mini-pending-review-list">
 								{pendingCandidates.map((candidate) => {
 									const data = candidate.structured_data || {};
+									const isPlan =
+										candidate.candidate_type === "purchase_plan_candidate";
 									const amount = readNumber(
 										data,
+										"expected_amount",
 										"total",
 										"total_amount",
 										"amount",
@@ -3867,14 +4066,26 @@ const Overview = ({
 											onClick={() => onReviewCandidate(candidate)}
 										>
 											<span className="mini-pending-review-icon">
-												<Receipt size={18} />
+												{isPlan ? (
+													<ShoppingBagOpen size={18} />
+												) : (
+													<Receipt size={18} />
+												)}
 											</span>
 											<span className="mini-pending-review-copy">
 												<b>
 													{candidate.title ||
-														uiText(language, "recognizedExpense")}
+														uiText(
+															language,
+															isPlan ? "recognizedPlan" : "recognizedExpense",
+														)}
 												</b>
-												<small>{uiText(language, "notSaved")}</small>
+												<small>
+													{uiText(
+														language,
+														isPlan ? "pendingPlan" : "notSaved",
+													)}
+												</small>
 											</span>
 											{amount > 0 && (
 												<strong>
@@ -5187,6 +5398,7 @@ const BillingPackPicker = ({
 };
 
 const CaptureComposer = ({
+	purpose,
 	initialMode,
 	saving,
 	error,
@@ -5194,6 +5406,7 @@ const CaptureComposer = ({
 	onManual,
 	onSubmit,
 }: {
+	purpose: CapturePurpose;
 	initialMode: CaptureMode;
 	saving: boolean;
 	error: string;
@@ -5201,6 +5414,7 @@ const CaptureComposer = ({
 	onManual: () => void;
 	onSubmit: (submission: CaptureSubmission) => Promise<void>;
 }) => {
+	const isPlan = purpose === "purchase_plan";
 	const [mode, setMode] = useState<CaptureMode>(initialMode);
 	const [text, setText] = useState("");
 	const [recording, setRecording] = useState(false);
@@ -5324,12 +5538,18 @@ const CaptureComposer = ({
 
 	const title =
 		mode === "text"
-			? "Написать расход"
+			? isPlan
+				? "Описать план"
+				: "Написать расход"
 			: mode === "voice"
 				? "Записать голосом"
 				: mode === "photo"
-					? "Фото чека"
-					: "Добавить расход";
+					? isPlan
+						? "Фото покупки"
+						: "Фото чека"
+					: isPlan
+						? "Добавить план"
+						: "Добавить расход";
 	return (
 		<Modal title={title} onClose={onClose}>
 			{mode === "choose" && (
@@ -5369,7 +5589,11 @@ const CaptureComposer = ({
 				<div className="capture-composer">
 					<textarea
 						maxLength={2000}
-						placeholder="Кофе 350, такси 620"
+						placeholder={
+							isPlan
+								? "Купить кроссовки за 8 000 ₽ к августу"
+								: "Кофе 350, такси 620"
+						}
 						value={text}
 						onChange={(event) => setText(event.target.value)}
 					/>
@@ -5460,8 +5684,14 @@ const CaptureComposer = ({
 					<div className="capture-photo-mark">
 						<Camera size={34} weight="bold" />
 					</div>
-					<strong>Сфотографируйте чек</strong>
-					<small>Убедитесь, что видны все позиции и итог</small>
+					<strong>
+						{isPlan ? "Сфотографируйте будущую покупку" : "Сфотографируйте чек"}
+					</strong>
+					<small>
+						{isPlan
+							? "Мы распознаем, что это и сколько может стоить"
+							: "Убедитесь, что видны все позиции и итог"}
+					</small>
 					<button
 						className="capture-record"
 						type="button"
@@ -5491,7 +5721,9 @@ const CaptureComposer = ({
 				onChange={(event) => void selectPhoto(event)}
 			/>
 			{saving && mode === "choose" && (
-				<div className="capture-processing">Разбираем расход…</div>
+				<div className="capture-processing">
+					{isPlan ? "Разбираем план…" : "Разбираем расход…"}
+				</div>
 			)}
 			{(localError || error) && (
 				<div className="mini-alert">{localError || error}</div>
@@ -5505,6 +5737,7 @@ const PlanEditor = ({
 	language,
 	categories,
 	saving,
+	fromCandidate,
 	onChange,
 	onClose,
 	onSave,
@@ -5514,15 +5747,28 @@ const PlanEditor = ({
 	language: UILanguage;
 	categories: Category[];
 	saving: boolean;
+	fromCandidate?: boolean;
 	onChange: (plan: PurchasePlan) => void;
 	onClose: () => void;
 	onSave: () => void;
 	onDelete?: () => void;
 }) => (
 	<Modal
-		title={plan.id ? uiText(language, "editPlan") : uiText(language, "newPlan")}
+		title={
+			fromCandidate
+				? "Проверить план"
+				: plan.id
+					? uiText(language, "editPlan")
+					: uiText(language, "newPlan")
+		}
 		onClose={onClose}
 	>
+		{fromCandidate && (
+			<div className="mini-review-kind">
+				<ShoppingBagOpen size={18} />
+				<span>План покупки · проверьте перед сохранением</span>
+			</div>
+		)}
 		<p className="mini-field-note">{uiText(language, "planEditorHint")}</p>
 		<label>
 			{uiText(language, "planWhat")}
