@@ -2833,7 +2833,7 @@ export const MiniApp = () => {
 					) : showReadyCapture && !captureSubmitting && !pendingCapture ? (
 						<Check size={20} weight="bold" />
 					) : (
-						<span className="capture-spinner" />
+						<KnotLoader compact />
 					)}
 					<div>
 						<strong>
@@ -6380,13 +6380,29 @@ const LoadingRows = () => (
 		<i />
 	</div>
 );
+const KnotLoader = ({ compact = false }: { compact?: boolean }) => (
+	<span
+		className={`knot-loader${compact ? " knot-loader--compact" : ""}`}
+		aria-hidden="true"
+	>
+		<svg viewBox="0 0 64 64" focusable="false">
+			<title>Загрузка</title>
+			<path
+				className="knot-loader-line"
+				pathLength="1"
+				d="M30 32 C22 25 17 18 21 12 C24 7 31 10 32 17 C33 22 31 28 30 32 C24 27 15 25 11 30 C7 35 13 40 19 38 C24 37 28 34 30 32 C28 38 25 48 29 52 C33 55 35 43 30 32 C34 38 38 49 43 50 C48 50 43 38 30 32 C38 30 47 25 55 16"
+			/>
+			<circle className="knot-loader-dot" cx="30" cy="32" r="3" />
+		</svg>
+	</span>
+);
 const LoadingScreen = () => {
 	const language = normalizeUILanguage(
 		WebApp.initDataUnsafe.user?.language_code,
 	);
 	return (
 		<div className="mini-loading">
-			<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+			<KnotLoader />
 			<span>{uiText(language, "loadingExpenses")}</span>
 		</div>
 	);
