@@ -18,7 +18,7 @@ const MiniApp = lazy(async () => {
 });
 
 const TELEGRAM_URL = "https://t.me/poka_ne_zabyl_bot";
-const EMAIL = "basil.shine@gmail.com";
+const EMAIL = "support@poka-ne-zabyl.ru";
 const PHONE = "+7 913 807-81-60";
 const EFFECTIVE_DATE = "13 июля 2026 года";
 

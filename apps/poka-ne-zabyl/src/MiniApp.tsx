@@ -6483,12 +6483,14 @@ const BrowserEntry = ({
 					{codeSent ? (
 						<>
 							<label>
-								Код из письма
+								Код из письма — 6 цифр
 								<input
+									className="browser-code-input"
 									type="text"
 									inputMode="numeric"
 									autoComplete="one-time-code"
 									maxLength={6}
+									placeholder="000000"
 									value={code}
 									onChange={(event) =>
 										setCode(event.target.value.replace(/\D/g, ""))
@@ -6522,7 +6524,11 @@ const BrowserEntry = ({
 							{loading ? "Отправляем…" : "Получить код"}
 						</button>
 					)}
-					<small>Почту нужно один раз привязать в профиле.</small>
+					<small>
+						{codeSent
+							? "Не пришло письмо? Войдите через Telegram и привяжите почту в профиле."
+							: "Код придет только на почту, привязанную в профиле через Telegram."}
+					</small>
 				</div>
 			)}
 			{localError || error ? (
