@@ -47,7 +47,7 @@ import {
 	itemDisplayMoney,
 	moneyAmountsMatch,
 } from "./money";
-import { expensesForMonth } from "./overview";
+import { entriesForMonth, expensesForMonth } from "./overview";
 import { REQUEST_TIMEOUT_MS, requestError } from "./request";
 import { shouldUseFullscreen } from "./telegram-platform";
 import {
@@ -4024,6 +4024,10 @@ const Overview = ({
 		(sum, plan) => sum + (plan.expected_amount || 0),
 		0,
 	);
+	const plannedThisMonth = entriesForMonth(
+		plans,
+		(plan) => plan.due_date,
+	).reduce((sum, plan) => sum + (plan.expected_amount || 0), 0);
 	return (
 		<section className="mini-view mini-overview">
 			<div className="mini-title">
@@ -4037,6 +4041,13 @@ const Overview = ({
 						<strong>{formatMoney(total, currency)}</strong>
 						<small>
 							{expenses.length} {expenseWord(expenses.length)}
+							{plannedThisMonth > 0 && (
+								<>
+									<br />
+									{uiText(language, "plannedThisMonth")}{" "}
+									{formatMoney(plannedThisMonth, currency)}
+								</>
+							)}
 						</small>
 					</div>
 					{pendingCandidates.length > 0 && (
