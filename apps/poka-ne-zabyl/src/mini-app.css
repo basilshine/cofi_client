@@ -1977,6 +1977,97 @@
 	place-items: center;
 	padding: 0 18px;
 }
+.mini-browser-entry {
+	min-height: 100dvh;
+}
+.mini-browser-entry > small,
+.browser-email-auth small {
+	max-width: 320px;
+	color: var(--mini-muted);
+	line-height: 1.4;
+}
+.browser-auth-tabs {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	width: min(100%, 320px);
+	padding: 3px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-soft);
+}
+.browser-auth-tabs button {
+	min-height: 40px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--mini-muted);
+	font-weight: 700;
+}
+.browser-auth-tabs button.active {
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	box-shadow: 0 1px 4px rgb(23 27 45 / 10%);
+}
+.browser-email-auth {
+	display: grid;
+	width: min(100%, 320px);
+	gap: 12px;
+	text-align: left;
+}
+.browser-email-auth label {
+	display: grid;
+	gap: 6px;
+	color: var(--mini-muted);
+	font-size: 12px;
+}
+.browser-email-auth input {
+	width: 100%;
+	min-height: 48px;
+	padding: 0 13px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	font-size: 16px;
+}
+.browser-email-auth > button {
+	min-height: 48px;
+	border: 0;
+	border-radius: 7px;
+	background: var(--mini-green);
+	color: var(--mini-paper);
+	font-weight: 750;
+}
+.browser-email-auth > button:disabled {
+	opacity: 0.55;
+}
+.browser-email-auth .browser-auth-link {
+	min-height: 32px;
+	background: transparent;
+	color: var(--mini-green);
+}
+.browser-email-auth small {
+	text-align: center;
+}
+.telegram-login {
+	min-height: 40px;
+}
+.mini-entry-error {
+	color: var(--mini-red) !important;
+	font-size: 13px;
+}
+.mini-modal-note,
+.mini-form-error {
+	margin: 0;
+	font-size: 13px;
+	line-height: 1.45;
+}
+.mini-modal-note {
+	color: var(--mini-muted);
+}
+.mini-form-error {
+	color: var(--mini-red);
+}
 .mini-loading-rows {
 	display: grid;
 	gap: 10px;

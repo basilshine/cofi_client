@@ -1,0 +1,20 @@
+{
+	"id": "/app",
+	"name": "Пока не забыл",
+	"short_name": "Пока не забыл",
+	"description": "Расходы, категории и планы в одном спокойном приложении.",
+	"lang": "ru",
+	"start_url": "/app?source=pwa",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#f4efe4",
+	"theme_color": "#2945c7",
+	"icons": [
+		{
+			"src": "/assets/poka-ne-zabyl-logo.jpg",
+			"sizes": "640x640",
+			"type": "image/jpeg",
+			"purpose": "any"
+		}
+	]
+}

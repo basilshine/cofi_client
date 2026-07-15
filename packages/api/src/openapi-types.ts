@@ -3469,6 +3469,179 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/email/login/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a passwordless browser login code
+         * @description Always returns a generic response so callers cannot discover registered email addresses.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RequestEmailLoginRequest"];
+                };
+            };
+            responses: {
+                /** @description Generic delivery response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/email/login/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in with a verified email and one-time code */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmEmailLoginRequest"];
+                };
+            };
+            responses: {
+                /** @description Auth response and refresh cookie */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/email/link/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request a code to link an email to the current account */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RequestEmailLinkRequest"];
+                };
+            };
+            responses: {
+                /** @description Verification code sent */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/email/link/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm and link an email to the current account */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmEmailLinkRequest"];
+                };
+            };
+            responses: {
+                /** @description Updated user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/email/verification/confirm": {
         parameters: {
             query?: never;
@@ -6093,6 +6266,24 @@ export interface components {
             refreshToken?: string;
             user?: components["schemas"]["User"];
         };
+        RequestEmailLoginRequest: {
+            /** Format: email */
+            email: string;
+        };
+        ConfirmEmailLoginRequest: {
+            /** Format: email */
+            email: string;
+            code: string;
+        };
+        RequestEmailLinkRequest: {
+            /** Format: email */
+            email: string;
+        };
+        ConfirmEmailLinkRequest: {
+            /** Format: email */
+            email: string;
+            code: string;
+        };
         /** @enum {string} */
         SearchEntityType: "space" | "expense" | "expense_item" | "promo_code" | "participant" | "split" | "recurring" | "source_document";
         /**
@@ -6179,6 +6370,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             email?: string;
+            emailVerified?: boolean;
             name?: string;
             auth_type?: string;
             /** Format: int64 */

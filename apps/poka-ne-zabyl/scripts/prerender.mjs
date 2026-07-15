@@ -61,10 +61,11 @@ const pageHead = ({ path, title, description }) => {
 							"@type": "SoftwareApplication",
 							"@id": `${origin}/#application`,
 							name: "Пока не забыл",
-							url: `${origin}/`,
+							url: `${origin}/app`,
+							installUrl: `${origin}/app`,
 							description,
 							applicationCategory: "FinanceApplication",
-							operatingSystem: "Telegram",
+							operatingSystem: "Web, Android, iOS, Telegram",
 							inLanguage: "ru-RU",
 							featureList: [
 								"Учёт расходов текстом и голосом",
@@ -79,6 +80,14 @@ const pageHead = ({ path, title, description }) => {
 							"@type": "FAQPage",
 							"@id": `${origin}/#faq`,
 							mainEntity: [
+								{
+									"@type": "Question",
+									name: "Приложение работает только внутри Telegram?",
+									acceptedAnswer: {
+										"@type": "Answer",
+										text: "Нет. Его можно открыть в обычном браузере и установить на телефон как PWA. Telegram-бот остаётся быстрым способом записывать расходы.",
+									},
+								},
 								{
 									"@type": "Question",
 									name: "Бот сам сохраняет всё без проверки?",
@@ -123,7 +132,7 @@ const pageHead = ({ path, title, description }) => {
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
 		<meta property="og:image:type" content="image/png" />
-		<meta property="og:image:alt" content="Пока не забыл — учёт расходов в Telegram" />
+		<meta property="og:image:alt" content="Пока не забыл — учёт расходов в приложении и Telegram" />
 		<meta name="twitter:card" content="summary_large_image" />
 		${structuredData}`;
 };

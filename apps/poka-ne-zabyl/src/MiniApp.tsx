@@ -64,6 +64,27 @@ type View =
 	| "spaces"
 	| "profile"
 	| "review";
+
+type TelegramWidgetUser = {
+	id: number;
+	first_name?: string;
+	last_name?: string;
+	username?: string;
+	photo_url?: string;
+	auth_date: number;
+	hash: string;
+};
+
+type BeforeInstallPromptEvent = Event & {
+	prompt: () => Promise<void>;
+	userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+declare global {
+	interface Window {
+		onTelegramAuth?: (user: TelegramWidgetUser) => void;
+	}
+}
 type CaptureMode = "choose" | "text" | "voice" | "photo";
 type ExpenseSection = "history" | "plans";
 type Space = {
@@ -199,6 +220,7 @@ type User = {
 	id: number;
 	name: string;
 	email: string;
+	emailVerified?: boolean;
 	telegramUsername?: string;
 	country: string;
 	language: string;
@@ -553,6 +575,10 @@ const captureForExpense = (expense: Expense, captures: CapturePacket[]) =>
 		(capture) => capture.source_document_id === expense.source_document_id,
 	);
 
+const isStandaloneApp = () =>
+	window.matchMedia("(display-mode: standalone)").matches ||
+	Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+
 const apiRequest = async <T,>(
 	path: string,
 	token = "",
@@ -667,6 +693,7 @@ export const MiniApp = () => {
 	const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 	const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 	const [editingProfile, setEditingProfile] = useState<User | null>(null);
+	const [emailLinkOpen, setEmailLinkOpen] = useState(false);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [captureOpen, setCaptureOpen] = useState(false);
 	const [captureMode, setCaptureMode] = useState<CaptureMode>("choose");
@@ -687,6 +714,8 @@ export const MiniApp = () => {
 	const [saving, setSaving] = useState(false);
 	const [homeScreenStatus, setHomeScreenStatus] =
 		useState<HomeScreenStatus>("checking");
+	const [browserInstallPrompt, setBrowserInstallPrompt] =
+		useState<BeforeInstallPromptEvent | null>(null);
 	const language = normalizeUILanguage(
 		user?.language || WebApp.initDataUnsafe.user?.language_code,
 	);
@@ -724,41 +753,43 @@ export const MiniApp = () => {
 	useEffect(() => {
 		if (started.current) return;
 		started.current = true;
-		const useFullscreen = shouldUseFullscreen(telegramWebApp.platform);
-		WebApp.ready();
-		if (useFullscreen) WebApp.expand();
-		WebApp.setHeaderColor("#f4efe4");
-		WebApp.setBackgroundColor("#f4efe4");
-		if (
-			useFullscreen &&
-			telegramWebApp.isVersionAtLeast("7.7") &&
-			telegramWebApp.disableVerticalSwipes
-		) {
-			telegramWebApp.disableVerticalSwipes();
-		}
-		if (
-			useFullscreen &&
-			telegramWebApp.isVersionAtLeast("8.0") &&
-			telegramWebApp.requestFullscreen &&
-			!telegramWebApp.isFullscreen
-		) {
-			telegramWebApp.requestFullscreen();
-		}
-		if (
-			!useFullscreen &&
-			telegramWebApp.isVersionAtLeast("8.0") &&
-			telegramWebApp.exitFullscreen &&
-			telegramWebApp.isFullscreen
-		) {
-			telegramWebApp.exitFullscreen();
-		}
-		if (
-			telegramWebApp.isVersionAtLeast("8.0") &&
-			telegramWebApp.checkHomeScreenStatus
-		) {
-			telegramWebApp.checkHomeScreenStatus(setHomeScreenStatus);
-		} else {
-			setHomeScreenStatus("unsupported");
+		if (WebApp.initData) {
+			const useFullscreen = shouldUseFullscreen(telegramWebApp.platform);
+			WebApp.ready();
+			if (useFullscreen) WebApp.expand();
+			WebApp.setHeaderColor("#f4efe4");
+			WebApp.setBackgroundColor("#f4efe4");
+			if (
+				useFullscreen &&
+				telegramWebApp.isVersionAtLeast("7.7") &&
+				telegramWebApp.disableVerticalSwipes
+			) {
+				telegramWebApp.disableVerticalSwipes();
+			}
+			if (
+				useFullscreen &&
+				telegramWebApp.isVersionAtLeast("8.0") &&
+				telegramWebApp.requestFullscreen &&
+				!telegramWebApp.isFullscreen
+			) {
+				telegramWebApp.requestFullscreen();
+			}
+			if (
+				!useFullscreen &&
+				telegramWebApp.isVersionAtLeast("8.0") &&
+				telegramWebApp.exitFullscreen &&
+				telegramWebApp.isFullscreen
+			) {
+				telegramWebApp.exitFullscreen();
+			}
+			if (
+				telegramWebApp.isVersionAtLeast("8.0") &&
+				telegramWebApp.checkHomeScreenStatus
+			) {
+				telegramWebApp.checkHomeScreenStatus(setHomeScreenStatus);
+			} else {
+				setHomeScreenStatus("unsupported");
+			}
 		}
 		if (previewMode) {
 			setToken("preview");
@@ -834,11 +865,31 @@ export const MiniApp = () => {
 		}
 
 		if (!WebApp.initData) {
-			setError("Откройте приложение из личного чата с ботом.");
-			setLoading(false);
+			setHomeScreenStatus(isStandaloneApp() ? "added" : "unknown");
+			void restoreBrowserSession();
 			return;
 		}
 		void login();
+	}, []);
+
+	useEffect(() => {
+		if (WebApp.initData) return;
+		const onInstallPrompt = (event: Event) => {
+			event.preventDefault();
+			setBrowserInstallPrompt(event as BeforeInstallPromptEvent);
+			setHomeScreenStatus("unknown");
+		};
+		const onInstalled = () => {
+			setBrowserInstallPrompt(null);
+			setHomeScreenStatus("added");
+			setNotice("Приложение добавлено на главный экран");
+		};
+		window.addEventListener("beforeinstallprompt", onInstallPrompt);
+		window.addEventListener("appinstalled", onInstalled);
+		return () => {
+			window.removeEventListener("beforeinstallprompt", onInstallPrompt);
+			window.removeEventListener("appinstalled", onInstalled);
+		};
 	}, []);
 
 	useEffect(() => {
@@ -857,26 +908,66 @@ export const MiniApp = () => {
 				method: "POST",
 				body: JSON.stringify({ telegramInitData: WebApp.initData }),
 			});
-			const availableSpaces = await apiRequest<Space[]>("/spaces", auth.token);
-			setToken(auth.token);
-			setUser(auth.user);
-			setSpaces(availableSpaces);
-			setSpaceID(
-				availableSpaces.some(
-					(space) =>
-						space.id === (requestedReview?.spaceID || requestedPlan?.spaceID),
-				)
-					? requestedReview?.spaceID || requestedPlan?.spaceID || 0
-					: availableSpaces[0]?.id || 0,
-			);
-			if (availableSpaces.length === 0) {
-				setView("spaces");
-				setLoading(false);
-			}
+			await acceptAuth(auth);
 		} catch (err) {
 			setError(
 				err instanceof Error ? err.message : "Не удалось войти через Telegram",
 			);
+			setLoading(false);
+		}
+	};
+
+	const acceptAuth = async (auth: AuthResponse) => {
+		const availableSpaces = await apiRequest<Space[]>("/spaces", auth.token);
+		setToken(auth.token);
+		setUser(auth.user);
+		setSpaces(availableSpaces);
+		setSpaceID(
+			availableSpaces.some(
+				(space) =>
+					space.id === (requestedReview?.spaceID || requestedPlan?.spaceID),
+			)
+				? requestedReview?.spaceID || requestedPlan?.spaceID || 0
+				: availableSpaces[0]?.id || 0,
+		);
+		if (availableSpaces.length === 0) {
+			setView("spaces");
+			setLoading(false);
+		}
+	};
+
+	const restoreBrowserSession = async () => {
+		try {
+			const auth = await apiRequest<AuthResponse>("/auth/refresh", "", {
+				method: "POST",
+				body: "{}",
+			});
+			await acceptAuth(auth);
+		} catch {
+			setError("");
+			setLoading(false);
+		}
+	};
+
+	const loginFromBrowser = async (telegramUser: TelegramWidgetUser) => {
+		setLoading(true);
+		setError("");
+		try {
+			const auth = await apiRequest<AuthResponse>("/auth/telegram/login", "", {
+				method: "POST",
+				body: JSON.stringify({
+					telegram_id: telegramUser.id,
+					username: telegramUser.username || "",
+					first_name: telegramUser.first_name || "",
+					last_name: telegramUser.last_name || "",
+					photo_url: telegramUser.photo_url || "",
+					auth_date: telegramUser.auth_date,
+					hash: telegramUser.hash,
+				}),
+			});
+			await acceptAuth(auth);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Не удалось войти");
 			setLoading(false);
 		}
 	};
@@ -1471,10 +1562,25 @@ export const MiniApp = () => {
 		setView("expenses");
 	};
 
-	const installOnHomeScreen = () => {
-		if (!telegramWebApp.addToHomeScreen) return;
-		telegramWebApp.addToHomeScreen();
-		setNotice("Подтвердите добавление приложения на главный экран");
+	const installOnHomeScreen = async () => {
+		if (WebApp.initData && telegramWebApp.addToHomeScreen) {
+			telegramWebApp.addToHomeScreen();
+			setNotice("Подтвердите добавление приложения на главный экран");
+			return;
+		}
+		if (browserInstallPrompt) {
+			await browserInstallPrompt.prompt();
+			const choice = await browserInstallPrompt.userChoice;
+			setBrowserInstallPrompt(null);
+			if (choice.outcome === "accepted") setHomeScreenStatus("added");
+			return;
+		}
+		const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+		setNotice(
+			isiOS
+				? "В Safari нажмите «Поделиться», затем «На экран Домой»"
+				: "Откройте меню браузера и выберите «Установить приложение»",
+		);
 	};
 
 	const saveExpense = async () => {
@@ -2436,6 +2542,14 @@ export const MiniApp = () => {
 	};
 
 	if (loading && !token) return <LoadingScreen />;
+	if (!token && !WebApp.initData)
+		return (
+			<BrowserEntry
+				error={error}
+				onTelegramAuth={loginFromBrowser}
+				onEmailAuth={acceptAuth}
+			/>
+		);
 	if (error && !token) return <TelegramEntry error={error} />;
 	if (view === "review") {
 		return (
@@ -2660,6 +2774,7 @@ export const MiniApp = () => {
 								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
 								onManageSpaces={() => setView("spaces")}
+								onLinkEmail={() => setEmailLinkOpen(true)}
 								onEdit={() =>
 									user &&
 									setEditingProfile({
@@ -2908,6 +3023,22 @@ export const MiniApp = () => {
 					onChange={setEditingProfile}
 					onClose={() => setEditingProfile(null)}
 					onSave={saveProfile}
+				/>
+			)}
+			{emailLinkOpen && (
+				<EmailLinkDialog
+					token={token}
+					initialEmail={
+						user?.email && !user.email.endsWith("@telegram.local")
+							? user.email
+							: ""
+					}
+					onClose={() => setEmailLinkOpen(false)}
+					onLinked={(nextUser) => {
+						setUser(nextUser);
+						setEmailLinkOpen(false);
+						setNotice("Почта привязана. Теперь по ней можно входить");
+					}}
 				/>
 			)}
 			{editingSpace && (
@@ -4654,6 +4785,7 @@ const ProfileView = ({
 	onEdit,
 	onManageVendors,
 	onManageSpaces,
+	onLinkEmail,
 	onInstall,
 	onUnavailable,
 }: {
@@ -4666,6 +4798,7 @@ const ProfileView = ({
 	onEdit: () => void;
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
+	onLinkEmail: () => void;
 	onInstall: () => void;
 	onUnavailable: () => void;
 }) => {
@@ -4684,6 +4817,10 @@ const ProfileView = ({
 				: homeScreenStatus === "added"
 					? uiText(language, "added")
 					: uiText(language, "add");
+	const linkedEmail =
+		user?.emailVerified && !user.email.endsWith("@telegram.local")
+			? user.email
+			: "";
 	return (
 		<section className="mini-view mini-profile-view">
 			<div className="mini-profile-head">
@@ -4731,6 +4868,13 @@ const ProfileView = ({
 				</button>
 			</div>
 			<div className="mini-profile-list">
+				<button type="button" onClick={onLinkEmail}>
+					<span>
+						<PaperPlaneTilt size={18} />
+						Почта для входа
+					</span>
+					<b>{linkedEmail || "Привязать"}</b>
+				</button>
 				<div>
 					<span>{uiText(language, "currency")}</span>
 					<b>{user?.currency || "RUB"}</b>
@@ -6203,6 +6347,290 @@ const TelegramEntry = ({ error }: { error: string }) => {
 			<a href={BOT_URL}>{uiText(language, "openBot")}</a>
 		</main>
 	);
+};
+
+const BrowserEntry = ({
+	error,
+	onTelegramAuth,
+	onEmailAuth,
+}: {
+	error: string;
+	onTelegramAuth: (user: TelegramWidgetUser) => Promise<void>;
+	onEmailAuth: (auth: AuthResponse) => Promise<void>;
+}) => {
+	const [method, setMethod] = useState<"telegram" | "email">("telegram");
+	const [email, setEmail] = useState("");
+	const [code, setCode] = useState("");
+	const [codeSent, setCodeSent] = useState(false);
+	const [loading, setLoading] = useState(false);
+	const [localError, setLocalError] = useState("");
+
+	const requestCode = async () => {
+		setLoading(true);
+		setLocalError("");
+		try {
+			await apiRequest("/auth/email/login/request", "", {
+				method: "POST",
+				body: JSON.stringify({ email: email.trim() }),
+			});
+			setCodeSent(true);
+		} catch (requestError) {
+			setLocalError(
+				requestError instanceof Error
+					? requestError.message
+					: "Не удалось отправить код",
+			);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const confirmCode = async () => {
+		setLoading(true);
+		setLocalError("");
+		try {
+			const auth = await apiRequest<AuthResponse>(
+				"/auth/email/login/confirm",
+				"",
+				{
+					method: "POST",
+					body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+				},
+			);
+			await onEmailAuth(auth);
+		} catch (requestError) {
+			setLocalError(
+				requestError instanceof Error ? requestError.message : "Неверный код",
+			);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	return (
+		<main className="mini-entry mini-browser-entry">
+			<div className="mini-brand">
+				<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+				<span>Пока не забыл</span>
+			</div>
+			<h1>Ваши расходы рядом</h1>
+			<p>Откройте те же пространства, покупки и планы.</p>
+			<div
+				className="browser-auth-tabs"
+				role="tablist"
+				aria-label="Способ входа"
+			>
+				<button
+					type="button"
+					className={method === "telegram" ? "active" : ""}
+					onClick={() => setMethod("telegram")}
+				>
+					Telegram
+				</button>
+				<button
+					type="button"
+					className={method === "email" ? "active" : ""}
+					onClick={() => setMethod("email")}
+				>
+					Почта
+				</button>
+			</div>
+			{method === "telegram" ? (
+				<>
+					<TelegramLoginButton onAuth={onTelegramAuth} />
+					<small>Первый вход и создание аккаунта</small>
+				</>
+			) : (
+				<div className="browser-email-auth">
+					<label>
+						Почта
+						<input
+							type="email"
+							autoComplete="email"
+							inputMode="email"
+							value={email}
+							disabled={codeSent}
+							onChange={(event) => setEmail(event.target.value)}
+							placeholder="name@example.com"
+						/>
+					</label>
+					{codeSent ? (
+						<>
+							<label>
+								Код из письма
+								<input
+									type="text"
+									inputMode="numeric"
+									autoComplete="one-time-code"
+									maxLength={6}
+									value={code}
+									onChange={(event) =>
+										setCode(event.target.value.replace(/\D/g, ""))
+									}
+								/>
+							</label>
+							<button
+								type="button"
+								disabled={loading || code.length !== 6}
+								onClick={confirmCode}
+							>
+								{loading ? "Проверяем…" : "Войти"}
+							</button>
+							<button
+								className="browser-auth-link"
+								type="button"
+								onClick={() => {
+									setCodeSent(false);
+									setCode("");
+								}}
+							>
+								Изменить почту
+							</button>
+						</>
+					) : (
+						<button
+							type="button"
+							disabled={loading || !email.includes("@")}
+							onClick={requestCode}
+						>
+							{loading ? "Отправляем…" : "Получить код"}
+						</button>
+					)}
+					<small>Почту нужно один раз привязать в профиле.</small>
+				</div>
+			)}
+			{localError || error ? (
+				<p className="mini-entry-error">{localError || error}</p>
+			) : null}
+		</main>
+	);
+};
+
+const EmailLinkDialog = ({
+	token,
+	initialEmail,
+	onClose,
+	onLinked,
+}: {
+	token: string;
+	initialEmail: string;
+	onClose: () => void;
+	onLinked: (user: User) => void;
+}) => {
+	const [email, setEmail] = useState(initialEmail);
+	const [code, setCode] = useState("");
+	const [codeSent, setCodeSent] = useState(false);
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState("");
+	const requestCode = async () => {
+		setSaving(true);
+		setError("");
+		try {
+			await apiRequest("/auth/email/link/request", token, {
+				method: "POST",
+				body: JSON.stringify({ email: email.trim() }),
+			});
+			setCodeSent(true);
+		} catch (requestError) {
+			setError(
+				requestError instanceof Error
+					? requestError.message
+					: "Не удалось отправить код",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+	const confirmCode = async () => {
+		setSaving(true);
+		setError("");
+		try {
+			const nextUser = await apiRequest<User>(
+				"/auth/email/link/confirm",
+				token,
+				{
+					method: "POST",
+					body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+				},
+			);
+			onLinked(nextUser);
+		} catch (requestError) {
+			setError(
+				requestError instanceof Error ? requestError.message : "Неверный код",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+	return (
+		<Modal title="Почта для входа" onClose={onClose}>
+			<p className="mini-modal-note">
+				После подтверждения по этой почте можно входить в браузере без Telegram.
+			</p>
+			<label>
+				Почта
+				<input
+					type="email"
+					autoComplete="email"
+					inputMode="email"
+					value={email}
+					disabled={codeSent}
+					onChange={(event) => setEmail(event.target.value)}
+					placeholder="name@example.com"
+				/>
+			</label>
+			{codeSent && (
+				<label>
+					Код из письма
+					<input
+						type="text"
+						inputMode="numeric"
+						autoComplete="one-time-code"
+						maxLength={6}
+						value={code}
+						onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
+					/>
+				</label>
+			)}
+			{error && <p className="mini-form-error">{error}</p>}
+			<button
+				className="mini-save"
+				type="button"
+				disabled={
+					saving || !email.includes("@") || (codeSent && code.length !== 6)
+				}
+				onClick={codeSent ? confirmCode : requestCode}
+			>
+				{saving ? "Подождите…" : codeSent ? "Подтвердить" : "Отправить код"}
+			</button>
+		</Modal>
+	);
+};
+
+const TelegramLoginButton = ({
+	onAuth,
+}: {
+	onAuth: (user: TelegramWidgetUser) => Promise<void>;
+}) => {
+	const container = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		window.onTelegramAuth = (user) => void onAuth(user);
+		const script = document.createElement("script");
+		script.src = "https://telegram.org/js/telegram-widget.js?22";
+		script.async = true;
+		script.setAttribute("data-telegram-login", "poka_ne_zabyl_bot");
+		script.setAttribute("data-size", "large");
+		script.setAttribute("data-radius", "8");
+		script.setAttribute("data-userpic", "false");
+		script.setAttribute("data-request-access", "write");
+		script.setAttribute("data-onauth", "window.onTelegramAuth(user)");
+		container.current?.replaceChildren(script);
+		return () => {
+			window.onTelegramAuth = undefined;
+			container.current?.replaceChildren();
+		};
+	}, [onAuth]);
+	return <div className="telegram-login" ref={container} />;
 };
 
 const formatPlanDate = (value: string, language: UILanguage) =>

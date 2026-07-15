@@ -6,11 +6,11 @@ brand
 
 ## Users
 
-People opening the page mainly from a phone who want to record everyday expenses in Telegram without learning a separate finance app.
+People opening the page mainly from a phone who want to record everyday expenses in a compact installable PWA or through Telegram without learning a traditional finance app.
 
 ## Product Purpose
 
-Explain the shortest useful loop: send text, voice, or a receipt photo, review the parsed expense, then save it. Lead visitors to `@poka_ne_zabyl_bot`.
+Present one expense service with two entry points: the installable browser PWA for manual entry, history, limits, and plans; and `@poka_ne_zabyl_bot` for fast text, voice, and receipt capture. Both lead to the same records and review flow.
 
 ## Brand Personality
 
@@ -27,6 +27,7 @@ Generic fintech, corporate SaaS, childish mascots, scrapbook nostalgia, and paym
 - Use the hand-drawn mark as a quiet signature that can be replaced later.
 - Keep one memorable motion idea and remove decorative motion.
 - State current capabilities plainly and keep optional group features secondary.
+- Keep the PWA and Telegram as two entry points into one product, not competing products.
 
 ## Accessibility & Inclusion
 
