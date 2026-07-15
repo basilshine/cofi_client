@@ -3885,10 +3885,7 @@ const CategoriesView = ({
 		<p className="mini-intro">{uiText(language, "categoriesIntro")}</p>
 		<div className="mini-categories">
 			{categories.map((category) => (
-				<article
-					className={category.budget_amount ? undefined : "has-no-budget"}
-					key={category.id}
-				>
+				<article key={category.id}>
 					<button
 						className="mini-category-open"
 						type="button"

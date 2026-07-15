@@ -706,15 +706,12 @@
 }
 .mini-categories article {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 42px;
+	grid-template-columns: minmax(0, 1fr) 68px;
 	align-items: stretch;
 	overflow: hidden;
 	border: 1px solid var(--mini-line);
 	border-radius: 8px;
 	background: var(--mini-paper);
-}
-.mini-categories article.has-no-budget {
-	grid-template-columns: minmax(0, 1fr) 62px;
 }
 .mini-category-open {
 	display: grid;
@@ -768,16 +765,20 @@
 	background: var(--mini-signal);
 }
 .mini-icon-button {
+	display: grid;
+	place-items: center;
 	border: 0;
 	border-left: 1px solid var(--mini-line);
 	background: transparent;
 	color: var(--mini-muted);
 }
 .mini-limit-button {
-	display: grid;
-	place-content: center;
-	gap: 2px;
-	font-size: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	font-size: 11px;
+	white-space: nowrap;
 }
 .mini-profile-head {
 	display: flex;
