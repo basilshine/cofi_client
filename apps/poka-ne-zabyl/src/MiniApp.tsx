@@ -35,6 +35,7 @@ import {
 	moneyAmountsMatch,
 } from "./money";
 import { expensesForMonth } from "./overview";
+import { REQUEST_TIMEOUT_MS, requestError } from "./request";
 import { shouldUseFullscreen } from "./telegram-platform";
 import {
 	commonVendorName,
@@ -503,16 +504,22 @@ const apiRequest = async <T,>(
 	token = "",
 	init?: RequestInit,
 ): Promise<T> => {
-	const response = await fetch(`/api/v1${path}`, {
-		...init,
-		headers: {
-			...(init?.body instanceof FormData
-				? {}
-				: { "Content-Type": "application/json" }),
-			...(token ? { Authorization: `Bearer ${token}` } : {}),
-			...init?.headers,
-		},
-	});
+	let response: Response;
+	try {
+		response = await fetch(`/api/v1${path}`, {
+			...init,
+			signal: init?.signal || AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+			headers: {
+				...(init?.body instanceof FormData
+					? {}
+					: { "Content-Type": "application/json" }),
+				...(token ? { Authorization: `Bearer ${token}` } : {}),
+				...init?.headers,
+			},
+		});
+	} catch (error) {
+		throw requestError(error);
+	}
 	if (!response.ok) {
 		const body = (await response.json().catch(() => ({}))) as {
 			error?: string;
@@ -552,6 +559,7 @@ const initialView = (): View => {
 
 export const MiniApp = () => {
 	const started = useRef(false);
+	const loadSequence = useRef(0);
 	const [view, setView] = useState<View>(initialView);
 	const [token, setToken] = useState("");
 	const [user, setUser] = useState<User | null>(null);
@@ -564,6 +572,7 @@ export const MiniApp = () => {
 	const [vendors, setVendors] = useState<Vendor[]>([]);
 	const [quota, setQuota] = useState<Quota | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [loadFailed, setLoadFailed] = useState(false);
 	const [error, setError] = useState("");
 	const [notice, setNotice] = useState("");
 	const [period, setPeriod] = useState<Period>("month");
@@ -791,7 +800,9 @@ export const MiniApp = () => {
 
 	const loadSpace = async () => {
 		if (previewMode) return;
+		const requestID = ++loadSequence.current;
 		setLoading(true);
+		setLoadFailed(false);
 		setError("");
 		try {
 			// ponytail: the latest 200 records cover launch usage; add server filters when this ceiling becomes visible.
@@ -822,6 +833,7 @@ export const MiniApp = () => {
 					token,
 				),
 			]);
+			if (requestID !== loadSequence.current) return;
 			setExpenses(expenseData.expenses || []);
 			setCaptures(captureData.captures || []);
 			setCategories(categoryData.categories || []);
@@ -832,13 +844,15 @@ export const MiniApp = () => {
 				await loadReview(token, spaceID, requestedReview.candidateID);
 			}
 		} catch (err) {
+			if (requestID !== loadSequence.current) return;
+			setLoadFailed(true);
 			setError(
 				err instanceof Error
 					? err.message
 					: "Не удалось загрузить пространство",
 			);
 		} finally {
-			setLoading(false);
+			if (requestID === loadSequence.current) setLoading(false);
 		}
 	};
 
@@ -2078,7 +2092,18 @@ export const MiniApp = () => {
 			</header>
 
 			<main className="mini-main">
-				{error && <div className="mini-alert">{error}</div>}
+				{error && (
+					<div
+						className={`mini-alert${loadFailed ? " mini-alert--retry" : ""}`}
+					>
+						<span>{error}</span>
+						{loadFailed && (
+							<button type="button" onClick={() => void loadSpace()}>
+								Повторить
+							</button>
+						)}
+					</div>
+				)}
 				{notice && (
 					<button
 						className="mini-toast"

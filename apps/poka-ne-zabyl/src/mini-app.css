@@ -1586,6 +1586,21 @@
 	color: var(--mini-red);
 	font-size: 13px;
 }
+.mini-alert--retry {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+}
+.mini-alert--retry button {
+	min-height: 34px;
+	padding: 0 10px;
+	border: 1px solid currentColor;
+	border-radius: 5px;
+	background: transparent;
+	color: inherit;
+	font-weight: 700;
+}
 .mini-toast {
 	position: fixed;
 	z-index: 40;
