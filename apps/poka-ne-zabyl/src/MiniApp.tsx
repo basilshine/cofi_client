@@ -1185,6 +1185,39 @@ export const MiniApp = () => {
 		if (readyCandidate) void openReviewCandidate(readyCandidate);
 	};
 
+	const deleteReadyCandidate = async () => {
+		if (!token || !readyCandidate || saving) return;
+		if (!window.confirm("Удалить этот распознанный расход?")) return;
+		const sourceDocumentID = readyCandidate.source_document_id;
+		setSaving(true);
+		setCaptureFailure("");
+		try {
+			await apiRequest(
+				`/spaces/${spaceID}/review/captures/${sourceDocumentID}`,
+				token,
+				{ method: "DELETE" },
+			);
+			setReviewCandidates((current) =>
+				current.filter(
+					(candidate) => candidate.source_document_id !== sourceDocumentID,
+				),
+			);
+			setCaptures((current) =>
+				current.filter(
+					(capture) => capture.source_document_id !== sourceDocumentID,
+				),
+			);
+			setDismissedCaptureSourceID(sourceDocumentID);
+			setNotice("Распознанный расход удалён");
+		} catch (err) {
+			setCaptureFailure(
+				err instanceof Error ? err.message : "Не удалось удалить расход",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
 	const submitCapture = async (submission: CaptureSubmission) => {
 		setCaptureSubmitting(true);
 		setCaptureError("");
@@ -2945,12 +2978,12 @@ export const MiniApp = () => {
 							</button>
 							<button
 								type="button"
-								aria-label="Скрыть сообщение"
-								onClick={() =>
-									setDismissedCaptureSourceID(readyCandidate.source_document_id)
-								}
+								disabled={saving}
+								aria-label="Удалить распознанный расход"
+								title="Удалить"
+								onClick={() => void deleteReadyCandidate()}
 							>
-								<X size={17} />
+								<Trash size={17} />
 							</button>
 						</>
 					) : captureFailure ? (
