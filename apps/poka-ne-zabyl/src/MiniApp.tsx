@@ -576,6 +576,7 @@ export const MiniApp = () => {
 	const [pendingCapture, setPendingCapture] = useState<PendingCapture | null>(
 		null,
 	);
+	const [dismissedCaptureSourceID, setDismissedCaptureSourceID] = useState(0);
 	const [captureFailure, setCaptureFailure] = useState("");
 	const [reviewDraft, setReviewDraft] = useState<ReviewDraft | null>(null);
 	const [reviewMediaURL, setReviewMediaURL] = useState("");
@@ -608,7 +609,10 @@ export const MiniApp = () => {
 			) || null,
 		[captures],
 	);
-	const showReadyCapture = readyCapture && view !== "review";
+	const showReadyCapture =
+		readyCapture &&
+		view !== "review" &&
+		readyCapture.source_document_id !== dismissedCaptureSourceID;
 
 	useEffect(() => {
 		document.body.classList.add("mini-body");
@@ -853,6 +857,7 @@ export const MiniApp = () => {
 
 	const openReadyCapture = async () => {
 		if (!token || !readyCapture) return;
+		setDismissedCaptureSourceID(readyCapture.source_document_id);
 		setSaving(true);
 		setCaptureFailure("");
 		try {
@@ -877,6 +882,7 @@ export const MiniApp = () => {
 			setSpaceID(reviewSpaceID);
 			setView("review");
 		} catch (err) {
+			setDismissedCaptureSourceID(0);
 			setCaptureFailure(
 				err instanceof Error ? err.message : "Не удалось открыть результат",
 			);
@@ -2212,14 +2218,25 @@ export const MiniApp = () => {
 					!captureSubmitting &&
 					!pendingCapture &&
 					!captureFailure ? (
-						<button
-							className="capture-status-action"
-							type="button"
-							disabled={saving}
-							onClick={() => void openReadyCapture()}
-						>
-							Проверить
-						</button>
+						<>
+							<button
+								className="capture-status-action"
+								type="button"
+								disabled={saving}
+								onClick={() => void openReadyCapture()}
+							>
+								Проверить
+							</button>
+							<button
+								type="button"
+								aria-label="Скрыть сообщение"
+								onClick={() =>
+									setDismissedCaptureSourceID(readyCapture.source_document_id)
+								}
+							>
+								<X size={17} />
+							</button>
+						</>
 					) : captureFailure ? (
 						<button
 							type="button"

@@ -964,7 +964,7 @@
 	);
 	left: 14px;
 	display: grid;
-	grid-template-columns: 24px minmax(0, 1fr) auto;
+	grid-template-columns: 24px minmax(0, 1fr) auto auto;
 	align-items: center;
 	gap: 10px;
 	max-width: 520px;
