@@ -1817,6 +1817,15 @@ export const MiniApp = () => {
 	const saveSpace = async () => {
 		if (!editingSpace) return;
 		const creating = editingSpace.id === 0;
+		const previousSpace = spaces.find(({ id }) => id === editingSpace.id);
+		if (
+			!creating &&
+			previousSpace?.currency !== editingSpace.currency &&
+			!window.confirm(
+				"Пересчитать расходы и лимиты в новой валюте? Исходные суммы покупок сохранятся.",
+			)
+		)
+			return;
 		if (previewMode) {
 			const saved = creating
 				? {
@@ -1859,12 +1868,16 @@ export const MiniApp = () => {
 			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
 			if (!creating) await loadSpace();
 		} catch (err) {
+			const message = err instanceof Error ? err.message : "";
 			setNotice(
-				err instanceof Error
-					? err.message
-					: creating
-						? "Не удалось создать пространство"
-						: "Не удалось сохранить пространство",
+				message.includes("participant splits")
+					? "Сначала удалите разделение расходов между участниками"
+					: message.includes("currency exchange rate unavailable")
+						? "Не удалось получить курс валют. Попробуйте позже"
+						: message ||
+							(creating
+								? "Не удалось создать пространство"
+								: "Не удалось сохранить пространство"),
 			);
 		} finally {
 			setSaving(false);
@@ -4774,7 +4787,7 @@ const SpaceEditor = ({
 		</label>
 		<p className="mini-field-note">
 			{canEditCurrency
-				? "После первого расхода валюта пространства фиксируется."
+				? "При смене валюты расходы и лимиты пересчитаются. Исходные суммы сохранятся."
 				: "Валюту может менять только владелец пространства."}
 		</p>
 		{onInvite && (
