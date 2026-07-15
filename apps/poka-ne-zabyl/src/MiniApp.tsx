@@ -343,6 +343,16 @@ const dismissKeyboard = (event: React.PointerEvent<HTMLElement>) => {
 		document.activeElement.blur();
 };
 
+const keepFocusedControlVisible = (event: React.FocusEvent<HTMLElement>) => {
+	const target = event.target;
+	if (!(target instanceof HTMLElement)) return;
+	if (!target.matches("input, textarea, select, [contenteditable=true]"))
+		return;
+	window.requestAnimationFrame(() =>
+		target.scrollIntoView({ block: "nearest", inline: "nearest" }),
+	);
+};
+
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
 const aliasesFromText = (value: string) =>
 	Array.from(
@@ -2043,7 +2053,11 @@ export const MiniApp = () => {
 	if (error && !token) return <TelegramEntry error={error} />;
 	if (view === "review") {
 		return (
-			<div className="mini-app mini-review-app" onPointerDown={dismissKeyboard}>
+			<div
+				className="mini-app mini-review-app"
+				onFocusCapture={keepFocusedControlVisible}
+				onPointerDown={dismissKeyboard}
+			>
 				{loading ? (
 					<LoadingScreen />
 				) : savedReviewExpense ? (
@@ -2068,7 +2082,11 @@ export const MiniApp = () => {
 	}
 
 	return (
-		<div className="mini-app" onPointerDown={dismissKeyboard}>
+		<div
+			className="mini-app"
+			onFocusCapture={keepFocusedControlVisible}
+			onPointerDown={dismissKeyboard}
+		>
 			<header className="mini-header">
 				<div className="mini-brand">
 					<NotePencil size={19} weight="bold" />
@@ -2694,8 +2712,10 @@ const VendorAutocomplete = ({
 							role="option"
 							aria-selected={index === activeIndex}
 							tabIndex={-1}
-							onPointerDown={(event) => event.preventDefault()}
-							onClick={() => selectVendor(vendor)}
+							onPointerDown={(event) => {
+								event.preventDefault();
+								selectVendor(vendor);
+							}}
 							onKeyDown={(event) => {
 								if (event.key === "Enter" || event.key === " ")
 									selectVendor(vendor);
@@ -5177,7 +5197,22 @@ const Modal = ({
 }: { title: string; children: React.ReactNode; onClose: () => void }) => {
 	useEffect(() => {
 		document.body.classList.add("mini-modal-open");
-		return () => document.body.classList.remove("mini-modal-open");
+		const keepActiveControlVisible = () => {
+			const active = document.activeElement;
+			if (!(active instanceof HTMLElement) || !active.closest(".mini-modal"))
+				return;
+			window.requestAnimationFrame(() =>
+				active.scrollIntoView({ block: "nearest", inline: "nearest" }),
+			);
+		};
+		window.visualViewport?.addEventListener("resize", keepActiveControlVisible);
+		return () => {
+			document.body.classList.remove("mini-modal-open");
+			window.visualViewport?.removeEventListener(
+				"resize",
+				keepActiveControlVisible,
+			);
+		};
 	}, []);
 
 	return (
