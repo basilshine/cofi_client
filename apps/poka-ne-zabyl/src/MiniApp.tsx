@@ -113,6 +113,7 @@ const telegramWebApp = WebApp as typeof WebApp & {
 	) => void;
 	disableVerticalSwipes?: () => void;
 	requestFullscreen?: () => void;
+	exitFullscreen?: () => void;
 	isFullscreen?: boolean;
 	onEvent: (eventType: "homeScreenAdded", handler: () => void) => void;
 	offEvent: (eventType: "homeScreenAdded", handler: () => void) => void;
@@ -642,6 +643,14 @@ export const MiniApp = () => {
 			!telegramWebApp.isFullscreen
 		) {
 			telegramWebApp.requestFullscreen();
+		}
+		if (
+			!useFullscreen &&
+			telegramWebApp.isVersionAtLeast("8.0") &&
+			telegramWebApp.exitFullscreen &&
+			telegramWebApp.isFullscreen
+		) {
+			telegramWebApp.exitFullscreen();
 		}
 		if (
 			telegramWebApp.isVersionAtLeast("8.0") &&
