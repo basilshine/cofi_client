@@ -13,3 +13,4 @@ FROM nginx:alpine
 
 COPY apps/poka-ne-zabyl/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/poka-ne-zabyl/dist /usr/share/nginx/html
+RUN nginx -t

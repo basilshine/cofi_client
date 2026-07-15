@@ -10,8 +10,12 @@ import {
 	UsersThree,
 } from "@phosphor-icons/react";
 import type { CSSProperties } from "react";
-import { useEffect } from "react";
-import { MiniApp } from "./MiniApp";
+import { Suspense, lazy, useEffect } from "react";
+
+const MiniApp = lazy(async () => {
+	const module = await import("./MiniApp");
+	return { default: module.MiniApp };
+});
 
 const TELEGRAM_URL = "https://t.me/poka_ne_zabyl_bot";
 const EMAIL = "basil.shine@gmail.com";
@@ -26,8 +30,9 @@ const operator = {
 		"634009, Томская область, г. Томск, ул. Большая Подгорная, д. 56, кв. 36",
 };
 
-export const App = () => {
-	const path = window.location.pathname.replace(/\/+$/, "") || "/";
+export const App = ({ pathname }: { pathname?: string }) => {
+	const path =
+		(pathname ?? window.location.pathname).replace(/\/+$/, "") || "/";
 
 	useEffect(() => {
 		if (!window.location.hash) {
@@ -41,7 +46,11 @@ export const App = () => {
 
 	switch (path) {
 		case "/app":
-			return <MiniApp />;
+			return (
+				<Suspense fallback={null}>
+					<MiniApp />
+				</Suspense>
+			);
 		case "/offer":
 			return <OfferPage />;
 		case "/privacy":
@@ -240,7 +249,7 @@ const SharedStory = () => (
 );
 
 const LandingPage = () => {
-	usePageTitle("Пока не забыл — расходы в Telegram");
+	usePageTitle("Пока не забыл — учёт расходов в Telegram");
 	useEffect(() => {
 		const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
 		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
