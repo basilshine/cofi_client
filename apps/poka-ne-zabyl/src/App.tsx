@@ -982,6 +982,9 @@ const PaymentStatus = ({ success }: { success: boolean }) => {
 						? "Проверяем подтверждение платёжной системы. Новый лимит появится в боте после подтверждения."
 						: "Деньги не списаны. Можно вернуться в бот и попробовать ещё раз."}
 				</p>
+				<a className="button button--primary" href="/app">
+					Вернуться в приложение
+				</a>
 				<TelegramButton />
 			</div>
 		</main>

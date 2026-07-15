@@ -1181,6 +1181,36 @@
 	background: transparent;
 	color: var(--mini-green);
 }
+.mini-profile-actions button:disabled {
+	opacity: 0.55;
+}
+.mini-billing-packs {
+	display: grid;
+	gap: 8px;
+}
+.mini-billing-packs button {
+	display: flex;
+	min-height: 54px;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 0 15px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	text-align: left;
+}
+.mini-billing-packs button:active {
+	border-color: var(--mini-green);
+}
+.mini-billing-packs button:disabled {
+	opacity: 0.55;
+}
+.mini-billing-packs strong {
+	flex: 0 0 auto;
+	color: var(--mini-green);
+}
 .mini-profile-list {
 	overflow: hidden;
 	border: 1px solid var(--mini-line);

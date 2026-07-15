@@ -238,6 +238,16 @@ type Quota = {
 	limit: number;
 	used: number;
 	remaining: number;
+	plan_expires_at?: string | null;
+	recurring_limit?: number;
+	additional_limit?: number;
+};
+
+type CheckoutResponse = {
+	action: string;
+	method: "POST";
+	fields: Record<string, string>;
+	order_id: number;
 };
 
 type AuthResponse = { token: string; user: User };
@@ -628,6 +638,21 @@ const apiRequest = async <T,>(
 	return response.json() as Promise<T>;
 };
 
+const submitCheckout = (checkout: CheckoutResponse) => {
+	const form = document.createElement("form");
+	form.method = checkout.method;
+	form.action = checkout.action;
+	for (const [name, value] of Object.entries(checkout.fields)) {
+		const input = document.createElement("input");
+		input.type = "hidden";
+		input.name = name;
+		input.value = value;
+		form.append(input);
+	}
+	document.body.append(form);
+	form.submit();
+};
+
 const reviewTarget = (): ReviewTarget | null => {
 	const query = new URLSearchParams(window.location.search);
 	const directSpace = Number(query.get("space_id"));
@@ -716,6 +741,8 @@ export const MiniApp = () => {
 	const [editingProfile, setEditingProfile] = useState<User | null>(null);
 	const [emailLinkOpen, setEmailLinkOpen] = useState(false);
 	const [telegramLinkOpen, setTelegramLinkOpen] = useState(false);
+	const [packPickerOpen, setPackPickerOpen] = useState(false);
+	const [billingLoading, setBillingLoading] = useState(false);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [captureOpen, setCaptureOpen] = useState(false);
 	const [captureMode, setCaptureMode] = useState<CaptureMode>("choose");
@@ -970,6 +997,25 @@ export const MiniApp = () => {
 		} catch {
 			setError("");
 			setLoading(false);
+		}
+	};
+
+	const startCheckout = async (productCode: string) => {
+		if (!token || !spaceID || billingLoading) return;
+		setBillingLoading(true);
+		setError("");
+		try {
+			const checkout = await apiRequest<CheckoutResponse>(
+				`/billing/checkout?space_id=${spaceID}`,
+				token,
+				{ method: "POST", body: JSON.stringify({ product_code: productCode }) },
+			);
+			submitCheckout(checkout);
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Не удалось открыть оплату",
+			);
+			setBillingLoading(false);
 		}
 	};
 
@@ -2842,9 +2888,9 @@ export const MiniApp = () => {
 										dateFormat: user.dateFormat || "DD.MM.YYYY",
 									})
 								}
-								onUnavailable={() =>
-									setNotice("Оплата подключается и пока недоступна")
-								}
+								onStartPlus={() => void startCheckout("plus_30d")}
+								onBuyPack={() => setPackPickerOpen(true)}
+								billingLoading={billingLoading}
 							/>
 						)}
 					</>
@@ -2964,6 +3010,14 @@ export const MiniApp = () => {
 						addExpense();
 					}}
 					onSubmit={submitCapture}
+				/>
+			)}
+			{packPickerOpen && (
+				<BillingPackPicker
+					language={language}
+					loading={billingLoading}
+					onClose={() => setPackPickerOpen(false)}
+					onSelect={(code) => void startCheckout(code)}
 				/>
 			)}
 
@@ -4882,7 +4936,9 @@ const ProfileView = ({
 	onLinkTelegram,
 	onLogout,
 	onInstall,
-	onUnavailable,
+	onStartPlus,
+	onBuyPack,
+	billingLoading,
 }: {
 	user: User | null;
 	language: UILanguage;
@@ -4897,7 +4953,9 @@ const ProfileView = ({
 	onLinkTelegram: () => void;
 	onLogout?: () => void;
 	onInstall: () => void;
-	onUnavailable: () => void;
+	onStartPlus: () => void;
+	onBuyPack: () => void;
+	billingLoading: boolean;
 }) => {
 	const used = quota?.used || 0;
 	const limit = quota?.limit || 0;
@@ -4957,10 +5015,12 @@ const ProfileView = ({
 				</p>
 			</div>
 			<div className="mini-profile-actions">
-				<button type="button" onClick={onUnavailable}>
-					{uiText(language, plus ? "extend" : "connectPlus")}
+				<button type="button" disabled={billingLoading} onClick={onStartPlus}>
+					{billingLoading
+						? uiText(language, "checking")
+						: uiText(language, plus ? "extend" : "connectPlus")}
 				</button>
-				<button className="secondary" type="button" onClick={onUnavailable}>
+				<button className="secondary" type="button" onClick={onBuyPack}>
 					{uiText(language, "buyPack")}
 				</button>
 			</div>
@@ -5038,6 +5098,58 @@ const ProfileView = ({
 				)}
 			</div>
 		</section>
+	);
+};
+
+const billingPacks = [
+	{ code: "pack_100", price: 100, units: 100 },
+	{ code: "pack_220", price: 200, units: 220 },
+	{ code: "pack_600", price: 500, units: 600 },
+	{ code: "pack_1300", price: 1000, units: 1300 },
+];
+
+const BillingPackPicker = ({
+	language,
+	loading,
+	onClose,
+	onSelect,
+}: {
+	language: UILanguage;
+	loading: boolean;
+	onClose: () => void;
+	onSelect: (code: string) => void;
+}) => {
+	const unitsLabel =
+		language === "en"
+			? "extra uses"
+			: language === "es"
+				? "usos extra"
+				: "дополнительных обработок";
+	return (
+		<Modal title={uiText(language, "buyPack")} onClose={onClose}>
+			<div className="mini-billing-packs">
+				{billingPacks.map((pack) => (
+					<button
+						type="button"
+						key={pack.code}
+						disabled={loading}
+						onClick={() => onSelect(pack.code)}
+					>
+						<span>
+							+{pack.units} {unitsLabel}
+						</span>
+						<strong>{pack.price} ₽</strong>
+					</button>
+				))}
+			</div>
+			<p className="mini-modal-note">
+				{language === "ru"
+					? "Пакет увеличивает доступный лимит и не продлевает Плюс."
+					: language === "es"
+						? "El paquete aumenta el límite y no renueva Plus."
+						: "The pack increases your allowance and does not renew Plus."}
+			</p>
+		</Modal>
 	);
 };
 
