@@ -875,6 +875,9 @@
 	background: var(--mini-paper);
 	color: var(--mini-ink);
 }
+.mini-modal select {
+	height: 45px;
+}
 .mini-modal textarea {
 	min-height: 132px;
 	padding: 12px;
