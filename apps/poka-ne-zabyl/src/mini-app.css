@@ -601,6 +601,167 @@
 	color: var(--mini-ink);
 	box-shadow: 0 1px 4px rgba(23, 27, 45, 0.1);
 }
+.mini-expense-sections {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	padding: 3px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-soft);
+}
+.mini-expense-sections button {
+	display: inline-flex;
+	min-height: 40px;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: var(--mini-muted);
+	font-weight: 700;
+}
+.mini-expense-sections button.active {
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	box-shadow: 0 1px 4px rgba(23, 27, 45, 0.1);
+}
+.mini-expense-sections b {
+	display: grid;
+	min-width: 20px;
+	height: 20px;
+	place-items: center;
+	border-radius: 10px;
+	background: var(--mini-green);
+	color: #fff;
+	font-size: 11px;
+}
+.mini-plan-groups,
+.mini-plan-groups section {
+	display: grid;
+	gap: 10px;
+}
+.mini-plan-groups {
+	gap: 20px;
+}
+.mini-plan-groups h2 {
+	margin: 0 2px;
+	color: var(--mini-muted);
+	font-size: 12px;
+	font-weight: 700;
+}
+.mini-plan-list {
+	display: grid;
+	gap: 1px;
+	overflow: hidden;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-line);
+}
+.mini-plan-row {
+	display: grid;
+	grid-template-columns: 38px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 11px;
+	min-height: 78px;
+	padding: 12px 13px;
+	background: var(--mini-paper);
+}
+.mini-plan-icon {
+	display: grid;
+	width: 38px;
+	height: 38px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+}
+.mini-plan-copy {
+	display: grid;
+	min-width: 0;
+	gap: 4px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--mini-ink);
+	text-align: left;
+}
+.mini-plan-copy b,
+.mini-plan-copy small {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-plan-copy b {
+	font-size: 14px;
+}
+.mini-plan-copy small,
+.mini-plan-actions small {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.mini-plan-actions {
+	display: grid;
+	justify-items: end;
+	gap: 7px;
+}
+.mini-plan-actions strong {
+	font-size: 13px;
+	font-variant-numeric: tabular-nums;
+}
+.mini-plan-actions button,
+.mini-plans-empty > button {
+	display: inline-flex;
+	min-height: 32px;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 0 9px;
+	border: 1px solid var(--mini-green);
+	border-radius: 6px;
+	background: transparent;
+	color: var(--mini-green);
+	font-size: 12px;
+	font-weight: 750;
+}
+.mini-plans-empty {
+	display: grid;
+	min-height: 300px;
+	align-content: center;
+	justify-items: center;
+	gap: 10px;
+	padding: 28px 16px;
+	text-align: center;
+}
+.mini-plans-empty > span {
+	display: grid;
+	width: 54px;
+	height: 54px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+}
+.mini-plans-empty h2,
+.mini-plans-empty p {
+	margin: 0;
+}
+.mini-plans-empty h2 {
+	font-size: 18px;
+}
+.mini-plans-empty p {
+	max-width: 300px;
+	color: var(--mini-muted);
+	font-size: 13px;
+	line-height: 1.45;
+}
+.mini-plans-empty > button {
+	min-height: 40px;
+	margin-top: 4px;
+	padding: 0 13px;
+	background: var(--mini-green);
+	color: var(--mini-paper);
+}
 .mini-expense-groups {
 	display: grid;
 	gap: 18px;

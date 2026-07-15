@@ -1,5 +1,6 @@
 import {
 	ArrowLeft,
+	CalendarBlank,
 	Camera,
 	ChartDonut,
 	ChatCircleText,
@@ -14,6 +15,7 @@ import {
 	PencilSimple,
 	Plus,
 	Receipt,
+	ShoppingBagOpen,
 	Storefront,
 	Tag,
 	Trash,
@@ -63,6 +65,7 @@ type View =
 	| "profile"
 	| "review";
 type CaptureMode = "choose" | "text" | "voice" | "photo";
+type ExpenseSection = "history" | "plans";
 type Space = {
 	id: number;
 	tenant_id: number;
@@ -175,6 +178,20 @@ type ExpenseItemRow = {
 	expense: Expense;
 	item: ExpenseItem;
 	itemIndex: number;
+};
+
+type PurchasePlan = {
+	id: number;
+	tenant_id: number;
+	space_id: number;
+	created_by_user_id: number;
+	title: string;
+	expected_amount?: number | null;
+	currency: string;
+	category_id?: number | null;
+	due_date?: string | null;
+	status: "planned" | "completed";
+	expense_id?: number | null;
 };
 
 type User = {
@@ -471,6 +488,31 @@ const previewExpenses: Expense[] = [
 		items: [{ id: 4, name: "Поездка", amount: 680, category_id: 4 }],
 	},
 ];
+const previewPlans: PurchasePlan[] = [
+	{
+		id: 1,
+		tenant_id: 1,
+		space_id: 1,
+		created_by_user_id: 1,
+		title: "Кроссовки для танцев",
+		expected_amount: 8200,
+		currency: "RUB",
+		category_id: 3,
+		due_date: isoDay(5),
+		status: "planned",
+	},
+	{
+		id: 2,
+		tenant_id: 1,
+		space_id: 1,
+		created_by_user_id: 1,
+		title: "Фильтры для воды",
+		expected_amount: 1400,
+		currency: "RUB",
+		category_id: 5,
+		status: "planned",
+	},
+];
 const previewVendors: Vendor[] = [
 	{ id: 1, name: "Лента", aliases: [] },
 	{
@@ -578,6 +620,7 @@ export const MiniApp = () => {
 	const [spaceID, setSpaceID] = useState(0);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [expenses, setExpenses] = useState<Expense[]>([]);
+	const [plans, setPlans] = useState<PurchasePlan[]>([]);
 	const [captures, setCaptures] = useState<CapturePacket[]>([]);
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [vendors, setVendors] = useState<Vendor[]>([]);
@@ -594,7 +637,11 @@ export const MiniApp = () => {
 	const [expenseID, setExpenseID] = useState(0);
 	const [groupByExpense, setGroupByExpense] = useState(false);
 	const [query, setQuery] = useState("");
+	const [expenseSection, setExpenseSection] =
+		useState<ExpenseSection>("history");
 	const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+	const [editingPlan, setEditingPlan] = useState<PurchasePlan | null>(null);
+	const [completingPlanID, setCompletingPlanID] = useState(0);
 	const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 	const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -727,6 +774,7 @@ export const MiniApp = () => {
 			]);
 			setSpaceID(1);
 			setExpenses(previewExpenses);
+			setPlans(previewPlans);
 			setCaptures(previewCaptures);
 			setCategories(previewCategories);
 			setVendors(previewVendors);
@@ -829,6 +877,7 @@ export const MiniApp = () => {
 				memberData,
 				vendorData,
 				captureData,
+				planData,
 			] = await Promise.all([
 				apiRequest<{ expenses: Expense[] }>(
 					`/spaces/${spaceID}/expenses?limit=200&currency=${encodeURIComponent(user?.currency || "RUB")}`,
@@ -848,6 +897,10 @@ export const MiniApp = () => {
 					`/spaces/${spaceID}/captures?limit=100`,
 					token,
 				),
+				apiRequest<{ plans: PurchasePlan[] }>(
+					`/spaces/${spaceID}/plans`,
+					token,
+				),
 			]);
 			if (requestID !== loadSequence.current) return;
 			setExpenses(expenseData.expenses || []);
@@ -856,6 +909,7 @@ export const MiniApp = () => {
 			setQuota(quotaData);
 			setMembers(memberData.members || []);
 			setVendors(vendorData || []);
+			setPlans(planData.plans || []);
 			if (view === "review" && requestedReview) {
 				await loadReview(token, spaceID, requestedReview.candidateID);
 			}
@@ -1362,6 +1416,7 @@ export const MiniApp = () => {
 	);
 
 	const openCategory = (id: number, nextPeriod: Period = "all") => {
+		setExpenseSection("history");
 		setPeriod(nextPeriod);
 		setCategoryID(id);
 		setVendorID(0);
@@ -1372,6 +1427,7 @@ export const MiniApp = () => {
 	};
 
 	const openExpense = (id: number) => {
+		setExpenseSection("history");
 		setPeriod("all");
 		setCategoryID(0);
 		setVendorID(0);
@@ -1382,6 +1438,7 @@ export const MiniApp = () => {
 	};
 
 	const openAllExpenses = () => {
+		setExpenseSection("history");
 		setPeriod("all");
 		setCategoryID(0);
 		setVendorID(0);
@@ -1429,12 +1486,21 @@ export const MiniApp = () => {
 			);
 			setEditingExpense(null);
 			setEditingItemIndex(null);
+			if (completingPlanID) {
+				setPlans((current) =>
+					current.filter((plan) => plan.id !== completingPlanID),
+				);
+				setCompletingPlanID(0);
+				setExpenseSection("history");
+			}
 			setNotice(successNotice);
 			return;
 		}
 		setSaving(true);
 		try {
 			let saveNotice = successNotice;
+			let savedExpenseID = editingExpense.id;
+			let planCompletionFailed = false;
 			const sellerName = (
 				editingExpense.payee_text ||
 				vendors.find((vendor) => vendor.id === editingExpense.vendor_id)
@@ -1488,7 +1554,7 @@ export const MiniApp = () => {
 							name: item.name,
 							amount: Number(item.amount),
 							vendor_name: itemVendorNames[index],
-							currency,
+							currency: editingExpense.currency || currency,
 							category: categories.find(
 								(category) => category.id === item.category_id,
 							)?.key,
@@ -1500,6 +1566,7 @@ export const MiniApp = () => {
 				);
 				if (!candidate) throw new Error("Не удалось подготовить расход");
 				const projected = await apiRequest<{
+					expense: Expense;
 					budget_warnings?: BudgetWarning[];
 				}>(
 					`/spaces/${spaceID}/review/candidates/${candidate.id}/create-expense`,
@@ -1509,6 +1576,7 @@ export const MiniApp = () => {
 				if (projected.budget_warnings?.[0]) {
 					saveNotice = budgetWarningText(projected.budget_warnings[0]);
 				}
+				savedExpenseID = projected.expense.id;
 			} else {
 				await apiRequest(
 					`/spaces/${spaceID}/expenses/${editingExpense.id}`,
@@ -1532,9 +1600,29 @@ export const MiniApp = () => {
 					},
 				);
 			}
+			if (creating && completingPlanID && savedExpenseID > 0) {
+				try {
+					await apiRequest(
+						`/spaces/${spaceID}/plans/${completingPlanID}/complete`,
+						token,
+						{
+							method: "POST",
+							body: JSON.stringify({ expense_id: savedExpenseID }),
+						},
+					);
+				} catch {
+					planCompletionFailed = true;
+				}
+			}
 			setEditingExpense(null);
 			setEditingItemIndex(null);
-			setNotice(saveNotice);
+			setCompletingPlanID(0);
+			if (creating) setExpenseSection("history");
+			setNotice(
+				planCompletionFailed
+					? "Расход сохранён, но план пока остался в списке"
+					: saveNotice,
+			);
 			await loadSpace();
 		} catch (err) {
 			setNotice(
@@ -2085,6 +2173,7 @@ export const MiniApp = () => {
 		setSpaceID(nextSpaceID);
 		if (!nextSpaceID) {
 			setExpenses([]);
+			setPlans([]);
 			setCategories([]);
 			setVendors([]);
 			setMembers([]);
@@ -2122,7 +2211,135 @@ export const MiniApp = () => {
 		}
 	};
 
+	const addPlan = () => {
+		setEditingPlan({
+			id: 0,
+			tenant_id: activeSpace?.tenant_id || 0,
+			space_id: spaceID,
+			created_by_user_id: user?.id || 0,
+			title: "",
+			expected_amount: null,
+			currency: activeSpace?.currency || currency,
+			category_id: null,
+			due_date: null,
+			status: "planned",
+		});
+	};
+
+	const savePlan = async () => {
+		if (!editingPlan) return;
+		const payload = {
+			title: editingPlan.title.trim(),
+			expected_amount: editingPlan.expected_amount || null,
+			category_id: editingPlan.category_id || null,
+			due_date: editingPlan.due_date?.slice(0, 10) || "",
+		};
+		if (previewMode) {
+			const saved = editingPlan.id
+				? editingPlan
+				: { ...editingPlan, id: Date.now() };
+			setPlans((current) =>
+				editingPlan.id
+					? current.map((plan) => (plan.id === saved.id ? saved : plan))
+					: [...current, saved],
+			);
+			setEditingPlan(null);
+			setNotice(
+				editingPlan.id
+					? uiText(language, "planSaved")
+					: uiText(language, "planAdded"),
+			);
+			return;
+		}
+		setSaving(true);
+		try {
+			const saved = await apiRequest<PurchasePlan>(
+				`/spaces/${spaceID}/plans${editingPlan.id ? `/${editingPlan.id}` : ""}`,
+				token,
+				{
+					method: editingPlan.id ? "PUT" : "POST",
+					body: JSON.stringify(payload),
+				},
+			);
+			setPlans((current) =>
+				editingPlan.id
+					? current.map((plan) => (plan.id === saved.id ? saved : plan))
+					: [...current, saved],
+			);
+			setEditingPlan(null);
+			setNotice(
+				editingPlan.id
+					? uiText(language, "planSaved")
+					: uiText(language, "planAdded"),
+			);
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : uiText(language, "planSaveFailed"),
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const deletePlan = async () => {
+		if (!editingPlan?.id) return;
+		if (!window.confirm(uiText(language, "deletePlanConfirm"))) return;
+		if (previewMode) {
+			setPlans((current) =>
+				current.filter((plan) => plan.id !== editingPlan.id),
+			);
+			setEditingPlan(null);
+			setNotice(uiText(language, "planDeleted"));
+			return;
+		}
+		setSaving(true);
+		try {
+			await apiRequest(`/spaces/${spaceID}/plans/${editingPlan.id}`, token, {
+				method: "DELETE",
+			});
+			setPlans((current) =>
+				current.filter((plan) => plan.id !== editingPlan.id),
+			);
+			setEditingPlan(null);
+			setNotice(uiText(language, "planDeleted"));
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: uiText(language, "planDeleteFailed"),
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const buyPlan = (plan: PurchasePlan) => {
+		const category =
+			categories.find((item) => item.id === plan.category_id) ||
+			categories.find((item) => item.key === "other") ||
+			categories[0];
+		setCompletingPlanID(plan.id);
+		setEditingItemIndex(null);
+		setEditingExpense({
+			id: 0,
+			user_id: user?.id || 0,
+			title: plan.title,
+			payee_text: "",
+			expense_date: localISODate(),
+			currency: plan.currency,
+			space_currency: plan.currency,
+			items: [
+				{
+					name: plan.title,
+					amount: plan.expected_amount || 0,
+					category_id: category?.id,
+				},
+			],
+		});
+	};
+
 	const addExpense = () => {
+		setCompletingPlanID(0);
 		const category =
 			categories.find((item) => item.key === "other") || categories[0];
 		setEditingItemIndex(null);
@@ -2270,6 +2487,8 @@ export const MiniApp = () => {
 						{view === "expenses" && (
 							<ExpensesView
 								items={filteredItems}
+								section={expenseSection}
+								plans={plans}
 								language={language}
 								categories={categories}
 								vendors={vendors}
@@ -2294,6 +2513,10 @@ export const MiniApp = () => {
 								onSource={openExpenseSource}
 								onEdit={editExpenseItem}
 								onAdd={openCapture}
+								onSection={setExpenseSection}
+								onAddPlan={addPlan}
+								onEditPlan={(plan) => setEditingPlan({ ...plan })}
+								onBuyPlan={buyPlan}
 							/>
 						)}
 						{view === "vendors" && (
@@ -2523,10 +2746,25 @@ export const MiniApp = () => {
 					capture={captureForExpense(editingExpense, captures)}
 					sourceLoading={sourceLoading}
 					onChange={setEditingExpense}
-					onClose={() => setEditingExpense(null)}
+					onClose={() => {
+						setEditingExpense(null);
+						setCompletingPlanID(0);
+					}}
 					onSave={saveExpense}
 					onSource={() => openExpenseSource(editingExpense)}
 					onDelete={editingExpense.id > 0 ? deleteExpense : undefined}
+				/>
+			)}
+			{editingPlan && (
+				<PlanEditor
+					plan={editingPlan}
+					language={language}
+					categories={categories}
+					saving={saving}
+					onChange={setEditingPlan}
+					onClose={() => setEditingPlan(null)}
+					onSave={savePlan}
+					onDelete={editingPlan.id ? deletePlan : undefined}
 				/>
 			)}
 			{editingExpense && editingItemIndex !== null && (
@@ -3386,6 +3624,8 @@ const FirstExpenseEmpty = ({
 
 const ExpensesView = ({
 	items,
+	section,
+	plans,
 	language,
 	categories,
 	vendors,
@@ -3410,8 +3650,14 @@ const ExpensesView = ({
 	onSource,
 	onEdit,
 	onAdd,
+	onSection,
+	onAddPlan,
+	onEditPlan,
+	onBuyPlan,
 }: {
 	items: ExpenseItemRow[];
+	section: ExpenseSection;
+	plans: PurchasePlan[];
 	language: UILanguage;
 	categories: Category[];
 	vendors: Vendor[];
@@ -3436,6 +3682,10 @@ const ExpensesView = ({
 	onSource: (expense: Expense) => void;
 	onEdit: (item: ExpenseItemRow) => void;
 	onAdd: () => void;
+	onSection: (section: ExpenseSection) => void;
+	onAddPlan: () => void;
+	onEditPlan: (plan: PurchasePlan) => void;
+	onBuyPlan: (plan: PurchasePlan) => void;
 }) => {
 	const [filtersOpen, setFiltersOpen] = useState(false);
 	const activeCategory = categories.find(({ id }) => id === categoryID);
@@ -3447,207 +3697,338 @@ const ExpensesView = ({
 		<section className="mini-view mini-expenses-view">
 			<div className="mini-title-row">
 				<div className="mini-title">
-					<p>История</p>
-					<h1>Расходы</h1>
+					<p>
+						{section === "history"
+							? uiText(language, "expenseHistoryEyebrow")
+							: uiText(language, "plansEyebrow")}
+					</p>
+					<h1>{uiText(language, "navExpenses")}</h1>
 				</div>
-				<button className="mini-add-button" type="button" onClick={onAdd}>
-					<Plus size={18} weight="bold" />
-					Добавить
-				</button>
-			</div>
-			<label className="mini-search">
-				<MagnifyingGlass size={19} />
-				<input
-					value={query}
-					onChange={(event) => onQuery(event.target.value)}
-					placeholder="Магазин или покупка"
-				/>
-			</label>
-			{expense && (
-				<div className="mini-expense-scope">
-					<span>
-						<small>Выбран расход</small>
-						<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
-					</span>
-					<div className="mini-expense-scope-actions">
-						<button type="button" onClick={() => onSource(expense)}>
-							<SourceIcon
-								capture={captureForExpense(expense, captures)}
-								size={15}
-							/>
-							Исходник
-						</button>
-						<button type="button" onClick={onClearExpense}>
-							<X size={15} />
-							Все
-						</button>
-					</div>
-				</div>
-			)}
-			<div className="mini-result">
-				<div>
-					<small>Найдено</small>
-					<span>
-						{items.length} {itemWord(items.length)}
-					</span>
-				</div>
-				<div>
-					<small>Итого</small>
-					<strong>
-						{formatMoney(
-							items.reduce(
-								(sum, row) =>
-									sum +
-									(itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
-								0,
-							),
-							currency,
-						)}
-					</strong>
-				</div>
-			</div>
-			<div className="mini-filter-bar">
-				<select
-					aria-label={uiText(language, "periodLabel")}
-					value={period}
-					onChange={(event) => onPeriod(event.target.value as Period)}
-				>
-					<option value="today">{uiText(language, "periodToday")}</option>
-					<option value="three-days">
-						{uiText(language, "periodThreeDays")}
-					</option>
-					<option value="week">{uiText(language, "periodWeek")}</option>
-					<option value="month">{uiText(language, "periodMonth")}</option>
-					<option value="three-months">
-						{uiText(language, "periodThreeMonths")}
-					</option>
-					<option value="six-months">
-						{uiText(language, "periodSixMonths")}
-					</option>
-					<option value="year">{uiText(language, "periodYear")}</option>
-					<option value="all">{uiText(language, "periodAll")}</option>
-					<option value="custom">{uiText(language, "periodCustom")}</option>
-				</select>
 				<button
+					className="mini-add-button"
 					type="button"
-					aria-expanded={filtersOpen}
-					aria-controls="expense-filters"
-					onClick={() => setFiltersOpen((open) => !open)}
+					onClick={() => (section === "history" ? onAdd() : onAddPlan())}
 				>
-					<FunnelSimple size={17} />
-					Фильтры
-					{activeFilterCount > 0 && <b>{activeFilterCount}</b>}
+					<Plus size={18} weight="bold" />
+					{uiText(language, "add")}
 				</button>
 			</div>
-			{period === "custom" && (
-				<div className="mini-date-range">
-					<label>
-						<span>{uiText(language, "dateFrom")}</span>
-						<input
-							type="date"
-							max={dateTo || undefined}
-							value={dateFrom}
-							onChange={(event) => onDateFrom(event.target.value)}
-						/>
-					</label>
-					<label>
-						<span>{uiText(language, "dateTo")}</span>
-						<input
-							type="date"
-							min={dateFrom || undefined}
-							value={dateTo}
-							onChange={(event) => onDateTo(event.target.value)}
-						/>
-					</label>
-				</div>
-			)}
-			{(activeCategory || activeVendor) && (
-				<div className="mini-filter-chips" aria-label="Активные фильтры">
-					{activeCategory && (
-						<button type="button" onClick={() => onCategory(0)}>
-							{localizedCategoryName(activeCategory, language)}
-							<X size={13} />
-						</button>
-					)}
-					{activeVendor && (
-						<button type="button" onClick={() => onVendor(0)}>
-							{activeVendor.name}
-							<X size={13} />
-						</button>
-					)}
-				</div>
-			)}
-			{filtersOpen && (
-				<div className="mini-filter-panel" id="expense-filters">
-					<div className="mini-filters">
-						<select
-							aria-label="Категория"
-							value={categoryID}
-							onChange={(event) => onCategory(Number(event.target.value))}
-						>
-							<option value={0}>Все категории</option>
-							{categories.map((category) => (
-								<option key={category.id} value={category.id}>
-									{localizedCategoryName(category, language)}
-								</option>
-							))}
-						</select>
-						<select
-							aria-label="Где купили"
-							value={vendorID}
-							onChange={(event) => onVendor(Number(event.target.value))}
-						>
-							<option value={0}>Все продавцы</option>
-							{vendors.map((vendor) => (
-								<option key={vendor.id} value={vendor.id}>
-									{vendor.name}
-								</option>
-							))}
-						</select>
-					</div>
-					<div
-						className="mini-expense-mode"
-						role="group"
-						aria-label="Вид расходов"
-					>
-						<button
-							className={!groupByExpense ? "active" : ""}
-							type="button"
-							aria-pressed={!groupByExpense}
-							onClick={() => onGrouping(false)}
-						>
-							Позиции
-						</button>
-						<button
-							className={groupByExpense ? "active" : ""}
-							type="button"
-							aria-pressed={groupByExpense}
-							onClick={() => onGrouping(true)}
-						>
-							По расходам
-						</button>
-					</div>
-				</div>
-			)}
-			{groupByExpense ? (
-				<GroupedExpenseItemList
-					items={items}
+			<div className="mini-expense-sections" role="tablist">
+				<button
+					className={section === "history" ? "active" : ""}
+					type="button"
+					role="tab"
+					aria-selected={section === "history"}
+					onClick={() => onSection("history")}
+				>
+					{uiText(language, "history")}
+				</button>
+				<button
+					className={section === "plans" ? "active" : ""}
+					type="button"
+					role="tab"
+					aria-selected={section === "plans"}
+					onClick={() => onSection("plans")}
+				>
+					{uiText(language, "plans")}
+					{plans.length > 0 && <b>{plans.length}</b>}
+				</button>
+			</div>
+			{section === "plans" ? (
+				<PlansView
+					plans={plans}
 					categories={categories}
-					captures={captures}
-					currency={currency}
-					onSource={onSource}
-					onEdit={onEdit}
+					language={language}
+					onAdd={onAddPlan}
+					onEdit={onEditPlan}
+					onBuy={onBuyPlan}
 				/>
 			) : (
-				<ExpenseItemList
-					items={items}
-					categories={categories}
-					captures={captures}
-					currency={currency}
-					onEdit={onEdit}
-				/>
+				<>
+					<label className="mini-search">
+						<MagnifyingGlass size={19} />
+						<input
+							value={query}
+							onChange={(event) => onQuery(event.target.value)}
+							placeholder="Магазин или покупка"
+						/>
+					</label>
+					{expense && (
+						<div className="mini-expense-scope">
+							<span>
+								<small>Выбран расход</small>
+								<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
+							</span>
+							<div className="mini-expense-scope-actions">
+								<button type="button" onClick={() => onSource(expense)}>
+									<SourceIcon
+										capture={captureForExpense(expense, captures)}
+										size={15}
+									/>
+									Исходник
+								</button>
+								<button type="button" onClick={onClearExpense}>
+									<X size={15} />
+									Все
+								</button>
+							</div>
+						</div>
+					)}
+					<div className="mini-result">
+						<div>
+							<small>Найдено</small>
+							<span>
+								{items.length} {itemWord(items.length)}
+							</span>
+						</div>
+						<div>
+							<small>Итого</small>
+							<strong>
+								{formatMoney(
+									items.reduce(
+										(sum, row) =>
+											sum +
+											(itemAmountInCurrency(row.item, row.expense, currency) ??
+												0),
+										0,
+									),
+									currency,
+								)}
+							</strong>
+						</div>
+					</div>
+					<div className="mini-filter-bar">
+						<select
+							aria-label={uiText(language, "periodLabel")}
+							value={period}
+							onChange={(event) => onPeriod(event.target.value as Period)}
+						>
+							<option value="today">{uiText(language, "periodToday")}</option>
+							<option value="three-days">
+								{uiText(language, "periodThreeDays")}
+							</option>
+							<option value="week">{uiText(language, "periodWeek")}</option>
+							<option value="month">{uiText(language, "periodMonth")}</option>
+							<option value="three-months">
+								{uiText(language, "periodThreeMonths")}
+							</option>
+							<option value="six-months">
+								{uiText(language, "periodSixMonths")}
+							</option>
+							<option value="year">{uiText(language, "periodYear")}</option>
+							<option value="all">{uiText(language, "periodAll")}</option>
+							<option value="custom">{uiText(language, "periodCustom")}</option>
+						</select>
+						<button
+							type="button"
+							aria-expanded={filtersOpen}
+							aria-controls="expense-filters"
+							onClick={() => setFiltersOpen((open) => !open)}
+						>
+							<FunnelSimple size={17} />
+							Фильтры
+							{activeFilterCount > 0 && <b>{activeFilterCount}</b>}
+						</button>
+					</div>
+					{period === "custom" && (
+						<div className="mini-date-range">
+							<label>
+								<span>{uiText(language, "dateFrom")}</span>
+								<input
+									type="date"
+									max={dateTo || undefined}
+									value={dateFrom}
+									onChange={(event) => onDateFrom(event.target.value)}
+								/>
+							</label>
+							<label>
+								<span>{uiText(language, "dateTo")}</span>
+								<input
+									type="date"
+									min={dateFrom || undefined}
+									value={dateTo}
+									onChange={(event) => onDateTo(event.target.value)}
+								/>
+							</label>
+						</div>
+					)}
+					{(activeCategory || activeVendor) && (
+						<div className="mini-filter-chips" aria-label="Активные фильтры">
+							{activeCategory && (
+								<button type="button" onClick={() => onCategory(0)}>
+									{localizedCategoryName(activeCategory, language)}
+									<X size={13} />
+								</button>
+							)}
+							{activeVendor && (
+								<button type="button" onClick={() => onVendor(0)}>
+									{activeVendor.name}
+									<X size={13} />
+								</button>
+							)}
+						</div>
+					)}
+					{filtersOpen && (
+						<div className="mini-filter-panel" id="expense-filters">
+							<div className="mini-filters">
+								<select
+									aria-label="Категория"
+									value={categoryID}
+									onChange={(event) => onCategory(Number(event.target.value))}
+								>
+									<option value={0}>Все категории</option>
+									{categories.map((category) => (
+										<option key={category.id} value={category.id}>
+											{localizedCategoryName(category, language)}
+										</option>
+									))}
+								</select>
+								<select
+									aria-label="Где купили"
+									value={vendorID}
+									onChange={(event) => onVendor(Number(event.target.value))}
+								>
+									<option value={0}>Все продавцы</option>
+									{vendors.map((vendor) => (
+										<option key={vendor.id} value={vendor.id}>
+											{vendor.name}
+										</option>
+									))}
+								</select>
+							</div>
+							<div
+								className="mini-expense-mode"
+								role="group"
+								aria-label="Вид расходов"
+							>
+								<button
+									className={!groupByExpense ? "active" : ""}
+									type="button"
+									aria-pressed={!groupByExpense}
+									onClick={() => onGrouping(false)}
+								>
+									Позиции
+								</button>
+								<button
+									className={groupByExpense ? "active" : ""}
+									type="button"
+									aria-pressed={groupByExpense}
+									onClick={() => onGrouping(true)}
+								>
+									По расходам
+								</button>
+							</div>
+						</div>
+					)}
+					{groupByExpense ? (
+						<GroupedExpenseItemList
+							items={items}
+							categories={categories}
+							captures={captures}
+							currency={currency}
+							onSource={onSource}
+							onEdit={onEdit}
+						/>
+					) : (
+						<ExpenseItemList
+							items={items}
+							categories={categories}
+							captures={captures}
+							currency={currency}
+							onEdit={onEdit}
+						/>
+					)}
+				</>
 			)}
 		</section>
+	);
+};
+
+const PlansView = ({
+	plans,
+	categories,
+	language,
+	onAdd,
+	onEdit,
+	onBuy,
+}: {
+	plans: PurchasePlan[];
+	categories: Category[];
+	language: UILanguage;
+	onAdd: () => void;
+	onEdit: (plan: PurchasePlan) => void;
+	onBuy: (plan: PurchasePlan) => void;
+}) => {
+	const dated = plans.filter((plan) => plan.due_date);
+	const withoutDate = plans.filter((plan) => !plan.due_date);
+	const renderPlan = (plan: PurchasePlan) => {
+		const category = categories.find((item) => item.id === plan.category_id);
+		return (
+			<div className="mini-plan-row" key={plan.id}>
+				<span className="mini-plan-icon">
+					<ShoppingBagOpen size={20} />
+				</span>
+				<button
+					className="mini-plan-copy"
+					type="button"
+					onClick={() => onEdit(plan)}
+				>
+					<b>{plan.title}</b>
+					<small>
+						{category
+							? localizedCategoryName(category, language)
+							: uiText(language, "categoryNotSet")}
+						{plan.due_date
+							? ` · ${formatPlanDate(plan.due_date, language)}`
+							: ""}
+					</small>
+				</button>
+				<div className="mini-plan-actions">
+					{plan.expected_amount ? (
+						<strong>{formatMoney(plan.expected_amount, plan.currency)}</strong>
+					) : (
+						<small>{uiText(language, "amountNotSet")}</small>
+					)}
+					<button type="button" onClick={() => onBuy(plan)}>
+						<Check size={15} weight="bold" />
+						{uiText(language, "bought")}
+					</button>
+				</div>
+			</div>
+		);
+	};
+
+	if (plans.length === 0) {
+		return (
+			<div className="mini-plans-empty">
+				<span>
+					<CalendarBlank size={26} />
+				</span>
+				<h2>{uiText(language, "noPlans")}</h2>
+				<p>{uiText(language, "noPlansHint")}</p>
+				<button type="button" onClick={onAdd}>
+					<Plus size={17} weight="bold" />
+					{uiText(language, "addPlan")}
+				</button>
+			</div>
+		);
+	}
+
+	return (
+		<div className="mini-plan-groups">
+			{dated.length > 0 && (
+				<section>
+					<h2>{uiText(language, "withDate")}</h2>
+					<div className="mini-plan-list">{dated.map(renderPlan)}</div>
+				</section>
+			)}
+			{withoutDate.length > 0 && (
+				<section>
+					<h2>{uiText(language, "someday")}</h2>
+					<div className="mini-plan-list">{withoutDate.map(renderPlan)}</div>
+				</section>
+			)}
+		</div>
 	);
 };
 
@@ -4580,6 +4961,107 @@ const CaptureComposer = ({
 		</Modal>
 	);
 };
+
+const PlanEditor = ({
+	plan,
+	language,
+	categories,
+	saving,
+	onChange,
+	onClose,
+	onSave,
+	onDelete,
+}: {
+	plan: PurchasePlan;
+	language: UILanguage;
+	categories: Category[];
+	saving: boolean;
+	onChange: (plan: PurchasePlan) => void;
+	onClose: () => void;
+	onSave: () => void;
+	onDelete?: () => void;
+}) => (
+	<Modal
+		title={plan.id ? uiText(language, "editPlan") : uiText(language, "newPlan")}
+		onClose={onClose}
+	>
+		<p className="mini-field-note">{uiText(language, "planEditorHint")}</p>
+		<label>
+			{uiText(language, "planWhat")}
+			<input
+				value={plan.title}
+				placeholder={uiText(language, "planWhatPlaceholder")}
+				onChange={(event) => onChange({ ...plan, title: event.target.value })}
+			/>
+		</label>
+		<div className="mini-field">
+			<span>{uiText(language, "expectedAmount")}</span>
+			<AmountInput
+				ariaLabel={uiText(language, "expectedAmount")}
+				amount={plan.expected_amount || 0}
+				onChange={(amount) =>
+					onChange({ ...plan, expected_amount: amount || null })
+				}
+			/>
+			<small className="mini-field-hint">
+				{uiText(language, "expectedAmountHint")}
+			</small>
+		</div>
+		<label>
+			{uiText(language, "category")}
+			<select
+				value={plan.category_id || 0}
+				onChange={(event) =>
+					onChange({
+						...plan,
+						category_id: Number(event.target.value) || null,
+					})
+				}
+			>
+				<option value={0}>{uiText(language, "categoryNotSet")}</option>
+				{categories.map((category) => (
+					<option key={category.id} value={category.id}>
+						{localizedCategoryName(category, language)}
+					</option>
+				))}
+			</select>
+		</label>
+		<label>
+			{uiText(language, "plannedDate")}
+			<input
+				type="date"
+				value={plan.due_date?.slice(0, 10) || ""}
+				onChange={(event) =>
+					onChange({ ...plan, due_date: event.target.value || null })
+				}
+			/>
+			<small className="mini-field-hint">
+				{uiText(language, "plannedDateHint")}
+			</small>
+		</label>
+		<div className="mini-modal-actions">
+			<button
+				className="mini-save"
+				type="button"
+				disabled={saving || !plan.title.trim()}
+				onClick={onSave}
+			>
+				{saving ? uiText(language, "saving") : uiText(language, "save")}
+			</button>
+			{onDelete && (
+				<button
+					className="mini-delete"
+					type="button"
+					disabled={saving}
+					onClick={onDelete}
+				>
+					<Trash size={18} />
+					{uiText(language, "deletePlan")}
+				</button>
+			)}
+		</div>
+	</Modal>
+);
 
 const ExpenseEditor = ({
 	expense,
@@ -5585,6 +6067,10 @@ const TelegramEntry = ({ error }: { error: string }) => {
 	);
 };
 
+const formatPlanDate = (value: string, language: UILanguage) =>
+	new Intl.DateTimeFormat(language, { day: "numeric", month: "short" }).format(
+		new Date(`${value.slice(0, 10)}T12:00:00`),
+	);
 const formatDate = (value: string) =>
 	new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(
 		new Date(value),

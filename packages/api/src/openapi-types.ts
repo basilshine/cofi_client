@@ -502,6 +502,15 @@ export interface paths {
                         "application/json": components["schemas"]["CaptureResponse"];
                     };
                 };
+                /** @description Capture persisted and queued for asynchronous processing */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CaptureResponse"];
+                    };
+                };
                 /** @description Invalid request or missing routing context */
                 400: {
                     headers: {
@@ -2361,6 +2370,239 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List planned purchases in a space */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Returns planned rows by default; use all to include completed history. */
+                    status?: "planned" | "all";
+                };
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Planned purchases in the selected space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            plans: components["schemas"]["PurchasePlan"][];
+                        };
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Add a planned purchase */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PurchasePlanInput"];
+                };
+            };
+            responses: {
+                /** @description Planned purchase created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchasePlan"];
+                    };
+                };
+                /** @description Invalid planned purchase */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update a planned purchase */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                    planId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PurchasePlanInput"];
+                };
+            };
+            responses: {
+                /** @description Planned purchase updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchasePlan"];
+                    };
+                };
+                /** @description Planned purchase not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        /** Delete a planned purchase */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                    planId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Planned purchase deleted */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Planned purchase not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/plans/{planId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link a planned purchase to its saved expense */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                    planId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        expense_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Planned purchase completed */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchasePlan"];
+                    };
+                };
+                /** @description Expense is not linked to the selected space */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Planned purchase not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/recurring": {
         parameters: {
             query?: never;
@@ -2777,6 +3019,83 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/categories/{categoryId}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge one expense category into another
+         * @description Moves linked items, synonyms, and non-conflicting space budgets to the target category, then removes the source category. The protected Other category cannot be the source.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    categoryId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        target_category_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Target category after the merge */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CategorySummary"];
+                    };
+                };
+                /** @description Source and target categories are the same or the request is invalid */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Source or target category not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The protected Other category cannot be merged into another category */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -6301,6 +6620,33 @@ export interface components {
             vendor?: components["schemas"]["ExpenseVendorBrief"];
             business_meta?: components["schemas"]["ExpenseBusinessMetaNested"];
         };
+        PurchasePlanInput: {
+            title: string;
+            expected_amount?: number | null;
+            /** Format: int64 */
+            category_id?: number | null;
+            /** Format: date */
+            due_date?: string | null;
+        };
+        PurchasePlan: components["schemas"]["PurchasePlanInput"] & {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            tenant_id: number;
+            /** Format: int64 */
+            space_id: number;
+            /** Format: int64 */
+            created_by_user_id: number;
+            currency: components["schemas"]["CurrencyCode"];
+            /** @enum {string} */
+            status: "planned" | "completed";
+            /** Format: int64 */
+            expense_id?: number | null;
+            /** Format: date-time */
+            created_at?: string;
+            /** Format: date-time */
+            updated_at?: string;
+        };
         RecurringExpense: {
             /** Format: int64 */
             id?: number;
@@ -6458,6 +6804,11 @@ export interface components {
             source_context?: {
                 [key: string]: unknown;
             };
+            /**
+             * @description When false, return after persistence with HTTP 202 and let the client poll the capture packet processing_status.
+             * @default true
+             */
+            wait_for_result: boolean;
         };
         /** @description Structured manual promo input for canonical capture. The server creates a source document and promo candidate; a saved PromoCode is created only by explicit review save. */
         ManualPromoCapture: {
@@ -6511,6 +6862,11 @@ export interface components {
             channel?: string;
             /** @description Optional JSON object string containing client/source provenance metadata. */
             source_context?: string;
+            /**
+             * @description When false, return after persistence with HTTP 202 and let the client poll the capture packet processing_status.
+             * @default true
+             */
+            wait_for_result: boolean;
         };
         CaptureResponse: components["schemas"]["CapturePayload"] & {
             /** @description Echoed explicit space context when provided. */
@@ -6669,6 +7025,8 @@ export interface components {
             /** @description Original text input or extracted transcript available to authorized space members. */
             source_text?: string;
             document_type?: string;
+            /** @enum {string} */
+            processing_status?: "pending" | "processing" | "succeeded" | "failed";
             merchant_text?: string;
             /** Format: date-time */
             document_date?: string;
@@ -7145,7 +7503,10 @@ export interface components {
         };
     };
     responses: never;
-    parameters: never;
+    parameters: {
+        /** @description Space ID */
+        SpaceId: number;
+    };
     requestBodies: never;
     headers: never;
     pathItems: never;
