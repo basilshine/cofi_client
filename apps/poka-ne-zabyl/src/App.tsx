@@ -1,6 +1,6 @@
 import {
 	ArrowRight,
-	ChartDonut,
+	CalendarCheck,
 	ChatCircleText,
 	Check,
 	Microphone,
@@ -458,18 +458,18 @@ const LandingPage = () => {
 				<div className="shell miniapp-layout">
 					<div className="miniapp-copy" data-reveal>
 						<p className="section-label">Mini App в Telegram</p>
-						<h2>Расходы и лимиты — всё видно.</h2>
+						<h2>Расходы, лимиты и планы. Всё видно.</h2>
 						<p>
-							Откройте приложение прямо из бота: посмотрите месяц, найдите
-							покупку и проверьте, сколько осталось до лимита.
+							Откройте приложение прямо из бота: посмотрите месяц, проверьте
+							лимиты и сохраните то, что хотите купить позже.
 						</p>
 						<div className="limit-promise">
-							<ChartDonut size={28} weight="light" />
+							<CalendarCheck size={28} weight="light" />
 							<div>
-								<strong>Лимиты по категориям</strong>
+								<strong>Порядок сейчас и на будущее</strong>
 								<span>
-									Задайте сумму на неделю или месяц. Прогресс всегда на главном
-									экране.
+									Лимиты помогают не выйти за рамки, а планы сохраняют будущие
+									покупки отдельно от расходов.
 								</span>
 							</div>
 						</div>
@@ -481,7 +481,8 @@ const LandingPage = () => {
 								<Check size={17} weight="bold" /> Последние покупки под рукой
 							</li>
 							<li>
-								<Check size={17} weight="bold" /> Личное и общее — отдельно
+								<Check size={17} weight="bold" /> Отметьте «Куплено», когда план
+								станет расходом
 							</li>
 						</ul>
 					</div>
@@ -514,12 +515,21 @@ const LandingPage = () => {
 							<figcaption>Категории · лимиты на неделю или месяц</figcaption>
 						</figure>
 						<div className="app-limit-callout">
-							<span>Продукты</span>
-							<strong>12 460 ₽ из 20 000 ₽</strong>
-							<span className="app-limit-callout__bar">
-								<b />
-							</span>
-							<small>Осталось 7 540 ₽</small>
+							<div className="app-plan-preview">
+								<span>
+									<CalendarCheck size={18} /> План на 20 июля
+								</span>
+								<strong>Кроссовки для танцев</strong>
+								<small>8 200 ₽ · в расходы только после покупки</small>
+							</div>
+							<div className="app-limit-preview">
+								<span>Продукты</span>
+								<strong>12 460 ₽ из 20 000 ₽</strong>
+								<span className="app-limit-callout__bar">
+									<b />
+								</span>
+								<small>Осталось 7 540 ₽</small>
+							</div>
 						</div>
 					</div>
 				</div>

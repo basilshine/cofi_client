@@ -1036,6 +1036,27 @@ button:focus-visible {
 	box-shadow: 0 24px 55px rgba(25, 34, 86, 0.22);
 	transform: rotate(-2deg);
 }
+.app-plan-preview {
+	padding-bottom: 17px;
+	border-bottom: 1px solid #d9deeb;
+}
+.app-plan-preview > span {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	color: var(--blue);
+}
+.app-plan-preview strong {
+	margin-top: 8px;
+}
+.app-plan-preview small {
+	margin-top: 5px;
+	color: var(--muted);
+	font-weight: 400;
+}
+.app-limit-preview {
+	padding-top: 17px;
+}
 .app-limit-callout span,
 .app-limit-callout strong,
 .app-limit-callout small {
