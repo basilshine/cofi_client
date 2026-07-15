@@ -456,7 +456,8 @@
 	grid-template-columns: 1fr 1fr;
 	gap: 9px;
 }
-.mini-filters select {
+.mini-filters select,
+.mini-filter-bar select {
 	width: 100%;
 	min-height: 42px;
 	padding: 0 9px;
@@ -465,11 +466,58 @@
 	background: var(--mini-paper);
 	color: var(--mini-ink);
 }
-.mini-filters--three {
-	grid-template-columns: 1fr 1fr;
+.mini-filter-bar {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 9px;
 }
-.mini-filters--three select:last-child {
-	grid-column: 1 / -1;
+.mini-filter-bar button {
+	display: inline-flex;
+	min-height: 42px;
+	align-items: center;
+	gap: 6px;
+	padding: 0 12px;
+	border: 1px solid var(--mini-line);
+	border-radius: 6px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	font-weight: 650;
+}
+.mini-filter-bar b {
+	display: grid;
+	min-width: 19px;
+	height: 19px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-green);
+	color: #fff;
+	font-size: 11px;
+}
+.mini-filter-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
+}
+.mini-filter-chips button {
+	display: inline-flex;
+	min-height: 30px;
+	align-items: center;
+	gap: 5px;
+	padding: 0 9px;
+	border: 1px solid color-mix(in srgb, var(--mini-green) 28%, var(--mini-line));
+	border-radius: 15px;
+	background: color-mix(in srgb, var(--mini-green) 7%, var(--mini-paper));
+	color: var(--mini-ink);
+	font-size: 12px;
+	font-weight: 650;
+}
+.mini-filter-panel {
+	display: grid;
+	gap: 9px;
+	padding: 10px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-soft);
 }
 .mini-expense-mode {
 	display: grid;

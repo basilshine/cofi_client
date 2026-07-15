@@ -4,6 +4,7 @@ import {
 	ChartDonut,
 	ChatCircleText,
 	Check,
+	FunnelSimple,
 	GearSix,
 	House,
 	MagnifyingGlass,
@@ -3243,147 +3244,191 @@ const ExpensesView = ({
 	onSource: (expense: Expense) => void;
 	onEdit: (item: ExpenseItemRow) => void;
 	onAdd: () => void;
-}) => (
-	<section className="mini-view">
-		<div className="mini-title-row">
-			<div className="mini-title">
-				<p>История</p>
-				<h1>Расходы</h1>
+}) => {
+	const [filtersOpen, setFiltersOpen] = useState(false);
+	const activeCategory = categories.find(({ id }) => id === categoryID);
+	const activeVendor = vendors.find(({ id }) => id === vendorID);
+	const activeFilterCount =
+		Number(Boolean(activeCategory)) + Number(Boolean(activeVendor));
+
+	return (
+		<section className="mini-view">
+			<div className="mini-title-row">
+				<div className="mini-title">
+					<p>История</p>
+					<h1>Расходы</h1>
+				</div>
+				<button className="mini-add-button" type="button" onClick={onAdd}>
+					<Plus size={18} weight="bold" />
+					Добавить
+				</button>
 			</div>
-			<button className="mini-add-button" type="button" onClick={onAdd}>
-				<Plus size={18} weight="bold" />
-				Добавить
-			</button>
-		</div>
-		<label className="mini-search">
-			<MagnifyingGlass size={19} />
-			<input
-				value={query}
-				onChange={(event) => onQuery(event.target.value)}
-				placeholder="Магазин или покупка"
-			/>
-		</label>
-		{expense && (
-			<div className="mini-expense-scope">
-				<span>
-					<small>Выбран расход</small>
-					<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
-				</span>
-				<div className="mini-expense-scope-actions">
-					<button type="button" onClick={() => onSource(expense)}>
-						<SourceIcon
-							capture={captureForExpense(expense, captures)}
-							size={15}
-						/>
-						Исходник
-					</button>
-					<button type="button" onClick={onClearExpense}>
-						<X size={15} />
-						Все
-					</button>
+			<label className="mini-search">
+				<MagnifyingGlass size={19} />
+				<input
+					value={query}
+					onChange={(event) => onQuery(event.target.value)}
+					placeholder="Магазин или покупка"
+				/>
+			</label>
+			{expense && (
+				<div className="mini-expense-scope">
+					<span>
+						<small>Выбран расход</small>
+						<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
+					</span>
+					<div className="mini-expense-scope-actions">
+						<button type="button" onClick={() => onSource(expense)}>
+							<SourceIcon
+								capture={captureForExpense(expense, captures)}
+								size={15}
+							/>
+							Исходник
+						</button>
+						<button type="button" onClick={onClearExpense}>
+							<X size={15} />
+							Все
+						</button>
+					</div>
+				</div>
+			)}
+			<div className="mini-result">
+				<div>
+					<small>Найдено</small>
+					<span>
+						{items.length} {itemWord(items.length)}
+					</span>
+				</div>
+				<div>
+					<small>Итого</small>
+					<strong>
+						{formatMoney(
+							items.reduce(
+								(sum, row) =>
+									sum +
+									(itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
+								0,
+							),
+							currency,
+						)}
+					</strong>
 				</div>
 			</div>
-		)}
-		<div className="mini-result">
-			<div>
-				<small>Найдено</small>
-				<span>
-					{items.length} {itemWord(items.length)}
-				</span>
+			<div className="mini-filter-bar">
+				<select
+					aria-label="Период"
+					value={period}
+					onChange={(event) => onPeriod(event.target.value as Period)}
+				>
+					<option value="today">Сегодня</option>
+					<option value="three-days">3 дня</option>
+					<option value="week">Неделя</option>
+					<option value="month">Этот месяц</option>
+					<option value="three-months">3 месяца</option>
+					<option value="six-months">6 месяцев</option>
+					<option value="year">Этот год</option>
+					<option value="all">Всё время</option>
+				</select>
+				<button
+					type="button"
+					aria-expanded={filtersOpen}
+					aria-controls="expense-filters"
+					onClick={() => setFiltersOpen((open) => !open)}
+				>
+					<FunnelSimple size={17} />
+					Фильтры
+					{activeFilterCount > 0 && <b>{activeFilterCount}</b>}
+				</button>
 			</div>
-			<div>
-				<small>Итого</small>
-				<strong>
-					{formatMoney(
-						items.reduce(
-							(sum, row) =>
-								sum +
-								(itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
-							0,
-						),
-						currency,
+			{(activeCategory || activeVendor) && (
+				<div className="mini-filter-chips" aria-label="Активные фильтры">
+					{activeCategory && (
+						<button type="button" onClick={() => onCategory(0)}>
+							{activeCategory.name}
+							<X size={13} />
+						</button>
 					)}
-				</strong>
-			</div>
-		</div>
-		<div className="mini-filters mini-filters--three">
-			<select
-				aria-label="Период"
-				value={period}
-				onChange={(event) => onPeriod(event.target.value as Period)}
-			>
-				<option value="today">Сегодня</option>
-				<option value="three-days">3 дня</option>
-				<option value="week">Неделя</option>
-				<option value="month">Этот месяц</option>
-				<option value="three-months">3 месяца</option>
-				<option value="six-months">6 месяцев</option>
-				<option value="year">Этот год</option>
-				<option value="all">Всё время</option>
-			</select>
-			<select
-				aria-label="Категория"
-				value={categoryID}
-				onChange={(event) => onCategory(Number(event.target.value))}
-			>
-				<option value={0}>Все категории</option>
-				{categories.map((category) => (
-					<option key={category.id} value={category.id}>
-						{category.name}
-					</option>
-				))}
-			</select>
-			<select
-				aria-label="Где купили"
-				value={vendorID}
-				onChange={(event) => onVendor(Number(event.target.value))}
-			>
-				<option value={0}>Все продавцы</option>
-				{vendors.map((vendor) => (
-					<option key={vendor.id} value={vendor.id}>
-						{vendor.name}
-					</option>
-				))}
-			</select>
-		</div>
-		<div className="mini-expense-mode" role="group" aria-label="Вид расходов">
-			<button
-				className={!groupByExpense ? "active" : ""}
-				type="button"
-				aria-pressed={!groupByExpense}
-				onClick={() => onGrouping(false)}
-			>
-				Позиции
-			</button>
-			<button
-				className={groupByExpense ? "active" : ""}
-				type="button"
-				aria-pressed={groupByExpense}
-				onClick={() => onGrouping(true)}
-			>
-				По расходам
-			</button>
-		</div>
-		{groupByExpense ? (
-			<GroupedExpenseItemList
-				items={items}
-				categories={categories}
-				captures={captures}
-				currency={currency}
-				onSource={onSource}
-				onEdit={onEdit}
-			/>
-		) : (
-			<ExpenseItemList
-				items={items}
-				categories={categories}
-				captures={captures}
-				currency={currency}
-				onEdit={onEdit}
-			/>
-		)}
-	</section>
-);
+					{activeVendor && (
+						<button type="button" onClick={() => onVendor(0)}>
+							{activeVendor.name}
+							<X size={13} />
+						</button>
+					)}
+				</div>
+			)}
+			{filtersOpen && (
+				<div className="mini-filter-panel" id="expense-filters">
+					<div className="mini-filters">
+						<select
+							aria-label="Категория"
+							value={categoryID}
+							onChange={(event) => onCategory(Number(event.target.value))}
+						>
+							<option value={0}>Все категории</option>
+							{categories.map((category) => (
+								<option key={category.id} value={category.id}>
+									{category.name}
+								</option>
+							))}
+						</select>
+						<select
+							aria-label="Где купили"
+							value={vendorID}
+							onChange={(event) => onVendor(Number(event.target.value))}
+						>
+							<option value={0}>Все продавцы</option>
+							{vendors.map((vendor) => (
+								<option key={vendor.id} value={vendor.id}>
+									{vendor.name}
+								</option>
+							))}
+						</select>
+					</div>
+					<div
+						className="mini-expense-mode"
+						role="group"
+						aria-label="Вид расходов"
+					>
+						<button
+							className={!groupByExpense ? "active" : ""}
+							type="button"
+							aria-pressed={!groupByExpense}
+							onClick={() => onGrouping(false)}
+						>
+							Позиции
+						</button>
+						<button
+							className={groupByExpense ? "active" : ""}
+							type="button"
+							aria-pressed={groupByExpense}
+							onClick={() => onGrouping(true)}
+						>
+							По расходам
+						</button>
+					</div>
+				</div>
+			)}
+			{groupByExpense ? (
+				<GroupedExpenseItemList
+					items={items}
+					categories={categories}
+					captures={captures}
+					currency={currency}
+					onSource={onSource}
+					onEdit={onEdit}
+				/>
+			) : (
+				<ExpenseItemList
+					items={items}
+					categories={categories}
+					captures={captures}
+					currency={currency}
+					onEdit={onEdit}
+				/>
+			)}
+		</section>
+	);
+};
 
 const ExpenseItemList = ({
 	items,
