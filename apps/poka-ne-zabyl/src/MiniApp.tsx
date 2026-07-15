@@ -222,6 +222,7 @@ type User = {
 	name: string;
 	email: string;
 	emailVerified?: boolean;
+	telegramId?: number;
 	telegramUsername?: string;
 	country: string;
 	language: string;
@@ -695,6 +696,7 @@ export const MiniApp = () => {
 	const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 	const [editingProfile, setEditingProfile] = useState<User | null>(null);
 	const [emailLinkOpen, setEmailLinkOpen] = useState(false);
+	const [telegramLinkOpen, setTelegramLinkOpen] = useState(false);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [captureOpen, setCaptureOpen] = useState(false);
 	const [captureMode, setCaptureMode] = useState<CaptureMode>("choose");
@@ -2788,6 +2790,7 @@ export const MiniApp = () => {
 								onManageVendors={() => setView("vendors")}
 								onManageSpaces={() => setView("spaces")}
 								onLinkEmail={() => setEmailLinkOpen(true)}
+								onLinkTelegram={() => setTelegramLinkOpen(true)}
 								onLogout={
 									!WebApp.initData && !previewMode ? logoutBrowser : undefined
 								}
@@ -3054,6 +3057,17 @@ export const MiniApp = () => {
 						setUser(nextUser);
 						setEmailLinkOpen(false);
 						setNotice("Почта привязана. Теперь по ней можно входить");
+					}}
+				/>
+			)}
+			{telegramLinkOpen && (
+				<TelegramLinkDialog
+					token={token}
+					onClose={() => setTelegramLinkOpen(false)}
+					onLinked={(nextUser) => {
+						setUser(nextUser);
+						setTelegramLinkOpen(false);
+						setNotice("Telegram привязан. Теперь через него можно входить");
 					}}
 				/>
 			)}
@@ -4802,6 +4816,7 @@ const ProfileView = ({
 	onManageVendors,
 	onManageSpaces,
 	onLinkEmail,
+	onLinkTelegram,
 	onLogout,
 	onInstall,
 	onUnavailable,
@@ -4816,6 +4831,7 @@ const ProfileView = ({
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
 	onLinkEmail: () => void;
+	onLinkTelegram: () => void;
 	onLogout?: () => void;
 	onInstall: () => void;
 	onUnavailable: () => void;
@@ -4886,6 +4902,23 @@ const ProfileView = ({
 				</button>
 			</div>
 			<div className="mini-profile-list">
+				<button
+					type="button"
+					onClick={onLinkTelegram}
+					disabled={Boolean(user?.telegramId)}
+				>
+					<span>
+						<PaperPlaneTilt size={18} />
+						Telegram
+					</span>
+					<b>
+						{user?.telegramId
+							? user.telegramUsername
+								? `@${user.telegramUsername}`
+								: "Привязан"
+							: "Привязать"}
+					</b>
+				</button>
 				<button type="button" onClick={onLinkEmail}>
 					<span>
 						<PaperPlaneTilt size={18} />
@@ -6385,6 +6418,8 @@ const BrowserEntry = ({
 	onEmailAuth: (auth: AuthResponse) => Promise<void>;
 }) => {
 	const [method, setMethod] = useState<"telegram" | "email">("telegram");
+	const [emailMode, setEmailMode] = useState<"login" | "register">("login");
+	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [code, setCode] = useState("");
 	const [codeSent, setCodeSent] = useState(false);
@@ -6395,16 +6430,20 @@ const BrowserEntry = ({
 		setLoading(true);
 		setLocalError("");
 		try {
-			await apiRequest("/auth/email/login/request", "", {
+			await apiRequest(`/auth/email/${emailMode}/request`, "", {
 				method: "POST",
-				body: JSON.stringify({ email: email.trim() }),
+				body: JSON.stringify({ name: name.trim(), email: email.trim() }),
 			});
 			setCodeSent(true);
 		} catch (requestError) {
-			setLocalError(
+			const message =
 				requestError instanceof Error
 					? requestError.message
-					: "Не удалось отправить код",
+					: "Не удалось отправить код";
+			setLocalError(
+				message.includes("email already registered")
+					? "Эта почта уже зарегистрирована. Выберите «Войти»."
+					: message,
 			);
 		} finally {
 			setLoading(false);
@@ -6416,11 +6455,21 @@ const BrowserEntry = ({
 		setLocalError("");
 		try {
 			const auth = await apiRequest<AuthResponse>(
-				"/auth/email/login/confirm",
+				`/auth/email/${emailMode}/confirm`,
 				"",
 				{
 					method: "POST",
-					body: JSON.stringify({ email: email.trim(), code: code.trim() }),
+					body: JSON.stringify({
+						name: name.trim(),
+						email: email.trim(),
+						code: code.trim(),
+						country: "RU",
+						language: navigator.language.split("-")[0] || "ru",
+						timezone:
+							Intl.DateTimeFormat().resolvedOptions().timeZone ||
+							"Europe/Moscow",
+						currency: "RUB",
+					}),
 				},
 			);
 			await onEmailAuth(auth);
@@ -6468,6 +6517,45 @@ const BrowserEntry = ({
 				</>
 			) : (
 				<div className="browser-email-auth">
+					<div className="browser-email-modes" aria-label="Действие с почтой">
+						<button
+							type="button"
+							className={emailMode === "login" ? "active" : ""}
+							onClick={() => {
+								setEmailMode("login");
+								setCodeSent(false);
+								setCode("");
+								setLocalError("");
+							}}
+						>
+							Войти
+						</button>
+						<button
+							type="button"
+							className={emailMode === "register" ? "active" : ""}
+							onClick={() => {
+								setEmailMode("register");
+								setCodeSent(false);
+								setCode("");
+								setLocalError("");
+							}}
+						>
+							Регистрация
+						</button>
+					</div>
+					{emailMode === "register" && (
+						<label>
+							Имя
+							<input
+								type="text"
+								autoComplete="name"
+								value={name}
+								disabled={codeSent}
+								onChange={(event) => setName(event.target.value)}
+								placeholder="Как к вам обращаться"
+							/>
+						</label>
+					)}
 					<label>
 						Почта
 						<input
@@ -6502,7 +6590,11 @@ const BrowserEntry = ({
 								disabled={loading || code.length !== 6}
 								onClick={confirmCode}
 							>
-								{loading ? "Проверяем…" : "Войти"}
+								{loading
+									? "Проверяем…"
+									: emailMode === "register"
+										? "Создать аккаунт"
+										: "Войти"}
 							</button>
 							<button
 								className="browser-auth-link"
@@ -6518,7 +6610,11 @@ const BrowserEntry = ({
 					) : (
 						<button
 							type="button"
-							disabled={loading || !email.includes("@")}
+							disabled={
+								loading ||
+								!email.includes("@") ||
+								(emailMode === "register" && !name.trim())
+							}
 							onClick={requestCode}
 						>
 							{loading ? "Отправляем…" : "Получить код"}
@@ -6526,8 +6622,10 @@ const BrowserEntry = ({
 					)}
 					<small>
 						{codeSent
-							? "Не пришло письмо? Войдите через Telegram и привяжите почту в профиле."
-							: "Код придет только на почту, привязанную в профиле через Telegram."}
+							? "Код действует 10 минут. Проверьте также папку «Спам»."
+							: emailMode === "register"
+								? "Пароль не нужен — вход всегда подтверждается кодом из письма."
+								: "Введите почту, которую указывали при регистрации или привязали в профиле."}
 					</small>
 				</div>
 			)}
@@ -6635,6 +6733,56 @@ const EmailLinkDialog = ({
 			>
 				{saving ? "Подождите…" : codeSent ? "Подтвердить" : "Отправить код"}
 			</button>
+		</Modal>
+	);
+};
+
+const TelegramLinkDialog = ({
+	token,
+	onClose,
+	onLinked,
+}: {
+	token: string;
+	onClose: () => void;
+	onLinked: (user: User) => void;
+}) => {
+	const [error, setError] = useState("");
+	const link = async (telegramUser: TelegramWidgetUser) => {
+		setError("");
+		try {
+			const nextUser = await apiRequest<User>("/auth/telegram/link", token, {
+				method: "POST",
+				body: JSON.stringify({
+					telegram_id: telegramUser.id,
+					username: telegramUser.username || "",
+					first_name: telegramUser.first_name || "",
+					last_name: telegramUser.last_name || "",
+					photo_url: telegramUser.photo_url || "",
+					auth_date: telegramUser.auth_date,
+					hash: telegramUser.hash,
+				}),
+			});
+			onLinked(nextUser);
+		} catch (linkError) {
+			const message =
+				linkError instanceof Error
+					? linkError.message
+					: "Не удалось привязать Telegram";
+			setError(
+				message.includes("telegram already linked")
+					? "Этот Telegram уже привязан к другому аккаунту."
+					: message,
+			);
+		}
+	};
+	return (
+		<Modal title="Привязать Telegram" onClose={onClose}>
+			<p className="mini-modal-note">
+				После привязки можно будет входить через Telegram и пользоваться ботом с
+				этими же расходами.
+			</p>
+			<TelegramLoginButton onAuth={link} />
+			{error && <p className="mini-form-error">{error}</p>}
 		</Modal>
 	);
 };
