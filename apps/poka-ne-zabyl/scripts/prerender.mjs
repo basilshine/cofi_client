@@ -74,11 +74,36 @@ const pageHead = ({ path, title, description }) => {
 								"Личные и общие расходы",
 							],
 							provider: { "@id": `${origin}/#organization` },
-							offers: {
-								"@type": "Offer",
-								price: "0",
-								priceCurrency: "RUB",
-							},
+						},
+						{
+							"@type": "FAQPage",
+							"@id": `${origin}/#faq`,
+							mainEntity: [
+								{
+									"@type": "Question",
+									name: "Бот сам сохраняет всё без проверки?",
+									acceptedAnswer: {
+										"@type": "Answer",
+										text: "Нет. Он предлагает разобранный расход, а вы подтверждаете или исправляете результат.",
+									},
+								},
+								{
+									"@type": "Question",
+									name: "Можно пользоваться только лично?",
+									acceptedAnswer: {
+										"@type": "Answer",
+										text: "Да. Групповой чат и общие расходы — дополнительный сценарий, а не обязательное условие.",
+									},
+								},
+								{
+									"@type": "Question",
+									name: "Где хранятся данные и чеки?",
+									acceptedAnswer: {
+										"@type": "Answer",
+										text: "Основные данные и исходные файлы российского запуска размещаются на инфраструктуре в России.",
+									},
+								},
+							],
 						},
 					],
 				}).replaceAll("<", "\\u003c")}</script>`
@@ -94,8 +119,12 @@ const pageHead = ({ path, title, description }) => {
 		<meta property="og:title" content="${escapeAttribute(title)}" />
 		<meta property="og:description" content="${escapeAttribute(description)}" />
 		<meta property="og:url" content="${canonical}" />
-		<meta property="og:image" content="${origin}/assets/poka-ne-zabyl-logo.jpg" />
-		<meta name="twitter:card" content="summary" />
+		<meta property="og:image" content="${origin}/assets/poka-ne-zabyl-og.png" />
+		<meta property="og:image:width" content="1200" />
+		<meta property="og:image:height" content="630" />
+		<meta property="og:image:type" content="image/png" />
+		<meta property="og:image:alt" content="Пока не забыл — учёт расходов в Telegram" />
+		<meta name="twitter:card" content="summary_large_image" />
 		${structuredData}`;
 };
 
@@ -115,6 +144,11 @@ for (const seo of PUBLIC_PAGE_SEO) {
 	assert(html.includes(`<link rel="canonical" href="${origin}${seo.path}"`));
 	assert(html.includes("<h1"), `${seo.path} must contain rendered content`);
 	assert(html.includes(`ym(${metrikaCounterId},"init"`));
+	if (seo.path === "/") {
+		assert(html.includes('"@type":"FAQPage"'));
+		assert(html.includes("/assets/poka-ne-zabyl-og.png"));
+		assert(!html.includes('"price":"0"'));
+	}
 }
 
 const noindexShell = (title) =>
