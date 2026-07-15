@@ -571,6 +571,22 @@ const previewCaptures: CapturePacket[] = [
 		source_text: "Такси домой 680 рублей",
 	},
 ];
+const previewReviewCandidates: ReviewCandidate[] = [
+	{
+		id: 77,
+		source_document_id: 105,
+		candidate_type: "expense_candidate",
+		title: "Покупки в Ленте",
+		status: "pending_review",
+		structured_data: {
+			payee_text: "Лента",
+			total: 7173.33,
+			source_currency: "RUB",
+			expense_date: localISODate(),
+			items: [{ name: "Продукты", amount: 7173.33, category_key: "groceries" }],
+		},
+	},
+];
 
 const captureForExpense = (expense: Expense, captures: CapturePacket[]) =>
 	captures.find(
@@ -670,6 +686,9 @@ export const MiniApp = () => {
 	const [expenses, setExpenses] = useState<Expense[]>([]);
 	const [plans, setPlans] = useState<PurchasePlan[]>([]);
 	const [captures, setCaptures] = useState<CapturePacket[]>([]);
+	const [reviewCandidates, setReviewCandidates] = useState<ReviewCandidate[]>(
+		[],
+	);
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [vendors, setVendors] = useState<Vendor[]>([]);
 	const [quota, setQuota] = useState<Quota | null>(null);
@@ -734,19 +753,20 @@ export const MiniApp = () => {
 			})
 			.slice(0, 200);
 	}, [expenses]);
-	const readyCapture = useMemo(
+	const pendingReviewCandidates = useMemo(
 		() =>
-			captures.find(
-				(capture) =>
-					capture.processing_status === "succeeded" &&
-					(capture.pending_count || 0) > 0,
-			) || null,
-		[captures],
+			reviewCandidates.filter(
+				(candidate) =>
+					candidate.candidate_type === "expense_candidate" &&
+					candidate.status === "pending_review",
+			),
+		[reviewCandidates],
 	);
-	const showReadyCapture =
-		readyCapture &&
+	const readyCandidate = pendingReviewCandidates[0] || null;
+	const showReadyCandidate =
+		readyCandidate &&
 		view !== "review" &&
-		readyCapture.source_document_id !== dismissedCaptureSourceID;
+		readyCandidate.source_document_id !== dismissedCaptureSourceID;
 
 	useEffect(() => {
 		document.body.classList.add("mini-body");
@@ -831,6 +851,7 @@ export const MiniApp = () => {
 			setExpenses(previewExpenses);
 			setPlans(previewPlans);
 			setCaptures(previewCaptures);
+			setReviewCandidates(previewReviewCandidates);
 			setCategories(previewCategories);
 			setVendors(previewVendors);
 			setQuota({ plan: "basic", limit: 100, used: 37, remaining: 63 });
@@ -996,6 +1017,7 @@ export const MiniApp = () => {
 				vendorData,
 				captureData,
 				planData,
+				reviewData,
 			] = await Promise.all([
 				apiRequest<{ expenses: Expense[] }>(
 					`/spaces/${spaceID}/expenses?limit=200&currency=${encodeURIComponent(user?.currency || "RUB")}`,
@@ -1019,6 +1041,10 @@ export const MiniApp = () => {
 					`/spaces/${spaceID}/plans`,
 					token,
 				),
+				apiRequest<{ candidates: ReviewCandidate[] }>(
+					`/spaces/${spaceID}/review/candidates?limit=100`,
+					token,
+				),
 			]);
 			if (requestID !== loadSequence.current) return;
 			setExpenses(expenseData.expenses || []);
@@ -1028,6 +1054,7 @@ export const MiniApp = () => {
 			setMembers(memberData.members || []);
 			setVendors(vendorData || []);
 			setPlans(planData.plans || []);
+			setReviewCandidates(reviewData.candidates || []);
 			if (view === "review" && requestedReview) {
 				await loadReview(token, spaceID, requestedReview.candidateID);
 			}
@@ -1078,31 +1105,25 @@ export const MiniApp = () => {
 			setReviewMediaURL(URL.createObjectURL(blob));
 	};
 
-	const openReadyCapture = async () => {
-		if (!token || !readyCapture) return;
-		setDismissedCaptureSourceID(readyCapture.source_document_id);
+	const openReviewCandidate = async (candidate: ReviewCandidate) => {
+		if (!token) return;
+		setDismissedCaptureSourceID(candidate.source_document_id);
 		setSaving(true);
 		setCaptureFailure("");
 		try {
-			const reviewSpaceID = readyCapture.space_id || spaceID;
-			const response = await apiRequest<{ candidates: ReviewCandidate[] }>(
-				`/spaces/${reviewSpaceID}/review/candidates?limit=100&source_document_id=${readyCapture.source_document_id}`,
-				token,
-			);
-			const candidate = response.candidates.find(
-				(item) => item.candidate_type === "expense_candidate",
-			);
-			if (!candidate) throw new Error("Расход уже сохранён или недоступен");
 			setSavedReviewExpense(null);
 			setReviewDraft(null);
 			setReviewMediaURL("");
-			await loadReview(
-				token,
-				reviewSpaceID,
-				candidate.id,
-				readyCapture.source_document_id,
-			);
-			setSpaceID(reviewSpaceID);
+			if (previewMode) {
+				setReviewDraft(reviewDraftFromCandidate(candidate, reviewCandidates));
+			} else {
+				await loadReview(
+					token,
+					spaceID,
+					candidate.id,
+					candidate.source_document_id,
+				);
+			}
 			setView("review");
 		} catch (err) {
 			setDismissedCaptureSourceID(0);
@@ -1112,6 +1133,10 @@ export const MiniApp = () => {
 		} finally {
 			setSaving(false);
 		}
+	};
+
+	const openReadyCandidate = () => {
+		if (readyCandidate) void openReviewCandidate(readyCandidate);
 	};
 
 	const submitCapture = async (submission: CaptureSubmission) => {
@@ -1415,6 +1440,11 @@ export const MiniApp = () => {
 			};
 			if (previewMode) {
 				setSavedReviewExpense(reviewExpenseFromDraft(reviewDraft, currency));
+				setReviewCandidates((current) =>
+					current.filter(
+						(candidate) => candidate.id !== reviewDraft.candidateID,
+					),
+				);
 				return;
 			}
 			const result = await apiRequest<{
@@ -2665,7 +2695,7 @@ export const MiniApp = () => {
 								plans={plans}
 								captures={captures}
 								hasAnyExpenses={expenses.length > 0}
-								hasReadyCapture={Boolean(showReadyCapture)}
+								pendingCandidates={pendingReviewCandidates}
 								onCategory={openCategory}
 								onExpense={openExpense}
 								onExpenses={openAllExpenses}
@@ -2675,7 +2705,9 @@ export const MiniApp = () => {
 								}}
 								onEditPlan={(plan) => setEditingPlan({ ...plan })}
 								onBuyPlan={buyPlan}
-								onReview={() => void openReadyCapture()}
+								onReviewCandidate={(candidate) =>
+									void openReviewCandidate(candidate)
+								}
 								onCapture={openCapture}
 								onManual={addExpense}
 							/>
@@ -2822,7 +2854,7 @@ export const MiniApp = () => {
 			{(captureSubmitting ||
 				pendingCapture ||
 				captureFailure ||
-				(showReadyCapture && view !== "overview")) && (
+				(showReadyCandidate && view !== "overview")) && (
 				<div
 					className={`capture-status${captureFailure ? " is-error" : ""}`}
 					role="status"
@@ -2830,7 +2862,7 @@ export const MiniApp = () => {
 				>
 					{captureFailure ? (
 						<X size={20} />
-					) : showReadyCapture && !captureSubmitting && !pendingCapture ? (
+					) : showReadyCandidate && !captureSubmitting && !pendingCapture ? (
 						<Check size={20} weight="bold" />
 					) : (
 						<KnotLoader compact />
@@ -2839,7 +2871,7 @@ export const MiniApp = () => {
 						<strong>
 							{captureFailure
 								? "Расход не разобран"
-								: showReadyCapture && !captureSubmitting && !pendingCapture
+								: showReadyCandidate && !captureSubmitting && !pendingCapture
 									? "Расход готов"
 									: captureSubmitting
 										? "Отправляем расход…"
@@ -2847,12 +2879,12 @@ export const MiniApp = () => {
 						</strong>
 						<small>
 							{captureFailure ||
-								(showReadyCapture && !captureSubmitting && !pendingCapture
+								(showReadyCandidate && !captureSubmitting && !pendingCapture
 									? "Проверьте распознанные данные"
 									: "Можно продолжать пользоваться приложением")}
 						</small>
 					</div>
-					{showReadyCapture &&
+					{showReadyCandidate &&
 					!captureSubmitting &&
 					!pendingCapture &&
 					!captureFailure ? (
@@ -2861,7 +2893,7 @@ export const MiniApp = () => {
 								className="capture-status-action"
 								type="button"
 								disabled={saving}
-								onClick={() => void openReadyCapture()}
+								onClick={openReadyCandidate}
 							>
 								Проверить
 							</button>
@@ -2869,7 +2901,7 @@ export const MiniApp = () => {
 								type="button"
 								aria-label="Скрыть сообщение"
 								onClick={() =>
-									setDismissedCaptureSourceID(readyCapture.source_document_id)
+									setDismissedCaptureSourceID(readyCandidate.source_document_id)
 								}
 							>
 								<X size={17} />
@@ -3656,14 +3688,14 @@ const Overview = ({
 	plans,
 	captures,
 	hasAnyExpenses,
-	hasReadyCapture,
+	pendingCandidates,
 	onCategory,
 	onExpense,
 	onExpenses,
 	onPlans,
 	onEditPlan,
 	onBuyPlan,
-	onReview,
+	onReviewCandidate,
 	onCapture,
 	onManual,
 }: {
@@ -3678,18 +3710,18 @@ const Overview = ({
 	plans: PurchasePlan[];
 	captures: CapturePacket[];
 	hasAnyExpenses: boolean;
-	hasReadyCapture: boolean;
+	pendingCandidates: ReviewCandidate[];
 	onCategory: (id: number, period?: Period) => void;
 	onExpense: (id: number) => void;
 	onExpenses: () => void;
 	onPlans: () => void;
 	onEditPlan: (plan: PurchasePlan) => void;
 	onBuyPlan: (plan: PurchasePlan) => void;
-	onReview: () => void;
+	onReviewCandidate: (candidate: ReviewCandidate) => void;
 	onCapture: (mode?: CaptureMode) => void;
 	onManual: () => void;
 }) => {
-	if (!hasAnyExpenses && plans.length === 0) {
+	if (!hasAnyExpenses && plans.length === 0 && pendingCandidates.length === 0) {
 		return <FirstExpenseEmpty onCapture={onCapture} onManual={onManual} />;
 	}
 
@@ -3724,18 +3756,49 @@ const Overview = ({
 							{expenses.length} {expenseWord(expenses.length)}
 						</small>
 					</div>
-					{hasReadyCapture && (
-						<button
-							className="mini-review-prompt"
-							type="button"
-							onClick={onReview}
-						>
-							<span>
-								<Check size={20} weight="bold" />
-								<b>Расход готов</b>
-							</span>
-							<em>Проверить</em>
-						</button>
+					{pendingCandidates.length > 0 && (
+						<section className="mini-pending-reviews">
+							<div className="mini-section-head">
+								<h2>{uiText(language, "pendingReviews")}</h2>
+								<small>{pendingCandidates.length}</small>
+							</div>
+							<div className="mini-pending-review-list">
+								{pendingCandidates.map((candidate) => {
+									const data = candidate.structured_data || {};
+									const amount = readNumber(
+										data,
+										"total",
+										"total_amount",
+										"amount",
+									);
+									const candidateCurrency =
+										readString(data, "source_currency", "currency") || currency;
+									return (
+										<button
+											key={candidate.id}
+											type="button"
+											onClick={() => onReviewCandidate(candidate)}
+										>
+											<span className="mini-pending-review-icon">
+												<Receipt size={18} />
+											</span>
+											<span className="mini-pending-review-copy">
+												<b>
+													{candidate.title ||
+														uiText(language, "recognizedExpense")}
+												</b>
+												<small>{uiText(language, "notSaved")}</small>
+											</span>
+											{amount > 0 && (
+												<strong>
+													{formatMoney(amount, candidateCurrency)}
+												</strong>
+											)}
+										</button>
+									);
+								})}
+							</div>
+						</section>
 					)}
 					{upcomingPlans.length > 0 && (
 						<section className="mini-home-plans">

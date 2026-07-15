@@ -162,22 +162,71 @@
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0;
 }
-.mini-review-prompt {
-	display: flex;
-	min-height: 52px;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	padding: 0 15px;
-	border: 1px solid rgba(41, 69, 199, 0.24);
-	border-radius: 8px;
-	background: #eef1fa;
-	color: var(--mini-ink);
-}
-.mini-review-prompt span {
-	display: inline-flex;
-	align-items: center;
+.mini-pending-reviews {
+	display: grid;
 	gap: 9px;
+}
+.mini-pending-reviews .mini-section-head small {
+	display: grid;
+	min-width: 24px;
+	height: 24px;
+	place-items: center;
+	border-radius: 50%;
+	background: #deddd8;
+	color: var(--mini-muted);
+	font-size: 12px;
+}
+.mini-pending-review-list {
+	display: grid;
+	gap: 1px;
+	overflow: hidden;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-line);
+}
+.mini-pending-review-list > button {
+	display: grid;
+	grid-template-columns: 36px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	min-height: 60px;
+	padding: 9px 12px;
+	border: 0;
+	background: #efeee9;
+	color: var(--mini-ink);
+	text-align: left;
+}
+.mini-pending-review-icon {
+	display: grid;
+	width: 34px;
+	height: 34px;
+	place-items: center;
+	border-radius: 50%;
+	background: #deddd8;
+	color: var(--mini-muted);
+}
+.mini-pending-review-copy {
+	display: grid;
+	min-width: 0;
+	gap: 3px;
+}
+.mini-pending-review-copy b,
+.mini-pending-review-copy small {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-pending-review-copy b {
+	font-size: 13px;
+}
+.mini-pending-review-copy small {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.mini-pending-review-list strong {
+	font-size: 13px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
 }
 .mini-home-plans {
 	display: grid;
@@ -243,14 +292,6 @@
 	border-radius: 50%;
 	background: var(--mini-soft);
 	color: var(--mini-green);
-}
-.mini-review-prompt svg,
-.mini-review-prompt em {
-	color: var(--mini-green);
-}
-.mini-review-prompt em {
-	font-style: normal;
-	font-weight: 750;
 }
 .mini-section-head {
 	display: flex;
