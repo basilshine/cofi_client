@@ -67,7 +67,7 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
-	padding: var(--mini-safe-top) 18px 0;
+	padding: calc(var(--mini-safe-top) + 6px) 20px 8px;
 	border-bottom: 1px solid rgba(23, 27, 45, 0.08);
 	background: rgba(244, 239, 228, 0.94);
 	backdrop-filter: blur(16px);
