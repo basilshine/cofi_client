@@ -26,6 +26,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import "./mini-app.css";
 import { captureSourceKind } from "./capture-source";
 import { groupRowsByExpense } from "./expense-groups";
+import { type Period, periodBounds } from "./expense-period";
 import {
 	type UILanguage,
 	languageOptions,
@@ -62,16 +63,6 @@ type View =
 	| "profile"
 	| "review";
 type CaptureMode = "choose" | "text" | "voice" | "photo";
-type Period =
-	| "today"
-	| "three-days"
-	| "week"
-	| "month"
-	| "three-months"
-	| "six-months"
-	| "year"
-	| "all";
-
 type Space = {
 	id: number;
 	tenant_id: number;
@@ -595,6 +586,8 @@ export const MiniApp = () => {
 	const [error, setError] = useState("");
 	const [notice, setNotice] = useState("");
 	const [period, setPeriod] = useState<Period>("month");
+	const [dateFrom, setDateFrom] = useState("");
+	const [dateTo, setDateTo] = useState("");
 	const [categoryID, setCategoryID] = useState(0);
 	const [vendorID, setVendorID] = useState(0);
 	const [expenseID, setExpenseID] = useState(0);
@@ -1275,9 +1268,9 @@ export const MiniApp = () => {
 
 	const filteredItems = useMemo(() => {
 		const normalizedQuery = query.trim().toLocaleLowerCase("ru");
-		const start = periodStart(period);
+		const bounds = periodBounds(period, dateFrom, dateTo);
 		return expenseItemRows(expenses).filter(({ expense, item }) => {
-			const date = new Date(`${expense.expense_date}T00:00:00`);
+			const date = expense.expense_date.slice(0, 10);
 			const itemVendorID = item.vendor_id || expense.vendor_id;
 			const text = [
 				item.name,
@@ -1295,14 +1288,41 @@ export const MiniApp = () => {
 				.join(" ")
 				.toLocaleLowerCase("ru");
 			return (
-				(!start || date >= start) &&
+				(!bounds.from || date >= bounds.from) &&
+				(!bounds.to || date <= bounds.to) &&
 				(expenseID === 0 || expense.id === expenseID) &&
 				(categoryID === 0 || item.category_id === categoryID) &&
 				(vendorID === 0 || itemVendorID === vendorID) &&
 				(!normalizedQuery || text.includes(normalizedQuery))
 			);
 		});
-	}, [expenses, period, expenseID, categoryID, vendorID, query]);
+	}, [
+		expenses,
+		period,
+		dateFrom,
+		dateTo,
+		expenseID,
+		categoryID,
+		vendorID,
+		query,
+	]);
+
+	const changePeriod = (nextPeriod: Period) => {
+		if (nextPeriod === "custom" && !dateFrom && !dateTo) {
+			const currentMonth = periodBounds("month");
+			setDateFrom(currentMonth.from);
+			setDateTo(currentMonth.to);
+		}
+		setPeriod(nextPeriod);
+	};
+	const changeDateFrom = (value: string) => {
+		setDateFrom(value);
+		if (value && dateTo && value > dateTo) setDateTo(value);
+	};
+	const changeDateTo = (value: string) => {
+		setDateTo(value);
+		if (value && dateFrom && value < dateFrom) setDateFrom(value);
+	};
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
 	const currency = user?.currency || activeSpace?.currency || "RUB";
@@ -2255,12 +2275,16 @@ export const MiniApp = () => {
 								captures={captures}
 								currency={currency}
 								period={period}
+								dateFrom={dateFrom}
+								dateTo={dateTo}
 								expense={expenses.find((expense) => expense.id === expenseID)}
 								categoryID={categoryID}
 								vendorID={vendorID}
 								groupByExpense={groupByExpense}
 								query={query}
-								onPeriod={setPeriod}
+								onPeriod={changePeriod}
+								onDateFrom={changeDateFrom}
+								onDateTo={changeDateTo}
 								onClearExpense={() => setExpenseID(0)}
 								onCategory={setCategoryID}
 								onVendor={setVendorID}
@@ -3367,12 +3391,16 @@ const ExpensesView = ({
 	captures,
 	currency,
 	period,
+	dateFrom,
+	dateTo,
 	expense,
 	categoryID,
 	vendorID,
 	groupByExpense,
 	query,
 	onPeriod,
+	onDateFrom,
+	onDateTo,
 	onClearExpense,
 	onCategory,
 	onVendor,
@@ -3389,12 +3417,16 @@ const ExpensesView = ({
 	captures: CapturePacket[];
 	currency: string;
 	period: Period;
+	dateFrom: string;
+	dateTo: string;
 	expense?: Expense;
 	categoryID: number;
 	vendorID: number;
 	groupByExpense: boolean;
 	query: string;
 	onPeriod: (period: Period) => void;
+	onDateFrom: (value: string) => void;
+	onDateTo: (value: string) => void;
 	onClearExpense: () => void;
 	onCategory: (id: number) => void;
 	onVendor: (id: number) => void;
@@ -3475,18 +3507,25 @@ const ExpensesView = ({
 			</div>
 			<div className="mini-filter-bar">
 				<select
-					aria-label="Период"
+					aria-label={uiText(language, "periodLabel")}
 					value={period}
 					onChange={(event) => onPeriod(event.target.value as Period)}
 				>
-					<option value="today">Сегодня</option>
-					<option value="three-days">3 дня</option>
-					<option value="week">Неделя</option>
-					<option value="month">Этот месяц</option>
-					<option value="three-months">3 месяца</option>
-					<option value="six-months">6 месяцев</option>
-					<option value="year">Этот год</option>
-					<option value="all">Всё время</option>
+					<option value="today">{uiText(language, "periodToday")}</option>
+					<option value="three-days">
+						{uiText(language, "periodThreeDays")}
+					</option>
+					<option value="week">{uiText(language, "periodWeek")}</option>
+					<option value="month">{uiText(language, "periodMonth")}</option>
+					<option value="three-months">
+						{uiText(language, "periodThreeMonths")}
+					</option>
+					<option value="six-months">
+						{uiText(language, "periodSixMonths")}
+					</option>
+					<option value="year">{uiText(language, "periodYear")}</option>
+					<option value="all">{uiText(language, "periodAll")}</option>
+					<option value="custom">{uiText(language, "periodCustom")}</option>
 				</select>
 				<button
 					type="button"
@@ -3499,6 +3538,28 @@ const ExpensesView = ({
 					{activeFilterCount > 0 && <b>{activeFilterCount}</b>}
 				</button>
 			</div>
+			{period === "custom" && (
+				<div className="mini-date-range">
+					<label>
+						<span>{uiText(language, "dateFrom")}</span>
+						<input
+							type="date"
+							max={dateTo || undefined}
+							value={dateFrom}
+							onChange={(event) => onDateFrom(event.target.value)}
+						/>
+					</label>
+					<label>
+						<span>{uiText(language, "dateTo")}</span>
+						<input
+							type="date"
+							min={dateFrom || undefined}
+							value={dateTo}
+							onChange={(event) => onDateTo(event.target.value)}
+						/>
+					</label>
+				</div>
+			)}
 			{(activeCategory || activeVendor) && (
 				<div className="mini-filter-chips" aria-label="Активные фильтры">
 					{activeCategory && (
@@ -5502,23 +5563,6 @@ const TelegramEntry = ({ error }: { error: string }) => {
 			<a href={BOT_URL}>{uiText(language, "openBot")}</a>
 		</main>
 	);
-};
-
-const periodStart = (period: Period) => {
-	if (period === "all") return null;
-	const now = new Date();
-	if (period === "today")
-		return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	if (period === "three-days")
-		return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2);
-	if (period === "week")
-		return new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
-	if (period === "month") return new Date(now.getFullYear(), now.getMonth(), 1);
-	if (period === "three-months")
-		return new Date(now.getFullYear(), now.getMonth() - 2, 1);
-	if (period === "six-months")
-		return new Date(now.getFullYear(), now.getMonth() - 5, 1);
-	return new Date(now.getFullYear(), 0, 1);
 };
 
 const formatDate = (value: string) =>

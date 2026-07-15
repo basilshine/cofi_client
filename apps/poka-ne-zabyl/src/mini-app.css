@@ -514,6 +514,36 @@
 	color: #fff;
 	font-size: 11px;
 }
+.mini-date-range {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 9px;
+	padding: 10px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-soft);
+}
+.mini-date-range label {
+	display: grid;
+	min-width: 0;
+	gap: 5px;
+}
+.mini-date-range span {
+	color: var(--mini-muted);
+	font-size: 11px;
+	font-weight: 650;
+}
+.mini-date-range input {
+	width: 100%;
+	min-width: 0;
+	min-height: 42px;
+	padding: 0 8px;
+	border: 1px solid var(--mini-line);
+	border-radius: 6px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	font-size: 16px;
+}
 .mini-filter-chips {
 	display: flex;
 	flex-wrap: wrap;
