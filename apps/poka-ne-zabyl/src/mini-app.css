@@ -78,8 +78,12 @@
 	gap: 9px;
 	font-weight: 750;
 }
-.mini-brand svg {
-	color: var(--mini-green, #2945c7);
+.mini-brand-mark {
+	width: 30px;
+	height: 30px;
+	flex: none;
+	border-radius: 8px;
+	object-fit: cover;
 }
 .mini-header select,
 .mini-space {
@@ -296,6 +300,11 @@
 	border-radius: 50%;
 	background: var(--mini-soft);
 	color: var(--mini-green);
+}
+.mini-first-expense-mark .mini-brand-mark {
+	width: 62px;
+	height: 62px;
+	border-radius: 50%;
 }
 .mini-first-expense-copy {
 	display: grid;
@@ -1706,6 +1715,11 @@
 .mini-loading span,
 .mini-entry p {
 	color: var(--mini-muted);
+}
+.mini-loading .mini-brand-mark {
+	width: 56px;
+	height: 56px;
+	border-radius: 14px;
 }
 .mini-entry h1 {
 	margin: 24px 0 0;

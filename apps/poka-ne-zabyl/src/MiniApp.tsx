@@ -354,6 +354,7 @@ const keepFocusedControlVisible = (event: React.FocusEvent<HTMLElement>) => {
 };
 
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
+const BRAND_LOGO_URL = "/assets/poka-ne-zabyl-logo.jpg";
 const aliasesFromText = (value: string) =>
 	Array.from(
 		new Set(
@@ -2198,7 +2199,7 @@ export const MiniApp = () => {
 		>
 			<header className="mini-header">
 				<div className="mini-brand">
-					<NotePencil size={19} weight="bold" />
+					<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
 					<span>{uiText(language, "brand")}</span>
 				</div>
 				{spaces.length > 1 ? (
@@ -3346,7 +3347,7 @@ const FirstExpenseEmpty = ({
 }) => (
 	<section className="mini-first-expense">
 		<div className="mini-first-expense-mark">
-			<NotePencil size={30} weight="bold" />
+			<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
 		</div>
 		<div className="mini-first-expense-copy">
 			<p>Личное пространство готово</p>
@@ -5562,7 +5563,7 @@ const LoadingScreen = () => {
 	);
 	return (
 		<div className="mini-loading">
-			<NotePencil size={28} />
+			<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
 			<span>{uiText(language, "loadingExpenses")}</span>
 		</div>
 	);
@@ -5574,7 +5575,7 @@ const TelegramEntry = ({ error }: { error: string }) => {
 	return (
 		<main className="mini-entry">
 			<div className="mini-brand">
-				<NotePencil size={22} weight="bold" />
+				<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
 				<span>{uiText(language, "brand")}</span>
 			</div>
 			<h1>{uiText(language, "entryTitle")}</h1>
