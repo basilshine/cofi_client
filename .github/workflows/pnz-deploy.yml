@@ -45,3 +45,10 @@ jobs:
           docker save pnz-landing:latest | gzip > pnz-landing.tar.gz
           scp pnz-landing.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/tmp/pnz-landing.tar.gz"
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "/opt/pnz/deploy-image.sh landing /tmp/pnz-landing.tar.gz"
+
+      - name: Notify IndexNow
+        run: |
+          curl --fail-with-body --silent --show-error \
+            -H "Content-Type: application/json" \
+            -d '{"host":"poka-ne-zabyl.ru","key":"ebe337c9485b49f59bdd0be15c612624","keyLocation":"https://poka-ne-zabyl.ru/ebe337c9485b49f59bdd0be15c612624.txt","urlList":["https://poka-ne-zabyl.ru/"]}' \
+            https://api.indexnow.org/indexnow
