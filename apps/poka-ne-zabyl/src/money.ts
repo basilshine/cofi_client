@@ -29,6 +29,9 @@ export const formatMoney = (amount: number, currency: string) =>
 		maximumFractionDigits: 2,
 	}).format(amount || 0);
 
+export const moneyAmountsMatch = (left: number, right: number) =>
+	Math.round(left * 100) === Math.round(right * 100);
+
 const sourceTotal = (expense: MoneyExpense) =>
 	expense.items.length > 0
 		? expense.items.reduce(

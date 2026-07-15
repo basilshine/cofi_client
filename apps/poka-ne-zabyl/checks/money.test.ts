@@ -5,11 +5,17 @@ import {
 	expenseDisplayMoney,
 	formatMoney,
 	itemDisplayMoney,
+	moneyAmountsMatch,
 } from "../src/money.ts";
 
 test("keeps kopecks without padding whole ruble amounts", () => {
 	assert.equal(formatMoney(13.99, "RUB"), "13,99 ₽");
 	assert.equal(formatMoney(14, "RUB"), "14 ₽");
+});
+
+test("compares receipt totals to the kopeck", () => {
+	assert.equal(moneyAmountsMatch(0.1 + 0.2, 0.3), true);
+	assert.equal(moneyAmountsMatch(7173.33, 7173.34), false);
 });
 
 const expense = {

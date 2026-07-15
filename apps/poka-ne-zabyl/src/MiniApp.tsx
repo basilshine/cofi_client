@@ -31,6 +31,7 @@ import {
 	formatMoney,
 	itemAmountInCurrency,
 	itemDisplayMoney,
+	moneyAmountsMatch,
 } from "./money";
 import { expensesForMonth } from "./overview";
 import { shouldUseFullscreen } from "./telegram-platform";
@@ -231,6 +232,7 @@ type ReviewDraft = {
 	payeeText: string;
 	expenseDate: string;
 	sourceCurrency: string;
+	receiptTotal: number | null;
 	items: ReviewDraftItem[];
 };
 
@@ -711,6 +713,7 @@ export const MiniApp = () => {
 					payeeText: "Лента",
 					expenseDate: localISODate(),
 					sourceCurrency: "RUB",
+					receiptTotal: 300,
 					items: [
 						{
 							key: "preview-milk",
@@ -2479,6 +2482,7 @@ const reviewDraftFromCandidate = (
 	const itemExpenseDate = rawItems
 		.map((raw) => readString(objectValue(raw), "expense_date", "date"))
 		.find(Boolean);
+	const receiptTotal = readNumber(data, "total", "total_amount", "amount");
 	return {
 		candidateID: candidate.id,
 		sourceDocumentID: candidate.source_document_id,
@@ -2498,6 +2502,7 @@ const reviewDraftFromCandidate = (
 			itemExpenseDate?.slice(0, 10) ||
 			localISODate(),
 		sourceCurrency,
+		receiptTotal: receiptTotal > 0 ? receiptTotal : null,
 		items: rawItems.map((raw, index) => {
 			const item = objectValue(raw);
 			return {
@@ -2709,6 +2714,18 @@ const ReviewEditor = ({
 	const sharedVendorName = commonVendorName(
 		draft.items.map((item) => item.vendor_name),
 	);
+	const [showItemVendors, setShowItemVendors] = useState(
+		() => sharedVendorName === null,
+	);
+	const incompleteItems = draft.items.filter(
+		(item) => !item.name.trim() || item.amount <= 0,
+	).length;
+	const totalMatches =
+		draft.receiptTotal === null
+			? null
+			: moneyAmountsMatch(total, draft.receiptTotal);
+	const checkState =
+		incompleteItems > 0 || totalMatches === false ? "warning" : "ok";
 	const applyItems = (items: ReviewDraftItem[]) => {
 		const commonName = commonVendorName(items.map((item) => item.vendor_name));
 		onChange({ ...draft, payeeText: commonName ?? "", items });
@@ -2725,19 +2742,48 @@ const ReviewEditor = ({
 				</button>
 				<div>
 					<span>Пока не забыл</span>
-					<b>Проверьте расход</b>
+					<b>{mediaURL ? "Проверьте чек" : "Проверьте расход"}</b>
 				</div>
 				<span className="review-currency">{draft.sourceCurrency}</span>
 			</header>
 
 			{mediaURL && (
-				<figure className="review-source">
-					<img src={mediaURL} alt="Исходный чек" />
-					<figcaption>Исходный чек</figcaption>
-				</figure>
+				<details className="review-source-details">
+					<summary>
+						<span>
+							<Receipt size={19} />
+							Оригинал чека
+						</span>
+						<em>Сверить</em>
+					</summary>
+					<figure className="review-source">
+						<img src={mediaURL} alt="Исходный чек" />
+					</figure>
+				</details>
 			)}
 
 			<section className="review-paper">
+				<div className={`review-check is-${checkState}`} role="status">
+					<span className="review-check-mark">
+						{checkState === "ok" ? <Check size={20} weight="bold" /> : "!"}
+					</span>
+					<div>
+						<b>
+							{incompleteItems > 0
+								? `Заполните позиции: ${incompleteItems}`
+								: totalMatches === false
+									? "Сумма не сходится"
+									: totalMatches
+										? "Сумма сошлась"
+										: "Проверьте позиции"}
+						</b>
+						<small>
+							{draft.receiptTotal !== null && totalMatches === false
+								? `В чеке ${formatMoney(draft.receiptTotal, draft.sourceCurrency)}, в позициях ${formatMoney(total, draft.sourceCurrency)}`
+								: `Позиции: ${draft.items.length} · ${formatMoney(total, draft.sourceCurrency)}`}
+						</small>
+					</div>
+				</div>
 				<label className="review-field review-field--title">
 					<span>Название</span>
 					<input
@@ -2771,6 +2817,13 @@ const ReviewEditor = ({
 						<small className="review-field-hint">
 							Изменение применится ко всем позициям
 						</small>
+						<button
+							className="review-item-vendor-toggle"
+							type="button"
+							onClick={() => setShowItemVendors((shown) => !shown)}
+						>
+							{showItemVendors ? "Скрыть продавцов позиций" : "Разные продавцы"}
+						</button>
 					</div>
 					<label className="review-field">
 						<span>Дата</span>
@@ -2790,7 +2843,10 @@ const ReviewEditor = ({
 				</div>
 				<div className="review-lines">
 					{draft.items.map((item, index) => (
-						<article key={item.key} className="review-line">
+						<article
+							key={item.key}
+							className={`review-line${showItemVendors ? "" : " review-line--compact"}`}
+						>
 							<div className="review-line-number">{index + 1}</div>
 							<input
 								aria-label={`Название позиции ${index + 1}`}
@@ -2841,25 +2897,27 @@ const ReviewEditor = ({
 									</option>
 								))}
 							</select>
-							<VendorAutocomplete
-								className="review-line-vendor"
-								vendors={vendors}
-								ariaLabel={`Где купили позицию ${index + 1}`}
-								placeholder="Где купили"
-								value={item.vendor_name}
-								onChange={(vendorName) => {
-									applyItems(
-										draft.items.map((current, itemIndex) =>
-											itemIndex === index
-												? {
-														...current,
-														vendor_name: vendorName,
-													}
-												: current,
-										),
-									);
-								}}
-							/>
+							{showItemVendors && (
+								<VendorAutocomplete
+									className="review-line-vendor"
+									vendors={vendors}
+									ariaLabel={`Где купили позицию ${index + 1}`}
+									placeholder="Где купили"
+									value={item.vendor_name}
+									onChange={(vendorName) => {
+										applyItems(
+											draft.items.map((current, itemIndex) =>
+												itemIndex === index
+													? {
+															...current,
+															vendor_name: vendorName,
+														}
+													: current,
+											),
+										);
+									}}
+								/>
+							)}
 							<button
 								type="button"
 								aria-label={`Удалить позицию ${index + 1}`}
