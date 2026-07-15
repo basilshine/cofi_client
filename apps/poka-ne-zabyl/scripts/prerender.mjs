@@ -55,6 +55,12 @@ const pageHead = ({ path, title, description }) => {
 							applicationCategory: "FinanceApplication",
 							operatingSystem: "Telegram",
 							inLanguage: "ru-RU",
+							featureList: [
+								"Учёт расходов текстом и голосом",
+								"Распознавание фотографий чеков",
+								"Лимиты расходов по категориям",
+								"Личные и общие расходы",
+							],
 							provider: { "@id": `${origin}/#organization` },
 							offers: {
 								"@type": "Offer",

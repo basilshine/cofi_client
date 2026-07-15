@@ -249,7 +249,7 @@ const SharedStory = () => (
 );
 
 const LandingPage = () => {
-	usePageTitle("Пока не забыл — учёт расходов в Telegram");
+	usePageTitle("Telegram-бот для учёта расходов — Пока не забыл");
 	useEffect(() => {
 		const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
 		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -284,15 +284,15 @@ const LandingPage = () => {
 				</header>
 				<div className="hero__stage shell">
 					<div className="hero__copy">
-						<p className="hero__kicker">Расходы в Telegram</p>
+						<p className="hero__kicker">Telegram-бот для учёта расходов</p>
 						<h1>
 							Расходы,
 							<br />
 							пока не забылись
 						</h1>
 						<p className="hero__lead">
-							Напишите, скажите или сфотографируйте. Бот разберёт покупку и даст
-							проверить перед сохранением.
+							Запишите расход текстом, голосом или фото чека. Бот разберёт
+							покупку и даст проверить её перед сохранением.
 						</p>
 						<div className="hero__actions">
 							<TelegramButton />
@@ -400,7 +400,8 @@ const LandingPage = () => {
 						<p className="section-label">Три коротких шага</p>
 						<h2>Сказали. Проверили. Запомнили.</h2>
 						<p>
-							Без таблиц, обязательных форм и попыток вспомнить всё вечером.
+							Личный учёт расходов без таблиц, обязательных форм и попыток
+							вспомнить всё вечером.
 						</p>
 					</div>
 					<div className="steps-list">
@@ -457,7 +458,7 @@ const LandingPage = () => {
 				<div className="shell miniapp-layout">
 					<div className="miniapp-copy" data-reveal>
 						<p className="section-label">Mini App в Telegram</p>
-						<h2>Расходы видно. Порядок — тоже.</h2>
+						<h2>Расходы и лимиты — всё видно.</h2>
 						<p>
 							Откройте приложение прямо из бота: посмотрите месяц, найдите
 							покупку и проверьте, сколько осталось до лимита.
@@ -529,8 +530,8 @@ const LandingPage = () => {
 					<div data-reveal>
 						<UsersThree size={42} weight="light" />
 						<h2>
-							Для себя.
-							<br />И для своих.
+							Личные расходы.
+							<br />И общие — когда нужны.
 						</h2>
 						<p>
 							Личный учёт остаётся простым. Общие расходы подключаются только
