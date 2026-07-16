@@ -258,7 +258,6 @@ type QuotaLevel = "low" | "exhausted";
 type DeveloperQuotaPatch = {
 	plan?: "free" | "plus";
 	plan_expires_at?: string;
-	recurring_limit?: number;
 	additional_limit?: number;
 	additional_units?: number;
 	reset_usage?: boolean;
@@ -1158,7 +1157,12 @@ export const MiniApp = () => {
 				if (patch.reset_usage) {
 					return { ...current, used: 0, remaining: current.limit };
 				}
-				const recurring = patch.recurring_limit ?? current.recurring_limit ?? 0;
+				const recurring =
+					patch.plan === "plus"
+						? 400
+						: patch.plan === "free"
+							? 0
+							: (current.recurring_limit ?? 0);
 				const additional =
 					patch.additional_limit ??
 					(current.additional_limit ?? 0) + (patch.additional_units ?? 0);
@@ -5852,7 +5856,6 @@ const BillingDeveloperTools = ({
 					onApply({
 						plan: String(data.get("plan")) === "plus" ? "plus" : "free",
 						plan_expires_at: expiresAt ? new Date(expiresAt).toISOString() : "",
-						recurring_limit: Number(data.get("recurring_limit")),
 						additional_limit: Number(data.get("additional_limit")),
 					});
 				}}
@@ -5876,15 +5879,6 @@ const BillingDeveloperTools = ({
 					/>
 				</label>
 				<label>
-					Лимит тарифа
-					<input
-						type="number"
-						name="recurring_limit"
-						min="0"
-						defaultValue={quota.recurring_limit || 0}
-					/>
-				</label>
-				<label>
 					Дополнительный лимит
 					<input
 						type="number"
@@ -5902,7 +5896,6 @@ const BillingDeveloperTools = ({
 						onApply({
 							plan: "plus",
 							plan_expires_at: new Date(Date.now() + 2 * 60_000).toISOString(),
-							recurring_limit: 400,
 						})
 					}
 				>
@@ -5910,9 +5903,7 @@ const BillingDeveloperTools = ({
 				</button>
 				<button
 					type="button"
-					onClick={() =>
-						onApply({ plan: "free", plan_expires_at: "", recurring_limit: 0 })
-					}
+					onClick={() => onApply({ plan: "free", plan_expires_at: "" })}
 				>
 					Отменить Плюс
 				</button>
