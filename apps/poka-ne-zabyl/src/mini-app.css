@@ -1144,6 +1144,13 @@
 	color: var(--mini-muted);
 	font-size: 11px;
 }
+
+.mini-plan-allowance {
+	display: block;
+	margin-top: 4px;
+	color: var(--mini-muted);
+	font-size: 12px;
+}
 .mini-progress {
 	overflow: hidden;
 	height: 7px;

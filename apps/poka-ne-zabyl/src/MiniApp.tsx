@@ -247,6 +247,7 @@ type Quota = {
 	remaining: number;
 	plan_expires_at?: string | null;
 	recurring_limit?: number;
+	welcome_remaining?: number;
 	additional_limit?: number;
 	dev_tools_enabled?: boolean;
 };
@@ -996,10 +997,11 @@ export const MiniApp = () => {
 			setVendors(previewVendors);
 			setQuota({
 				plan: "basic",
-				limit: 100,
-				used: 37,
-				remaining: 63,
-				recurring_limit: 100,
+				limit: 20,
+				used: 7,
+				remaining: 13,
+				recurring_limit: 0,
+				welcome_remaining: 13,
 				additional_limit: 0,
 				dev_tools_enabled: true,
 			});
@@ -1153,7 +1155,9 @@ export const MiniApp = () => {
 				const additional =
 					patch.additional_limit ??
 					(current.additional_limit ?? 0) + (patch.additional_units ?? 0);
-				const limit = recurring + additional;
+				const welcome = current.welcome_remaining ?? 0;
+				const remaining =
+					Math.max(0, recurring - current.used) + welcome + additional;
 				return {
 					...current,
 					plan: patch.plan === "free" ? "basic" : (patch.plan ?? current.plan),
@@ -1162,9 +1166,10 @@ export const MiniApp = () => {
 							? null
 							: (patch.plan_expires_at ?? current.plan_expires_at),
 					recurring_limit: recurring,
+					welcome_remaining: welcome,
 					additional_limit: additional,
-					limit,
-					remaining: Math.max(0, limit - current.used),
+					limit: current.used + remaining,
+					remaining,
 				};
 			});
 			setNotice(
@@ -3569,6 +3574,7 @@ export const MiniApp = () => {
 			{packPickerOpen && (
 				<BillingPackPicker
 					language={language}
+					plus={quota?.plan === "plus"}
 					loading={billingLoading}
 					onClose={() => setPackPickerOpen(false)}
 					onSelect={(code) => void startCheckout(code)}
@@ -5640,6 +5646,19 @@ const ProfileView = ({
 						Закончится {formatDateTime(quota.plan_expires_at, language)}
 					</small>
 				)}
+				<small className="mini-plan-allowance">
+					{language === "ru"
+						? plus
+							? "400 разборов на каждый период"
+							: "20 приветственных разборов один раз"
+						: language === "es"
+							? plus
+								? "400 registros rápidos por periodo"
+								: "20 registros de bienvenida, una sola vez"
+							: plus
+								? "400 quick additions per period"
+								: "20 welcome additions, once"}
+				</small>
 				<div className="mini-progress">
 					<i style={{ width: `${progress}%` }} />
 				</div>
@@ -5817,7 +5836,7 @@ const BillingDeveloperTools = ({
 						onApply({
 							plan: "plus",
 							plan_expires_at: new Date(Date.now() + 2 * 60_000).toISOString(),
-							recurring_limit: 500,
+							recurring_limit: 400,
 						})
 					}
 				>
@@ -5826,7 +5845,7 @@ const BillingDeveloperTools = ({
 				<button
 					type="button"
 					onClick={() =>
-						onApply({ plan: "free", plan_expires_at: "", recurring_limit: 100 })
+						onApply({ plan: "free", plan_expires_at: "", recurring_limit: 0 })
 					}
 				>
 					Отменить Плюс
@@ -5846,9 +5865,8 @@ const BillingDeveloperTools = ({
 					defaultValue="100"
 				>
 					<option value="100">Пакет 100</option>
-					<option value="220">Пакет 220</option>
-					<option value="600">Пакет 600</option>
-					<option value="1300">Пакет 1300</option>
+					<option value="500">Пакет 500</option>
+					<option value="1500">Пакет 1500</option>
 				</select>
 				<button type="submit">Добавить</button>
 				<button type="button" onClick={() => onApply({ additional_limit: 0 })}>
@@ -5879,29 +5897,30 @@ const BillingDeveloperTools = ({
 );
 
 const billingPacks = [
-	{ code: "pack_100", price: 100, units: 100 },
-	{ code: "pack_220", price: 200, units: 220 },
-	{ code: "pack_600", price: 500, units: 600 },
-	{ code: "pack_1300", price: 1000, units: 1300 },
+	{ code: "pack_100", basicPrice: 99, plusPrice: 79, units: 100 },
+	{ code: "pack_500", basicPrice: 399, plusPrice: 299, units: 500 },
+	{ code: "pack_1500", basicPrice: 899, plusPrice: 699, units: 1500 },
 ];
 
 const BillingPackPicker = ({
 	language,
+	plus,
 	loading,
 	onClose,
 	onSelect,
 }: {
 	language: UILanguage;
+	plus: boolean;
 	loading: boolean;
 	onClose: () => void;
 	onSelect: (code: string) => void;
 }) => {
 	const unitsLabel =
 		language === "en"
-			? "extra uses"
+			? "quick additions"
 			: language === "es"
-				? "usos extra"
-				: "дополнительных обработок";
+				? "registros rápidos"
+				: "разборов";
 	return (
 		<Modal title={uiText(language, "buyPack")} onClose={onClose}>
 			<div className="mini-billing-packs">
@@ -5915,16 +5934,16 @@ const BillingPackPicker = ({
 						<span>
 							+{pack.units} {unitsLabel}
 						</span>
-						<strong>{pack.price} ₽</strong>
+						<strong>{plus ? pack.plusPrice : pack.basicPrice} ₽</strong>
 					</button>
 				))}
 			</div>
 			<p className="mini-modal-note">
 				{language === "ru"
-					? "Пакет увеличивает доступный лимит и не продлевает Плюс."
+					? `${plus ? "Скидка Плюс уже учтена. " : ""}Пакет увеличивает доступный лимит и не продлевает подписку.`
 					: language === "es"
-						? "El paquete aumenta el límite y no renueva Plus."
-						: "The pack increases your allowance and does not renew Plus."}
+						? `${plus ? "El descuento Plus ya está aplicado. " : ""}El paquete aumenta el límite y no renueva la suscripción.`
+						: `${plus ? "Your Plus discount is already applied. " : ""}The pack increases your allowance and does not renew the subscription.`}
 			</p>
 		</Modal>
 	);

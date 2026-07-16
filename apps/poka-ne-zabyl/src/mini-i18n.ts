@@ -122,7 +122,7 @@ const messages = {
 		connectPlus: "Подключить Плюс",
 		buyPack: "Докупить пакет",
 		quotaLowTitle: "Лимит скоро закончится",
-		quotaLowBody: "Осталось обработок: {remaining}",
+		quotaLowBody: "Осталось разборов: {remaining}",
 		quotaExhaustedTitle: "Пакет закончился",
 		quotaExhaustedBody: "Подключите Плюс или докупите пакет.",
 		manageSubscription: "Управлять подпиской",
