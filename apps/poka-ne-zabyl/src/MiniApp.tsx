@@ -281,7 +281,8 @@ type CaptureResponse = {
 };
 type CaptureSubmission =
 	| { kind: "text"; text: string }
-	| { kind: "image" | "voice"; file: File };
+	| { kind: "image"; file: File }
+	| { kind: "voice"; file: File; durationSeconds: number };
 type CapturePurpose = "expense" | "purchase_plan";
 type PendingCapture = {
 	sourceDocumentID: number;
@@ -1469,6 +1470,9 @@ export const MiniApp = () => {
 				telegram_chat_id: user?.id || 0,
 				telegram_message_id: captureID,
 				capture_target: purpose,
+				...(submission.kind === "voice"
+					? { voice_duration_seconds: submission.durationSeconds }
+					: {}),
 			};
 			let captured: CaptureResponse;
 			if (submission.kind === "text") {
@@ -6220,7 +6224,11 @@ const CaptureComposer = ({
 								type="button"
 								disabled={saving}
 								onClick={() =>
-									void onSubmit({ kind: "voice", file: voiceFile })
+									void onSubmit({
+										kind: "voice",
+										file: voiceFile,
+										durationSeconds: Math.max(1, seconds),
+									})
 								}
 							>
 								<PaperPlaneTilt size={18} />
