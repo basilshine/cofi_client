@@ -5003,7 +5003,7 @@ const CategoriesView = ({
 						</span>
 					</button>
 					<button
-						className={`mini-icon-button${category.budget_amount ? "" : " mini-limit-button"}`}
+						className="mini-icon-button"
 						type="button"
 						aria-label={
 							category.budget_amount
@@ -5012,14 +5012,7 @@ const CategoriesView = ({
 						}
 						onClick={() => onEdit(category)}
 					>
-						{category.budget_amount ? (
-							<PencilSimple size={18} />
-						) : (
-							<>
-								<Plus size={16} weight="bold" />
-								<span>{uiText(language, "limit")}</span>
-							</>
-						)}
+						<PencilSimple size={18} />
 					</button>
 				</article>
 			))}
