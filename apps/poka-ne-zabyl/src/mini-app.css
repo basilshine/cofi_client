@@ -632,6 +632,9 @@
 }
 .mini-date-range {
 	display: grid;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 0;
 	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	gap: 9px;
 	padding: 10px;
@@ -3180,6 +3183,9 @@
 	}
 }
 @media (max-width: 699px) {
+	.mini-date-range {
+		grid-template-columns: minmax(0, 1fr);
+	}
 	.mini-app:has(input:focus, textarea:focus) .mini-nav {
 		transform: translateY(calc(100% + 48px));
 		opacity: 0;
