@@ -3066,6 +3066,7 @@ export const MiniApp = () => {
 			<div
 				className="mini-app mini-review-app"
 				onFocusCapture={keepFocusedControlVisible}
+				onKeyDown={focusNextFieldOnEnter}
 				onPointerDown={dismissKeyboard}
 			>
 				{loading ? (
@@ -3096,6 +3097,7 @@ export const MiniApp = () => {
 		<div
 			className="mini-app"
 			onFocusCapture={keepFocusedControlVisible}
+			onKeyDown={focusNextFieldOnEnter}
 			onPointerDown={dismissKeyboard}
 		>
 			<header className="mini-header">
@@ -3809,6 +3811,44 @@ const readNumber = (value: Record<string, unknown>, ...keys: string[]) => {
 	return 0;
 };
 
+const focusNextFieldOnEnter = (event: React.KeyboardEvent<HTMLElement>) => {
+	if (
+		event.defaultPrevented ||
+		event.key !== "Enter" ||
+		event.shiftKey ||
+		event.ctrlKey ||
+		event.metaKey ||
+		event.nativeEvent.isComposing ||
+		!(event.target instanceof HTMLInputElement)
+	)
+		return;
+
+	const scope = event.target.closest(
+		"form, [role='dialog'], [data-enter-navigation]",
+	);
+	if (!scope) return;
+
+	const fields = Array.from(
+		scope.querySelectorAll<
+			HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+		>(
+			"input:not([type='hidden']):not([type='checkbox']):not([type='radio']):not([type='file']), select, textarea",
+		),
+	).filter(
+		(field) =>
+			!field.disabled &&
+			!("readOnly" in field && field.readOnly) &&
+			field.tabIndex !== -1,
+	);
+	const currentIndex = fields.indexOf(event.target);
+	const next = currentIndex >= 0 ? fields[currentIndex + 1] : undefined;
+	if (!next) return;
+
+	event.preventDefault();
+	next.focus();
+	next.scrollIntoView({ block: "nearest", inline: "nearest" });
+};
+
 const AmountInput = ({
 	amount,
 	ariaLabel,
@@ -4010,7 +4050,7 @@ const ReviewEditor = ({
 		draft.items.length === 0 ||
 		draft.items.some((item) => !item.name.trim() || item.amount <= 0);
 	return (
-		<main className="review-shell">
+		<main className="review-shell" data-enter-navigation>
 			<header className="review-topbar">
 				<button type="button" aria-label="Закрыть" onClick={onClose}>
 					<X size={22} />
@@ -7531,7 +7571,11 @@ const BrowserEntry = ({
 	};
 
 	return (
-		<main className="mini-entry mini-browser-entry">
+		<main
+			className="mini-entry mini-browser-entry"
+			data-enter-navigation
+			onKeyDown={focusNextFieldOnEnter}
+		>
 			<section className="browser-entry-brand">
 				<div className="mini-brand">
 					<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
