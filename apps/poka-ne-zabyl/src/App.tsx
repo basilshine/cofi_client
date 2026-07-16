@@ -278,6 +278,7 @@ const LandingPage = () => {
 					<nav aria-label="Основная навигация">
 						<a href="#how">Как это работает</a>
 						<a href="#mini-app">Приложение</a>
+						<a href="#pricing">Тарифы</a>
 						<a href="#shared">Для компании</a>
 						<TelegramButton />
 					</nav>
@@ -482,10 +483,10 @@ const LandingPage = () => {
 						</div>
 						<ul className="miniapp-points">
 							<li>
-								<Check size={17} weight="bold" /> Сводка месяца без таблиц
+								<Check size={17} weight="bold" /> Проверка распознанных расходов
 							</li>
 							<li>
-								<Check size={17} weight="bold" /> Последние покупки под рукой
+								<Check size={17} weight="bold" /> История, категории и лимиты
 							</li>
 							<li>
 								<Check size={17} weight="bold" /> Отметьте «Куплено», когда план
@@ -495,50 +496,175 @@ const LandingPage = () => {
 					</div>
 
 					<div className="app-showcase" data-reveal>
+						<figure className="app-shot app-shot--plans">
+							<div className="app-shot__speaker" aria-hidden="true" />
+							<img
+								alt="Экран планов покупок с датами, суммами и действием Куплено"
+								decoding="async"
+								height="1040"
+								loading="lazy"
+								src="/mini-app-plans.png"
+								width="520"
+							/>
+							<figcaption>Планы с датой и без даты</figcaption>
+						</figure>
 						<figure className="app-shot app-shot--overview">
 							<div className="app-shot__speaker" aria-hidden="true" />
 							<img
-								alt="Главный экран приложения со сводкой расходов и лимитом на продукты"
+								alt="Главный экран приложения с расходами, кандидатами, планами и лимитами"
 								decoding="async"
 								height="1040"
 								loading="lazy"
 								src="/mini-app-overview.png"
 								width="520"
 							/>
-							<figcaption>Главная · месяц и последние покупки</figcaption>
+							<figcaption>Главная со всем важным на сегодня</figcaption>
 						</figure>
-						<figure className="app-shot app-shot--categories">
+						<figure className="app-shot app-shot--plus">
 							<div className="app-shot__speaker" aria-hidden="true" />
-							<div className="app-shot__crop">
-								<img
-									alt="Экран категорий приложения с настройкой месячного лимита"
-									decoding="async"
-									height="1040"
-									loading="lazy"
-									src="/mini-app-categories.png"
-									width="520"
-								/>
-							</div>
-							<figcaption>Категории · лимиты на неделю или месяц</figcaption>
+							<img
+								alt="Профиль приложения с тарифом, остатком разборов и подключением Плюс"
+								decoding="async"
+								height="1040"
+								loading="lazy"
+								src="/mini-app-plus.png"
+								width="520"
+							/>
+							<figcaption>Тариф и остатки всегда перед глазами</figcaption>
 						</figure>
-						<div className="app-limit-callout">
-							<div className="app-plan-preview">
-								<span>
-									<CalendarCheck size={18} /> План на 20 июля
-								</span>
-								<strong>Кроссовки для танцев</strong>
-								<small>8 200 ₽ · в расходы только после покупки</small>
+					</div>
+				</div>
+			</section>
+
+			<section className="pricing-section" id="pricing">
+				<div className="shell" data-reveal>
+					<div className="pricing-heading">
+						<p className="section-label">Тарифы без скрытых функций</p>
+						<h2>
+							Начните бесплатно. Платите, когда умных добавлений нужно больше.
+						</h2>
+						<p>
+							История, ручной ввод, редактирование и доступ к своим данным
+							остаются доступны на обоих тарифах.
+						</p>
+					</div>
+
+					<div className="pricing-plans">
+						<article className="pricing-plan">
+							<div className="pricing-plan__head">
+								<div>
+									<span>Базовый</span>
+									<strong>0 ₽</strong>
+								</div>
+								<small>Без подписки</small>
 							</div>
-							<div className="app-limit-preview">
-								<span>Продукты</span>
-								<strong>12 460 ₽ из 20 000 ₽</strong>
-								<span className="app-limit-callout__bar">
-									<b />
-								</span>
-								<small>Осталось 7 540 ₽</small>
+							<p>Для знакомства с сервисом и спокойного ручного учёта.</p>
+							<ul>
+								<li>
+									<Check size={18} weight="bold" /> 20 приветственных разборов
+									один раз
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> Все способы добавления
+									расхода
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> 15 стандартных, 3 своих
+									категории и 3 лимита
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> 10 активных планов покупок
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> Личное и ещё одно своё
+									пространство
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> Фото и голос хранятся 3 дня
+								</li>
+							</ul>
+							<a className="pricing-plan__action" href="/app">
+								Начать с Базового <ArrowRight size={18} />
+							</a>
+						</article>
+
+						<article className="pricing-plan pricing-plan--plus">
+							<div className="pricing-plan__head">
+								<div>
+									<span>Плюс</span>
+									<strong>
+										249 ₽ <small>/ 30 дней</small>
+									</strong>
+								</div>
+								<small>Для регулярного учёта</small>
+							</div>
+							<p>
+								Больше умных добавлений, планов и пространства для семейных
+								сценариев.
+							</p>
+							<ul>
+								<li>
+									<Check size={18} weight="bold" /> 400 разборов на оплаченный
+									период
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> До 100 своих категорий и
+									лимитов
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> До 100 активных планов
+									покупок
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> До 10 своих пространств
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> Фото и голос хранятся 30
+									дней
+								</li>
+								<li>
+									<Check size={18} weight="bold" /> Пакеты разборов дешевле
+								</li>
+							</ul>
+							<a className="pricing-plan__action" href="/app?view=profile">
+								Подключить Плюс <ArrowRight size={18} />
+							</a>
+						</article>
+					</div>
+
+					<div className="pack-pricing">
+						<div className="pack-pricing__copy">
+							<span>Разборы не сгорают вместе с подпиской</span>
+							<h3>Можно просто докупить пакет</h3>
+							<p>
+								Пакет не меняет тариф и дату продления. Сначала расходуется
+								лимит Плюс, затем приветственный и купленный остаток.
+							</p>
+						</div>
+						<div className="pack-pricing__list" aria-label="Стоимость пакетов">
+							<div>
+								<strong>100</strong>
+								<span>99 ₽ на Базовом</span>
+								<b>79 ₽ с Плюс</b>
+							</div>
+							<div>
+								<strong>500</strong>
+								<span>399 ₽ на Базовом</span>
+								<b>299 ₽ с Плюс</b>
+							</div>
+							<div>
+								<strong>1 500</strong>
+								<span>899 ₽ на Базовом</span>
+								<b>699 ₽ с Плюс</b>
 							</div>
 						</div>
 					</div>
+
+					<p className="parse-note">
+						Разбор списывается только за успешный результат: текст стоит 1,
+						голос 2, фото 3, большой чек 5, оценка предмета по фото 10. Ручной
+						ввод разборы не расходует.
+					</p>
 				</div>
 			</section>
 
@@ -579,6 +705,22 @@ const LandingPage = () => {
 							<p>
 								Нет. Он предлагает разобранный расход, а вы подтверждаете или
 								исправляете результат.
+							</p>
+						</details>
+						<details>
+							<summary>Что останется доступно без Плюс?</summary>
+							<p>
+								История расходов, ручное добавление, редактирование и доступ к
+								данным не блокируются. Ограничения действуют на новые умные
+								разборы и создание новых категорий, лимитов, планов и
+								пространств.
+							</p>
+						</details>
+						<details>
+							<summary>Купленные пакеты пропадут после окончания Плюс?</summary>
+							<p>
+								Нет. Купленный остаток хранится отдельно. Пакет не продлевает
+								подписку и остаётся доступным после её окончания.
 							</p>
 						</details>
 						<details>

@@ -10,7 +10,7 @@ People opening the page mainly from a phone who want to record everyday expenses
 
 ## Product Purpose
 
-Present one expense service with two entry points: the installable browser PWA for manual entry, history, limits, and plans; and `@poka_ne_zabyl_bot` for fast text, voice, and receipt capture. Both lead to the same records and review flow.
+Present one expense service with two entry points: the installable browser PWA for manual entry, history, limits, and plans; and `@poka_ne_zabyl_bot` for fast text, voice, and receipt capture. Both lead to the same records and review flow. Show the free Basic plan, Plus for regular use, and optional parse packs without making payment the main product story.
 
 ## Brand Personality
 
@@ -28,6 +28,8 @@ Generic fintech, corporate SaaS, childish mascots, scrapbook nostalgia, and paym
 - Keep one memorable motion idea and remove decorative motion.
 - State current capabilities plainly and keep optional group features secondary.
 - Keep the PWA and Telegram as two entry points into one product, not competing products.
+- Prefer current product screenshots over illustrative interface mockups.
+- Explain plan limits as capacity for new work; never imply that a downgrade hides history or existing data.
 
 ## Accessibility & Inclusion
 
