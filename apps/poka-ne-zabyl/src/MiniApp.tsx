@@ -388,6 +388,7 @@ type CapturePacket = {
 	source_document_id: number;
 	space_id?: number;
 	media_object_id?: number;
+	media_expires_at?: string;
 	input_kind?: string;
 	source_type?: string;
 	document_type?: string;
@@ -3638,6 +3639,7 @@ export const MiniApp = () => {
 			{sourceViewer && (
 				<CaptureSourceViewer
 					viewer={sourceViewer}
+					language={language}
 					onClose={() => setSourceViewer(null)}
 				/>
 			)}
@@ -5199,9 +5201,11 @@ const captureSourceLabel = (capture: CapturePacket) => {
 
 const CaptureSourceViewer = ({
 	viewer,
+	language,
 	onClose,
 }: {
 	viewer: SourceViewer;
+	language: UILanguage;
 	onClose: () => void;
 }) => {
 	const kind = captureSourceKind(viewer.capture);
@@ -5216,6 +5220,7 @@ const CaptureSourceViewer = ({
 					{viewer.capture.created_at && (
 						<small>{formatDate(viewer.capture.created_at)}</small>
 					)}
+					<SourceExpiryNote capture={viewer.capture} language={language} />
 				</div>
 			</div>
 			{kind === "image" && viewer.mediaURL && (
@@ -5243,6 +5248,22 @@ const CaptureSourceViewer = ({
 				<Empty text="Исходный материал недоступен" />
 			)}
 		</Modal>
+	);
+};
+
+const SourceExpiryNote = ({
+	capture,
+	language,
+}: {
+	capture?: CapturePacket;
+	language: UILanguage;
+}) => {
+	if (!capture?.media_expires_at || captureSourceKind(capture) === "text")
+		return null;
+	return (
+		<small className="mini-source-expiry">
+			Исходник удалится {formatMediaExpiry(capture.media_expires_at, language)}
+		</small>
 	);
 };
 
@@ -6383,15 +6404,18 @@ const ExpenseEditor = ({
 			onClose={onClose}
 		>
 			{expense.source_document_id && (
-				<button
-					className="mini-source-open"
-					type="button"
-					disabled={sourceLoading}
-					onClick={onSource}
-				>
-					<SourceIcon capture={capture} size={18} />
-					{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
-				</button>
+				<div className="mini-source-access">
+					<button
+						className="mini-source-open"
+						type="button"
+						disabled={sourceLoading}
+						onClick={onSource}
+					>
+						<SourceIcon capture={capture} size={18} />
+						{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
+					</button>
+					<SourceExpiryNote capture={capture} language={language} />
+				</div>
 			)}
 			{creating && (
 				<label htmlFor="new-expense-amount">
@@ -6621,15 +6645,18 @@ const ExpenseItemEditor = ({
 				{expense.title || "Расход"} · {formatDate(expense.expense_date)}
 			</p>
 			{expense.source_document_id && (
-				<button
-					className="mini-source-open"
-					type="button"
-					disabled={sourceLoading}
-					onClick={onSource}
-				>
-					<SourceIcon capture={capture} size={18} />
-					{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
-				</button>
+				<div className="mini-source-access">
+					<button
+						className="mini-source-open"
+						type="button"
+						disabled={sourceLoading}
+						onClick={onSource}
+					>
+						<SourceIcon capture={capture} size={18} />
+						{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
+					</button>
+					<SourceExpiryNote capture={capture} language={language} />
+				</div>
 			)}
 			<label>
 				Название
@@ -7413,6 +7440,7 @@ const BrowserEntry = ({
 	const [loading, setLoading] = useState(false);
 	const [localError, setLocalError] = useState("");
 	const [personalDataConsent, setPersonalDataConsent] = useState(false);
+	const [clipboardHint, setClipboardHint] = useState("");
 
 	useEffect(() => {
 		if (!codeSent || resendSeconds <= 0) return;
@@ -7482,6 +7510,23 @@ const BrowserEntry = ({
 			);
 		} finally {
 			setLoading(false);
+		}
+	};
+
+	const pasteCode = async () => {
+		setClipboardHint("");
+		try {
+			const clipboardCode = (await navigator.clipboard.readText())
+				.replace(/\D/g, "")
+				.slice(0, 6);
+			if (clipboardCode.length !== 6) {
+				setClipboardHint("В буфере нет кода из 6 цифр");
+				return;
+			}
+			setCode(clipboardCode);
+			setClipboardHint("Код вставлен");
+		} catch {
+			setClipboardHint("Зажмите поле и выберите «Вставить»");
 		}
 	};
 
@@ -7609,9 +7654,10 @@ const BrowserEntry = ({
 											autoComplete="one-time-code"
 											maxLength={6}
 											value={code}
-											onChange={(event) =>
-												setCode(event.target.value.replace(/\D/g, ""))
-											}
+											onChange={(event) => {
+												setCode(event.target.value.replace(/\D/g, ""));
+												setClipboardHint("");
+											}}
 										/>
 										<div className="browser-otp-cells" aria-hidden="true">
 											{OTP_POSITIONS.map((index) => (
@@ -7625,6 +7671,20 @@ const BrowserEntry = ({
 										</div>
 									</div>
 								</label>
+								{typeof navigator !== "undefined" && navigator.clipboard && (
+									<button
+										className="browser-auth-link browser-paste-code"
+										type="button"
+										onClick={() => void pasteCode()}
+									>
+										Вставить код
+									</button>
+								)}
+								{clipboardHint && (
+									<small className="browser-clipboard-hint">
+										{clipboardHint}
+									</small>
+								)}
 								<button
 									type="button"
 									disabled={loading || code.length !== 6}
@@ -7674,7 +7734,7 @@ const BrowserEntry = ({
 						)}
 						<small>
 							{codeSent
-								? "Код действует 10 минут. Проверьте также папку «Спам»."
+								? "Код можно вставить целиком. Он действует 10 минут; проверьте также папку «Спам»."
 								: emailMode === "register"
 									? "Пароль не нужен — вход всегда подтверждается кодом из письма."
 									: "Введите почту, которую указывали при регистрации или привязали в профиле."}
@@ -7901,6 +7961,13 @@ const formatDateTime = (value: string, language: UILanguage) =>
 	new Intl.DateTimeFormat(language, {
 		dateStyle: "medium",
 		timeStyle: "medium",
+	}).format(new Date(value));
+const formatMediaExpiry = (value: string, language: UILanguage) =>
+	new Intl.DateTimeFormat(language, {
+		day: "numeric",
+		month: "long",
+		hour: "2-digit",
+		minute: "2-digit",
 	}).format(new Date(value));
 const dateTimeInputValue = (value?: string | null) => {
 	if (!value) return "";

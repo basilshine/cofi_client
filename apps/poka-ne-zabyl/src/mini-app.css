@@ -1872,6 +1872,16 @@
 .mini-source-open:disabled {
 	opacity: 0.55;
 }
+.mini-source-access {
+	display: grid;
+	justify-items: start;
+	gap: 5px;
+}
+.mini-source-expiry {
+	display: block;
+	color: var(--mini-muted);
+	font-size: 11px;
+}
 .mini-source-summary {
 	display: flex;
 	align-items: center;
@@ -2482,6 +2492,16 @@
 	margin-top: -8px;
 	color: var(--mini-muted);
 	font-size: 13px;
+}
+.browser-email-auth .browser-paste-code {
+	min-height: 36px;
+	margin-top: -4px;
+	border: 1px solid rgb(41 69 199 / 24%);
+	background: #eef1fa;
+}
+.browser-email-auth .browser-clipboard-hint {
+	margin-top: -8px;
+	color: var(--mini-muted);
 }
 .browser-email-auth .browser-resend-code:not(:disabled) {
 	color: var(--mini-green);
