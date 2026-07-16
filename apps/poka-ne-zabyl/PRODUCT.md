@@ -10,7 +10,7 @@ People opening the page mainly from a phone who want to record everyday expenses
 
 ## Product Purpose
 
-Present one expense service with two entry points: the installable browser PWA for manual entry, history, limits, and plans; and `@poka_ne_zabyl_bot` for fast text, voice, and receipt capture. Both lead to the same records and review flow. Show the free Basic plan, Plus for regular use, and optional parse packs without making payment the main product story.
+Present one expense service with two entry points: an app that opens from a link and installs to the phone home screen for manual entry, history, limits, and plans; and `@poka_ne_zabyl_bot` for fast text, voice, and receipt capture. Both lead to the same records and review flow. Use “installable web app” in customer copy and keep “PWA” as a secondary technical explanation. Show the free Basic plan, Plus for regular use, and optional parse packs without making payment the main product story.
 
 ## Brand Personality
 
