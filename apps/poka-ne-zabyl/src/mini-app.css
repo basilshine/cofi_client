@@ -1838,6 +1838,23 @@
 	height: 24px;
 	color: var(--mini-paper);
 }
+.mini-opening-overlay {
+	position: fixed;
+	z-index: 80;
+	inset: 0;
+	display: grid;
+	place-content: center;
+	place-items: center;
+	gap: 12px;
+	padding: 24px;
+	background: rgba(244, 239, 228, 0.92);
+	color: var(--mini-ink);
+	text-align: center;
+	backdrop-filter: blur(8px);
+}
+.mini-opening-overlay strong {
+	font-size: 15px;
+}
 .capture-mic.recording {
 	background: #fff0ec;
 	color: var(--mini-signal);

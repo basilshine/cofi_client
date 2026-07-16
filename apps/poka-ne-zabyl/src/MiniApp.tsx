@@ -823,6 +823,7 @@ export const MiniApp = () => {
 	);
 	const [sourceViewer, setSourceViewer] = useState<SourceViewer | null>(null);
 	const [sourceLoading, setSourceLoading] = useState(false);
+	const [openingLabel, setOpeningLabel] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [homeScreenStatus, setHomeScreenStatus] =
 		useState<HomeScreenStatus>("checking");
@@ -1123,6 +1124,7 @@ export const MiniApp = () => {
 	const startCheckout = async (productCode: string) => {
 		if (!token || !spaceID || billingLoading) return;
 		setBillingLoading(true);
+		setOpeningLabel(uiText(language, "openingPayment"));
 		setError("");
 		try {
 			const checkout = await apiRequest<CheckoutResponse>(
@@ -1132,6 +1134,7 @@ export const MiniApp = () => {
 			);
 			submitCheckout(checkout);
 		} catch (err) {
+			setOpeningLabel("");
 			setError(
 				err instanceof Error ? err.message : "Не удалось открыть оплату",
 			);
@@ -1779,6 +1782,7 @@ export const MiniApp = () => {
 			return;
 		}
 		setSourceLoading(true);
+		setOpeningLabel(uiText(language, "openingSource"));
 		setError("");
 		try {
 			let capture = captureForExpense(expense, captures);
@@ -1815,6 +1819,7 @@ export const MiniApp = () => {
 			);
 		} finally {
 			setSourceLoading(false);
+			setOpeningLabel("");
 		}
 	};
 
@@ -2767,6 +2772,7 @@ export const MiniApp = () => {
 			return;
 		}
 		setSaving(true);
+		setOpeningLabel(uiText(language, "openingInvite"));
 		try {
 			const invite = await apiRequest<{ token: string }>(
 				`/spaces/${space.id}/invites`,
@@ -2786,6 +2792,7 @@ export const MiniApp = () => {
 			);
 		} finally {
 			setSaving(false);
+			setOpeningLabel("");
 		}
 	};
 
@@ -3737,6 +3744,7 @@ export const MiniApp = () => {
 					}
 				/>
 			)}
+			{openingLabel && <OpeningOverlay label={openingLabel} />}
 		</div>
 	);
 };
@@ -7425,6 +7433,12 @@ const KnotLoader = ({ compact = false }: { compact?: boolean }) => (
 			<circle className="knot-loader-dot" cx="30" cy="32" r="3" />
 		</svg>
 	</span>
+);
+const OpeningOverlay = ({ label }: { label: string }) => (
+	<div className="mini-opening-overlay" role="status" aria-live="assertive">
+		<KnotLoader />
+		<strong>{label}</strong>
+	</div>
 );
 const LoadingScreen = ({ label }: { label?: string } = {}) => {
 	const language = normalizeUILanguage(
