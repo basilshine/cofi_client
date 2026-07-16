@@ -816,6 +816,7 @@ export const MiniApp = () => {
 		useState<CapturePurpose>("expense");
 	const [captureSucceeded, setCaptureSucceeded] = useState(false);
 	const [reviewDraft, setReviewDraft] = useState<ReviewDraft | null>(null);
+	const [openingReview, setOpeningReview] = useState(false);
 	const [reviewMediaURL, setReviewMediaURL] = useState("");
 	const [savedReviewExpense, setSavedReviewExpense] = useState<Expense | null>(
 		null,
@@ -1354,13 +1355,16 @@ export const MiniApp = () => {
 			});
 			return;
 		}
+		const previousView = view === "review" ? "overview" : view;
 		setDismissedCaptureSourceID(candidate.source_document_id);
+		setOpeningReview(true);
 		setSaving(true);
 		setCaptureFailure("");
 		try {
 			setSavedReviewExpense(null);
 			setReviewDraft(null);
 			setReviewMediaURL("");
+			setView("review");
 			if (previewMode) {
 				setReviewDraft(reviewDraftFromCandidate(candidate, reviewCandidates));
 			} else {
@@ -1371,13 +1375,14 @@ export const MiniApp = () => {
 					candidate.source_document_id,
 				);
 			}
-			setView("review");
 		} catch (err) {
 			setDismissedCaptureSourceID(0);
+			setView(previousView);
 			setCaptureFailure(
 				err instanceof Error ? err.message : "Не удалось открыть результат",
 			);
 		} finally {
+			setOpeningReview(false);
 			setSaving(false);
 		}
 	};
@@ -3069,8 +3074,8 @@ export const MiniApp = () => {
 				onKeyDown={focusNextFieldOnEnter}
 				onPointerDown={dismissKeyboard}
 			>
-				{loading ? (
-					<LoadingScreen />
+				{loading || openingReview ? (
+					<LoadingScreen label={uiText(language, "openingExpense")} />
 				) : savedReviewExpense ? (
 					<ReviewSaved expense={savedReviewExpense} onClose={closeReview} />
 				) : reviewDraft ? (
@@ -7421,14 +7426,14 @@ const KnotLoader = ({ compact = false }: { compact?: boolean }) => (
 		</svg>
 	</span>
 );
-const LoadingScreen = () => {
+const LoadingScreen = ({ label }: { label?: string } = {}) => {
 	const language = normalizeUILanguage(
 		WebApp.initDataUnsafe.user?.language_code,
 	);
 	return (
 		<div className="mini-loading">
 			<KnotLoader />
-			<span>{uiText(language, "loadingExpenses")}</span>
+			<span>{label || uiText(language, "loadingExpenses")}</span>
 		</div>
 	);
 };
