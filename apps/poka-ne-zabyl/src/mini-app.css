@@ -1557,6 +1557,28 @@
 	background: var(--mini-soft);
 	color: var(--mini-muted);
 }
+.install-guide {
+	display: grid;
+	gap: 14px;
+}
+.install-guide > svg {
+	color: var(--mini-green);
+}
+.install-guide p {
+	margin: 0;
+	color: var(--mini-muted);
+	line-height: 1.5;
+}
+.install-guide ol {
+	display: grid;
+	gap: 10px;
+	margin: 0;
+	padding-left: 24px;
+	line-height: 1.45;
+}
+.install-guide-done {
+	width: 100%;
+}
 .capture-choice {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1715,6 +1737,9 @@
 }
 .capture-status.is-quota.is-exhausted > svg {
 	color: var(--mini-signal);
+}
+.capture-status.is-install > svg {
+	color: var(--mini-green);
 }
 .capture-status.is-quota strong,
 .capture-status.is-quota small {
@@ -2344,6 +2369,32 @@
 	color: var(--mini-muted);
 	font-size: 12px;
 }
+.browser-email-auth label.browser-consent {
+	grid-template-columns: 22px minmax(0, 1fr);
+	align-items: start;
+	gap: 10px;
+	color: var(--mini-ink);
+	font-size: 13px;
+	line-height: 1.4;
+}
+.browser-email-auth label.browser-consent input {
+	width: 20px;
+	min-height: 20px;
+	margin: 0;
+	accent-color: var(--mini-green);
+}
+.browser-consent a,
+.browser-legal a {
+	display: inline;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--mini-green);
+	font-weight: 650;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
 .browser-email-auth input {
 	width: 100%;
 	min-height: 48px;
@@ -2443,6 +2494,49 @@
 	color: var(--mini-red) !important;
 	font-size: 13px;
 	text-align: center;
+}
+.browser-legal {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 7px 14px;
+	padding-top: 2px;
+	font-size: 12px;
+}
+.browser-install-card {
+	display: grid;
+	grid-template-columns: 24px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	padding: 12px;
+	border: 1px solid rgb(41 69 199 / 18%);
+	border-radius: 7px;
+	background: var(--mini-soft);
+}
+.browser-install-card > svg {
+	color: var(--mini-green);
+}
+.browser-install-card > div {
+	display: grid;
+	gap: 2px;
+	min-width: 0;
+}
+.browser-install-card strong {
+	font-size: 13px;
+}
+.browser-install-card small {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.browser-install-card button {
+	min-height: 36px;
+	padding: 0 10px;
+	border: 0;
+	border-radius: 6px;
+	background: var(--mini-green);
+	color: var(--mini-paper);
+	font-size: 12px;
+	font-weight: 750;
 }
 @media (min-width: 760px) {
 	.mini-browser-entry {

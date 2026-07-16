@@ -56,7 +56,7 @@ import {
 	requestError,
 } from "./request";
 import { isSubscriptionExpired } from "./subscription";
-import { shouldUseFullscreen } from "./telegram-platform";
+import { homeScreenPlatform, shouldUseFullscreen } from "./telegram-platform";
 import {
 	commonVendorName,
 	findVendorByName,
@@ -826,6 +826,8 @@ export const MiniApp = () => {
 		useState<HomeScreenStatus>("checking");
 	const [browserInstallPrompt, setBrowserInstallPrompt] =
 		useState<BeforeInstallPromptEvent | null>(null);
+	const [installGuideOpen, setInstallGuideOpen] = useState(false);
+	const [dismissedInstallPrompt, setDismissedInstallPrompt] = useState(false);
 	const language = normalizeUILanguage(
 		user?.language || WebApp.initDataUnsafe.user?.language_code,
 	);
@@ -878,6 +880,13 @@ export const MiniApp = () => {
 		!showExpiredSubscriptionStatus &&
 		quotaLevel !== null &&
 		quotaLevel !== dismissedQuotaLevel;
+	const showInstallStatus =
+		!WebApp.initData &&
+		homeScreenStatus === "unknown" &&
+		!dismissedInstallPrompt &&
+		!showCaptureStatus &&
+		!showExpiredSubscriptionStatus &&
+		!showQuotaStatus;
 	const quotaStatusCopy =
 		quotaLevel === "low"
 			? uiText(language, "quotaLowBody").replace(
@@ -2001,12 +2010,7 @@ export const MiniApp = () => {
 			if (choice.outcome === "accepted") setHomeScreenStatus("added");
 			return;
 		}
-		const isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-		setNotice(
-			isiOS
-				? "В Safari нажмите «Поделиться», затем «На экран Домой»"
-				: "Откройте меню браузера и выберите «Установить приложение»",
-		);
+		setInstallGuideOpen(true);
 	};
 
 	const logoutBrowser = async () => {
@@ -3046,6 +3050,11 @@ export const MiniApp = () => {
 		return (
 			<BrowserEntry
 				error={error}
+				homeScreenStatus={homeScreenStatus}
+				browserInstallAvailable={Boolean(browserInstallPrompt)}
+				installGuideOpen={installGuideOpen}
+				onInstall={installOnHomeScreen}
+				onCloseInstallGuide={() => setInstallGuideOpen(false)}
 				onTelegramAuth={loginFromBrowser}
 				onEmailAuth={acceptAuth}
 			/>
@@ -3461,6 +3470,33 @@ export const MiniApp = () => {
 					</button>
 				</div>
 			)}
+			{showInstallStatus && (
+				<div className="capture-status is-quota is-install" role="status">
+					<House size={22} weight="fill" />
+					<div>
+						<strong>Пока не забыл всегда под рукой</strong>
+						<small>Добавьте приложение на главный экран телефона.</small>
+					</div>
+					<button
+						className="capture-status-dismiss"
+						type="button"
+						aria-label="Закрыть"
+						onClick={() => setDismissedInstallPrompt(true)}
+					>
+						<X size={17} />
+					</button>
+					<button
+						className="capture-status-action"
+						type="button"
+						onClick={() => {
+							setDismissedInstallPrompt(true);
+							void installOnHomeScreen();
+						}}
+					>
+						{browserInstallPrompt ? "Установить" : "Как добавить"}
+					</button>
+				</div>
+			)}
 
 			<nav className="mini-nav" aria-label={uiText(language, "navLabel")}>
 				<NavButton
@@ -3495,6 +3531,10 @@ export const MiniApp = () => {
 					onClick={() => setView("profile")}
 				/>
 			</nav>
+
+			{installGuideOpen && (
+				<InstallGuide onClose={() => setInstallGuideOpen(false)} />
+			)}
 
 			{captureOpen && (
 				<CaptureComposer
@@ -7217,6 +7257,51 @@ const Modal = ({
 	);
 };
 
+const InstallGuide = ({ onClose }: { onClose: () => void }) => {
+	const platform = homeScreenPlatform(navigator.userAgent);
+	const steps =
+		platform === "ios"
+			? [
+					"Откройте эту страницу в Safari.",
+					"Нажмите «Поделиться» в панели браузера.",
+					"Выберите «На экран Домой», затем «Добавить».",
+				]
+			: platform === "android"
+				? [
+						"Откройте меню браузера ⋮.",
+						"Выберите «Установить приложение» или «Добавить на главный экран».",
+						"Подтвердите установку.",
+					]
+				: [
+						"Откройте меню браузера.",
+						"Выберите «Установить Пока не забыл».",
+						"Подтвердите установку приложения.",
+					];
+	return (
+		<Modal title="Добавить на главный экран" onClose={onClose}>
+			<div className="install-guide">
+				<House size={34} weight="fill" />
+				<p>
+					Приложение откроется отдельным окном и будет доступно как обычная
+					иконка.
+				</p>
+				<ol>
+					{steps.map((step) => (
+						<li key={step}>{step}</li>
+					))}
+				</ol>
+			</div>
+			<button
+				className="mini-save install-guide-done"
+				type="button"
+				onClick={onClose}
+			>
+				Понятно
+			</button>
+		</Modal>
+	);
+};
+
 const NavButton = ({
 	active,
 	primary = false,
@@ -7301,10 +7386,20 @@ const OTP_POSITIONS = [0, 1, 2, 3, 4, 5] as const;
 
 const BrowserEntry = ({
 	error,
+	homeScreenStatus,
+	browserInstallAvailable,
+	installGuideOpen,
+	onInstall,
+	onCloseInstallGuide,
 	onTelegramAuth,
 	onEmailAuth,
 }: {
 	error: string;
+	homeScreenStatus: HomeScreenStatus;
+	browserInstallAvailable: boolean;
+	installGuideOpen: boolean;
+	onInstall: () => Promise<void>;
+	onCloseInstallGuide: () => void;
 	onTelegramAuth: (user: TelegramWidgetUser) => Promise<void>;
 	onEmailAuth: (auth: AuthResponse) => Promise<void>;
 }) => {
@@ -7317,6 +7412,7 @@ const BrowserEntry = ({
 	const [resendSeconds, setResendSeconds] = useState(0);
 	const [loading, setLoading] = useState(false);
 	const [localError, setLocalError] = useState("");
+	const [personalDataConsent, setPersonalDataConsent] = useState(false);
 
 	useEffect(() => {
 		if (!codeSent || resendSeconds <= 0) return;
@@ -7333,7 +7429,11 @@ const BrowserEntry = ({
 		try {
 			await apiRequest(`/auth/email/${emailMode}/request`, "", {
 				method: "POST",
-				body: JSON.stringify({ name: name.trim(), email: email.trim() }),
+				body: JSON.stringify({
+					name: name.trim(),
+					email: email.trim(),
+					personal_data_consent: personalDataConsent,
+				}),
 			});
 			setCodeSent(true);
 			setResendSeconds(60);
@@ -7371,6 +7471,7 @@ const BrowserEntry = ({
 							Intl.DateTimeFormat().resolvedOptions().timeZone ||
 							"Europe/Moscow",
 						currency: "RUB",
+						personal_data_consent: personalDataConsent,
 					}),
 				},
 			);
@@ -7434,6 +7535,7 @@ const BrowserEntry = ({
 									setResendSeconds(0);
 									setCode("");
 									setLocalError("");
+									setPersonalDataConsent(false);
 								}}
 							>
 								Войти
@@ -7447,6 +7549,7 @@ const BrowserEntry = ({
 									setResendSeconds(0);
 									setCode("");
 									setLocalError("");
+									setPersonalDataConsent(false);
 								}}
 							>
 								Регистрация
@@ -7477,6 +7580,23 @@ const BrowserEntry = ({
 								placeholder="name@example.com"
 							/>
 						</label>
+						{emailMode === "register" && !codeSent && (
+							<label className="browser-consent">
+								<input
+									type="checkbox"
+									checked={personalDataConsent}
+									onChange={(event) =>
+										setPersonalDataConsent(event.target.checked)
+									}
+								/>
+								<span>
+									Даю отдельное{" "}
+									<a href="/consent" target="_blank" rel="noreferrer">
+										согласие на обработку персональных данных
+									</a>
+								</span>
+							</label>
+						)}
 						{codeSent ? (
 							<>
 								<label className="browser-code-field">
@@ -7544,7 +7664,8 @@ const BrowserEntry = ({
 								disabled={
 									loading ||
 									!email.includes("@") ||
-									(emailMode === "register" && !name.trim())
+									(emailMode === "register" && !name.trim()) ||
+									(emailMode === "register" && !personalDataConsent)
 								}
 								onClick={requestCode}
 							>
@@ -7563,7 +7684,34 @@ const BrowserEntry = ({
 				{localError || error ? (
 					<p className="mini-entry-error">{localError || error}</p>
 				) : null}
+				<div className="browser-legal">
+					<a href="/offer" target="_blank" rel="noreferrer">
+						Оферта
+					</a>
+					<a href="/privacy" target="_blank" rel="noreferrer">
+						Конфиденциальность
+					</a>
+					<a href="/consent" target="_blank" rel="noreferrer">
+						Обработка данных
+					</a>
+					<a href="/refunds" target="_blank" rel="noreferrer">
+						Возвраты
+					</a>
+				</div>
+				{homeScreenStatus === "unknown" && (
+					<div className="browser-install-card">
+						<House size={22} weight="fill" />
+						<div>
+							<strong>Добавьте приложение на экран</strong>
+							<small>Открывайте расходы одним касанием.</small>
+						</div>
+						<button type="button" onClick={() => void onInstall()}>
+							{browserInstallAvailable ? "Установить" : "Инструкция"}
+						</button>
+					</div>
+				)}
 			</section>
+			{installGuideOpen && <InstallGuide onClose={onCloseInstallGuide} />}
 		</main>
 	);
 };
