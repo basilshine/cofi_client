@@ -1136,6 +1136,10 @@
 	color: var(--mini-green);
 	font-size: 13px;
 }
+.mini-plan-expiry {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
 .mini-progress {
 	overflow: hidden;
 	height: 7px;
@@ -1175,6 +1179,77 @@
 }
 .mini-profile-actions button:disabled {
 	opacity: 0.55;
+}
+.mini-dev-tools {
+	border: 1px dashed var(--mini-green);
+	border-radius: 8px;
+	background: var(--mini-paper);
+}
+.mini-dev-tools summary {
+	padding: 14px 16px;
+	color: var(--mini-green);
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 750;
+}
+.mini-dev-tools fieldset {
+	display: grid;
+	gap: 12px;
+	margin: 0;
+	padding: 0 14px 14px;
+	border: 0;
+}
+.mini-dev-tools fieldset:disabled {
+	opacity: 0.55;
+}
+.mini-dev-tools form:not(.mini-dev-inline) {
+	display: grid;
+	gap: 10px;
+}
+.mini-dev-tools label {
+	display: grid;
+	gap: 5px;
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.mini-dev-tools input,
+.mini-dev-tools select,
+.mini-dev-tools button {
+	min-height: 42px;
+	border: 1px solid var(--mini-line);
+	border-radius: 6px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	font: inherit;
+}
+.mini-dev-tools input,
+.mini-dev-tools select {
+	min-width: 0;
+	padding: 0 10px;
+}
+.mini-dev-tools button {
+	padding: 0 11px;
+	color: var(--mini-green);
+	font-size: 12px;
+	font-weight: 750;
+}
+.mini-dev-tools form:not(.mini-dev-inline) > button {
+	border-color: var(--mini-green);
+	background: var(--mini-green);
+	color: var(--mini-paper);
+}
+.mini-dev-actions {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+.mini-dev-inline {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+.mini-dev-inline select {
+	flex: 1 1 160px;
 }
 .mini-billing-packs {
 	display: grid;

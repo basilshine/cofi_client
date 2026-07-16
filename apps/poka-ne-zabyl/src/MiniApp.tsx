@@ -241,6 +241,20 @@ type Quota = {
 	plan_expires_at?: string | null;
 	recurring_limit?: number;
 	additional_limit?: number;
+	dev_tools_enabled?: boolean;
+};
+
+type DeveloperQuotaPatch = {
+	plan?: "free" | "plus";
+	plan_expires_at?: string;
+	recurring_limit?: number;
+	additional_limit?: number;
+	additional_units?: number;
+	notification?:
+		| "subscription_expiring"
+		| "subscription_expired"
+		| "quota_low"
+		| "quota_exhausted";
 };
 
 type CheckoutResponse = {
@@ -905,7 +919,15 @@ export const MiniApp = () => {
 			setReviewCandidates(previewReviewCandidates);
 			setCategories(previewCategories);
 			setVendors(previewVendors);
-			setQuota({ plan: "basic", limit: 100, used: 37, remaining: 63 });
+			setQuota({
+				plan: "basic",
+				limit: 100,
+				used: 37,
+				remaining: 63,
+				recurring_limit: 100,
+				additional_limit: 0,
+				dev_tools_enabled: true,
+			});
 			if (requestedReview) {
 				setReviewDraft({
 					candidateID: requestedReview.candidateID,
@@ -1039,6 +1061,60 @@ export const MiniApp = () => {
 			setError(
 				err instanceof Error ? err.message : "Не удалось открыть оплату",
 			);
+			setBillingLoading(false);
+		}
+	};
+
+	const updateDeveloperQuota = async (patch: DeveloperQuotaPatch) => {
+		if (!token || !spaceID || billingLoading) return;
+		setBillingLoading(true);
+		setError("");
+		if (previewMode) {
+			setQuota((current) => {
+				if (!current) return current;
+				const recurring = patch.recurring_limit ?? current.recurring_limit ?? 0;
+				const additional =
+					patch.additional_limit ??
+					(current.additional_limit ?? 0) + (patch.additional_units ?? 0);
+				const limit = recurring + additional;
+				return {
+					...current,
+					plan: patch.plan === "free" ? "basic" : (patch.plan ?? current.plan),
+					plan_expires_at:
+						patch.plan_expires_at === ""
+							? null
+							: (patch.plan_expires_at ?? current.plan_expires_at),
+					recurring_limit: recurring,
+					additional_limit: additional,
+					limit,
+					remaining: Math.max(0, limit - current.used),
+				};
+			});
+			setNotice(
+				patch.notification
+					? "Тестовое уведомление отправлено"
+					: "Тестовая подписка обновлена",
+			);
+			setBillingLoading(false);
+			return;
+		}
+		try {
+			const updated = await apiRequest<Quota>(
+				`/quota/test-plan?space_id=${spaceID}`,
+				token,
+				{ method: "PATCH", body: JSON.stringify(patch) },
+			);
+			setQuota(updated);
+			setNotice(
+				patch.notification
+					? "Тестовое уведомление отправлено"
+					: "Тестовая подписка обновлена",
+			);
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Не удалось обновить подписку",
+			);
+		} finally {
 			setBillingLoading(false);
 		}
 	};
@@ -3094,6 +3170,7 @@ export const MiniApp = () => {
 								}
 								onStartPlus={() => void startCheckout("plus_30d")}
 								onBuyPack={() => setPackPickerOpen(true)}
+								onDevUpdate={(patch) => void updateDeveloperQuota(patch)}
 								billingLoading={billingLoading}
 							/>
 						)}
@@ -5175,6 +5252,7 @@ const ProfileView = ({
 	onInstall,
 	onStartPlus,
 	onBuyPack,
+	onDevUpdate,
 	billingLoading,
 }: {
 	user: User | null;
@@ -5192,6 +5270,7 @@ const ProfileView = ({
 	onInstall: () => void;
 	onStartPlus: () => void;
 	onBuyPack: () => void;
+	onDevUpdate: (patch: DeveloperQuotaPatch) => void;
 	billingLoading: boolean;
 }) => {
 	const used = quota?.used || 0;
@@ -5239,6 +5318,11 @@ const ProfileView = ({
 					<strong>{uiText(language, plus ? "plus" : "basic")}</strong>
 				</div>
 				<b>{plus ? "249 ₽ / 30 дней" : "0 ₽"}</b>
+				{quota?.plan_expires_at && (
+					<small className="mini-plan-expiry">
+						Закончится {formatDateTime(quota.plan_expires_at, language)}
+					</small>
+				)}
 				<div className="mini-progress">
 					<i style={{ width: `${progress}%` }} />
 				</div>
@@ -5261,6 +5345,13 @@ const ProfileView = ({
 					{uiText(language, "buyPack")}
 				</button>
 			</div>
+			{quota?.dev_tools_enabled && (
+				<BillingDeveloperTools
+					quota={quota}
+					loading={billingLoading}
+					onApply={onDevUpdate}
+				/>
+			)}
 			<div className="mini-profile-list">
 				<button
 					type="button"
@@ -5337,6 +5428,138 @@ const ProfileView = ({
 		</section>
 	);
 };
+
+const BillingDeveloperTools = ({
+	quota,
+	loading,
+	onApply,
+}: {
+	quota: Quota;
+	loading: boolean;
+	onApply: (patch: DeveloperQuotaPatch) => void;
+}) => (
+	<details className="mini-dev-tools">
+		<summary>Инструменты разработчика</summary>
+		<fieldset disabled={loading}>
+			<form
+				key={`${quota.plan}-${quota.plan_expires_at}-${quota.recurring_limit}-${quota.additional_limit}`}
+				onSubmit={(event) => {
+					event.preventDefault();
+					const data = new FormData(event.currentTarget);
+					const expiresAt = String(data.get("expires_at") || "");
+					onApply({
+						plan: String(data.get("plan")) === "plus" ? "plus" : "free",
+						plan_expires_at: expiresAt ? new Date(expiresAt).toISOString() : "",
+						recurring_limit: Number(data.get("recurring_limit")),
+						additional_limit: Number(data.get("additional_limit")),
+					});
+				}}
+			>
+				<label>
+					Тариф
+					<select
+						name="plan"
+						defaultValue={quota.plan === "plus" ? "plus" : "free"}
+					>
+						<option value="free">Базовый</option>
+						<option value="plus">Плюс</option>
+					</select>
+				</label>
+				<label>
+					Дата и время окончания
+					<input
+						type="datetime-local"
+						name="expires_at"
+						defaultValue={dateTimeInputValue(quota.plan_expires_at)}
+					/>
+				</label>
+				<label>
+					Лимит тарифа
+					<input
+						type="number"
+						name="recurring_limit"
+						min="0"
+						defaultValue={quota.recurring_limit || 0}
+					/>
+				</label>
+				<label>
+					Дополнительный лимит
+					<input
+						type="number"
+						name="additional_limit"
+						min="0"
+						defaultValue={quota.additional_limit || 0}
+					/>
+				</label>
+				<button type="submit">Применить</button>
+			</form>
+			<div className="mini-dev-actions">
+				<button
+					type="button"
+					onClick={() =>
+						onApply({
+							plan: "plus",
+							plan_expires_at: new Date(Date.now() + 2 * 60_000).toISOString(),
+							recurring_limit: 500,
+						})
+					}
+				>
+					Плюс на 2 минуты
+				</button>
+				<button
+					type="button"
+					onClick={() =>
+						onApply({ plan: "free", plan_expires_at: "", recurring_limit: 100 })
+					}
+				>
+					Отменить Плюс
+				</button>
+			</div>
+			<form
+				className="mini-dev-inline"
+				onSubmit={(event) => {
+					event.preventDefault();
+					const units = Number(new FormData(event.currentTarget).get("units"));
+					onApply({ additional_units: units });
+				}}
+			>
+				<select
+					name="units"
+					aria-label="Размер тестового пакета"
+					defaultValue="100"
+				>
+					<option value="100">Пакет 100</option>
+					<option value="220">Пакет 220</option>
+					<option value="600">Пакет 600</option>
+					<option value="1300">Пакет 1300</option>
+				</select>
+				<button type="submit">Добавить</button>
+				<button type="button" onClick={() => onApply({ additional_limit: 0 })}>
+					Сбросить
+				</button>
+			</form>
+			<form
+				className="mini-dev-inline"
+				onSubmit={(event) => {
+					event.preventDefault();
+					onApply({
+						notification: new FormData(event.currentTarget).get(
+							"notification",
+						) as DeveloperQuotaPatch["notification"],
+					});
+				}}
+			>
+				<select name="notification" aria-label="Тип тестового уведомления">
+					<option value="subscription_expiring">Подписка заканчивается</option>
+					<option value="subscription_expired">Подписка закончилась</option>
+					<option value="quota_low">Лимит скоро закончится</option>
+					<option value="quota_exhausted">Лимит закончился</option>
+				</select>
+				<button type="submit">Отправить</button>
+			</form>
+		</fieldset>
+	</details>
+);
 
 const billingPacks = [
 	{ code: "pack_100", price: 100, units: 100 },
@@ -7323,6 +7546,17 @@ const formatPlanDate = (value: string, language: UILanguage) =>
 	new Intl.DateTimeFormat(language, { day: "numeric", month: "short" }).format(
 		new Date(`${value.slice(0, 10)}T12:00:00`),
 	);
+const formatDateTime = (value: string, language: UILanguage) =>
+	new Intl.DateTimeFormat(language, {
+		dateStyle: "medium",
+		timeStyle: "medium",
+	}).format(new Date(value));
+const dateTimeInputValue = (value?: string | null) => {
+	if (!value) return "";
+	const date = new Date(value);
+	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+	return local.toISOString().slice(0, 16);
+};
 const formatDate = (value: string) =>
 	new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(
 		new Date(value),
