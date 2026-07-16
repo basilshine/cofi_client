@@ -259,6 +259,7 @@ type DeveloperQuotaPatch = {
 	recurring_limit?: number;
 	additional_limit?: number;
 	additional_units?: number;
+	reset_usage?: boolean;
 	notification?:
 		| "subscription_expiring"
 		| "subscription_expired"
@@ -1152,6 +1153,9 @@ export const MiniApp = () => {
 		if (previewMode) {
 			setQuota((current) => {
 				if (!current) return current;
+				if (patch.reset_usage) {
+					return { ...current, used: 0, remaining: current.limit };
+				}
 				const recurring = patch.recurring_limit ?? current.recurring_limit ?? 0;
 				const additional =
 					patch.additional_limit ??
@@ -1174,9 +1178,11 @@ export const MiniApp = () => {
 				};
 			});
 			setNotice(
-				patch.notification
-					? "Тестовое уведомление отправлено"
-					: "Тестовая подписка обновлена",
+				patch.reset_usage
+					? "Использование обнулено"
+					: patch.notification
+						? "Тестовое уведомление отправлено"
+						: "Тестовая подписка обновлена",
 			);
 			setBillingLoading(false);
 			return;
@@ -1189,9 +1195,11 @@ export const MiniApp = () => {
 			);
 			setQuota(updated);
 			setNotice(
-				patch.notification
-					? "Тестовое уведомление отправлено"
-					: "Тестовая подписка обновлена",
+				patch.reset_usage
+					? "Использование обнулено"
+					: patch.notification
+						? "Тестовое уведомление отправлено"
+						: "Тестовая подписка обновлена",
 			);
 		} catch (err) {
 			setError(
@@ -5853,6 +5861,11 @@ const BillingDeveloperTools = ({
 					}
 				>
 					Отменить Плюс
+				</button>
+			</div>
+			<div className="mini-dev-inline">
+				<button type="button" onClick={() => onApply({ reset_usage: true })}>
+					Обнулить использование ({quota.used})
 				</button>
 			</div>
 			<form
