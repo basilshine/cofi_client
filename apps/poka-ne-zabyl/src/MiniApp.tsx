@@ -55,6 +55,7 @@ import {
 	isQuotaExhaustedError,
 	requestError,
 } from "./request";
+import { isSubscriptionExpired } from "./subscription";
 import { shouldUseFullscreen } from "./telegram-platform";
 import {
 	commonVendorName,
@@ -768,6 +769,8 @@ export const MiniApp = () => {
 	);
 	const [dismissedQuotaLevel, setDismissedQuotaLevel] =
 		useState<QuotaLevel | null>(null);
+	const [dismissedExpiredSubscription, setDismissedExpiredSubscription] =
+		useState(false);
 	const [loading, setLoading] = useState(true);
 	const [loadFailed, setLoadFailed] = useState(false);
 	const [error, setError] = useState("");
@@ -860,14 +863,19 @@ export const MiniApp = () => {
 			: quota && quota.limit > 0 && quota.used * 100 >= quota.limit * 80
 				? "low"
 				: null;
-	const showCaptureStatus = Boolean(
+	const hasCaptureStatus = Boolean(
 		captureSubmitting ||
 			pendingCapture ||
 			captureFailure ||
 			(showReadyCandidate && view !== "overview"),
 	);
+	const subscriptionExpired = isSubscriptionExpired(quota?.plan_expires_at);
+	const showExpiredSubscriptionStatus =
+		subscriptionExpired && !dismissedExpiredSubscription;
+	const showCaptureStatus = hasCaptureStatus && !showExpiredSubscriptionStatus;
 	const showQuotaStatus =
 		!showCaptureStatus &&
+		!showExpiredSubscriptionStatus &&
 		quotaLevel !== null &&
 		quotaLevel !== dismissedQuotaLevel;
 	const quotaStatusCopy =
@@ -881,6 +889,7 @@ export const MiniApp = () => {
 	useEffect(() => {
 		setForcedQuotaLevel(null);
 		setDismissedQuotaLevel(null);
+		setDismissedExpiredSubscription(false);
 	}, [spaceID]);
 
 	useEffect(() => {
@@ -3414,6 +3423,37 @@ export const MiniApp = () => {
 						type="button"
 						onClick={() => {
 							setDismissedQuotaLevel(quotaLevel);
+							setView("profile");
+						}}
+					>
+						{uiText(language, "manageSubscription")}
+					</button>
+				</div>
+			)}
+			{showExpiredSubscriptionStatus && (
+				<div
+					className="capture-status is-quota is-exhausted"
+					role="alert"
+					aria-live="polite"
+				>
+					<WarningCircle size={22} weight="fill" />
+					<div>
+						<strong>{uiText(language, "subscriptionExpiredTitle")}</strong>
+						<small>{uiText(language, "subscriptionExpiredBody")}</small>
+					</div>
+					<button
+						className="capture-status-dismiss"
+						type="button"
+						aria-label={uiText(language, "close")}
+						onClick={() => setDismissedExpiredSubscription(true)}
+					>
+						<X size={17} />
+					</button>
+					<button
+						className="capture-status-action"
+						type="button"
+						onClick={() => {
+							setDismissedExpiredSubscription(true);
 							setView("profile");
 						}}
 					>

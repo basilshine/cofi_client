@@ -122,6 +122,9 @@ const messages = {
 		quotaExhaustedTitle: "Пакет закончился",
 		quotaExhaustedBody: "Подключите Плюс или докупите пакет.",
 		manageSubscription: "Управлять подпиской",
+		subscriptionExpiredTitle: "Плюс закончился",
+		subscriptionExpiredBody:
+			"Базовые возможности остались доступны. Продлите Плюс в профиле.",
 		captureUnrecognizedExpense:
 			"Не получилось понять покупку. Укажите, что купили и сколько это стоило. Например: «Кофе 350 ₽».",
 		captureUnrecognizedPlan:
@@ -256,6 +259,9 @@ const messages = {
 		quotaExhaustedTitle: "Allowance exhausted",
 		quotaExhaustedBody: "Get Plus or buy an extra pack.",
 		manageSubscription: "Manage subscription",
+		subscriptionExpiredTitle: "Plus has ended",
+		subscriptionExpiredBody:
+			"Basic features remain available. Renew Plus in your profile.",
 		captureUnrecognizedExpense:
 			"I couldn't understand the purchase. Say what you bought and how much it cost, for example: “Coffee 350 RUB”.",
 		captureUnrecognizedPlan:
@@ -391,6 +397,9 @@ const messages = {
 		quotaExhaustedTitle: "Paquete agotado",
 		quotaExhaustedBody: "Activa Plus o compra un paquete adicional.",
 		manageSubscription: "Gestionar suscripción",
+		subscriptionExpiredTitle: "Plus ha finalizado",
+		subscriptionExpiredBody:
+			"Las funciones básicas siguen disponibles. Renueva Plus en tu perfil.",
 		captureUnrecognizedExpense:
 			"No pude entender la compra. Indica qué compraste y cuánto costó, por ejemplo: «Café 350 RUB».",
 		captureUnrecognizedPlan:
