@@ -247,6 +247,8 @@ type Quota = {
 	remaining: number;
 	plan_expires_at?: string | null;
 	recurring_limit?: number;
+	recurring_used?: number;
+	recurring_remaining?: number;
 	welcome_remaining?: number;
 	additional_limit?: number;
 	dev_tools_enabled?: boolean;
@@ -5612,6 +5614,37 @@ const ProfileView = ({
 	const limit = quota?.limit || 0;
 	const progress = limit > 0 ? Math.min(100, (used / limit) * 100) : 0;
 	const plus = ["medium", "plus"].includes(quota?.plan || "");
+	const recurringLimit = quota?.recurring_limit || 0;
+	const recurringUsed = quota?.recurring_used || 0;
+	const recurringRemaining = quota?.recurring_remaining || 0;
+	const welcomeRemaining = quota?.welcome_remaining || 0;
+	const additionalRemaining = quota?.additional_limit || 0;
+	const includedLabel =
+		language === "ru"
+			? "Включено в Плюс"
+			: language === "es"
+				? "Incluido en Plus"
+				: "Included in Plus";
+	const welcomeLabel =
+		language === "ru"
+			? "Приветственные разборы"
+			: language === "es"
+				? "Registros de bienvenida"
+				: "Welcome additions";
+	const packsLabel =
+		language === "ru"
+			? "Дополнительные пакеты"
+			: language === "es"
+				? "Paquetes adicionales"
+				: "Additional packs";
+	const totalLabel =
+		language === "ru"
+			? "Доступно всего"
+			: language === "es"
+				? "Total disponible"
+				: "Total available";
+	const remainingLabel =
+		language === "ru" ? "осталось" : language === "es" ? "quedan" : "left";
 	const installDisabled = ["checking", "unsupported", "added"].includes(
 		homeScreenStatus,
 	);
@@ -5661,27 +5694,48 @@ const ProfileView = ({
 				<small className="mini-plan-allowance">
 					{language === "ru"
 						? plus
-							? "400 разборов на каждый период"
-							: "20 приветственных разборов один раз"
+							? `${recurringLimit} разборов включено на период`
+							: "Приветственный набор выдаётся один раз"
 						: language === "es"
 							? plus
-								? "400 registros rápidos por periodo"
-								: "20 registros de bienvenida, una sola vez"
+								? `${recurringLimit} registros incluidos por periodo`
+								: "El paquete de bienvenida se entrega una vez"
 							: plus
-								? "400 quick additions per period"
-								: "20 welcome additions, once"}
+								? `${recurringLimit} quick additions included per period`
+								: "The welcome pack is granted once"}
 				</small>
 				<div className="mini-progress">
 					<i style={{ width: `${progress}%` }} />
 				</div>
-				<p>
-					<span>
-						{uiText(language, "used")} {used} / {limit}
-					</span>
-					<span>
-						{uiText(language, "left")} {quota?.remaining ?? limit}
-					</span>
-				</p>
+				<div className="mini-allowance-breakdown">
+					{plus && (
+						<p>
+							<span>{includedLabel}</span>
+							<b>
+								{recurringUsed} / {recurringLimit}, {remainingLabel}{" "}
+								{recurringRemaining}
+							</b>
+						</p>
+					)}
+					{!plus && (
+						<p>
+							<span>{welcomeLabel}</span>
+							<b>
+								{remainingLabel} {welcomeRemaining}
+							</b>
+						</p>
+					)}
+					<p>
+						<span>{packsLabel}</span>
+						<b>
+							{remainingLabel} {additionalRemaining}
+						</b>
+					</p>
+					<p className="is-total">
+						<span>{totalLabel}</span>
+						<b>{quota?.remaining ?? limit}</b>
+					</p>
+				</div>
 			</div>
 			<div className="mini-profile-actions">
 				<button type="button" disabled={billingLoading} onClick={onStartPlus}>
