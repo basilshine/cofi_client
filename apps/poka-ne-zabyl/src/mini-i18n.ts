@@ -122,6 +122,10 @@ const messages = {
 		quotaExhaustedTitle: "Пакет закончился",
 		quotaExhaustedBody: "Подключите Плюс или докупите пакет.",
 		manageSubscription: "Управлять подпиской",
+		captureUnrecognizedExpense:
+			"Не получилось понять покупку. Укажите, что купили и сколько это стоило. Например: «Кофе 350 ₽».",
+		captureUnrecognizedPlan:
+			"Не получилось понять план. Укажите, что хотите купить, примерную сумму и дату.",
 		spaces: "Пространства",
 		vendors: "Продавцы и названия",
 		homeShortcut: "Ярлык на экран телефона",
@@ -252,6 +256,10 @@ const messages = {
 		quotaExhaustedTitle: "Allowance exhausted",
 		quotaExhaustedBody: "Get Plus or buy an extra pack.",
 		manageSubscription: "Manage subscription",
+		captureUnrecognizedExpense:
+			"I couldn't understand the purchase. Say what you bought and how much it cost, for example: “Coffee 350 RUB”.",
+		captureUnrecognizedPlan:
+			"I couldn't understand the plan. Say what you want to buy, the estimated amount, and the date.",
 		spaces: "Spaces",
 		vendors: "Sellers and names",
 		homeShortcut: "Home screen shortcut",
@@ -383,6 +391,10 @@ const messages = {
 		quotaExhaustedTitle: "Paquete agotado",
 		quotaExhaustedBody: "Activa Plus o compra un paquete adicional.",
 		manageSubscription: "Gestionar suscripción",
+		captureUnrecognizedExpense:
+			"No pude entender la compra. Indica qué compraste y cuánto costó, por ejemplo: «Café 350 RUB».",
+		captureUnrecognizedPlan:
+			"No pude entender el plan. Indica qué quieres comprar, el importe aproximado y la fecha.",
 		spaces: "Espacios",
 		vendors: "Vendedores y nombres",
 		homeShortcut: "Acceso en la pantalla de inicio",

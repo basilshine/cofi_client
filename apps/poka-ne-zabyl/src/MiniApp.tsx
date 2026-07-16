@@ -391,6 +391,7 @@ type CapturePacket = {
 	source_type?: string;
 	document_type?: string;
 	processing_status?: "pending" | "processing" | "succeeded" | "failed";
+	failure_code?: string;
 	pending_count?: number;
 	source_text?: string;
 	created_at?: string;
@@ -807,6 +808,9 @@ export const MiniApp = () => {
 	);
 	const [dismissedCaptureSourceID, setDismissedCaptureSourceID] = useState(0);
 	const [captureFailure, setCaptureFailure] = useState("");
+	const [captureFailurePurpose, setCaptureFailurePurpose] =
+		useState<CapturePurpose>("expense");
+	const [captureSucceeded, setCaptureSucceeded] = useState(false);
 	const [reviewDraft, setReviewDraft] = useState<ReviewDraft | null>(null);
 	const [reviewMediaURL, setReviewMediaURL] = useState("");
 	const [savedReviewExpense, setSavedReviewExpense] = useState<Expense | null>(
@@ -1415,6 +1419,8 @@ export const MiniApp = () => {
 		setCaptureSubmitting(true);
 		setCaptureError("");
 		setCaptureFailure("");
+		setCaptureFailurePurpose(purpose);
+		setCaptureSucceeded(false);
 		try {
 			if (previewMode) {
 				setCaptureOpen(false);
@@ -1467,6 +1473,23 @@ export const MiniApp = () => {
 			});
 			setCaptureOpen(false);
 		} catch (err) {
+			if (
+				err instanceof ApiError &&
+				(err.status === 422 || err.code === "unrecognized_input")
+			) {
+				setCaptureFailurePurpose(purpose);
+				setCaptureFailure(
+					uiText(
+						language,
+						purpose === "purchase_plan"
+							? "captureUnrecognizedPlan"
+							: "captureUnrecognizedExpense",
+					),
+				);
+				setCaptureOpen(false);
+				setCaptureError("");
+				return;
+			}
 			if (isQuotaExhaustedError(err)) {
 				setQuota((current) =>
 					current
@@ -1510,11 +1533,20 @@ export const MiniApp = () => {
 				if (cancelled) return;
 				const packet = packets.captures[0];
 				if (packet?.processing_status === "failed") {
+					setCaptureFailurePurpose(pendingCapture.purpose);
+					setCaptureSucceeded(false);
 					setPendingCapture(null);
 					setCaptureFailure(
-						pendingCapture.purpose === "purchase_plan"
-							? "Не удалось разобрать план. Попробуйте ещё раз"
-							: "Не удалось разобрать расход. Попробуйте ещё раз",
+						packet.failure_code === "unrecognized_input"
+							? uiText(
+									language,
+									pendingCapture.purpose === "purchase_plan"
+										? "captureUnrecognizedPlan"
+										: "captureUnrecognizedExpense",
+								)
+							: pendingCapture.purpose === "purchase_plan"
+								? "Не удалось разобрать план. Попробуйте ещё раз"
+								: "Не удалось разобрать расход. Попробуйте ещё раз",
 					);
 					return;
 				}
@@ -1534,11 +1566,16 @@ export const MiniApp = () => {
 						(item) => item.candidate_type === candidateType,
 					);
 					if (!candidate) {
+						setCaptureFailurePurpose(pendingCapture.purpose);
+						setCaptureSucceeded(false);
 						setPendingCapture(null);
 						setCaptureFailure(
-							pendingCapture.purpose === "purchase_plan"
-								? "Не удалось распознать план"
-								: "Не удалось распознать расход",
+							uiText(
+								language,
+								pendingCapture.purpose === "purchase_plan"
+									? "captureUnrecognizedPlan"
+									: "captureUnrecognizedExpense",
+							),
 						);
 						return;
 					}
@@ -1555,7 +1592,7 @@ export const MiniApp = () => {
 					setEditingExpense(null);
 					setEditingItemIndex(null);
 					setSpaceID(pendingCapture.spaceID);
-					setPendingCapture(null);
+					setCaptureSucceeded(true);
 					void apiRequest<Quota>(
 						`/quota?space_id=${pendingCapture.spaceID}`,
 						token,
@@ -1566,6 +1603,10 @@ export const MiniApp = () => {
 						.catch(() => {
 							// The finished capture remains usable if the quota refresh fails.
 						});
+					await new Promise<void>((resolve) => {
+						timer = window.setTimeout(resolve, 550);
+					});
+					if (cancelled) return;
 					if (pendingCapture.purpose === "purchase_plan") {
 						await openReviewCandidate(candidate, pendingCapture.spaceID);
 					} else {
@@ -1578,6 +1619,8 @@ export const MiniApp = () => {
 						if (cancelled) return;
 						setView("review");
 					}
+					setPendingCapture(null);
+					setCaptureSucceeded(false);
 					return;
 				}
 			} catch {
@@ -3257,13 +3300,14 @@ export const MiniApp = () => {
 
 			{showCaptureStatus && (
 				<div
-					className={`capture-status${captureFailure ? " is-error" : ""}`}
+					className={`capture-status${captureFailure ? " is-error" : captureSucceeded || (showReadyCandidate && !captureSubmitting && !pendingCapture) ? " is-success" : " is-processing"}`}
 					role="status"
 					aria-live="polite"
 				>
 					{captureFailure ? (
 						<X size={20} />
-					) : showReadyCandidate && !captureSubmitting && !pendingCapture ? (
+					) : captureSucceeded ||
+						(showReadyCandidate && !captureSubmitting && !pendingCapture) ? (
 						<Check size={20} weight="bold" />
 					) : (
 						<KnotLoader compact />
@@ -3271,14 +3315,18 @@ export const MiniApp = () => {
 					<div>
 						<strong>
 							{captureFailure
-								? pendingCapture?.purpose === "purchase_plan" ||
-									readyCandidate?.candidate_type === "purchase_plan_candidate"
+								? captureFailurePurpose === "purchase_plan"
 									? "План не разобран"
 									: "Расход не разобран"
-								: showReadyCandidate && !captureSubmitting && !pendingCapture
+								: captureSucceeded ||
+										(showReadyCandidate &&
+											!captureSubmitting &&
+											!pendingCapture)
 									? readyCandidate?.candidate_type === "purchase_plan_candidate"
 										? "План готов"
-										: "Расход готов"
+										: pendingCapture?.purpose === "purchase_plan"
+											? "План готов"
+											: "Расход готов"
 									: captureSubmitting
 										? capturePurpose === "purchase_plan"
 											? "Отправляем план…"
@@ -3288,10 +3336,13 @@ export const MiniApp = () => {
 											: "Разбираем расход…"}
 						</strong>
 						<small>
-							{captureFailure ||
-								(showReadyCandidate && !captureSubmitting && !pendingCapture
-									? "Проверьте распознанные данные"
-									: "Можно продолжать пользоваться приложением")}
+							{captureFailure
+								? captureFailure
+								: captureSucceeded
+									? "Готово. Открываем проверку…"
+									: showReadyCandidate && !captureSubmitting && !pendingCapture
+										? "Проверьте распознанные данные"
+										: "Можно продолжать пользоваться приложением"}
 						</small>
 					</div>
 					{showReadyCandidate &&
