@@ -22,6 +22,7 @@ import {
 	Trash,
 	UserCircle,
 	UsersThree,
+	WarningCircle,
 	X,
 } from "@phosphor-icons/react";
 import WebApp from "@twa-dev/sdk";
@@ -48,7 +49,12 @@ import {
 	moneyAmountsMatch,
 } from "./money";
 import { expensesForMonth } from "./overview";
-import { REQUEST_TIMEOUT_MS, requestError } from "./request";
+import {
+	ApiError,
+	REQUEST_TIMEOUT_MS,
+	isQuotaExhaustedError,
+	requestError,
+} from "./request";
 import { shouldUseFullscreen } from "./telegram-platform";
 import {
 	commonVendorName,
@@ -243,6 +249,7 @@ type Quota = {
 	additional_limit?: number;
 	dev_tools_enabled?: boolean;
 };
+type QuotaLevel = "low" | "exhausted";
 
 type DeveloperQuotaPatch = {
 	plan?: "free" | "plus";
@@ -664,8 +671,13 @@ const apiRequest = async <T,>(
 	if (!response.ok) {
 		const body = (await response.json().catch(() => ({}))) as {
 			error?: string;
+			code?: string;
 		};
-		throw new Error(body.error || "Не удалось загрузить данные");
+		throw new ApiError(
+			body.error || "Не удалось загрузить данные",
+			response.status,
+			body.code,
+		);
 	}
 	if (response.status === 204) return undefined as T;
 	return response.json() as Promise<T>;
@@ -750,6 +762,11 @@ export const MiniApp = () => {
 	const [categories, setCategories] = useState<Category[]>([]);
 	const [vendors, setVendors] = useState<Vendor[]>([]);
 	const [quota, setQuota] = useState<Quota | null>(null);
+	const [forcedQuotaLevel, setForcedQuotaLevel] = useState<QuotaLevel | null>(
+		null,
+	);
+	const [dismissedQuotaLevel, setDismissedQuotaLevel] =
+		useState<QuotaLevel | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [loadFailed, setLoadFailed] = useState(false);
 	const [error, setError] = useState("");
@@ -832,6 +849,39 @@ export const MiniApp = () => {
 		readyCandidate &&
 		view !== "review" &&
 		readyCandidate.source_document_id !== dismissedCaptureSourceID;
+	const quotaLevel: QuotaLevel | null = forcedQuotaLevel
+		? forcedQuotaLevel
+		: quota && quota.limit > 0 && quota.remaining <= 0
+			? "exhausted"
+			: quota && quota.limit > 0 && quota.used * 100 >= quota.limit * 80
+				? "low"
+				: null;
+	const showCaptureStatus = Boolean(
+		captureSubmitting ||
+			pendingCapture ||
+			captureFailure ||
+			(showReadyCandidate && view !== "overview"),
+	);
+	const showQuotaStatus =
+		!showCaptureStatus &&
+		quotaLevel !== null &&
+		quotaLevel !== dismissedQuotaLevel;
+	const quotaStatusCopy =
+		quotaLevel === "low"
+			? uiText(language, "quotaLowBody").replace(
+					"{remaining}",
+					String(quota?.remaining ?? 0),
+				)
+			: uiText(language, "quotaExhaustedBody");
+
+	useEffect(() => {
+		setForcedQuotaLevel(null);
+		setDismissedQuotaLevel(null);
+	}, [spaceID]);
+
+	useEffect(() => {
+		if (quota && quota.remaining > 0) setForcedQuotaLevel(null);
+	}, [quota?.remaining]);
 
 	useEffect(() => {
 		document.body.classList.add("mini-body");
@@ -1417,6 +1467,23 @@ export const MiniApp = () => {
 			});
 			setCaptureOpen(false);
 		} catch (err) {
+			if (isQuotaExhaustedError(err)) {
+				setQuota((current) =>
+					current
+						? {
+								...current,
+								used: Math.max(current.used, current.limit),
+								remaining: 0,
+							}
+						: current,
+				);
+				setForcedQuotaLevel("exhausted");
+				setDismissedQuotaLevel(null);
+				setCaptureOpen(false);
+				setCaptureError("");
+				setCaptureFailure("");
+				return;
+			}
 			const message =
 				err instanceof Error
 					? err.message
@@ -1489,6 +1556,16 @@ export const MiniApp = () => {
 					setEditingItemIndex(null);
 					setSpaceID(pendingCapture.spaceID);
 					setPendingCapture(null);
+					void apiRequest<Quota>(
+						`/quota?space_id=${pendingCapture.spaceID}`,
+						token,
+					)
+						.then((updatedQuota) => {
+							if (!cancelled) setQuota(updatedQuota);
+						})
+						.catch(() => {
+							// The finished capture remains usable if the quota refresh fails.
+						});
 					if (pendingCapture.purpose === "purchase_plan") {
 						await openReviewCandidate(candidate, pendingCapture.spaceID);
 					} else {
@@ -3178,10 +3255,7 @@ export const MiniApp = () => {
 				)}
 			</main>
 
-			{(captureSubmitting ||
-				pendingCapture ||
-				captureFailure ||
-				(showReadyCandidate && view !== "overview")) && (
+			{showCaptureStatus && (
 				<div
 					className={`capture-status${captureFailure ? " is-error" : ""}`}
 					role="status"
@@ -3256,6 +3330,44 @@ export const MiniApp = () => {
 							<X size={17} />
 						</button>
 					) : null}
+				</div>
+			)}
+			{showQuotaStatus && quotaLevel && (
+				<div
+					className={`capture-status is-quota is-${quotaLevel}`}
+					role="alert"
+					aria-live="polite"
+				>
+					<WarningCircle size={22} weight="fill" />
+					<div>
+						<strong>
+							{uiText(
+								language,
+								quotaLevel === "exhausted"
+									? "quotaExhaustedTitle"
+									: "quotaLowTitle",
+							)}
+						</strong>
+						<small>{quotaStatusCopy}</small>
+					</div>
+					<button
+						className="capture-status-dismiss"
+						type="button"
+						aria-label={uiText(language, "close")}
+						onClick={() => setDismissedQuotaLevel(quotaLevel)}
+					>
+						<X size={17} />
+					</button>
+					<button
+						className="capture-status-action"
+						type="button"
+						onClick={() => {
+							setDismissedQuotaLevel(quotaLevel);
+							setView("profile");
+						}}
+					>
+						{uiText(language, "manageSubscription")}
+					</button>
 				</div>
 			)}
 
