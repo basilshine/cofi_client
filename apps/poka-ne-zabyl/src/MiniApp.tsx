@@ -81,6 +81,7 @@ import {
 	ApiError,
 	REQUEST_TIMEOUT_MS,
 	isQuotaExhaustedError,
+	isServiceUnavailableError,
 	requestError,
 } from "./request";
 import {
@@ -1232,6 +1233,7 @@ export const MiniApp = () => {
 		useState(false);
 	const [loading, setLoading] = useState(true);
 	const [loadFailed, setLoadFailed] = useState(false);
+	const [serviceUnavailable, setServiceUnavailable] = useState(false);
 	const [pullDistance, setPullDistance] = useState(0);
 	const [refreshing, setRefreshing] = useState(false);
 	const updatePullDistance = (distance: number) => {
@@ -1794,6 +1796,7 @@ export const MiniApp = () => {
 			});
 			await acceptAuth(auth);
 		} catch (err) {
+			setServiceUnavailable(isServiceUnavailableError(err));
 			setError(
 				err instanceof Error ? err.message : "Не удалось войти через Telegram",
 			);
@@ -1850,8 +1853,10 @@ export const MiniApp = () => {
 				body: "{}",
 			});
 			await acceptAuth(auth);
-		} catch {
-			setError("");
+		} catch (err) {
+			const unavailable = isServiceUnavailableError(err);
+			setServiceUnavailable(unavailable);
+			setError(unavailable && err instanceof Error ? err.message : "");
 			setLoading(false);
 		}
 	};
@@ -2235,6 +2240,7 @@ export const MiniApp = () => {
 			});
 			await acceptAuth(auth);
 		} catch (err) {
+			setServiceUnavailable(isServiceUnavailableError(err));
 			setError(err instanceof Error ? err.message : "Не удалось войти");
 			setLoading(false);
 		}
@@ -2250,6 +2256,7 @@ export const MiniApp = () => {
 		const requestID = ++loadSequence.current;
 		if (!background) setLoading(true);
 		setLoadFailed(false);
+		setServiceUnavailable(false);
 		setError("");
 		try {
 			// ponytail: the latest 200 records cover launch usage; add server filters when this ceiling becomes visible.
@@ -2334,6 +2341,7 @@ export const MiniApp = () => {
 		} catch (err) {
 			if (requestID !== loadSequence.current) return;
 			setLoadFailed(true);
+			setServiceUnavailable(isServiceUnavailableError(err));
 			setError(
 				err instanceof Error
 					? err.message
@@ -4912,6 +4920,18 @@ export const MiniApp = () => {
 		setView(reviewReturnView.current);
 	};
 
+	const retryService = () => {
+		setLoadFailed(false);
+		setServiceUnavailable(false);
+		setError("");
+		setLoading(true);
+		if (token) void loadSpace();
+		else if (WebApp.initData) void login();
+		else void restoreBrowserSession();
+	};
+
+	if (serviceUnavailable)
+		return <ServiceUnavailable language={language} onRetry={retryService} />;
 	if (loading && !token) return <LoadingScreen />;
 	if (!token && !WebApp.initData)
 		return (
@@ -13572,6 +13592,26 @@ const LoadingScreen = ({
 		</div>
 	);
 };
+const ServiceUnavailable = ({
+	language,
+	onRetry,
+}: {
+	language: UILanguage;
+	onRetry: () => void;
+}) => (
+	<main className="app-recovery mini-service-unavailable" role="status">
+		<KnotLoader />
+		<p>{uiText(language, "servicePause")}</p>
+		<h1>{uiText(language, "serviceUnavailableTitle")}</h1>
+		<span>{uiText(language, "serviceUnavailableText")}</span>
+		<div>
+			<button type="button" onClick={onRetry}>
+				<ArrowClockwise size={18} weight="bold" />
+				{uiText(language, "checkAgain")}
+			</button>
+		</div>
+	</main>
+);
 const TelegramEntry = ({ error }: { error: string }) => {
 	const language = normalizeUILanguage(
 		WebApp.initDataUnsafe.user?.language_code,

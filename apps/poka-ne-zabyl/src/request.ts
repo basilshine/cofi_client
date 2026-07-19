@@ -16,6 +16,12 @@ export const isQuotaExhaustedError = (error: unknown) =>
 	error instanceof ApiError &&
 	(error.status === 402 || error.code === "quota_exhausted");
 
+export const isServiceUnavailableError = (error: unknown) =>
+	(error instanceof ApiError && error.status >= 500) ||
+	error instanceof TypeError ||
+	(error instanceof Error &&
+		error.message === "Сервис не ответил. Попробуйте ещё раз");
+
 export const requestError = (error: unknown) => {
 	if (
 		error instanceof DOMException &&

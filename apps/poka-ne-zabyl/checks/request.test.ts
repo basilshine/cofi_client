@@ -3,6 +3,7 @@ import test from "node:test";
 import {
 	ApiError,
 	isQuotaExhaustedError,
+	isServiceUnavailableError,
 	requestError,
 } from "../src/request.ts";
 
@@ -19,4 +20,10 @@ test("recognizes the server quota response", () => {
 		true,
 	);
 	assert.equal(isQuotaExhaustedError(new ApiError("broken", 500)), false);
+});
+
+test("distinguishes service outages from ordinary client errors", () => {
+	assert.equal(isServiceUnavailableError(new ApiError("down", 503)), true);
+	assert.equal(isServiceUnavailableError(new TypeError("fetch failed")), true);
+	assert.equal(isServiceUnavailableError(new ApiError("invalid", 400)), false);
 });

@@ -177,6 +177,7 @@ button:focus-visible {
 }
 
 .app-recovery button {
+	gap: 8px;
 	background: var(--blue);
 	color: white;
 }
