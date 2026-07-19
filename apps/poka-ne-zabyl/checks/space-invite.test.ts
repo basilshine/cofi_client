@@ -23,3 +23,27 @@ test("offers people from other spaces without duplicate pending invites", () => 
 		[2],
 	);
 });
+
+test("hides an existing user who already has a direct invitation", () => {
+	const suggestions = [
+		{ user_id: 3, name: "Наталья" },
+		{ user_id: 4, name: "Ирина" },
+	];
+	const pending = [
+		{
+			id: 8,
+			invitee_user_id: 3,
+			invitee_name: "Наталья",
+			invitee_email: "",
+			token: "pending-natalia",
+			expires_at: "2026-07-24T00:00:00Z",
+		},
+	];
+
+	assert.deepEqual(
+		availableInviteSuggestions(suggestions, pending, "").map(
+			({ user_id }) => user_id,
+		),
+		[4],
+	);
+});

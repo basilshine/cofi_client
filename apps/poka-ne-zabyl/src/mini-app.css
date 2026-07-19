@@ -98,34 +98,185 @@
 	object-fit: contain;
 }
 .mini-header-primary {
-	display: grid;
 	min-width: 0;
 	max-width: 229px;
-	flex: 0 1 229px;
-	grid-template-columns: 30px minmax(0, 190px);
-	grid-template-rows: 16px 24px;
+	flex: 1 1 229px;
+}
+.mini-space-switcher {
+	position: relative;
+	min-width: 0;
+}
+.mini-space-trigger {
+	display: grid;
+	width: 100%;
+	min-height: 44px;
+	grid-template-columns: 30px minmax(0, 1fr);
 	align-items: center;
-	column-gap: 9px;
+	gap: 9px;
+	padding: 2px 4px 2px 0;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	color: var(--mini-ink);
+	text-align: left;
+	transition-property: background-color, scale;
+	transition-duration: 160ms;
 }
-.mini-header-primary .mini-brand {
-	display: contents;
+.mini-space-trigger:hover,
+.mini-space-trigger.is-open {
+	background: rgba(255, 255, 255, 0.48);
 }
-.mini-header-primary .mini-brand-mark {
-	grid-row: 1 / span 2;
+.mini-space-trigger:active {
+	scale: 0.96;
 }
-.mini-header-primary .mini-brand > span {
-	grid-column: 2;
-	align-self: end;
+.mini-space-trigger-copy {
+	display: grid;
+	min-width: 0;
+	gap: 1px;
+}
+.mini-space-trigger-copy > strong {
+	overflow: hidden;
 	font-size: 13px;
 	line-height: 16px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
-.mini-header-primary > select,
-.mini-header-primary > .mini-space {
-	grid-column: 2;
-	align-self: start;
-	height: 24px;
+.mini-space-trigger-copy > span {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	gap: 4px;
+	color: var(--mini-muted);
+}
+.mini-space-trigger-copy small {
+	min-width: 0;
+	flex: 1;
+	overflow: hidden;
 	font-size: 11px;
-	line-height: 24px;
+	line-height: 16px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-space-trigger-copy svg {
+	flex: none;
+	transition: rotate 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.mini-space-trigger.is-open .mini-space-trigger-copy svg {
+	rotate: 180deg;
+}
+.mini-space-menu {
+	position: absolute;
+	z-index: 30;
+	top: calc(100% + 8px);
+	left: 0;
+	display: grid;
+	width: min(330px, calc(100vw - 24px));
+	max-height: min(480px, calc(100dvh - var(--mini-safe-top) - 82px));
+	overflow: auto;
+	padding: 8px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+	box-shadow: 0 18px 44px rgba(23, 27, 45, 0.18);
+	color: var(--mini-ink);
+}
+.mini-space-menu-summary {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+	padding: 8px 10px 12px;
+	border-bottom: 1px solid var(--mini-line);
+}
+.mini-space-menu-summary small,
+.mini-space-menu-summary span,
+.mini-space-menu-list > small,
+.mini-space-menu-list button small {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.mini-space-menu-summary strong,
+.mini-space-menu-summary span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-space-menu-list {
+	display: grid;
+	padding: 10px 0 6px;
+}
+.mini-space-menu-list > small {
+	padding: 0 10px 5px;
+	font-weight: 700;
+}
+.mini-space-menu-list button {
+	display: grid;
+	width: 100%;
+	min-height: 54px;
+	grid-template-columns: 34px minmax(0, 1fr) 18px;
+	align-items: center;
+	gap: 10px;
+	padding: 7px 9px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--mini-ink);
+	text-align: left;
+}
+.mini-space-menu-list button:hover,
+.mini-space-menu-list button:active,
+.mini-space-menu-list button.is-active {
+	background: var(--mini-soft);
+}
+.mini-space-menu-list button > span:not(.mini-space-menu-icon) {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-space-menu-list button strong,
+.mini-space-menu-list button small {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-space-menu-list button > svg {
+	color: var(--mini-green);
+}
+.mini-space-menu-icon {
+	display: grid;
+	width: 34px;
+	height: 34px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+}
+.mini-space-menu-actions {
+	display: grid;
+	padding-top: 6px;
+	border-top: 1px solid var(--mini-line);
+}
+.mini-space-menu-actions button {
+	display: grid;
+	min-height: 46px;
+	grid-template-columns: 24px minmax(0, 1fr) 16px;
+	align-items: center;
+	gap: 8px;
+	padding: 7px 10px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--mini-ink);
+	text-align: left;
+}
+.mini-space-menu-actions button:hover,
+.mini-space-menu-actions button:active {
+	background: var(--mini-soft);
+}
+.mini-space-menu-actions button > svg {
+	color: var(--mini-muted);
+}
+.mini-space-menu-actions button > svg:last-child {
+	justify-self: end;
 }
 .mini-header-context {
 	display: flex;
@@ -133,22 +284,6 @@
 	align-items: center;
 	justify-content: flex-end;
 	gap: 8px;
-}
-.mini-header select,
-.mini-space {
-	min-width: 0;
-	max-width: 100%;
-	overflow: hidden;
-	border: 0;
-	background: transparent;
-	color: var(--mini-muted);
-	font-size: 13px;
-	text-align: left;
-	text-overflow: ellipsis;
-}
-.mini-header select {
-	width: 100%;
-	padding: 0 20px 0 0;
 }
 .mini-notification-trigger,
 .mini-account-trigger {
@@ -3916,26 +4051,21 @@
 	border-radius: 8px;
 	background: var(--mini-paper);
 }
-.mini-invite-people button {
+.mini-invite-people article {
 	display: grid;
-	grid-template-columns: 36px minmax(0, 1fr) 20px;
+	grid-template-columns: 36px minmax(0, 1fr) auto;
 	min-height: 58px;
 	align-items: center;
 	gap: 10px;
 	padding: 9px 12px;
-	border: 0;
 	border-bottom: 1px solid var(--mini-line);
-	background: transparent;
 	color: var(--mini-ink);
 	text-align: left;
 }
-.mini-invite-people button:last-child {
+.mini-invite-people article:last-child {
 	border-bottom: 0;
 }
-.mini-invite-people button:disabled {
-	opacity: 0.55;
-}
-.mini-invite-people button > span {
+.mini-invite-people article > span {
 	display: grid;
 	width: 36px;
 	height: 36px;
@@ -3960,6 +4090,24 @@
 }
 .mini-invite-people svg {
 	color: var(--mini-green);
+}
+.mini-invite-people article > button {
+	display: inline-flex;
+	min-height: 36px;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 7px 9px;
+	border: 1px solid var(--mini-line-strong);
+	border-radius: 6px;
+	background: var(--mini-paper);
+	color: var(--mini-green);
+	font-size: 11px;
+	font-weight: 750;
+	white-space: nowrap;
+}
+.mini-invite-people article > button:disabled {
+	opacity: 0.45;
 }
 .mini-invite-pending article {
 	display: grid;

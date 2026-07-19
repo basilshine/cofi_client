@@ -1171,6 +1171,7 @@ export const MiniApp = () => {
 	const currentPullDistance = useRef(0);
 	const blockingRequest = useRef<AbortController | null>(null);
 	const reviewReturnView = useRef<View>("overview");
+	const spaceMenuRef = useRef<HTMLDivElement | null>(null);
 	const accountMenuRef = useRef<HTMLDivElement | null>(null);
 	const [view, setView] = useState<View>(initialView);
 	const [token, setToken] = useState("");
@@ -1202,6 +1203,7 @@ export const MiniApp = () => {
 	const [notifications, setNotifications] = useState<AppNotification[]>([]);
 	const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 	const [notificationsOpen, setNotificationsOpen] = useState(false);
+	const [spaceMenuOpen, setSpaceMenuOpen] = useState(false);
 	const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 	const [selectedNotification, setSelectedNotification] =
 		useState<AppNotification | null>(null);
@@ -1419,6 +1421,23 @@ export const MiniApp = () => {
 			if (objectURL) URL.revokeObjectURL(objectURL);
 		};
 	}, [token, user?.avatarMediaId, user?.telegramPhotoUrl]);
+
+	useEffect(() => {
+		if (!spaceMenuOpen) return;
+		const closeOnOutsidePress = (event: PointerEvent) => {
+			if (!spaceMenuRef.current?.contains(event.target as Node))
+				setSpaceMenuOpen(false);
+		};
+		const closeOnEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setSpaceMenuOpen(false);
+		};
+		document.addEventListener("pointerdown", closeOnOutsidePress);
+		document.addEventListener("keydown", closeOnEscape);
+		return () => {
+			document.removeEventListener("pointerdown", closeOnOutsidePress);
+			document.removeEventListener("keydown", closeOnEscape);
+		};
+	}, [spaceMenuOpen]);
 
 	useEffect(() => {
 		if (!accountMenuOpen) return;
@@ -1933,6 +1952,7 @@ export const MiniApp = () => {
 	}, [token, pendingCaptures.length]);
 
 	const openNotifications = () => {
+		setSpaceMenuOpen(false);
 		setAccountMenuOpen(false);
 		setSelectedNotification(null);
 		setNotificationsOpen(true);
@@ -3264,6 +3284,15 @@ export const MiniApp = () => {
 	};
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
+	const spaceSubtitle = (space: Space) =>
+		`${uiText(
+			language,
+			space.is_personal
+				? "personalSpace"
+				: space.owner_user_id === user?.id
+					? "spaceOwner"
+					: "spaceMember",
+		)} · ${space.currency}`;
 	const currency = user?.currency || activeSpace?.currency || "RUB";
 	const overviewExpenses = expensesForMonth(expenses);
 	const overviewTotal = overviewExpenses.reduce(
@@ -4965,28 +4994,97 @@ export const MiniApp = () => {
 			</div>
 			<header className="mini-header">
 				<div className="mini-header-primary">
-					<div className="mini-brand">
-						<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
-						<span>{uiText(language, "brand")}</span>
-					</div>
-					{spaces.length > 1 ? (
-						<select
-							aria-label={uiText(language, "space")}
-							title={activeSpace?.name}
-							value={spaceID}
-							onChange={(event) => setSpaceID(Number(event.target.value))}
+					<div className="mini-space-switcher" ref={spaceMenuRef}>
+						<button
+							className={`mini-space-trigger${spaceMenuOpen ? " is-open" : ""}`}
+							type="button"
+							aria-label={`${uiText(language, "space")}: ${activeSpace?.name || ""}`}
+							aria-haspopup="menu"
+							aria-expanded={spaceMenuOpen}
+							onClick={() => {
+								setAccountMenuOpen(false);
+								setSpaceMenuOpen((open) => !open);
+							}}
 						>
-							{spaces.map((space) => (
-								<option key={space.id} value={space.id}>
-									{space.name}
-								</option>
-							))}
-						</select>
-					) : (
-						<span className="mini-space" title={activeSpace?.name}>
-							{activeSpace?.name}
-						</span>
-					)}
+							<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+							<span className="mini-space-trigger-copy">
+								<strong>{uiText(language, "brand")}</strong>
+								<span>
+									<small title={activeSpace?.name}>{activeSpace?.name}</small>
+									<CaretDown size={13} weight="bold" />
+								</span>
+							</span>
+						</button>
+						{spaceMenuOpen && (
+							<div className="mini-space-menu" role="menu">
+								{activeSpace && (
+									<div className="mini-space-menu-summary">
+										<small>{uiText(language, "currentSpace")}</small>
+										<strong>{activeSpace.name}</strong>
+										<span>{spaceSubtitle(activeSpace)}</span>
+									</div>
+								)}
+								<div className="mini-space-menu-list">
+									<small>{uiText(language, "yourSpaces")}</small>
+									{spaces.map((space) => (
+										<button
+											key={space.id}
+											className={space.id === spaceID ? "is-active" : ""}
+											type="button"
+											role="menuitemradio"
+											aria-checked={space.id === spaceID}
+											onClick={() => {
+												setSpaceID(space.id);
+												setSpaceMenuOpen(false);
+											}}
+										>
+											<span className="mini-space-menu-icon">
+												{space.is_personal ? (
+													<House size={18} weight="fill" />
+												) : (
+													<UsersThree size={18} weight="fill" />
+												)}
+											</span>
+											<span>
+												<strong>{space.name}</strong>
+												<small>{spaceSubtitle(space)}</small>
+											</span>
+											{space.id === spaceID && (
+												<Check size={18} weight="bold" />
+											)}
+										</button>
+									))}
+								</div>
+								<div className="mini-space-menu-actions">
+									{activeSpace && (
+										<button
+											type="button"
+											role="menuitem"
+											onClick={() => {
+												setSpaceMenuOpen(false);
+												setEditingSpace({ ...activeSpace });
+											}}
+										>
+											<GearSix size={18} />
+											<span>{uiText(language, "configureCurrentSpace")}</span>
+										</button>
+									)}
+									<button
+										type="button"
+										role="menuitem"
+										onClick={() => {
+											setSpaceMenuOpen(false);
+											setView("spaces");
+										}}
+									>
+										<UsersThree size={18} />
+										<span>{uiText(language, "manageSpaces")}</span>
+										<ArrowRight size={16} />
+									</button>
+								</div>
+							</div>
+						)}
+					</div>
 				</div>
 				<div className="mini-header-context">
 					<button
@@ -5010,7 +5108,10 @@ export const MiniApp = () => {
 							aria-label={user?.name || uiText(language, "user")}
 							aria-haspopup="menu"
 							aria-expanded={accountMenuOpen}
-							onClick={() => setAccountMenuOpen((open) => !open)}
+							onClick={() => {
+								setSpaceMenuOpen(false);
+								setAccountMenuOpen((open) => !open);
+							}}
 						>
 							<span>
 								{(user?.name || uiText(language, "user"))
@@ -12572,7 +12673,6 @@ const SpaceInviteDialog = ({
 					{
 						user_id: 2,
 						name: "Анна",
-						email: "anna@example.com",
 						relationship_label: "Другое пространство",
 					},
 				],
@@ -12610,10 +12710,13 @@ const SpaceInviteDialog = ({
 		email,
 	);
 
-	const submitInvite = async (event: React.FormEvent) => {
-		event.preventDefault();
-		const inviteeEmail = email.trim().toLocaleLowerCase();
-		if (!inviteeEmail || submitting) return;
+	const sendInvite = async (
+		rawEmail: string,
+		inviteeUserID?: number,
+		inviteeName?: string,
+	) => {
+		const inviteeEmail = rawEmail.trim().toLocaleLowerCase();
+		if ((!inviteeEmail && !inviteeUserID) || submitting) return;
 		setSubmitting(true);
 		setError("");
 		try {
@@ -12623,6 +12726,8 @@ const SpaceInviteDialog = ({
 					pending_invites_for_space: [
 						{
 							id: Date.now(),
+							invitee_user_id: inviteeUserID,
+							invitee_name: inviteeName,
 							invitee_email: inviteeEmail,
 							token: `preview-email-${Date.now()}`,
 							expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
@@ -12633,12 +12738,20 @@ const SpaceInviteDialog = ({
 			} else {
 				await apiRequest(`/spaces/${space.id}/invites`, token, {
 					method: "POST",
-					body: JSON.stringify({ email: inviteeEmail }),
+					body: JSON.stringify(
+						inviteeUserID
+							? { user_id: inviteeUserID }
+							: { email: inviteeEmail },
+					),
 				});
 				await loadSuggestions();
 			}
 			setEmail("");
-			onNotice(`Приглашение отправлено на ${inviteeEmail}`);
+			onNotice(
+				inviteeName
+					? `Приглашение для ${inviteeName} отправлено`
+					: `Приглашение отправлено на ${inviteeEmail}`,
+			);
 		} catch (err) {
 			setError(
 				err instanceof Error ? err.message : "Не удалось отправить приглашение",
@@ -12646,6 +12759,11 @@ const SpaceInviteDialog = ({
 		} finally {
 			setSubmitting(false);
 		}
+	};
+
+	const submitInvite = async (event: React.FormEvent) => {
+		event.preventDefault();
+		await sendInvite(email);
 	};
 
 	const inviteURL = (inviteToken: string) =>
@@ -12812,21 +12930,33 @@ const SpaceInviteDialog = ({
 						<b>Люди из других пространств</b>
 						<div>
 							{suggestions.map((suggestion) => (
-								<button
-									key={suggestion.user_id}
-									type="button"
-									disabled={!suggestion.email}
-									onClick={() => setEmail(suggestion.email || "")}
-								>
+								<article key={suggestion.user_id}>
 									<span>
 										{(suggestion.name || "У").slice(0, 1).toUpperCase()}
 									</span>
 									<p>
 										<b>{suggestion.name || "Пользователь"}</b>
-										<small>{suggestion.email || "Почта не привязана"}</small>
+										<small>
+											{suggestion.relationship_label ||
+												suggestion.email ||
+												"Почта не привязана"}
+										</small>
 									</p>
-									{email === suggestion.email && <Check size={18} />}
-								</button>
+									<button
+										type="button"
+										disabled={submitting}
+										onClick={() =>
+											void sendInvite(
+												suggestion.email || "",
+												suggestion.user_id,
+												suggestion.name || "Пользователя",
+											)
+										}
+									>
+										<PaperPlaneTilt size={15} weight="bold" />
+										Пригласить
+									</button>
+								</article>
 							))}
 						</div>
 					</div>
@@ -12851,14 +12981,18 @@ const SpaceInviteDialog = ({
 						{data.pending_invites_for_space.map((invite) => (
 							<article key={invite.id}>
 								<span>
-									<b>{invite.invitee_email || "Приглашение по ссылке"}</b>
+									<b>
+										{invite.invitee_name ||
+											invite.invitee_email ||
+											"Приглашение по ссылке"}
+									</b>
 									<small>
 										Действует до{" "}
 										{new Date(invite.expires_at).toLocaleDateString("ru-RU")}
 									</small>
 								</span>
 								<div>
-									{invite.invitee_email ? (
+									{invite.invitee_email || invite.invitee_user_id ? (
 										<button
 											type="button"
 											disabled={busyInviteID === invite.id}
@@ -13021,6 +13155,11 @@ const notificationTitle = (type: string, language: UILanguage) => {
 			en: "New space member",
 			es: "Nuevo miembro del espacio",
 		},
+		space_invite_received: {
+			ru: "Приглашение в пространство",
+			en: "Space invitation",
+			es: "Invitación a un espacio",
+		},
 		subscription_expiring: {
 			ru: "Плюс скоро закончится",
 			en: "Plus is ending soon",
@@ -13144,7 +13283,12 @@ const NotificationCenter = ({
 							type="button"
 							onClick={() => onAction(selected)}
 						>
-							{uiText(language, "openNotification")}
+							{uiText(
+								language,
+								selected.type === "space_invite_received"
+									? "acceptInvitation"
+									: "openNotification",
+							)}
 						</button>
 					)}
 					<button

@@ -7,6 +7,8 @@ export type SpaceInviteSuggestion = {
 
 export type PendingSpaceInvite = {
 	id: number;
+	invitee_user_id?: number;
+	invitee_name?: string;
 	invitee_email: string;
 	token: string;
 	expires_at: string;
@@ -21,11 +23,20 @@ export const availableInviteSuggestions = (
 	const pendingEmails = new Set(
 		pending.map(({ invitee_email }) => invitee_email.toLocaleLowerCase()),
 	);
-	return suggestions.filter(({ name, email = "" }) => {
+	const pendingUserIDs = new Set(
+		pending.flatMap(({ invitee_user_id }) =>
+			invitee_user_id ? [invitee_user_id] : [],
+		),
+	);
+	return suggestions.filter(({ user_id, name, email = "" }) => {
 		const matches =
 			!value ||
 			name.toLocaleLowerCase("ru").includes(value) ||
 			email.toLocaleLowerCase().includes(value);
-		return matches && !pendingEmails.has(email.toLocaleLowerCase());
+		return (
+			matches &&
+			!pendingUserIDs.has(user_id) &&
+			(!email || !pendingEmails.has(email.toLocaleLowerCase()))
+		);
 	});
 };
