@@ -29,7 +29,6 @@ import {
 	Storefront,
 	Tag,
 	Trash,
-	UserCircle,
 	UsersThree,
 	WarningCircle,
 	X,
@@ -330,6 +329,8 @@ type User = {
 	emailVerified?: boolean;
 	telegramId?: number;
 	telegramUsername?: string;
+	telegramPhotoUrl?: string;
+	avatarMediaId?: number;
 	country: string;
 	language: string;
 	timezone: string;
@@ -1141,9 +1142,12 @@ export const MiniApp = () => {
 	const currentPullDistance = useRef(0);
 	const blockingRequest = useRef<AbortController | null>(null);
 	const reviewReturnView = useRef<View>("overview");
+	const accountMenuRef = useRef<HTMLDivElement | null>(null);
 	const [view, setView] = useState<View>(initialView);
 	const [token, setToken] = useState("");
 	const [user, setUser] = useState<User | null>(null);
+	const [profileAvatarURL, setProfileAvatarURL] = useState("");
+	const [profileAvatarSaving, setProfileAvatarSaving] = useState(false);
 	const [spaces, setSpaces] = useState<Space[]>([]);
 	const [spaceID, setSpaceID] = useState(0);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
@@ -1169,6 +1173,7 @@ export const MiniApp = () => {
 	const [notifications, setNotifications] = useState<AppNotification[]>([]);
 	const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 	const [notificationsOpen, setNotificationsOpen] = useState(false);
+	const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 	const [selectedNotification, setSelectedNotification] =
 		useState<AppNotification | null>(null);
 	const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -1356,6 +1361,52 @@ export const MiniApp = () => {
 		document.body.classList.add("mini-body");
 		return () => document.body.classList.remove("mini-body");
 	}, []);
+
+	useEffect(() => {
+		let active = true;
+		let objectURL = "";
+		const fallback =
+			user?.telegramPhotoUrl || WebApp.initDataUnsafe.user?.photo_url || "";
+		setProfileAvatarURL(fallback);
+		if (!token || !user?.avatarMediaId) return () => undefined;
+
+		void fetch(`/api/v1/media/${user.avatarMediaId}`, {
+			headers: { Authorization: `Bearer ${token}` },
+			signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+		})
+			.then((response) => {
+				if (!response.ok) throw new Error("avatar unavailable");
+				return response.blob();
+			})
+			.then((blob) => {
+				if (!active) return;
+				objectURL = URL.createObjectURL(blob);
+				setProfileAvatarURL(objectURL);
+			})
+			.catch(() => undefined);
+
+		return () => {
+			active = false;
+			if (objectURL) URL.revokeObjectURL(objectURL);
+		};
+	}, [token, user?.avatarMediaId, user?.telegramPhotoUrl]);
+
+	useEffect(() => {
+		if (!accountMenuOpen) return;
+		const closeOnOutsidePress = (event: PointerEvent) => {
+			if (!accountMenuRef.current?.contains(event.target as Node))
+				setAccountMenuOpen(false);
+		};
+		const closeOnEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape") setAccountMenuOpen(false);
+		};
+		document.addEventListener("pointerdown", closeOnOutsidePress);
+		document.addEventListener("keydown", closeOnEscape);
+		return () => {
+			document.removeEventListener("pointerdown", closeOnOutsidePress);
+			document.removeEventListener("keydown", closeOnEscape);
+		};
+	}, [accountMenuOpen]);
 
 	useEffect(() => {
 		if (requestedFeedbackID <= 0 || developerFeedback.length === 0) return;
@@ -1843,6 +1894,7 @@ export const MiniApp = () => {
 	}, [token, pendingCaptures.length]);
 
 	const openNotifications = () => {
+		setAccountMenuOpen(false);
 		setSelectedNotification(null);
 		setNotificationsOpen(true);
 		void refreshNotifications();
@@ -3938,6 +3990,65 @@ export const MiniApp = () => {
 		}
 	};
 
+	const uploadProfileAvatar = async (file: File) => {
+		if (file.size > 5 * 1024 * 1024) {
+			setNotice(uiText(language, "avatarTooLarge"));
+			return;
+		}
+		if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+			setNotice(uiText(language, "avatarFormatError"));
+			return;
+		}
+		if (previewMode) {
+			setProfileAvatarURL(URL.createObjectURL(file));
+			setNotice(uiText(language, "avatarSaved"));
+			return;
+		}
+		const body = new FormData();
+		body.append("avatar", file);
+		setProfileAvatarSaving(true);
+		try {
+			const saved = await apiRequest<User>("/auth/profile/avatar", token, {
+				method: "POST",
+				body,
+			});
+			setUser(saved);
+			setNotice(uiText(language, "avatarSaved"));
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: uiText(language, "avatarSaveFailed"),
+			);
+		} finally {
+			setProfileAvatarSaving(false);
+		}
+	};
+
+	const removeProfileAvatar = async () => {
+		if (previewMode) {
+			setProfileAvatarURL(user?.telegramPhotoUrl || "");
+			setNotice(uiText(language, "avatarRemoved"));
+			return;
+		}
+		setProfileAvatarSaving(true);
+		try {
+			const saved = await apiRequest<User>("/auth/profile/avatar", token, {
+				method: "DELETE",
+			});
+			setUser(saved);
+			setNotice(uiText(language, "avatarRemoved"));
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: uiText(language, "avatarSaveFailed"),
+			);
+		} finally {
+			setProfileAvatarSaving(false);
+		}
+	};
+
 	const saveProfile = async () => {
 		if (!editingProfile) return;
 		const profileToSave = {
@@ -4740,14 +4851,15 @@ export const MiniApp = () => {
 				</span>
 			</div>
 			<header className="mini-header">
-				<div className="mini-brand">
-					<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
-					<span>{uiText(language, "brand")}</span>
-				</div>
-				<div className="mini-header-context">
+				<div className="mini-header-primary">
+					<div className="mini-brand">
+						<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+						<span>{uiText(language, "brand")}</span>
+					</div>
 					{spaces.length > 1 ? (
 						<select
 							aria-label={uiText(language, "space")}
+							title={activeSpace?.name}
 							value={spaceID}
 							onChange={(event) => setSpaceID(Number(event.target.value))}
 						>
@@ -4758,8 +4870,12 @@ export const MiniApp = () => {
 							))}
 						</select>
 					) : (
-						<span className="mini-space">{activeSpace?.name}</span>
+						<span className="mini-space" title={activeSpace?.name}>
+							{activeSpace?.name}
+						</span>
 					)}
+				</div>
+				<div className="mini-header-context">
 					<button
 						className="mini-notification-trigger"
 						type="button"
@@ -4774,6 +4890,105 @@ export const MiniApp = () => {
 							</span>
 						)}
 					</button>
+					<div className="mini-account" ref={accountMenuRef}>
+						<button
+							className="mini-account-trigger"
+							type="button"
+							aria-label={user?.name || uiText(language, "user")}
+							aria-haspopup="menu"
+							aria-expanded={accountMenuOpen}
+							onClick={() => setAccountMenuOpen((open) => !open)}
+						>
+							<span>
+								{(user?.name || uiText(language, "user"))
+									.slice(0, 1)
+									.toUpperCase()}
+							</span>
+							{profileAvatarURL && (
+								<img
+									src={profileAvatarURL}
+									alt=""
+									onError={() => setProfileAvatarURL("")}
+								/>
+							)}
+						</button>
+						{accountMenuOpen && (
+							<div className="mini-account-menu" role="menu">
+								<div className="mini-account-summary">
+									<strong>{user?.name || uiText(language, "user")}</strong>
+									{(user?.telegramUsername ||
+										(user?.email &&
+											!user.email.endsWith("@telegram.local"))) && (
+										<small>
+											{user?.telegramUsername
+												? `@${user.telegramUsername}`
+												: user?.email}
+										</small>
+									)}
+								</div>
+								<button
+									type="button"
+									role="menuitem"
+									onClick={() => {
+										setAccountMenuOpen(false);
+										setView("subscription");
+									}}
+								>
+									<span className="mini-account-menu-icon">
+										<Star size={18} weight="fill" />
+									</span>
+									<span>
+										<strong>
+											{uiText(
+												language,
+												["medium", "plus"].includes(accountQuota?.plan || "")
+													? "plus"
+													: "basic",
+											)}
+										</strong>
+										<small>
+											{uiText(language, "left")}: {accountQuota?.remaining ?? 0}
+										</small>
+									</span>
+									<ArrowRight size={17} />
+								</button>
+								<button
+									type="button"
+									role="menuitem"
+									onClick={() => {
+										setAccountMenuOpen(false);
+										setView("profile");
+									}}
+								>
+									<span className="mini-account-menu-icon">
+										<GearSix size={18} weight="bold" />
+									</span>
+									<span>
+										<strong>{uiText(language, "settings")}</strong>
+									</span>
+									<ArrowRight size={17} />
+								</button>
+								{!WebApp.initData && !previewMode && (
+									<button
+										className="mini-account-logout"
+										type="button"
+										role="menuitem"
+										onClick={() => {
+											setAccountMenuOpen(false);
+											logoutBrowser();
+										}}
+									>
+										<span className="mini-account-menu-icon">
+											<SignOut size={18} />
+										</span>
+										<span>
+											<strong>{uiText(language, "logout")}</strong>
+										</span>
+									</button>
+								)}
+							</div>
+						)}
+					</div>
 				</div>
 			</header>
 
@@ -4890,6 +5105,7 @@ export const MiniApp = () => {
 						{view === "vendors" && (
 							<VendorsView
 								vendors={vendors}
+								language={language}
 								onBack={() => setView("profile")}
 								onEdit={(vendor) => setEditingVendor({ ...vendor })}
 								onAdd={() => setEditingVendor({ id: 0, name: "", aliases: [] })}
@@ -4921,6 +5137,7 @@ export const MiniApp = () => {
 						{view === "spaces" && (
 							<SpacesView
 								spaces={spaces}
+								language={language}
 								activeSpaceID={spaceID}
 								members={members}
 								canManageMembers={activeSpace?.owner_user_id === user?.id}
@@ -4952,6 +5169,8 @@ export const MiniApp = () => {
 						{view === "profile" && (
 							<ProfileView
 								user={user}
+								avatarURL={profileAvatarURL}
+								avatarSaving={profileAvatarSaving}
 								language={language}
 								quota={accountQuota}
 								developerDashboard={developerDashboard}
@@ -4965,12 +5184,10 @@ export const MiniApp = () => {
 								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
 								onManageSpaces={() => setView("spaces")}
-								onManageSubscription={() => setView("subscription")}
 								onLinkEmail={() => setEmailLinkOpen(true)}
 								onLinkTelegram={() => setTelegramLinkOpen(true)}
-								onLogout={
-									!WebApp.initData && !previewMode ? logoutBrowser : undefined
-								}
+								onAvatarUpload={(file) => void uploadProfileAvatar(file)}
+								onAvatarRemove={() => void removeProfileAvatar()}
 								onEdit={() => {
 									if (!user) return;
 									setProfileEditorMode("profile");
@@ -5246,9 +5463,12 @@ export const MiniApp = () => {
 				/>
 				<NavButton
 					active={view === "profile" || view === "vendors" || view === "spaces"}
-					label={uiText(language, "navProfile")}
-					icon={<UserCircle />}
-					onClick={() => setView("profile")}
+					label={uiText(language, "settings")}
+					icon={<GearSix />}
+					onClick={() => {
+						setAccountMenuOpen(false);
+						setView("profile");
+					}}
 				/>
 			</nav>
 
@@ -8084,11 +8304,13 @@ const CategoriesView = ({
 
 const VendorsView = ({
 	vendors,
+	language,
 	onBack,
 	onEdit,
 	onAdd,
 }: {
 	vendors: Vendor[];
+	language: UILanguage;
 	onBack: () => void;
 	onEdit: (vendor: Vendor) => void;
 	onAdd: () => void;
@@ -8096,7 +8318,7 @@ const VendorsView = ({
 	<section className="mini-view mini-vendors-view">
 		<button className="mini-back-link" type="button" onClick={onBack}>
 			<ArrowLeft size={18} />
-			Профиль
+			{uiText(language, "settings")}
 		</button>
 		<div className="mini-title-row">
 			<div className="mini-title">
@@ -8133,6 +8355,7 @@ const VendorsView = ({
 
 const SpacesView = ({
 	spaces,
+	language,
 	activeSpaceID,
 	members,
 	canManageMembers,
@@ -8146,6 +8369,7 @@ const SpacesView = ({
 	onAdd,
 }: {
 	spaces: Space[];
+	language: UILanguage;
 	activeSpaceID: number;
 	members: SpaceMember[];
 	canManageMembers: boolean;
@@ -8163,7 +8387,7 @@ const SpacesView = ({
 		<section className="mini-view mini-spaces-view">
 			<button className="mini-back-link" type="button" onClick={onBack}>
 				<ArrowLeft size={18} />
-				Профиль
+				{uiText(language, "settings")}
 			</button>
 			<div className="mini-title-row">
 				<div className="mini-title">
@@ -8445,11 +8669,7 @@ const SubscriptionView = ({
 		<section className="mini-view mini-subscription-view">
 			<button className="mini-back-link" type="button" onClick={onBack}>
 				<ArrowLeft size={18} />
-				{language === "ru"
-					? "Профиль"
-					: language === "es"
-						? "Perfil"
-						: "Profile"}
+				{uiText(language, "settings")}
 			</button>
 			<div className="mini-title">
 				<p>{copy.eyebrow}</p>
@@ -8592,6 +8812,8 @@ const SubscriptionView = ({
 
 const ProfileView = ({
 	user,
+	avatarURL,
+	avatarSaving,
 	language,
 	quota,
 	developerDashboard,
@@ -8604,12 +8826,12 @@ const ProfileView = ({
 	homeScreenStatus,
 	onEdit,
 	onManageNotifications,
-	onManageSubscription,
 	onManageVendors,
 	onManageSpaces,
 	onLinkEmail,
 	onLinkTelegram,
-	onLogout,
+	onAvatarUpload,
+	onAvatarRemove,
 	onInstall,
 	onDevUpdate,
 	onRefreshDeveloperDashboard,
@@ -8619,6 +8841,8 @@ const ProfileView = ({
 	billingLoading,
 }: {
 	user: User | null;
+	avatarURL: string;
+	avatarSaving: boolean;
 	language: UILanguage;
 	quota: Quota | null;
 	developerDashboard: DeveloperDashboard | null;
@@ -8631,12 +8855,12 @@ const ProfileView = ({
 	homeScreenStatus: HomeScreenStatus;
 	onEdit: () => void;
 	onManageNotifications: () => void;
-	onManageSubscription: () => void;
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
 	onLinkEmail: () => void;
 	onLinkTelegram: () => void;
-	onLogout?: () => void;
+	onAvatarUpload: (file: File) => void;
+	onAvatarRemove: () => void;
 	onInstall: () => void;
 	onDevUpdate: (patch: DeveloperQuotaPatch) => void;
 	onRefreshDeveloperDashboard: () => void;
@@ -8648,7 +8872,6 @@ const ProfileView = ({
 	feedbackMediaLoading: boolean;
 	billingLoading: boolean;
 }) => {
-	const plus = ["medium", "plus"].includes(quota?.plan || "");
 	const installDisabled = ["checking", "unsupported", "added"].includes(
 		homeScreenStatus,
 	);
@@ -8666,32 +8889,9 @@ const ProfileView = ({
 			: "";
 	return (
 		<section className="mini-view mini-profile-view">
-			<div className="mini-profile-head">
-				<span>
-					{(user?.name || uiText(language, "user")).slice(0, 1).toUpperCase()}
-				</span>
-				<div>
-					<h1>{user?.name || uiText(language, "user")}</h1>
-					<p>
-						{user?.telegramUsername ? `@${user.telegramUsername}` : "Telegram"}
-					</p>
-				</div>
+			<div className="mini-title">
+				<h1>{uiText(language, "settings")}</h1>
 			</div>
-			<section className="mini-profile-group mini-subscription-entry">
-				<h2>{uiText(language, "plan")}</h2>
-				<div className="mini-profile-list">
-					<button type="button" onClick={onManageSubscription}>
-						<span>
-							<Star size={18} weight="fill" />
-							{uiText(language, "manageSubscription")}
-						</span>
-						<b>
-							{uiText(language, plus ? "plus" : "basic")} ·{" "}
-							{quota?.remaining ?? 0}
-						</b>
-					</button>
-				</div>
-			</section>
 			{quota?.dev_tools_enabled && (
 				<BillingDeveloperTools
 					quota={quota}
@@ -8746,6 +8946,57 @@ const ProfileView = ({
 				<section className="mini-profile-group">
 					<h2>{uiText(language, "personalSettings")}</h2>
 					<div className="mini-profile-list">
+						<div className="mini-profile-avatar-row">
+							<div className="mini-profile-avatar">
+								<span>
+									{(user?.name || uiText(language, "user"))
+										.slice(0, 1)
+										.toUpperCase()}
+								</span>
+								{avatarURL && (
+									<img
+										src={avatarURL}
+										alt=""
+										onError={(event) => event.currentTarget.remove()}
+									/>
+								)}
+							</div>
+							<div className="mini-profile-avatar-copy">
+								<strong>{uiText(language, "profilePhoto")}</strong>
+								<small>{uiText(language, "profilePhotoHint")}</small>
+							</div>
+							<div className="mini-profile-avatar-actions">
+								<label
+									className="mini-profile-avatar-action"
+									aria-label={uiText(language, "changePhoto")}
+									title={uiText(language, "changePhoto")}
+								>
+									<Camera size={18} weight="bold" />
+									<span>{uiText(language, "changePhoto")}</span>
+									<input
+										type="file"
+										accept="image/jpeg,image/png,image/webp"
+										disabled={avatarSaving}
+										onChange={(event) => {
+											const file = event.currentTarget.files?.[0];
+											if (file) onAvatarUpload(file);
+											event.currentTarget.value = "";
+										}}
+									/>
+								</label>
+								{user?.avatarMediaId && (
+									<button
+										type="button"
+										aria-label={uiText(language, "removePhoto")}
+										title={uiText(language, "removePhoto")}
+										disabled={avatarSaving}
+										onClick={onAvatarRemove}
+									>
+										<Trash size={17} />
+									</button>
+								)}
+							</div>
+						</div>
 						<button
 							className="mini-profile-setting"
 							type="button"
@@ -8851,16 +9102,6 @@ const ProfileView = ({
 					</div>
 				</section>
 			</div>
-			{onLogout && (
-				<button
-					className="mini-profile-logout"
-					type="button"
-					onClick={onLogout}
-				>
-					<SignOut size={18} />
-					{uiText(language, "logout")}
-				</button>
-			)}
 		</section>
 	);
 };
