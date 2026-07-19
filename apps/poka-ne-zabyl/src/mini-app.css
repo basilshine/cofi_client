@@ -99,16 +99,19 @@
 }
 .mini-header-primary {
 	min-width: 0;
-	max-width: 229px;
-	flex: 1 1 229px;
+	max-width: calc(100% - 96px);
+	flex: 0 1 auto;
 }
 .mini-space-switcher {
 	position: relative;
+	width: fit-content;
+	max-width: 100%;
 	min-width: 0;
 }
 .mini-space-trigger {
 	display: grid;
-	width: 100%;
+	width: fit-content;
+	max-width: 100%;
 	min-height: 44px;
 	grid-template-columns: 30px minmax(0, 1fr);
 	align-items: center;
@@ -131,6 +134,8 @@
 }
 .mini-space-trigger-copy {
 	display: grid;
+	width: fit-content;
+	max-width: 100%;
 	min-width: 0;
 	gap: 1px;
 }
@@ -143,6 +148,8 @@
 }
 .mini-space-trigger-copy > span {
 	display: flex;
+	width: fit-content;
+	max-width: 100%;
 	min-width: 0;
 	align-items: center;
 	gap: 4px;
@@ -150,7 +157,7 @@
 }
 .mini-space-trigger-copy small {
 	min-width: 0;
-	flex: 1;
+	flex: 0 1 auto;
 	overflow: hidden;
 	font-size: 11px;
 	line-height: 16px;
