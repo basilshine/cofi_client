@@ -108,7 +108,7 @@ const messages = {
 		planAdded: "План добавлен",
 		planSaved: "План сохранён",
 		planDeleted: "План удалён",
-		moveRecord: "Перенести в другое пространство",
+		moveRecord: "Перенести или клонировать",
 		viewExpense: "Расход",
 		viewReceipt: "Чек целиком",
 		viewPlan: "План",
@@ -120,8 +120,9 @@ const messages = {
 		deletePlanItem: "Удалить покупку",
 		deletePlanItemConfirm: "Удалить эту покупку из списка?",
 		planItemDeleted: "Покупка удалена из списка",
-		moveToSpace: "Куда перенести",
+		moveToSpace: "Пространство",
 		move: "Перенести",
+		clone: "Клонировать",
 		moveExpenseHint:
 			"Весь расход и его исходник появятся в выбранном пространстве.",
 		moveExpenseItemHint:
@@ -129,9 +130,19 @@ const messages = {
 		movePlanHint: "План и его исходник появятся в выбранном пространстве.",
 		movePlanItemHint:
 			"Покупка станет отдельным планом. Исходник останется у списка.",
+		cloneExpenseHint:
+			"Будет создан новый расход без исходника. Оригинал останется здесь.",
+		cloneExpenseItemHint:
+			"Будет создан отдельный расход с этой покупкой. Оригинал не изменится.",
+		clonePlanHint:
+			"Будет создан новый план без исходника. Оригинал останется здесь.",
+		clonePlanItemHint:
+			"Будет создан отдельный план с этой покупкой. Оригинал не изменится.",
 		expenseMoved: "Расход перенесён",
 		planMoved: "План перенесён",
-		moveFailed: "Не удалось перенести запись",
+		expenseCloned: "Расход клонирован",
+		planCloned: "План клонирован",
+		moveFailed: "Не удалось выполнить действие",
 		planSaveFailed: "Не удалось сохранить план",
 		planDeleteFailed: "Не удалось удалить план",
 		categoriesEyebrow: "Порядок в расходах",
@@ -156,6 +167,11 @@ const messages = {
 		categoryPinned: "Категория закреплена",
 		categoryUnpinned: "Категория откреплена",
 		categoryPinFailed: "Не удалось изменить закрепление",
+		addedBy: "Добавил(а)",
+		author: "Добавил(а)",
+		systemCategory: "Системная",
+		userCategory: "Пользовательская",
+		sharedCategory: "Общая категория",
 		newCategory: "Новая категория",
 		editCategory: "Настройки категории",
 		name: "Название",
@@ -364,7 +380,7 @@ const messages = {
 		planAdded: "Plan added",
 		planSaved: "Plan saved",
 		planDeleted: "Plan deleted",
-		moveRecord: "Move to another space",
+		moveRecord: "Move or clone",
 		viewExpense: "Expense",
 		viewReceipt: "Full receipt",
 		viewPlan: "Plan",
@@ -376,8 +392,9 @@ const messages = {
 		deletePlanItem: "Delete purchase",
 		deletePlanItemConfirm: "Delete this purchase from the list?",
 		planItemDeleted: "Purchase removed from the list",
-		moveToSpace: "Destination space",
+		moveToSpace: "Space",
 		move: "Move",
+		clone: "Clone",
 		moveExpenseHint:
 			"The expense and its source will appear in the selected space.",
 		moveExpenseItemHint:
@@ -385,9 +402,19 @@ const messages = {
 		movePlanHint: "The plan and its source will appear in the selected space.",
 		movePlanItemHint:
 			"The purchase becomes a separate plan. The source stays with the list.",
+		cloneExpenseHint:
+			"A new expense is created without source media. The original stays here.",
+		cloneExpenseItemHint:
+			"A separate expense is created with this purchase. The original is unchanged.",
+		clonePlanHint:
+			"A new plan is created without source media. The original stays here.",
+		clonePlanItemHint:
+			"A separate plan is created with this purchase. The original is unchanged.",
 		expenseMoved: "Expense moved",
 		planMoved: "Plan moved",
-		moveFailed: "Could not move the record",
+		expenseCloned: "Expense cloned",
+		planCloned: "Plan cloned",
+		moveFailed: "Could not complete the action",
 		planSaveFailed: "Could not save the plan",
 		planDeleteFailed: "Could not delete the plan",
 		categoriesEyebrow: "Keep expenses organized",
@@ -412,6 +439,11 @@ const messages = {
 		categoryPinned: "Category pinned",
 		categoryUnpinned: "Category unpinned",
 		categoryPinFailed: "Could not update the pin",
+		addedBy: "Added by",
+		author: "Added by",
+		systemCategory: "System",
+		userCategory: "User-created",
+		sharedCategory: "Shared category",
 		newCategory: "New category",
 		editCategory: "Category settings",
 		name: "Name",
@@ -620,7 +652,7 @@ const messages = {
 		planAdded: "Plan añadido",
 		planSaved: "Plan guardado",
 		planDeleted: "Plan eliminado",
-		moveRecord: "Mover a otro espacio",
+		moveRecord: "Mover o clonar",
 		viewExpense: "Gasto",
 		viewReceipt: "Recibo completo",
 		viewPlan: "Plan",
@@ -632,17 +664,28 @@ const messages = {
 		deletePlanItem: "Eliminar compra",
 		deletePlanItemConfirm: "¿Eliminar esta compra de la lista?",
 		planItemDeleted: "Compra eliminada de la lista",
-		moveToSpace: "Espacio de destino",
+		moveToSpace: "Espacio",
 		move: "Mover",
+		clone: "Clonar",
 		moveExpenseHint: "El gasto y su origen aparecerán en el espacio elegido.",
 		moveExpenseItemHint:
 			"La compra se convierte en un gasto separado. El origen permanece con el recibo.",
 		movePlanHint: "El plan y su origen aparecerán en el espacio elegido.",
 		movePlanItemHint:
 			"La compra se convierte en un plan separado. El origen permanece con la lista.",
+		cloneExpenseHint:
+			"Se crea un gasto nuevo sin el archivo de origen. El original permanece aquí.",
+		cloneExpenseItemHint:
+			"Se crea un gasto separado con esta compra. El original no cambia.",
+		clonePlanHint:
+			"Se crea un plan nuevo sin el archivo de origen. El original permanece aquí.",
+		clonePlanItemHint:
+			"Se crea un plan separado con esta compra. El original no cambia.",
 		expenseMoved: "Gasto movido",
 		planMoved: "Plan movido",
-		moveFailed: "No se pudo mover el registro",
+		expenseCloned: "Gasto clonado",
+		planCloned: "Plan clonado",
+		moveFailed: "No se pudo completar la acción",
 		planSaveFailed: "No se pudo guardar el plan",
 		planDeleteFailed: "No se pudo eliminar el plan",
 		categoriesEyebrow: "Gastos en orden",
@@ -667,6 +710,11 @@ const messages = {
 		categoryPinned: "Categoría fijada",
 		categoryUnpinned: "Categoría desfijada",
 		categoryPinFailed: "No se pudo cambiar la fijación",
+		addedBy: "Añadido por",
+		author: "Añadido por",
+		systemCategory: "Del sistema",
+		userCategory: "Creada por usuario",
+		sharedCategory: "Categoría compartida",
 		newCategory: "Nueva categoría",
 		editCategory: "Ajustes de categoría",
 		name: "Nombre",

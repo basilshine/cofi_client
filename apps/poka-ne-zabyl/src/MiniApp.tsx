@@ -130,6 +130,7 @@ declare global {
 }
 type CaptureMode = "choose" | "text" | "voice" | "photo";
 type ExpenseSection = "history" | "plans";
+type TransferOperation = "move" | "clone";
 type Space = {
 	id: number;
 	tenant_id: number;
@@ -168,6 +169,11 @@ type Category = {
 	budget_remaining?: number | null;
 	budget_percent?: number;
 	pinned?: boolean;
+	is_system?: boolean;
+	created_by_user_id?: number | null;
+	created_by_name?: string;
+	can_edit?: boolean;
+	can_delete?: boolean;
 };
 
 type BudgetWarning = {
@@ -284,6 +290,12 @@ type PurchasePlanItem = {
 	expected_amount?: number | null;
 	category_id?: number | null;
 	position?: number;
+};
+
+const sharedRecordAuthor = (members: SpaceMember[], userID?: number | null) => {
+	if (members.length < 2 || !userID) return "";
+	const member = members.find((current) => current.user_id === userID);
+	return member?.name || member?.email || "";
 };
 
 const purchasePlanItems = (plan: PurchasePlan): PurchasePlanItem[] =>
@@ -730,6 +742,9 @@ const previewCategories: Category[] = [
 		budget_spent: 12460,
 		budget_remaining: 7540,
 		budget_percent: 62.3,
+		is_system: true,
+		can_edit: true,
+		can_delete: false,
 	},
 	{
 		id: 2,
@@ -739,15 +754,23 @@ const previewCategories: Category[] = [
 		total: 15320,
 		month_spent: 4820,
 		last_used: new Date(Date.now() - 86400000).toISOString(),
+		is_system: true,
+		can_edit: true,
+		can_delete: false,
 	},
 	{
 		id: 3,
-		key: "hobbies",
-		name: "Хобби",
+		key: "custom_dancing",
+		name: "Танцы",
 		count: 2,
 		total: 9700,
 		month_spent: 3900,
 		last_used: new Date(Date.now() - 172800000).toISOString(),
+		is_system: false,
+		created_by_user_id: 2,
+		created_by_name: "Наталья",
+		can_edit: true,
+		can_delete: true,
 	},
 	{
 		id: 4,
@@ -757,6 +780,9 @@ const previewCategories: Category[] = [
 		total: 11240,
 		month_spent: 2740,
 		last_used: new Date(Date.now() - 259200000).toISOString(),
+		is_system: true,
+		can_edit: true,
+		can_delete: false,
 	},
 	{
 		id: 5,
@@ -766,6 +792,9 @@ const previewCategories: Category[] = [
 		total: 0,
 		month_spent: 0,
 		last_used: null,
+		is_system: true,
+		can_edit: true,
+		can_delete: false,
 	},
 ];
 const previewExpenses: Expense[] = [
@@ -795,7 +824,7 @@ const previewExpenses: Expense[] = [
 	{
 		id: 2,
 		source_document_id: 102,
-		user_id: 1,
+		user_id: 2,
 		title: "Корм для кошек",
 		payee_text: "Белый кролик",
 		expense_date: isoDay(-1),
@@ -863,7 +892,7 @@ const previewPlans: PurchasePlan[] = [
 		id: 2,
 		tenant_id: 1,
 		space_id: 1,
-		created_by_user_id: 1,
+		created_by_user_id: 2,
 		title: "Фильтры для воды",
 		expected_amount: 1400,
 		currency: "RUB",
@@ -1508,6 +1537,16 @@ export const MiniApp = () => {
 					email: "telegram_1@telegram.local",
 					role: "owner",
 				},
+				...(([1, 2].includes(requestedSpaceID) ? requestedSpaceID : 1) === 2
+					? [
+							{
+								user_id: 2,
+								name: "Наталья",
+								email: "natalya@example.com",
+								role: "member",
+							},
+						]
+					: []),
 			]);
 			setSpaceID([1, 2].includes(requestedSpaceID) ? requestedSpaceID : 1);
 			setCategorySpaceID(
@@ -3577,19 +3616,46 @@ export const MiniApp = () => {
 		targetSpaceID: number,
 		expense: Expense | null = editingExpense,
 		itemIndex: number | null = editingItemIndex,
+		operation: TransferOperation = "move",
 	) => {
 		if (!expense?.id || saving) return;
 		const item = itemIndex === null ? null : expense.items[itemIndex];
 		const path = item?.id ? `/items/${item.id}` : "";
 		if (previewMode) {
-			setExpenses((current) =>
-				current.filter((currentExpense) => currentExpense.id !== expense.id),
-			);
+			setExpenses((current) => {
+				if (operation === "move") {
+					return current.filter(
+						(currentExpense) => currentExpense.id !== expense.id,
+					);
+				}
+				const clonedItems = item
+					? [{ ...item, id: Date.now() }]
+					: expense.items.map((current, index) => ({
+							...current,
+							id: Date.now() + index,
+						}));
+				return [
+					...current,
+					{
+						...expense,
+						id: Math.max(0, ...current.map(({ id }) => id)) + 1,
+						user_id: user?.id || expense.user_id,
+						title: item ? item.name : expense.title,
+						items: clonedItems,
+						source_document_id: undefined,
+					},
+				];
+			});
 			setEditingExpense(null);
 			setEditingItemIndex(null);
 			setRecordDetail(null);
 			setSpaceID(targetSpaceID);
-			setNotice(uiText(language, "expenseMoved"));
+			setNotice(
+				uiText(
+					language,
+					operation === "clone" ? "expenseCloned" : "expenseMoved",
+				),
+			);
 			return;
 		}
 		setSaving(true);
@@ -3599,17 +3665,27 @@ export const MiniApp = () => {
 				token,
 				{
 					method: "POST",
-					body: JSON.stringify({ target_space_id: targetSpaceID }),
+					body: JSON.stringify({
+						target_space_id: targetSpaceID,
+						operation,
+					}),
 				},
 			);
 			setEditingExpense(null);
 			setEditingItemIndex(null);
 			setRecordDetail(null);
-			setExpenses((current) =>
-				current.filter((currentExpense) => currentExpense.id !== expense.id),
-			);
+			if (operation === "move") {
+				setExpenses((current) =>
+					current.filter((currentExpense) => currentExpense.id !== expense.id),
+				);
+			}
 			setSpaceID(targetSpaceID);
-			setNotice(uiText(language, "expenseMoved"));
+			setNotice(
+				uiText(
+					language,
+					operation === "clone" ? "expenseCloned" : "expenseMoved",
+				),
+			);
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : uiText(language, "moveFailed"),
@@ -3817,6 +3893,11 @@ export const MiniApp = () => {
 								...editingCategory,
 								id: Math.max(0, ...current.map((category) => category.id)) + 1,
 								key: `custom_${Date.now()}`,
+								is_system: false,
+								created_by_user_id: user?.id,
+								created_by_name: user?.name,
+								can_edit: true,
+								can_delete: true,
 							},
 						]
 					: current.map((category) =>
@@ -4532,19 +4613,44 @@ export const MiniApp = () => {
 		targetSpaceID: number,
 		plan: PurchasePlan | null = editingPlan,
 		itemIndex: number | null = null,
+		operation: TransferOperation = "move",
 	) => {
 		if (!plan?.id || saving) return;
 		const sourceSpaceID = plan.space_id || spaceID;
 		const item = itemIndex === null ? null : purchasePlanItems(plan)[itemIndex];
 		const path = item?.id ? `/items/${item.id}` : "";
 		if (previewMode) {
-			setPlans((current) =>
-				current.filter((currentPlan) => currentPlan.id !== plan.id),
-			);
+			setPlans((current) => {
+				if (operation === "move") {
+					return current.filter((currentPlan) => currentPlan.id !== plan.id);
+				}
+				const clonedItems = item
+					? [{ ...item, id: Date.now() }]
+					: purchasePlanItems(plan).map((current, index) => ({
+							...current,
+							id: Date.now() + index,
+						}));
+				return [
+					...current,
+					withPurchasePlanItems(
+						{
+							...plan,
+							id: Math.max(0, ...current.map(({ id }) => id)) + 1,
+							space_id: targetSpaceID,
+							created_by_user_id: user?.id || plan.created_by_user_id,
+							title: item ? item.name : plan.title,
+							source_document_id: undefined,
+						},
+						clonedItems,
+					),
+				];
+			});
 			setEditingPlan(null);
 			setRecordDetail(null);
 			setSpaceID(targetSpaceID);
-			setNotice(uiText(language, "planMoved"));
+			setNotice(
+				uiText(language, operation === "clone" ? "planCloned" : "planMoved"),
+			);
 			return;
 		}
 		setSaving(true);
@@ -4554,16 +4660,23 @@ export const MiniApp = () => {
 				token,
 				{
 					method: "POST",
-					body: JSON.stringify({ target_space_id: targetSpaceID }),
+					body: JSON.stringify({
+						target_space_id: targetSpaceID,
+						operation,
+					}),
 				},
 			);
 			setEditingPlan(null);
 			setRecordDetail(null);
-			setPlans((current) =>
-				current.filter((currentPlan) => currentPlan.id !== plan.id),
-			);
+			if (operation === "move") {
+				setPlans((current) =>
+					current.filter((currentPlan) => currentPlan.id !== plan.id),
+				);
+			}
 			setSpaceID(targetSpaceID);
-			setNotice(uiText(language, "planMoved"));
+			setNotice(
+				uiText(language, operation === "clone" ? "planCloned" : "planMoved"),
+			);
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : uiText(language, "moveFailed"),
@@ -5032,6 +5145,7 @@ export const MiniApp = () => {
 								plans={plans}
 								vendors={vendors}
 								captures={captures}
+								members={members}
 								hasAnyExpenses={expenses.length > 0}
 								pendingCandidates={pendingReviewCandidates}
 								onCategory={openCategory}
@@ -5064,6 +5178,7 @@ export const MiniApp = () => {
 								categories={categories}
 								vendors={vendors}
 								captures={captures}
+								members={members}
 								currency={currency}
 								period={period}
 								dateFrom={dateFrom}
@@ -5116,6 +5231,7 @@ export const MiniApp = () => {
 								categories={categories}
 								currency={activeSpace?.currency || currency}
 								language={language}
+								shared={members.length > 1}
 								onOpen={openCategory}
 								onEdit={editCategory}
 								onPin={(category) => void toggleCategoryPin(category)}
@@ -5130,6 +5246,11 @@ export const MiniApp = () => {
 										alias_text: "",
 										budget_period: "",
 										budget_amount: null,
+										is_system: false,
+										created_by_user_id: user?.id,
+										created_by_name: user?.name,
+										can_edit: true,
+										can_delete: true,
 									})
 								}
 							/>
@@ -5586,6 +5707,7 @@ export const MiniApp = () => {
 					expense={recordDetail.expense}
 					language={language}
 					categories={categories}
+					members={members}
 					capture={captureForExpense(recordDetail.expense, captures)}
 					sourceLoading={sourceLoading}
 					moveTargets={spaces.filter(
@@ -5598,8 +5720,13 @@ export const MiniApp = () => {
 					onClose={() => setRecordDetail(null)}
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() => void deleteExpense(recordDetail.expense)}
-					onMove={(targetSpaceID) =>
-						void moveExpense(targetSpaceID, recordDetail.expense, null)
+					onMove={(targetSpaceID, operation) =>
+						void moveExpense(
+							targetSpaceID,
+							recordDetail.expense,
+							null,
+							operation,
+						)
 					}
 					onSource={() => openExpenseSource(recordDetail.expense)}
 					onOpenExpense={() => undefined}
@@ -5618,6 +5745,7 @@ export const MiniApp = () => {
 					itemIndex={recordDetail.itemIndex}
 					language={language}
 					categories={categories}
+					members={members}
 					capture={captureForExpense(recordDetail.expense, captures)}
 					sourceLoading={sourceLoading}
 					moveTargets={spaces.filter(
@@ -5632,11 +5760,12 @@ export const MiniApp = () => {
 					onDelete={() =>
 						void deleteExpenseItem(recordDetail.expense, recordDetail.itemIndex)
 					}
-					onMove={(targetSpaceID) =>
+					onMove={(targetSpaceID, operation) =>
 						void moveExpense(
 							targetSpaceID,
 							recordDetail.expense,
 							recordDetail.itemIndex,
+							operation,
 						)
 					}
 					onSource={() => openExpenseSource(recordDetail.expense)}
@@ -5652,6 +5781,7 @@ export const MiniApp = () => {
 					language={language}
 					categories={categories}
 					vendors={vendors}
+					members={members}
 					capture={captureForPlan(recordDetail.plan, captures)}
 					sourceLoading={sourceLoading}
 					moveTargets={spaces.filter(
@@ -5664,8 +5794,8 @@ export const MiniApp = () => {
 					onClose={() => setRecordDetail(null)}
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() => void deletePlan(recordDetail.plan)}
-					onMove={(targetSpaceID) =>
-						void movePlan(targetSpaceID, recordDetail.plan)
+					onMove={(targetSpaceID, operation) =>
+						void movePlan(targetSpaceID, recordDetail.plan, null, operation)
 					}
 					onSource={() => openPlanSource(recordDetail.plan)}
 					onOpenPlan={() => undefined}
@@ -5685,6 +5815,7 @@ export const MiniApp = () => {
 					language={language}
 					categories={categories}
 					vendors={vendors}
+					members={members}
 					capture={captureForPlan(recordDetail.plan, captures)}
 					sourceLoading={sourceLoading}
 					moveTargets={spaces.filter(
@@ -5699,11 +5830,12 @@ export const MiniApp = () => {
 					onDelete={() =>
 						void deletePlanItem(recordDetail.plan, recordDetail.itemIndex)
 					}
-					onMove={(targetSpaceID) =>
+					onMove={(targetSpaceID, operation) =>
 						void movePlan(
 							targetSpaceID,
 							recordDetail.plan,
 							recordDetail.itemIndex,
+							operation,
 						)
 					}
 					onSource={() => openPlanSource(recordDetail.plan)}
@@ -5740,7 +5872,9 @@ export const MiniApp = () => {
 					}}
 					onSave={saveExpense}
 					onSource={() => openExpenseSource(editingExpense)}
-					onMove={moveExpense}
+					onMove={(targetSpaceID, operation) =>
+						void moveExpense(targetSpaceID, editingExpense, null, operation)
+					}
 					onDelete={editingExpense.id > 0 ? deleteExpense : undefined}
 				/>
 			)}
@@ -5767,7 +5901,9 @@ export const MiniApp = () => {
 					}}
 					onSave={savePlan}
 					onSource={() => openPlanSource(editingPlan)}
-					onMove={movePlan}
+					onMove={(targetSpaceID, operation) =>
+						void movePlan(targetSpaceID, editingPlan, null, operation)
+					}
 					onDelete={
 						editingPlanCandidate
 							? deletePlanCandidate
@@ -5808,7 +5944,14 @@ export const MiniApp = () => {
 					}}
 					onSave={saveExpense}
 					onSource={() => openExpenseSource(editingExpense)}
-					onMove={moveExpense}
+					onMove={(targetSpaceID, operation) =>
+						void moveExpense(
+							targetSpaceID,
+							editingExpense,
+							editingItemIndex,
+							operation,
+						)
+					}
 					onPlanAgain={planAgain}
 					onDelete={
 						editingExpense.id > 0 && editingExpense.items[editingItemIndex]?.id
@@ -5848,7 +5991,9 @@ export const MiniApp = () => {
 					onSave={saveCategory}
 					onMerge={mergeCategory}
 					onDelete={
-						editingCategory.id > 0 && editingCategory.key !== "other"
+						editingCategory.id > 0 &&
+						editingCategory.key !== "other" &&
+						editingCategory.can_delete !== false
 							? deleteCategory
 							: undefined
 					}
@@ -6720,6 +6865,7 @@ const Overview = ({
 	plans,
 	vendors,
 	captures,
+	members,
 	hasAnyExpenses,
 	pendingCandidates,
 	onCategory,
@@ -6744,6 +6890,7 @@ const Overview = ({
 	plans: PurchasePlan[];
 	vendors: Vendor[];
 	captures: CapturePacket[];
+	members: SpaceMember[];
 	hasAnyExpenses: boolean;
 	pendingCandidates: ReviewCandidate[];
 	onCategory: (id: number, period?: Period) => void;
@@ -6906,6 +7053,18 @@ const Overview = ({
 												{details.length > 0 && (
 													<small>{details.join(" · ")}</small>
 												)}
+												{sharedRecordAuthor(
+													members,
+													plan.created_by_user_id,
+												) && (
+													<small className="mini-record-author">
+														{uiText(language, "addedBy")}{" "}
+														{sharedRecordAuthor(
+															members,
+															plan.created_by_user_id,
+														)}
+													</small>
+												)}
 											</button>
 											<button
 												className="mini-home-plan-buy"
@@ -6989,6 +7148,8 @@ const Overview = ({
 					<ExpenseList
 						expenses={latestExpenses.slice(0, 4)}
 						captures={captures}
+						members={members}
+						language={language}
 						currency={currency}
 						onEdit={onExpense}
 					/>
@@ -7053,6 +7214,7 @@ const ExpensesView = ({
 	categories,
 	vendors,
 	captures,
+	members,
 	currency,
 	period,
 	dateFrom,
@@ -7089,6 +7251,7 @@ const ExpensesView = ({
 	categories: Category[];
 	vendors: Vendor[];
 	captures: CapturePacket[];
+	members: SpaceMember[];
 	currency: string;
 	period: Period;
 	dateFrom: string;
@@ -7256,6 +7419,7 @@ const ExpensesView = ({
 					categories={categories}
 					vendors={vendors}
 					captures={captures}
+					members={members}
 					currency={currency}
 					language={language}
 					onAdd={onAddPlan}
@@ -7475,6 +7639,8 @@ const ExpensesView = ({
 							items={items}
 							categories={categories}
 							captures={captures}
+							members={members}
+							language={language}
 							currency={currency}
 							onSource={onSource}
 							onOpenExpense={onOpenExpense}
@@ -7485,6 +7651,8 @@ const ExpensesView = ({
 							items={items}
 							categories={categories}
 							captures={captures}
+							members={members}
+							language={language}
 							currency={currency}
 							onOpen={onOpenExpenseItem}
 						/>
@@ -7501,6 +7669,7 @@ const PlansView = ({
 	categories,
 	vendors,
 	captures,
+	members,
 	currency,
 	language,
 	onAdd,
@@ -7514,6 +7683,7 @@ const PlansView = ({
 	categories: Category[];
 	vendors: Vendor[];
 	captures: CapturePacket[];
+	members: SpaceMember[];
 	currency: string;
 	language: UILanguage;
 	onAdd: () => void;
@@ -7571,6 +7741,8 @@ const PlansView = ({
 			.map((category) => localizedCategoryName(category, language));
 		return [...new Set(names)].join(", ") || uiText(language, "categoryNotSet");
 	};
+	const authorLine = (plan: PurchasePlan) =>
+		sharedRecordAuthor(members, plan.created_by_user_id);
 	const renderPlan = (plan: PurchasePlan) => {
 		const planItems = purchasePlanItems(plan);
 		const vendorName =
@@ -7595,6 +7767,11 @@ const PlansView = ({
 							? ` · ${formatPlanDate(plan.due_date, language)}`
 							: ""}
 					</small>
+					{authorLine(plan) && (
+						<small className="mini-record-author">
+							{uiText(language, "addedBy")} {authorLine(plan)}
+						</small>
+					)}
 				</button>
 				<div className="mini-plan-actions">
 					{plan.expected_amount ? (
@@ -7639,6 +7816,11 @@ const PlansView = ({
 							? ` · ${formatPlanDate(plan.due_date, language)}`
 							: ""}
 					</small>
+					{authorLine(plan) && (
+						<small className="mini-record-author">
+							{uiText(language, "addedBy")} {authorLine(plan)}
+						</small>
+					)}
 				</button>
 				<div className="mini-plan-actions">
 					{item.expected_amount ? (
@@ -7848,14 +8030,20 @@ const ExpenseItemList = ({
 	items,
 	categories,
 	captures,
+	members,
+	language,
 	currency,
 	onOpen,
+	showAuthors = true,
 }: {
 	items: ExpenseItemRow[];
 	categories: Category[];
 	captures: CapturePacket[];
+	members: SpaceMember[];
+	language: UILanguage;
 	currency: string;
 	onOpen: (item: ExpenseItemRow) => void;
+	showAuthors?: boolean;
 }) => (
 	<div className="mini-expenses">
 		{items.map((row) => {
@@ -7868,6 +8056,9 @@ const ExpenseItemList = ({
 					?.name ||
 				"Другое";
 			const capture = captureForExpense(row.expense, captures);
+			const author = showAuthors
+				? sharedRecordAuthor(members, row.expense.user_id)
+				: "";
 			return (
 				<button
 					key={`${row.expense.id}-${row.item.id || row.itemIndex}`}
@@ -7883,6 +8074,11 @@ const ExpenseItemList = ({
 							<span className="mini-vendor-chip">{seller}</span>
 							{category}
 						</small>
+						{author && (
+							<small className="mini-record-author">
+								{uiText(language, "addedBy")} {author}
+							</small>
+						)}
 					</span>
 					<span className="mini-expense-amount">
 						<b>{formatMoney(money.amount, money.currency)}</b>
@@ -7899,6 +8095,8 @@ const GroupedExpenseItemList = ({
 	items,
 	categories,
 	captures,
+	members,
+	language,
 	currency,
 	onSource,
 	onOpenExpense,
@@ -7907,6 +8105,8 @@ const GroupedExpenseItemList = ({
 	items: ExpenseItemRow[];
 	categories: Category[];
 	captures: CapturePacket[];
+	members: SpaceMember[];
+	language: UILanguage;
 	currency: string;
 	onSource: (expense: Expense) => void;
 	onOpenExpense: (expense: Expense) => void;
@@ -7917,6 +8117,7 @@ const GroupedExpenseItemList = ({
 		<div className="mini-expense-groups">
 			{groups.map((rows) => {
 				const expense = rows[0].expense;
+				const author = sharedRecordAuthor(members, expense.user_id);
 				const total = rows.reduce(
 					(sum, row) =>
 						sum + (itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
@@ -7935,6 +8136,11 @@ const GroupedExpenseItemList = ({
 									{formatDate(expense.expense_date)} · {rows.length}{" "}
 									{itemWord(rows.length)}
 								</small>
+								{author && (
+									<small className="mini-record-author">
+										{uiText(language, "addedBy")} {author}
+									</small>
+								)}
 							</button>
 							<div className="mini-expense-group-actions">
 								<button
@@ -7954,8 +8160,11 @@ const GroupedExpenseItemList = ({
 							items={rows}
 							categories={categories}
 							captures={captures}
+							members={members}
+							language={language}
 							currency={currency}
 							onOpen={onOpenItem}
+							showAuthors={false}
 						/>
 					</section>
 				);
@@ -7968,11 +8177,15 @@ const GroupedExpenseItemList = ({
 const ExpenseList = ({
 	expenses,
 	captures,
+	members,
+	language,
 	currency,
 	onEdit,
 }: {
 	expenses: Expense[];
 	captures: CapturePacket[];
+	members: SpaceMember[];
+	language: UILanguage;
 	currency: string;
 	onEdit: (expense: Expense) => void;
 }) => (
@@ -7981,6 +8194,7 @@ const ExpenseList = ({
 			const money = expenseDisplayMoney(expense, currency);
 			const seller = expenseSellerName(expense);
 			const capture = captureForExpense(expense, captures);
+			const author = sharedRecordAuthor(members, expense.user_id);
 			return (
 				<button key={expense.id} type="button" onClick={() => onEdit(expense)}>
 					<span className="mini-expense-icon">
@@ -7995,6 +8209,11 @@ const ExpenseList = ({
 								.slice(0, 2)
 								.join(", ") || formatDate(expense.expense_date)}
 						</small>
+						{author && (
+							<small className="mini-record-author">
+								{uiText(language, "addedBy")} {author}
+							</small>
+						)}
 					</span>
 					<span className="mini-expense-amount">
 						<b>{formatMoney(money.amount, money.currency)}</b>
@@ -8157,6 +8376,7 @@ const CategoriesView = ({
 	categories,
 	currency,
 	language,
+	shared,
 	onOpen,
 	onEdit,
 	onPin,
@@ -8165,6 +8385,7 @@ const CategoriesView = ({
 	categories: Category[];
 	currency: string;
 	language: UILanguage;
+	shared: boolean;
 	onOpen: (id: number) => void;
 	onEdit: (category: Category) => void;
 	onPin: (category: Category) => void;
@@ -8202,6 +8423,11 @@ const CategoriesView = ({
 					);
 					const limitPeriodKey =
 						category.budget_period === "week" ? "forWeek" : "forMonth";
+					const attribution = category.is_system
+						? uiText(language, "systemCategory")
+						: shared && category.created_by_name
+							? `${uiText(language, "userCategory")} · ${category.created_by_name}`
+							: uiText(language, "userCategory");
 					return (
 						<article
 							className={`${category.pinned ? "is-pinned " : ""}${overLimit ? "is-over" : ""}`.trim()}
@@ -8215,6 +8441,9 @@ const CategoriesView = ({
 								<span className="mini-category-dot" />
 								<span className="mini-category-content">
 									<b>{localizedCategoryName(category, language)}</b>
+									<small className="mini-category-attribution">
+										{attribution}
+									</small>
 									<span className="mini-category-metrics">
 										<span>
 											<small>{uiText(language, "spentForMonth")}</small>
@@ -8281,18 +8510,20 @@ const CategoriesView = ({
 										weight={category.pinned ? "fill" : "regular"}
 									/>
 								</button>
-								<button
-									className="mini-icon-button"
-									type="button"
-									aria-label={
-										category.budget_amount
-											? `${uiText(language, "configure")} ${localizedCategoryName(category, language)}`
-											: `${uiText(language, "setLimitFor")} ${localizedCategoryName(category, language)}`
-									}
-									onClick={() => onEdit(category)}
-								>
-									<PencilSimple size={18} />
-								</button>
+								{category.can_edit !== false && (
+									<button
+										className="mini-icon-button"
+										type="button"
+										aria-label={
+											category.budget_amount
+												? `${uiText(language, "configure")} ${localizedCategoryName(category, language)}`
+												: `${uiText(language, "setLimitFor")} ${localizedCategoryName(category, language)}`
+										}
+										onClick={() => onEdit(category)}
+									>
+										<PencilSimple size={18} />
+									</button>
+								)}
 							</div>
 						</article>
 					);
@@ -10578,24 +10809,66 @@ const MoveRecordControl = ({
 	targets,
 	saving,
 	hint,
+	cloneHint,
 	onMove,
 }: {
 	language: UILanguage;
 	targets: Space[];
 	saving: boolean;
 	hint: string;
-	onMove: (spaceID: number) => void;
+	cloneHint: string;
+	onMove: (spaceID: number, operation: TransferOperation) => void;
 }) => {
 	const [targetSpaceID, setTargetSpaceID] = useState(targets[0]?.id || 0);
+	const [operation, setOperation] = useState<TransferOperation>("move");
 	if (!targets.length) return null;
 	return (
-		<details className="mini-record-move">
+		<details
+			className="mini-record-move"
+			onToggle={(event) => {
+				if (
+					!event.currentTarget.open ||
+					!window.matchMedia("(max-width: 699px)").matches
+				)
+					return;
+				const details = event.currentTarget;
+				window.requestAnimationFrame(() =>
+					details.scrollIntoView({ block: "center", behavior: "smooth" }),
+				);
+			}}
+		>
 			<summary>
 				<ArrowRight size={18} />
 				{uiText(language, "moveRecord")}
 			</summary>
 			<div>
-				<p>{hint}</p>
+				<div
+					className="mini-record-operation"
+					role="radiogroup"
+					aria-label={uiText(language, "moveRecord")}
+				>
+					<button
+						className={operation === "move" ? "active" : ""}
+						type="button"
+						role="radio"
+						aria-checked={operation === "move"}
+						onClick={() => setOperation("move")}
+					>
+						<ArrowRight size={16} />
+						{uiText(language, "move")}
+					</button>
+					<button
+						className={operation === "clone" ? "active" : ""}
+						type="button"
+						role="radio"
+						aria-checked={operation === "clone"}
+						onClick={() => setOperation("clone")}
+					>
+						<Copy size={16} />
+						{uiText(language, "clone")}
+					</button>
+				</div>
+				<p>{operation === "clone" ? cloneHint : hint}</p>
 				<label>
 					<span>{uiText(language, "moveToSpace")}</span>
 					<select
@@ -10613,10 +10886,16 @@ const MoveRecordControl = ({
 					className="mini-secondary-action"
 					type="button"
 					disabled={saving || !targetSpaceID}
-					onClick={() => onMove(targetSpaceID)}
+					onClick={() => onMove(targetSpaceID, operation)}
 				>
-					<ArrowRight size={18} />
-					{saving ? uiText(language, "saving") : uiText(language, "move")}
+					{operation === "clone" ? (
+						<Copy size={18} />
+					) : (
+						<ArrowRight size={18} />
+					)}
+					{saving
+						? uiText(language, "saving")
+						: uiText(language, operation === "clone" ? "clone" : "move")}
 				</button>
 			</div>
 		</details>
@@ -10628,6 +10907,7 @@ const ExpenseDetail = ({
 	itemIndex,
 	language,
 	categories,
+	members,
 	capture,
 	sourceLoading,
 	moveTargets,
@@ -10644,6 +10924,7 @@ const ExpenseDetail = ({
 	itemIndex?: number;
 	language: UILanguage;
 	categories: Category[];
+	members: SpaceMember[];
 	capture?: CapturePacket;
 	sourceLoading: boolean;
 	moveTargets: Space[];
@@ -10651,7 +10932,7 @@ const ExpenseDetail = ({
 	onClose: () => void;
 	onEdit: () => void;
 	onDelete: () => void;
-	onMove: (spaceID: number) => void;
+	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onSource: () => void;
 	onOpenExpense: () => void;
 	onOpenItem: (itemIndex: number) => void;
@@ -10670,6 +10951,7 @@ const ExpenseDetail = ({
 	const category = item
 		? categories.find((current) => current.id === item.category_id)
 		: undefined;
+	const author = sharedRecordAuthor(members, expense.user_id);
 	return (
 		<Modal
 			title={uiText(language, item ? "viewExpense" : "viewReceipt")}
@@ -10717,6 +10999,12 @@ const ExpenseDetail = ({
 					<div>
 						<small>{uiText(language, "planVendor")}</small>
 						<b>{seller}</b>
+					</div>
+				)}
+				{author && (
+					<div>
+						<small>{uiText(language, "author")}</small>
+						<b>{author}</b>
 					</div>
 				)}
 			</div>
@@ -10785,6 +11073,10 @@ const ExpenseDetail = ({
 					language,
 					item ? "moveExpenseItemHint" : "moveExpenseHint",
 				)}
+				cloneHint={uiText(
+					language,
+					item ? "cloneExpenseItemHint" : "cloneExpenseHint",
+				)}
 				onMove={onMove}
 			/>
 			<div className="mini-modal-actions mini-record-actions">
@@ -10817,6 +11109,7 @@ const PlanDetail = ({
 	language,
 	categories,
 	vendors,
+	members,
 	capture,
 	sourceLoading,
 	moveTargets,
@@ -10834,6 +11127,7 @@ const PlanDetail = ({
 	language: UILanguage;
 	categories: Category[];
 	vendors: Vendor[];
+	members: SpaceMember[];
 	capture?: CapturePacket;
 	sourceLoading: boolean;
 	moveTargets: Space[];
@@ -10841,7 +11135,7 @@ const PlanDetail = ({
 	onClose: () => void;
 	onEdit: () => void;
 	onDelete: () => void;
-	onMove: (spaceID: number) => void;
+	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onSource: () => void;
 	onOpenPlan: () => void;
 	onOpenItem: (itemIndex: number) => void;
@@ -10855,6 +11149,7 @@ const PlanDetail = ({
 		plan.vendor_name ||
 		vendors.find((vendor) => vendor.id === plan.vendor_id)?.name ||
 		uiText(language, "vendorNotSet");
+	const author = sharedRecordAuthor(members, plan.created_by_user_id);
 	return (
 		<Modal
 			title={uiText(language, item ? "viewPlan" : "viewPlanList")}
@@ -10899,6 +11194,12 @@ const PlanDetail = ({
 					<small>{uiText(language, "planVendor")}</small>
 					<b>{seller}</b>
 				</div>
+				{author && (
+					<div>
+						<small>{uiText(language, "author")}</small>
+						<b>{author}</b>
+					</div>
+				)}
 			</div>
 			{plan.source_document_id && (
 				<div className="mini-source-access">
@@ -10954,6 +11255,10 @@ const PlanDetail = ({
 				targets={moveTargets}
 				saving={saving}
 				hint={uiText(language, item ? "movePlanItemHint" : "movePlanHint")}
+				cloneHint={uiText(
+					language,
+					item ? "clonePlanItemHint" : "clonePlanHint",
+				)}
 				onMove={onMove}
 			/>
 			<div className="mini-modal-actions mini-record-actions">
@@ -11012,7 +11317,7 @@ const PlanEditor = ({
 	onClose: () => void;
 	onSave: () => void;
 	onSource: () => void;
-	onMove: (spaceID: number) => void;
+	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onDelete?: () => void;
 }) => {
 	const items = purchasePlanItems(plan);
@@ -11200,6 +11505,7 @@ const PlanEditor = ({
 					targets={moveTargets}
 					saving={saving}
 					hint={uiText(language, "movePlanHint")}
+					cloneHint={uiText(language, "clonePlanHint")}
 					onMove={onMove}
 				/>
 			)}
@@ -11266,7 +11572,7 @@ const ExpenseEditor = ({
 	onClose: () => void;
 	onSave: () => void;
 	onSource: () => void;
-	onMove: (spaceID: number) => void;
+	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onDelete?: () => void;
 }) => {
 	const itemNameListID = useId();
@@ -11542,6 +11848,7 @@ const ExpenseEditor = ({
 					targets={moveTargets}
 					saving={saving}
 					hint={uiText(language, "moveExpenseHint")}
+					cloneHint={uiText(language, "cloneExpenseHint")}
 					onMove={onMove}
 				/>
 			)}
@@ -11607,7 +11914,7 @@ const ExpenseItemEditor = ({
 	onClose: () => void;
 	onSave: () => void;
 	onSource: () => void;
-	onMove: (spaceID: number) => void;
+	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onPlanAgain: () => void;
 	onDelete?: () => void;
 }) => {
@@ -11711,7 +12018,8 @@ const ExpenseItemEditor = ({
 				language={language}
 				targets={moveTargets}
 				saving={saving}
-				hint={uiText(language, "moveExpenseHint")}
+				hint={uiText(language, "moveExpenseItemHint")}
+				cloneHint={uiText(language, "cloneExpenseItemHint")}
 				onMove={onMove}
 			/>
 			<div className="mini-modal-actions">
@@ -11914,6 +12222,7 @@ const CategoryEditor = ({
 }) => {
 	const [targetCategoryID, setTargetCategoryID] = useState(0);
 	const mergeTargets = categories.filter((item) => item.id !== category.id);
+	const canDestructivelyChange = category.can_delete !== false;
 	return (
 		<Modal
 			title={uiText(
@@ -11997,6 +12306,7 @@ const CategoryEditor = ({
 				</button>
 				{category.id > 0 &&
 					category.key !== "other" &&
+					canDestructivelyChange &&
 					mergeTargets.length > 0 && (
 						<div className="mini-vendor-merge">
 							<strong>{uiText(language, "mergeCategories")}</strong>

@@ -2292,8 +2292,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Move an expense to another space
-         * @description Moves the complete expense and its source evidence between compatible spaces owned by the same tenant.
+         * Move or clone an expense into another space
+         * @description Moves the complete expense and its source evidence, or creates an independent copy without source evidence, between compatible spaces owned by the same tenant.
          */
         post: {
             parameters: {
@@ -2309,6 +2309,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         target_space_id: number;
+                        /**
+                         * @default move
+                         * @enum {string}
+                         */
+                        operation?: "move" | "clone";
                     };
                 };
             };
@@ -2427,8 +2432,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Move one expense item to another space
-         * @description Moves a single line item into a new expense in a compatible target space, or moves the full expense when it contains only that item.
+         * Move or clone one expense item into another space
+         * @description Moves or clones a single line item into a new expense in a compatible target space. Moving the last item transfers the full expense; cloning always leaves the original unchanged.
          */
         post: {
             parameters: {
@@ -2445,6 +2450,11 @@ export interface paths {
                 content: {
                     "application/json": {
                         target_space_id: number;
+                        /**
+                         * @default move
+                         * @enum {string}
+                         */
+                        operation?: "move" | "clone";
                     };
                 };
             };
@@ -2785,7 +2795,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Move a planned purchase to another space */
+        /** Move or clone a planned purchase into another space */
         post: {
             parameters: {
                 query?: never;
@@ -2802,6 +2812,11 @@ export interface paths {
                     "application/json": {
                         /** Format: int64 */
                         target_space_id: number;
+                        /**
+                         * @default move
+                         * @enum {string}
+                         */
+                        operation?: "move" | "clone";
                     };
                 };
             };
@@ -2910,7 +2925,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Move one planned purchase item to another space */
+        /** Move or clone one planned purchase item into another space */
         post: {
             parameters: {
                 query?: never;
@@ -2928,6 +2943,11 @@ export interface paths {
                     "application/json": {
                         /** Format: int64 */
                         target_space_id: number;
+                        /**
+                         * @default move
+                         * @enum {string}
+                         */
+                        operation?: "move" | "clone";
                     };
                 };
             };
@@ -3326,7 +3346,7 @@ export interface paths {
         };
         /**
          * List stable expense categories for a space
-         * @description Returns the tenant category catalog ordered by most recent use in the requested space.
+         * @description Returns system categories plus custom categories available in the requested space, ordered by most recent use there. Custom aliases may be reused in another space.
          */
         get: {
             parameters: {
@@ -3358,7 +3378,10 @@ export interface paths {
             };
         };
         put?: never;
-        /** Create a custom expense category */
+        /**
+         * Create a custom expense category
+         * @description Creates a category for this space and records the current user as its author. Every member of the space may use it.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -3460,7 +3483,7 @@ export interface paths {
         };
         /**
          * Rename a category
-         * @description Renames a stable tenant category without changing its key or existing expense links.
+         * @description Updates category settings without changing existing expense links. A custom category may be edited by its author or the space owner; system categories by the owner.
          */
         put: {
             parameters: {
@@ -3519,7 +3542,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a custom category
-         * @description Moves linked expense items to the protected Other category before deleting the category.
+         * @description Space owners may delete a custom category. Linked expense items move to the protected Other category before deletion.
          */
         delete: {
             parameters: {
@@ -3647,7 +3670,7 @@ export interface paths {
         put?: never;
         /**
          * Merge one expense category into another
-         * @description Moves linked items, synonyms, and non-conflicting space budgets to the target category, then removes the source category. The protected Other category cannot be the source.
+         * @description Space owners may merge a custom category into another category in the same space. System categories cannot be the source.
          */
         post: {
             parameters: {
@@ -8738,6 +8761,13 @@ export interface components {
             budget_spent?: number;
             budget_remaining?: number | null;
             budget_percent?: number;
+            pinned?: boolean;
+            is_system?: boolean;
+            /** Format: int64 */
+            created_by_user_id?: number | null;
+            created_by_name?: string;
+            can_edit?: boolean;
+            can_delete?: boolean;
         };
         CategoryItem: {
             /** Format: int64 */
