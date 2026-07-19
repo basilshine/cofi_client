@@ -4584,21 +4584,40 @@
 }
 .mini-toast {
 	position: fixed;
-	z-index: 40;
+	z-index: 100;
 	top: calc(70px + var(--mini-safe-top));
-	right: 14px;
-	left: 14px;
+	left: 50%;
 	display: flex;
+	width: min(680px, calc(100vw - 28px));
 	min-height: 44px;
 	align-items: center;
 	justify-content: space-between;
 	gap: 10px;
+	overflow: hidden;
 	padding: 10px 13px;
 	border: 1px solid #2038a8;
 	border-radius: 6px;
 	background: var(--mini-green);
+	box-shadow: 0 12px 32px rgba(23, 27, 45, 0.24);
 	color: var(--mini-paper);
 	line-height: 1.35;
+	transform: translateX(-50%);
+}
+.mini-toast::after {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	left: 0;
+	height: 3px;
+	background: rgba(255, 255, 255, 0.72);
+	content: "";
+	transform-origin: left;
+	animation: mini-toast-timer 5s linear forwards;
+}
+@keyframes mini-toast-timer {
+	to {
+		transform: scaleX(0);
+	}
 }
 .mini-empty {
 	display: flex;

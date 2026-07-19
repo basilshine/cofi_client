@@ -1240,6 +1240,11 @@ export const MiniApp = () => {
 	};
 	const [error, setError] = useState("");
 	const [notice, setNotice] = useState("");
+	useEffect(() => {
+		if (!notice) return;
+		const timer = window.setTimeout(() => setNotice(""), 5_000);
+		return () => window.clearTimeout(timer);
+	}, [notice]);
 	const [period, setPeriod] = useState<Period>("month");
 	const [dateFrom, setDateFrom] = useState("");
 	const [dateTo, setDateTo] = useState("");
@@ -5221,8 +5226,10 @@ export const MiniApp = () => {
 				)}
 				{notice && (
 					<button
+						key={notice}
 						className="mini-toast"
 						type="button"
+						aria-live="polite"
 						onClick={() => setNotice("")}
 					>
 						{notice}
