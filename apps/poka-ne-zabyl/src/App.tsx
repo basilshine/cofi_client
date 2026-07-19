@@ -46,8 +46,9 @@ export const App = ({ pathname }: { pathname?: string }) => {
 
 	switch (path) {
 		case "/app":
+		case "/join":
 			return (
-				<Suspense fallback={null}>
+				<Suspense fallback={<AppLoading />}>
 					<MiniApp />
 				</Suspense>
 			);
@@ -68,14 +69,19 @@ export const App = ({ pathname }: { pathname?: string }) => {
 	}
 };
 
+const AppLoading = () => (
+	<main className="app-loading" role="status" aria-live="polite">
+		<img src="/assets/poka-ne-zabyl-logo.svg?v=20260717" alt="" />
+		<span>Открываем приложение…</span>
+	</main>
+);
+
 const BrandMark = () => (
-	<svg aria-hidden="true" viewBox="0 0 44 44">
-		<path d="M21 22C7 20 5 12 10 10c5-2 11 5 11 12Z" />
-		<path d="M21 22C16 8 20 3 24 6c4 3 1 11-3 16Z" />
-		<path d="M21 22c-2 14 4 18 7 13 2-4-2-10-7-13Z" />
-		<path d="m21 22 8 8L41 12" className="brand__check" />
-		<circle cx="21" cy="22" r="2.4" />
-	</svg>
+	<img
+		src="/assets/poka-ne-zabyl-logo.svg?v=20260717"
+		alt=""
+		aria-hidden="true"
+	/>
 );
 
 const Brand = ({ inverse = false }: { inverse?: boolean }) => (
@@ -630,7 +636,7 @@ const LandingPage = () => {
 									<Check size={18} weight="bold" /> Пакеты разборов дешевле
 								</li>
 							</ul>
-							<a className="pricing-plan__action" href="/app?view=profile">
+							<a className="pricing-plan__action" href="/app?view=subscription">
 								Подключить Плюс <ArrowRight size={18} />
 							</a>
 						</article>
@@ -791,7 +797,10 @@ const LegalHeader = () => (
 const LegalPage = ({
 	title,
 	children,
-}: { title: string; children: React.ReactNode }) => (
+}: {
+	title: string;
+	children: React.ReactNode;
+}) => (
 	<main className="legal-page">
 		<LegalHeader />
 		<article className="legal-document shell">

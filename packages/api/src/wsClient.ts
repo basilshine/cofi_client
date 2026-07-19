@@ -89,14 +89,7 @@ export const createWsClient = (config: WsClientConfig) => {
 
 		isClosedByUser = false;
 
-		const wsUrl = getWsUrl();
-
-		// Browser WS cannot set Authorization header; pass token as query param.
-		// Backend will accept it (we’ll handle in server).
-		const url = new URL(wsUrl);
-		url.searchParams.set("token", token);
-
-		socket = new WebSocket(url.toString());
+		socket = new WebSocket(getWsUrl(), [`bearer.${token}`]);
 
 		socket.onmessage = handleMessage;
 

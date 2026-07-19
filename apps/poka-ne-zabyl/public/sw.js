@@ -1,8 +1,8 @@
-const CACHE_NAME = "pnz-offline-v1";
+const CACHE_NAME = "pnz-offline-v3";
 const OFFLINE_FILES = [
 	"/offline.html",
-	"/manifest.webmanifest",
-	"/assets/poka-ne-zabyl-logo.jpg",
+	"/manifest.webmanifest?v=20260717",
+	"/assets/poka-ne-zabyl-logo.svg?v=20260717",
 ];
 
 self.addEventListener("install", (event) => {

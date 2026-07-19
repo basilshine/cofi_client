@@ -518,8 +518,22 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description AI processing allowance exhausted */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
                 /** @description Forbidden space context */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Input could not be recognized as a reviewable expense or purchase plan */
+                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1275,6 +1289,73 @@ export interface paths {
                     };
                 };
                 /** @description Candidate cannot be projected into a recurring expense */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Candidate not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/review/candidates/{candidateId}/create-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a purchase plan from a purchase-plan candidate
+         * @description Projects a reviewed `purchase_plan_candidate` into a durable space purchase plan. The plan does not affect expense totals until it is later completed through the normal expense flow.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    candidateId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": components["schemas"]["CreatePurchasePlanCandidateRequest"];
+                };
+            };
+            responses: {
+                /** @description Purchase plan created from the reviewed candidate. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreatePurchasePlanCandidateResponse"];
+                    };
+                };
+                /** @description Candidate cannot be projected into a purchase plan */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2201,6 +2282,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move an expense to another space
+         * @description Moves the complete expense and its source evidence between compatible spaces owned by the same tenant.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        target_space_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Expense moved to the selected space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Expense"];
+                    };
+                };
+                /** @description Invalid target space */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot move this expense */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense or target space not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Spaces are incompatible or the expense has participant splits */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/expenses/{expenseId}/items/{itemId}": {
         parameters: {
             query?: never;
@@ -2255,6 +2412,83 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/items/{itemId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Move one expense item to another space
+         * @description Moves a single line item into a new expense in a compatible target space, or moves the full expense when it contains only that item.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        target_space_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Expense containing the moved item */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Expense"];
+                    };
+                };
+                /** @description Invalid target space */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot move this expense item */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense, item, or target space not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Spaces are incompatible or the expense has participant splits */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2537,6 +2771,269 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/plans/{planId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a planned purchase to another space */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                    planId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        target_space_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Planned purchase moved to the selected space */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchasePlan"];
+                    };
+                };
+                /** @description Invalid target space */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot add plans to the target space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Planned purchase or target space not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Spaces use different owners or currencies */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/plans/{planId}/items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete one item from a planned purchase */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                    planId: number;
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Plan item deleted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            plan_deleted: boolean;
+                        };
+                    };
+                };
+                /** @description Planned purchase or item not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/plans/{planId}/items/{itemId}/move": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move one planned purchase item to another space */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                    planId: number;
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        target_space_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Planned purchase containing the moved item */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchasePlan"];
+                    };
+                };
+                /** @description Invalid target space */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot add plans to the target space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Planned purchase, item, or target space not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Spaces use different owners or currencies */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/plans/{planId}/items/{itemId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link one planned purchase item to its saved expense */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                    planId: number;
+                    itemId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        expense_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Planned purchase updated after completing the selected item */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PurchasePlan"];
+                    };
+                };
+                /** @description Expense is not linked to the selected space */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Planned purchase or item not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -3066,6 +3563,74 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/categories/{categoryId}/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Pin or unpin a category in a space */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    categoryId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        pinned: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated category pin state */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            pinned: boolean;
+                        };
+                    };
+                };
+                /** @description Invalid pin state */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Category not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -4022,6 +4587,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feedback/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current user's daily feedback allowance */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Daily feedback allowance in the user's configured timezone */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FeedbackDailyStatus"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/feedback": {
         parameters: {
             query?: never;
@@ -4029,7 +4637,36 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List recent user feedback for the configured support administrator */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Recent feedback with sender contacts and attachment metadata */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FeedbackListResponse"];
+                    };
+                };
+                /** @description Feedback administration is not available to this user */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         put?: never;
         /** Create feedback */
         post: {
@@ -4039,27 +4676,98 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["FeedbackCreateRequest"];
+                    "multipart/form-data": components["schemas"]["FeedbackMultipartRequest"];
                 };
             };
             responses: {
-                /** @description Successful response */
+                /** @description Feedback saved; support delivery status is included in the response */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            [key: string]: unknown;
-                        };
+                        "application/json": components["schemas"]["FeedbackCreateResponse"];
                     };
+                };
+                /** @description Empty or invalid feedback */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Forbidden space context */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Attachment or request is too large */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Daily feedback limit reached */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/feedback/{id}/media/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open a private feedback attachment for the configured support administrator */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                    kind: "photo" | "audio";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Private attachment bytes */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/octet-stream": string;
+                    };
+                };
+                /** @description Attachment is unavailable, expired, or the user is not the support administrator */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4300,6 +5008,166 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List my notifications */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notification inbox */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/notifications/read-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark all my notifications as read */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notifications marked as read */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/me/notifications/{id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Mark my notification as read */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notification marked as read */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Notification not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/me/notifications/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove my notification from the inbox */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Notification removed */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Notification not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/media/{id}": {
         parameters: {
             query?: never;
@@ -4505,6 +5373,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quota/developer-dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the private processing dashboard
+         * @description Available only to the configured developer user while Robokassa test mode is enabled. Metrics are scoped to that user and the resolved tenant.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Optional space context used to resolve the tenant. */
+                    space_id?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Processing, quality, model-cost, session, and media-retention metrics. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeveloperDashboard"];
+                    };
+                };
+                /** @description Developer tools are disabled or unavailable to the current user. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quota/test-plan": {
         parameters: {
             query?: never;
@@ -4519,8 +5436,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Set test subscription plan
-         * @description Development-only plan override for testing capability gates. Disabled in production.
+         * Manage sandbox subscription
+         * @description Temporary subscription controls available only to the configured developer user while Robokassa test mode is enabled.
          */
         patch: {
             parameters: {
@@ -4533,7 +5450,15 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        plan: "basic" | "medium" | "premium";
+                        plan?: "free" | "plus";
+                        /** @description RFC3339 timestamp. An empty string clears the expiry. */
+                        plan_expires_at?: string;
+                        additional_limit?: number;
+                        additional_units?: number;
+                        /** @description Development-only reset of current displayed and chargeable usage without deleting processing history. */
+                        reset_usage?: boolean;
+                        /** @enum {string} */
+                        notification?: "subscription_expiring" | "subscription_expired" | "quota_low" | "quota_exhausted";
                     };
                 };
             };
@@ -4570,6 +5495,127 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/billing/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a Robokassa checkout */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description Space whose shared tenant receives the purchased allowance. */
+                    space_id?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        product_code: "plus_30d" | "pack_100" | "pack_500" | "pack_1500";
+                    };
+                };
+            };
+            responses: {
+                /** @description Signed Robokassa POST form */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BillingCheckout"];
+                    };
+                };
+                /** @description Unknown product */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description No access to the target tenant */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Payments are not configured */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/robokassa/result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Receive a signed Robokassa payment notification
+         * @description Provider callback. Grants access idempotently after SHA-256 signature and amount verification.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/x-www-form-urlencoded": {
+                        OutSum: string;
+                        InvId: string;
+                        SignatureValue: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Robokassa acknowledgement (`OK{InvId}`) */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/plain": string;
+                    };
+                };
+                /** @description Signature, invoice, or amount mismatch */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/spaces": {
@@ -6411,6 +7457,8 @@ export interface components {
             name: string;
             /** Format: email */
             email: string;
+            /** @description Separate consent to personal data processing for account creation. */
+            personal_data_consent: boolean;
         };
         ConfirmEmailRegistrationRequest: {
             name: string;
@@ -6421,6 +7469,8 @@ export interface components {
             language?: string;
             timezone?: string;
             currency?: string;
+            /** @description Separate consent to personal data processing for account creation. */
+            personal_data_consent: boolean;
         };
         RequestEmailLinkRequest: {
             /** Format: email */
@@ -7011,8 +8061,24 @@ export interface components {
             expected_amount?: number | null;
             /** Format: int64 */
             category_id?: number | null;
+            /** Format: int64 */
+            vendor_id?: number | null;
             /** Format: date */
             due_date?: string | null;
+            items?: components["schemas"]["PurchasePlanItemInput"][];
+        };
+        PurchasePlanItemInput: {
+            name: string;
+            expected_amount?: number | null;
+            /** Format: int64 */
+            category_id?: number | null;
+        };
+        PurchasePlanItem: components["schemas"]["PurchasePlanItemInput"] & {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            purchase_plan_id: number;
+            position: number;
         };
         PurchasePlan: components["schemas"]["PurchasePlanInput"] & {
             /** Format: int64 */
@@ -7030,6 +8096,7 @@ export interface components {
             expense_id?: number | null;
             /** Format: date-time */
             reminder_sent_at?: string | null;
+            items: components["schemas"]["PurchasePlanItem"][];
             /** Format: date-time */
             created_at?: string;
             /** Format: date-time */
@@ -7241,11 +8308,8 @@ export interface components {
             input_kind: "image" | "voice";
             /** @description Required explicit space context until autonomous capture routing is implemented. */
             space_id: number;
-            /**
-             * Format: binary
-             * @description Uploaded image/receipt or audio file.
-             */
-            file: string;
+            /** @description One audio file or up to five images submitted together as one capture. */
+            file: string[];
             /** @description Client channel such as web, bot, or mobile. */
             channel?: string;
             /** @description Optional JSON object string containing client/source provenance metadata. */
@@ -7272,6 +8336,8 @@ export interface components {
             transcription?: string;
             /** Format: int64 */
             media_id?: number;
+            /** @description Ordered media ids attached to the capture. media_id remains the first item for compatibility. */
+            media_ids?: number[];
             /**
              * Format: int64
              * @description Persisted source document id for this capture when review recording succeeded.
@@ -7293,7 +8359,7 @@ export interface components {
             /** Format: int64 */
             source_document_id?: number;
             /** @enum {string} */
-            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
+            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate" | "purchase_plan_candidate";
             title?: string;
             confidence?: number;
             /** @enum {string} */
@@ -7407,6 +8473,13 @@ export interface components {
             created_by_user_id?: number;
             /** Format: int64 */
             media_object_id?: number;
+            /**
+             * Format: date-time
+             * @description Time when the private photo or voice source is permanently deleted.
+             */
+            media_expires_at?: string;
+            /** @description Ordered photos or audio files attached to this source document. */
+            media?: components["schemas"]["CapturePacketMedia"][];
             title?: string;
             source_type?: string;
             input_kind?: string;
@@ -7415,6 +8488,8 @@ export interface components {
             document_type?: string;
             /** @enum {string} */
             processing_status?: "pending" | "processing" | "succeeded" | "failed";
+            /** @description Stable user-actionable failure code, present only when processing_status is failed. */
+            failure_code?: string;
             merchant_text?: string;
             /** Format: date-time */
             document_date?: string;
@@ -7443,6 +8518,14 @@ export interface components {
             created_at?: string;
             /** Format: date-time */
             updated_at?: string;
+        };
+        CapturePacketMedia: {
+            /** Format: int64 */
+            media_object_id: number;
+            content_type?: string;
+            /** Format: date-time */
+            expires_at?: string;
+            position: number;
         };
         CapturePacketRecords: {
             expenses?: components["schemas"]["CaptureExpenseRecord"][];
@@ -7559,6 +8642,7 @@ export interface components {
             /** Format: int64 */
             count?: number;
             total?: number;
+            month_spent?: number;
             /** Format: date-time */
             last_used?: string | null;
             aliases?: string[];
@@ -7629,7 +8713,7 @@ export interface components {
              */
             projected_expense_id?: number;
             /** @enum {string} */
-            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate";
+            candidate_type?: "expense_candidate" | "expense_item_candidate" | "promo_code_candidate" | "loyalty_event_candidate" | "payment_proof_candidate" | "privacy_signal_candidate" | "recurring_candidate" | "membership_candidate" | "reminder_candidate" | "merge_candidate" | "supporting_document_candidate" | "split_candidate" | "participant_placeholder_candidate" | "purchase_plan_candidate";
             title?: string;
             structured_data?: {
                 [key: string]: unknown;
@@ -7694,6 +8778,7 @@ export interface components {
             category_key?: string;
             vendor_name?: string;
             notes?: string;
+            tags?: string[];
         };
         CreateExpenseCandidateResponse: {
             expense?: components["schemas"]["Expense"];
@@ -7733,6 +8818,13 @@ export interface components {
         };
         SavePromoCandidateResponse: {
             promo?: components["schemas"]["PromoCode"];
+            candidate?: components["schemas"]["DocumentCandidateState"];
+        };
+        CreatePurchasePlanCandidateRequest: {
+            review?: components["schemas"]["PurchasePlanInput"];
+        };
+        CreatePurchasePlanCandidateResponse: {
+            plan?: components["schemas"]["PurchasePlan"];
             candidate?: components["schemas"]["DocumentCandidateState"];
         };
         /** @description Capability-aware capture model selection metadata returned with capture previews. */
@@ -7790,17 +8882,182 @@ export interface components {
         QuotaStatus: {
             /** Format: int64 */
             tenant_id?: number;
-            /** @description Current tenant capture monthly limit. */
+            /** @description Current used plus remaining public parse allowance. */
             limit?: number;
             used?: number;
             remaining?: number;
             plan?: string;
+            /** Format: date-time */
+            plan_expires_at?: string | null;
+            recurring_limit?: number;
+            /** @description Parses consumed from the current recurring Plus allowance. */
+            recurring_used?: number;
+            /** @description Parses remaining in the current recurring Plus allowance. */
+            recurring_remaining?: number;
+            /** @description Remaining one-time welcome parses. */
+            welcome_remaining?: number;
+            /** @description Remaining purchased parses. */
+            additional_limit?: number;
             max_spaces?: number;
             max_members?: number;
             export_enabled?: boolean;
             audit_enabled?: boolean;
             capture_monthly_limit?: number;
             capabilities?: components["schemas"]["CapabilitySummary"];
+            /** @description Whether the current user is the configured developer and may use private sandbox tools. */
+            dev_tools_enabled?: boolean;
+            /** @description Whether the current user is the configured support administrator. */
+            feedback_admin_enabled?: boolean;
+        };
+        /** @description At least one of message, photo, or audio is required. */
+        FeedbackCreateRequest: {
+            message?: string;
+            /** @enum {string} */
+            category?: "problem" | "idea" | "thanks" | "other";
+            source?: string;
+            /** Format: int64 */
+            space_id?: number;
+            /** Format: int64 */
+            telegram_id?: number;
+            related_input?: string;
+        };
+        FeedbackMultipartRequest: components["schemas"]["FeedbackCreateRequest"] & {
+            /** Format: binary */
+            photo?: string;
+            /** Format: binary */
+            audio?: string;
+        };
+        FeedbackCreateResponse: {
+            /** Format: int64 */
+            id: number;
+            saved: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** @enum {string} */
+            notification_status: "sent" | "skipped" | "failed";
+            feedback_daily_limit: number;
+            feedback_daily_remaining: number;
+            /** Format: date-time */
+            feedback_daily_resets_at: string;
+        };
+        FeedbackDailyStatus: {
+            feedback_daily_limit: number;
+            feedback_daily_remaining: number;
+            /** Format: date-time */
+            feedback_daily_resets_at: string;
+        };
+        FeedbackAttachment: {
+            /** Format: int64 */
+            media_id?: number;
+            content_type?: string;
+            /** Format: int64 */
+            byte_size?: number;
+            /** Format: date-time */
+            expires_at?: string | null;
+            available: boolean;
+        };
+        FeedbackAdminItem: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            user_id: number;
+            /** Format: int64 */
+            space_id?: number;
+            /** @enum {string} */
+            category: "problem" | "idea" | "thanks" | "other";
+            source: string;
+            message: string;
+            related_input?: string;
+            /** Format: date-time */
+            created_at: string;
+            user: {
+                /** Format: int64 */
+                id: number;
+                name: string;
+                email: string;
+                email_verified: boolean;
+                /** Format: int64 */
+                telegram_id?: number;
+                telegram_username?: string;
+            };
+            photo?: components["schemas"]["FeedbackAttachment"];
+            audio?: components["schemas"]["FeedbackAttachment"];
+        };
+        FeedbackListResponse: {
+            feedback: components["schemas"]["FeedbackAdminItem"][];
+        };
+        DeveloperDashboard: {
+            /** Format: int64 */
+            user_id: number;
+            period_days: number;
+            processing: {
+                [key: string]: number;
+            };
+            quality: {
+                [key: string]: number;
+            };
+            models: {
+                [key: string]: number;
+            };
+            data: {
+                active_sessions?: number;
+                stored_files?: number;
+                /** Format: int64 */
+                stored_bytes?: number;
+                expiring_files?: number;
+                /** Format: date-time */
+                earliest_media_expiry?: string | null;
+                email_verified?: boolean;
+                personal_data_consent?: boolean;
+            };
+            product: {
+                /** Format: int64 */
+                total_users: number;
+                /** Format: int64 */
+                new_users_7_days: number;
+                /** Format: int64 */
+                new_users_30_days: number;
+                /** Format: int64 */
+                active_users_7_days: number;
+                /** Format: int64 */
+                active_users_30_days: number;
+                /** Format: int64 */
+                inputs_30_days: number;
+                /** Format: int64 */
+                quota_units_30_days: number;
+                average_inputs_per_active_user: number;
+                recent_users: {
+                    /** Format: int64 */
+                    id: number;
+                    name: string;
+                    auth_type: string;
+                    /** Format: date-time */
+                    created_at: string;
+                    /** Format: date-time */
+                    last_input_at?: string | null;
+                    /** Format: int64 */
+                    inputs_30_days: number;
+                    /** Format: int64 */
+                    quota_units_30_days: number;
+                }[];
+            };
+            breakdown: {
+                [key: string]: unknown;
+            }[];
+            recent_failures: {
+                [key: string]: unknown;
+            }[];
+        };
+        BillingCheckout: {
+            /** Format: uri */
+            action: string;
+            /** @constant */
+            method: "POST";
+            fields: {
+                [key: string]: string;
+            };
+            /** Format: int64 */
+            order_id: number;
         };
         ExpenseRecordItem: {
             /** Format: int64 */
@@ -7822,6 +9079,7 @@ export interface components {
             category_name?: string;
             emotion?: string;
             tags?: string[];
+            notes?: string;
             /** Format: date-time */
             expense_date?: string;
         };

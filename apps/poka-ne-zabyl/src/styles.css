@@ -58,26 +58,17 @@ a {
 	height: 28px;
 	color: var(--blue);
 }
-.brand__mark svg,
-.final-cta__mark svg {
+.brand__mark img,
+.final-cta__mark img {
+	display: block;
 	width: 100%;
 	height: 100%;
-	overflow: visible;
+	object-fit: contain;
 }
-.brand__mark path,
-.final-cta__mark path {
-	fill: none;
-	stroke: currentColor;
-	stroke-width: 2.6;
-	stroke-linecap: round;
-	stroke-linejoin: round;
-}
-.brand__mark circle,
-.final-cta__mark circle {
-	fill: var(--coral);
-}
-.brand__check {
-	stroke-width: 3.2 !important;
+.brand--inverse .brand__mark {
+	padding: 2px;
+	border-radius: 7px;
+	background: var(--paper-light);
 }
 
 .button {
@@ -119,6 +110,80 @@ summary:focus-visible,
 button:focus-visible {
 	outline: 3px solid var(--coral);
 	outline-offset: 3px;
+}
+
+.app-loading,
+.app-recovery {
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	padding: 32px 24px;
+	background: var(--paper);
+	color: var(--ink);
+	text-align: center;
+}
+
+.app-loading img,
+.app-recovery img {
+	width: 56px;
+	height: 56px;
+	object-fit: contain;
+}
+
+.app-loading span {
+	margin-top: 16px;
+	font-weight: 700;
+}
+
+.app-recovery p {
+	margin: 18px 0 6px;
+	color: var(--blue);
+	font-weight: 700;
+}
+
+.app-recovery h1 {
+	margin: 0;
+	font-size: 28px;
+}
+
+.app-recovery > span {
+	max-width: 420px;
+	margin-top: 12px;
+	line-height: 1.5;
+}
+
+.app-recovery div {
+	display: flex;
+	gap: 10px;
+	margin-top: 24px;
+}
+
+.app-recovery button,
+.app-recovery a {
+	min-height: 46px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	padding: 0 20px;
+	border: 1px solid var(--blue);
+	border-radius: 8px;
+	font: inherit;
+	font-weight: 700;
+	text-decoration: none;
+}
+
+.app-recovery button {
+	background: var(--blue);
+	color: white;
+}
+
+.app-recovery a {
+	background: transparent;
+	color: var(--blue);
 }
 .text-link {
 	display: inline-flex;
@@ -1467,7 +1532,9 @@ button:focus-visible {
 .final-cta__mark {
 	width: 34px;
 	height: 34px;
-	color: var(--paper-light);
+	padding: 3px;
+	border-radius: 9px;
+	background: var(--paper-light);
 }
 .final-cta p {
 	margin: 30px 0 10px;

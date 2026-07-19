@@ -29,12 +29,14 @@ const metrikaScript = `<script type="text/javascript">
 
 const metrikaNoScript = `<noscript><div><img src="https://mc.yandex.ru/watch/${metrikaCounterId}" style="position:absolute; left:-9999px;" alt="" /></div></noscript>`;
 
+const attributeEscapes = {
+	"&": "&amp;",
+	'"': "&quot;",
+	"<": "&lt;",
+	">": "&gt;",
+};
 const escapeAttribute = (value) =>
-	value
-		.replaceAll("&", "&amp;")
-		.replaceAll('"', "&quot;")
-		.replaceAll("<", "&lt;")
-		.replaceAll(">", "&gt;");
+	value.replace(/[&"<>]/g, (character) => attributeEscapes[character]);
 
 const withoutDefaultSeo = (html) =>
 	html
@@ -54,7 +56,7 @@ const pageHead = ({ path, title, description }) => {
 							"@id": `${origin}/#organization`,
 							name: "Пока не забыл",
 							url: `${origin}/`,
-							logo: `${origin}/assets/poka-ne-zabyl-logo.jpg`,
+							logo: `${origin}/assets/poka-ne-zabyl-app-icon-512.png`,
 							sameAs: ["https://t.me/poka_ne_zabyl_bot"],
 						},
 						{
