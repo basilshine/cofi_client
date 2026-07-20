@@ -5159,11 +5159,19 @@
 .telegram-login {
 	min-height: 40px;
 }
-.mini-entry-error {
+.mini-entry p.mini-entry-error {
+	width: 100%;
+	max-width: none;
 	margin: 0 auto;
-	color: var(--mini-red) !important;
+	padding: 10px 12px;
+	border: 1px solid rgb(201 63 45 / 28%);
+	border-radius: 6px;
+	background: rgb(201 63 45 / 8%);
+	box-sizing: border-box;
+	color: var(--mini-red);
 	font-size: 13px;
-	text-align: center;
+	line-height: 1.4;
+	text-align: left;
 }
 .browser-legal {
 	display: flex;
