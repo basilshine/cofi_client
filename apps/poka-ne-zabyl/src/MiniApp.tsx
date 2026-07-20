@@ -13770,7 +13770,9 @@ const BrowserEntry = ({
 			setLocalError(
 				message.includes("email already registered")
 					? "Эта почта уже зарегистрирована. Выберите «Войти»."
-					: message,
+					: message.includes("SMS could not be delivered")
+						? "Не удалось доставить SMS. Проверьте номер или войдите по почте."
+						: message,
 			);
 		} finally {
 			setLoading(false);
