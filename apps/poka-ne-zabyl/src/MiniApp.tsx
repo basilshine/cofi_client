@@ -14275,6 +14275,16 @@ const notificationTitle = (type: string, language: UILanguage) => {
 			en: "Allowance exhausted",
 			es: "Análisis agotados",
 		},
+		payment_pack_purchased: {
+			ru: "Пакет разборов куплен",
+			en: "Analysis pack purchased",
+			es: "Paquete de análisis comprado",
+		},
+		payment_plus_purchased: {
+			ru: "Плюс оплачен",
+			en: "Plus payment received",
+			es: "Pago de Plus recibido",
+		},
 		recurring_expense: {
 			ru: "Повторяющийся расход",
 			en: "Recurring expense",
