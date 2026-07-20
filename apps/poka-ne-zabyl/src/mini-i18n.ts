@@ -54,6 +54,7 @@ const messages = {
 		history: "История",
 		plans: "Планы",
 		found: "Найдено",
+		selectedExpense: "Выбран расход",
 		plannedTotalShort: "Сумма",
 		planSearchPlaceholder: "Покупка, список или продавец",
 		planPeriodThreeDays: "Ближайшие 3 дня",
@@ -499,6 +500,7 @@ const messages = {
 		history: "History",
 		plans: "Plans",
 		found: "Found",
+		selectedExpense: "Selected expense",
 		plannedTotalShort: "Total",
 		planSearchPlaceholder: "Item, list, or seller",
 		planPeriodThreeDays: "Next 3 days",
@@ -942,6 +944,7 @@ const messages = {
 		history: "Historial",
 		plans: "Planes",
 		found: "Encontrado",
+		selectedExpense: "Gasto seleccionado",
 		plannedTotalShort: "Total",
 		planSearchPlaceholder: "Compra, lista o vendedor",
 		planPeriodThreeDays: "Próximos 3 días",
@@ -1360,6 +1363,15 @@ export const spaceMemberCountText = (count: number, language: UILanguage) => {
 		return `${count} ${form === "one" ? "участник" : form === "few" ? "участника" : "участников"}`;
 	}
 	return `${count} ${language === "es" ? "participantes" : "members"}`;
+};
+
+export const purchaseCountText = (count: number, language: UILanguage) => {
+	if (language === "en")
+		return `${count} ${count === 1 ? "purchase" : "purchases"}`;
+	if (language === "es")
+		return `${count} ${count === 1 ? "compra" : "compras"}`;
+	const form = new Intl.PluralRules("ru").select(count);
+	return `${count} ${form === "one" ? "покупка" : form === "few" ? "покупки" : "покупок"}`;
 };
 
 export const languageOptions: [UILanguage, string][] = [

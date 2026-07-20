@@ -69,6 +69,7 @@ import {
 	localizedCurrencyName,
 	localizedRegionName,
 	normalizeUILanguage,
+	purchaseCountText,
 	spaceMemberCountText,
 	uiText,
 } from "./mini-i18n";
@@ -1125,43 +1126,65 @@ const previewDeveloperFeedback: DeveloperFeedback[] = [
 	},
 ];
 
-const previewNotifications: AppNotification[] = [
-	{
-		id: 1,
-		space_id: 1,
-		space_name: "Личные расходы",
-		type: "purchase_plan_due",
-		message: "Запланировано на сегодня\n\nКроссовки для танцев\n8 200 ₽",
-		action_url: "/app?preview=1&view=expenses&space_id=1&plan_id=2",
-		created_at: new Date(Date.now() - 25 * 60_000).toISOString(),
-	},
-	{
-		id: 2,
-		space_id: 2,
-		space_name: "Семейный бюджет",
-		type: "shared_expense_created",
-		message: "Анна добавила расход\n\nПродукты на неделю\n2 840 RUB",
-		action_url: "/app?preview=1&view=expenses&space_id=2&expense_id=1",
-		created_at: new Date(Date.now() - 55 * 60_000).toISOString(),
-	},
-	{
-		id: 4,
-		space_id: 1,
-		space_name: "Личные расходы",
-		type: "capture_review_ready",
-		message: "Готово к проверке: расход\n\nПокупки в Ленте",
-		action_url: "/app?preview=1&view=review&space_id=1&candidate_id=77",
-		created_at: new Date(Date.now() - 90 * 60_000).toISOString(),
-	},
-	{
-		id: 3,
-		type: "quota_low",
-		message: "Осталось 13 быстрых разборов из приветственного набора.",
-		action_url: "/app?preview=1&view=subscription",
-		read_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
-		created_at: new Date(Date.now() - 3 * 60 * 60_000).toISOString(),
-	},
-];
+const previewNotifications = (language: UILanguage): AppNotification[] => {
+	const copy = {
+		ru: {
+			plan: "Запланировано на сегодня",
+			shared: "Анна добавила расход",
+			ready: "Готово к проверке: расход",
+			quota: "Осталось 13 быстрых разборов из приветственного набора.",
+		},
+		en: {
+			plan: "Scheduled for today",
+			shared: "Anna added an expense",
+			ready: "Ready to review: expense",
+			quota: "13 quick analyses remain from your welcome pack.",
+		},
+		es: {
+			plan: "Programado para hoy",
+			shared: "Ana añadió un gasto",
+			ready: "Listo para revisar: gasto",
+			quota: "Quedan 13 análisis rápidos del paquete de bienvenida.",
+		},
+	}[language];
+	return [
+		{
+			id: 1,
+			space_id: 1,
+			space_name: "Личные расходы",
+			type: "purchase_plan_due",
+			message: `${copy.plan}\n\nКроссовки для танцев\n8 200 ₽`,
+			action_url: "/app?preview=1&view=expenses&space_id=1&plan_id=2",
+			created_at: new Date(Date.now() - 25 * 60_000).toISOString(),
+		},
+		{
+			id: 2,
+			space_id: 2,
+			space_name: "Семейный бюджет",
+			type: "shared_expense_created",
+			message: `${copy.shared}\n\nПродукты на неделю\n2 840 RUB`,
+			action_url: "/app?preview=1&view=expenses&space_id=2&expense_id=1",
+			created_at: new Date(Date.now() - 55 * 60_000).toISOString(),
+		},
+		{
+			id: 4,
+			space_id: 1,
+			space_name: "Личные расходы",
+			type: "capture_review_ready",
+			message: `${copy.ready}\n\nПокупки в Ленте`,
+			action_url: "/app?preview=1&view=review&space_id=1&candidate_id=77",
+			created_at: new Date(Date.now() - 90 * 60_000).toISOString(),
+		},
+		{
+			id: 3,
+			type: "quota_low",
+			message: copy.quota,
+			action_url: "/app?preview=1&view=subscription",
+			read_at: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
+			created_at: new Date(Date.now() - 3 * 60 * 60_000).toISOString(),
+		},
+	];
+};
 
 const captureForSourceDocument = (
 	sourceDocumentID: number | undefined,
@@ -1266,6 +1289,9 @@ const planTarget = (): PlanTarget | null => {
 const requestedPlan = planTarget();
 const requestedQuery = new URLSearchParams(window.location.search);
 const requestedSpaceID = Number(requestedQuery.get("space_id"));
+const requestedPreviewLanguage = normalizeUILanguage(
+	requestedQuery.get("lang") ?? undefined,
+);
 const requestedExpenseID = Number(requestedQuery.get("expense_id"));
 const requestedFeedbackID = Number(requestedQuery.get("feedback"));
 const requestedInviteToken = (
@@ -1706,7 +1732,7 @@ export const MiniApp = () => {
 				telegramId: 1,
 				telegramUsername: "basil",
 				country: "RU",
-				language: "ru",
+				language: requestedPreviewLanguage,
 				timezone: "Asia/Tomsk",
 				notificationTime: "09:00",
 				currency: "RUB",
@@ -1841,9 +1867,10 @@ export const MiniApp = () => {
 					new Date().setHours(24, 0, 0, 0),
 				).toISOString(),
 			});
-			setNotifications(previewNotifications);
+			const previewInbox = previewNotifications(requestedPreviewLanguage);
+			setNotifications(previewInbox);
 			setUnreadNotificationCount(
-				previewNotifications.filter(({ read_at }) => !read_at).length,
+				previewInbox.filter(({ read_at }) => !read_at).length,
 			);
 			setDeveloperFeedback(previewDeveloperFeedback);
 			setDeveloperDashboard({
@@ -8373,8 +8400,12 @@ const ExpensesView = ({
 						{expense && (
 							<div className="mini-expense-scope">
 								<span>
-									<small>Выбран расход</small>
-									<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
+									<small>{uiText(language, "selectedExpense")}</small>
+									<b>
+										{expense.title ||
+											expense.items[0]?.name ||
+											uiText(language, "viewExpense")}
+									</b>
 								</span>
 								<div className="mini-expense-scope-actions">
 									<button type="button" onClick={() => onSource(expense)}>
@@ -8382,24 +8413,22 @@ const ExpensesView = ({
 											capture={captureForExpense(expense, captures)}
 											size={15}
 										/>
-										Исходник
+										{uiText(language, "viewSource")}
 									</button>
 									<button type="button" onClick={onClearExpense}>
 										<X size={15} />
-										Все
+										{uiText(language, "all")}
 									</button>
 								</div>
 							</div>
 						)}
 						<div className="mini-result">
 							<div>
-								<small>Найдено</small>
-								<span>
-									{items.length} {itemWord(items.length)}
-								</span>
+								<small>{uiText(language, "found")}</small>
+								<span>{purchaseCountText(items.length, language)}</span>
 							</div>
 							<div>
-								<small>Итого</small>
+								<small>{uiText(language, "total")}</small>
 								<strong>
 									{formatMoney(
 										items.reduce(
@@ -9162,10 +9191,14 @@ const GroupedExpenseItemList = ({
 								type="button"
 								onClick={() => onOpenExpense(expense)}
 							>
-								<b>{expense.title || rows[0].item.name || "Расход"}</b>
+								<b>
+									{expense.title ||
+										rows[0].item.name ||
+										uiText(language, "viewExpense")}
+								</b>
 								<small>
-									{formatDate(expense.expense_date, language)} · {rows.length}{" "}
-									{itemWord(rows.length)}
+									{formatDate(expense.expense_date, language)} ·{" "}
+									{purchaseCountText(rows.length, language)}
 								</small>
 								{author && (
 									<small className="mini-record-author">
@@ -9176,7 +9209,7 @@ const GroupedExpenseItemList = ({
 							<div className="mini-expense-group-actions">
 								<button
 									type="button"
-									aria-label="Открыть исходный материал"
+									aria-label={uiText(language, "viewSource")}
 									onClick={() => onSource(expense)}
 								>
 									<SourceIcon
@@ -12180,7 +12213,7 @@ const ExpenseDetail = ({
 					<small>
 						{item
 							? expense.title
-							: `${expense.items.length} ${itemWord(expense.items.length)}`}
+							: purchaseCountText(expense.items.length, language)}
 					</small>
 					<h3>
 						{item?.name ||
@@ -12232,7 +12265,7 @@ const ExpenseDetail = ({
 						onClick={onSource}
 					>
 						<SourceIcon capture={capture} size={18} />
-						{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
+						{uiText(language, sourceLoading ? "openingSource" : "viewSource")}
 					</button>
 					<SourceExpiryNote capture={capture} language={language} />
 				</div>
@@ -12247,9 +12280,7 @@ const ExpenseDetail = ({
 						<Receipt size={18} />
 						<span>
 							<b>{uiText(language, "openReceipt")}</b>
-							<small>
-								{expense.items.length} {itemWord(expense.items.length)}
-							</small>
+							<small>{purchaseCountText(expense.items.length, language)}</small>
 						</span>
 						<ArrowRight size={17} />
 					</button>
@@ -14740,7 +14771,11 @@ const NotificationCenter = ({
 	onAction: (notification: AppNotification) => void;
 	onClose: () => void;
 }) => (
-	<Modal title={uiText(language, "notifications")} onClose={onClose}>
+	<Modal
+		title={uiText(language, "notifications")}
+		closeLabel={uiText(language, "close")}
+		onClose={onClose}
+	>
 		{selected ? (
 			<div className="notification-detail">
 				<button className="notification-back" type="button" onClick={onBack}>
@@ -16107,14 +16142,6 @@ const expenseWord = (count: number) =>
 				(count % 100 < 10 || count % 100 >= 20)
 			? "расхода"
 			: "расходов";
-const itemWord = (count: number) =>
-	count % 10 === 1 && count % 100 !== 11
-		? "покупка"
-		: count % 10 >= 2 &&
-				count % 10 <= 4 &&
-				(count % 100 < 10 || count % 100 >= 20)
-			? "покупки"
-			: "покупок";
 const memberRole = (role: string, language: UILanguage) =>
 	uiText(
 		language,
