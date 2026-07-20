@@ -8,7 +8,7 @@ import {
 	UsersThree,
 } from "@phosphor-icons/react";
 import type { CSSProperties } from "react";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import {
 	type LandingLocale,
 	landingHomePath,
@@ -54,7 +54,8 @@ export const App = ({ pathname }: { pathname?: string }) => {
 			navigator.language,
 			window.localStorage.getItem(LANDING_LANGUAGE_KEY),
 		);
-		if (locale !== "ru") window.location.replace(landingHomePath(locale));
+		if (locale !== "ru")
+			window.location.replace(`${landingHomePath(locale)}${window.location.search}`);
 	}, [path, pathname]);
 
 	useEffect(() => {
@@ -150,13 +151,15 @@ const trackLandingAppClick = () => reachMetrikaGoal("landing_app_click");
 const AppButton = ({
 	light = false,
 	locale = "ru",
+	landingQuery = "",
 }: {
 	light?: boolean;
 	locale?: LandingLocale;
+	landingQuery?: string;
 }) => (
 	<a
 		className={`button ${light ? "button--light" : ""}`}
-		href={landingAppPath(locale)}
+		href={landingAppPath(locale, "", landingQuery)}
 		onClick={trackLandingAppClick}
 	>
 		{locale === "en"
@@ -246,6 +249,7 @@ const captureStories = [
 const CaptureStory = ({ locale = "ru" }: { locale?: LandingLocale }) => (
 	<div
 		className="capture-story"
+		data-label={landingText(locale, "ЖИВОЙ ПРИМЕР")}
 		aria-label={landingText(
 			locale,
 			"Как расход проходит от ввода до сохранения",
@@ -285,7 +289,13 @@ const CaptureStory = ({ locale = "ru" }: { locale?: LandingLocale }) => (
 	</div>
 );
 
-const LanguageSwitcher = ({ locale }: { locale: LandingLocale }) => (
+const LanguageSwitcher = ({
+	locale,
+	landingQuery,
+}: {
+	locale: LandingLocale;
+	landingQuery: string;
+}) => (
 	<nav
 		className="language-switcher"
 		aria-label={
@@ -299,7 +309,7 @@ const LanguageSwitcher = ({ locale }: { locale: LandingLocale }) => (
 		{(["ru", "en", "es"] as const).map((code) => (
 			<a
 				aria-current={locale === code ? "page" : undefined}
-				href={landingHomePath(code)}
+				href={`${landingHomePath(code)}${landingQuery}`}
 				key={code}
 				onClick={() => window.localStorage.setItem(LANDING_LANGUAGE_KEY, code)}
 			>
@@ -310,6 +320,8 @@ const LanguageSwitcher = ({ locale }: { locale: LandingLocale }) => (
 );
 
 const LandingPage = ({ locale }: { locale: LandingLocale }) => {
+	const [landingQuery, setLandingQuery] = useState("");
+	useEffect(() => setLandingQuery(window.location.search), []);
 	usePageTitle(landingSeo[locale].title);
 	useEffect(() => {
 		document.documentElement.lang = locale;
@@ -337,13 +349,13 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 			<section className="hero">
 				<header className="hero__nav shell">
 					<Brand locale={locale} />
-					<LanguageSwitcher locale={locale} />
+					<LanguageSwitcher locale={locale} landingQuery={landingQuery} />
 					<nav aria-label="Основная навигация">
 						<a href="#how">Как это работает</a>
 						<a href="#mini-app">Приложение</a>
 						<a href="#pricing">Тарифы</a>
 						<a href="#shared">Для компании</a>
-						<AppButton locale={locale} />
+						<AppButton locale={locale} landingQuery={landingQuery} />
 					</nav>
 				</header>
 				<div className="hero__stage shell">
@@ -355,7 +367,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 							обычным приложением. Telegram остаётся быстрым помощником.
 						</p>
 						<div className="hero__actions">
-							<AppButton locale={locale} />
+							<AppButton locale={locale} landingQuery={landingQuery} />
 							<a
 								className="text-link"
 								href={TELEGRAM_URL}
@@ -481,7 +493,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 								<span>Открывайте по иконке без App Store и Google Play.</span>
 							</li>
 						</ol>
-						<AppButton locale={locale} />
+						<AppButton locale={locale} landingQuery={landingQuery} />
 					</div>
 					<figure className="pwa-device">
 						<img
@@ -678,7 +690,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 							</ul>
 							<a
 								className="pricing-plan__action"
-								href={landingAppPath(locale)}
+								href={landingAppPath(locale, "", landingQuery)}
 								onClick={trackLandingAppClick}
 							>
 								Начать с Базового <ArrowRight size={18} />
@@ -725,7 +737,11 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 							</ul>
 							<a
 								className="pricing-plan__action"
-								href={landingAppPath(locale, "view=subscription")}
+								href={landingAppPath(
+									locale,
+									"view=subscription",
+									landingQuery,
+								)}
 								onClick={trackLandingAppClick}
 							>
 								Подключить Плюс <ArrowRight size={18} />
@@ -885,7 +901,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 					</span>
 					<p>Покупка уже случилась.</p>
 					<h2>Запишите, пока не забыли.</h2>
-					<AppButton light locale={locale} />
+					<AppButton light locale={locale} landingQuery={landingQuery} />
 					<a
 						className="text-link text-link--inverse"
 						href={TELEGRAM_URL}

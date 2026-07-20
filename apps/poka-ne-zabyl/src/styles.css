@@ -717,7 +717,7 @@ button:focus-visible {
 		rgba(41, 69, 199, 0.14);
 }
 .capture-story::before {
-	content: "ЖИВОЙ ПРИМЕР";
+	content: attr(data-label);
 	position: absolute;
 	top: 22px;
 	right: 24px;

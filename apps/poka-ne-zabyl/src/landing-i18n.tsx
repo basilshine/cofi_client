@@ -26,6 +26,7 @@ const translations: Record<
 	Record<string, string>
 > = {
 	en: {
+		"ЖИВОЙ ПРИМЕР": "LIVE EXAMPLE",
 		"Как расход проходит от ввода до сохранения":
 			"How an expense moves from input to saved",
 		Голос: "Voice",
@@ -231,6 +232,7 @@ const translations: Record<
 		"· ОГРНИП": "· Sole proprietor ID",
 	},
 	es: {
+		"ЖИВОЙ ПРИМЕР": "EJEMPLO EN VIVO",
 		"Как расход проходит от ввода до сохранения":
 			"Cómo pasa un gasto desde la entrada hasta guardarse",
 		Голос: "Voz",
