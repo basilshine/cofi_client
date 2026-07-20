@@ -4,10 +4,16 @@ import { nextCoachmark, parseCoachmarks } from "../src/coachmarks.ts";
 
 test("coachmarks choose the first eligible unseen hint", () => {
 	assert.equal(
-		nextCoachmark(["space"], { space: true, add: true, expenses: true }),
+		nextCoachmark(["space"], { space: true, overview: true, add: true }),
+		"overview",
+	);
+	assert.equal(
+		nextCoachmark(["space", "overview", "expenses"], {
+			add: true,
+			categories: true,
+		}),
 		"add",
 	);
-	assert.equal(nextCoachmark(["space", "add"], { plans: true }), "plans");
 	assert.equal(nextCoachmark(["space"], { add: false }), null);
 });
 

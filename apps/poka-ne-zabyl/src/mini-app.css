@@ -225,6 +225,14 @@
 	top: -6px;
 	left: 22px;
 }
+.mini-coach-tip.is-account {
+	top: calc(100% + 9px);
+	right: 0;
+}
+.mini-coach-tip.is-account::after {
+	top: -6px;
+	right: 13px;
+}
 @keyframes mini-coach-pulse {
 	0%,
 	68%,
@@ -3234,14 +3242,42 @@
 .mini-nav .mini-nav-add:active {
 	transform: translateY(-13px) scale(0.96);
 }
-.mini-coach-tip.is-add {
+.mini-coach-tip.is-nav {
 	bottom: calc(100% + 10px);
+}
+.mini-coach-tip.is-nav::after {
+	bottom: -6px;
+}
+.mini-coach-tip.is-nav.is-overview {
+	left: 0;
+}
+.mini-coach-tip.is-nav.is-overview::after {
+	left: 29px;
+}
+.mini-coach-tip.is-nav.is-expenses {
+	left: 20px;
+}
+.mini-coach-tip.is-nav.is-expenses::after {
+	left: 75px;
+}
+.mini-coach-tip.is-nav.is-add {
 	left: 50%;
 	transform: translateX(-50%);
 }
-.mini-coach-tip.is-add::after {
-	bottom: -6px;
+.mini-coach-tip.is-nav.is-add::after {
 	left: calc(50% - 6px);
+}
+.mini-coach-tip.is-nav.is-categories {
+	right: 20px;
+}
+.mini-coach-tip.is-nav.is-categories::after {
+	right: 75px;
+}
+.mini-coach-tip.is-nav.is-settings {
+	right: 0;
+}
+.mini-coach-tip.is-nav.is-settings::after {
+	right: 29px;
 }
 .mini-nav-add .mini-nav-icon {
 	width: 52px;
@@ -6469,17 +6505,33 @@
 	.mini-nav .mini-nav-add:active {
 		transform: none;
 	}
-	.mini-coach-tip.is-add {
+	.mini-coach-tip.is-nav {
 		position: fixed;
-		top: 154px;
 		bottom: auto;
 		left: 98px;
+		right: auto;
 		transform: none;
 	}
-	.mini-coach-tip.is-add::after {
+	.mini-coach-tip.is-nav::after {
 		top: 18px;
 		bottom: auto;
 		left: -6px;
+		right: auto;
+	}
+	.mini-coach-tip.is-nav.is-overview {
+		top: 90px;
+	}
+	.mini-coach-tip.is-nav.is-expenses {
+		top: 162px;
+	}
+	.mini-coach-tip.is-nav.is-add {
+		top: 234px;
+	}
+	.mini-coach-tip.is-nav.is-categories {
+		top: 306px;
+	}
+	.mini-coach-tip.is-nav.is-settings {
+		top: 378px;
 	}
 	.mini-nav-add .mini-nav-icon {
 		width: 44px;
@@ -6517,9 +6569,23 @@
 		gap: 6px;
 		padding: 24px 14px;
 	}
-	.mini-coach-tip.is-add {
-		top: 202px;
+	.mini-coach-tip.is-nav {
 		left: 226px;
+	}
+	.mini-coach-tip.is-nav.is-overview {
+		top: 98px;
+	}
+	.mini-coach-tip.is-nav.is-expenses {
+		top: 160px;
+	}
+	.mini-coach-tip.is-nav.is-add {
+		top: 222px;
+	}
+	.mini-coach-tip.is-nav.is-categories {
+		top: 284px;
+	}
+	.mini-coach-tip.is-nav.is-settings {
+		top: 346px;
 	}
 	.mini-nav button {
 		grid-template-columns: 40px minmax(0, 1fr);

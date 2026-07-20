@@ -1,7 +1,12 @@
 export const coachmarkIDs = [
 	"space",
-	"add",
+	"overview",
 	"expenses",
+	"add",
+	"categories",
+	"settings",
+	"account",
+	"expenseDetails",
 	"plans",
 	"splits",
 ] as const;

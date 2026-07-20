@@ -1380,7 +1380,7 @@ export const MiniApp = () => {
 		try {
 			setSeenCoachmarks(
 				parseCoachmarks(
-					window.localStorage.getItem(`pnz:coachmarks:v1:${user.id}`),
+					window.localStorage.getItem(`pnz:coachmarks:v2:${user.id}`),
 				),
 			);
 		} catch {
@@ -1395,7 +1395,7 @@ export const MiniApp = () => {
 			const next = [...current, id];
 			try {
 				window.localStorage.setItem(
-					`pnz:coachmarks:v1:${user.id}`,
+					`pnz:coachmarks:v2:${user.id}`,
 					JSON.stringify(next),
 				);
 			} catch {
@@ -3627,11 +3627,6 @@ export const MiniApp = () => {
 			),
 		[participants],
 	);
-	const hasStarted =
-		expenses.length > 0 ||
-		plans.length > 0 ||
-		captures.length > 0 ||
-		reviewCandidates.length > 0;
 	const activeCoachmark =
 		coachmarksReady &&
 		!loading &&
@@ -3640,9 +3635,14 @@ export const MiniApp = () => {
 		!addChoiceOpen &&
 		!captureOpen
 			? nextCoachmark(seenCoachmarks, {
-					space: view === "overview" && spaces.length <= 1 && !hasStarted,
-					add: view === "overview" && !hasStarted,
-					expenses: view === "expenses" && expenseSection === "history",
+					space: spaces.length <= 1,
+					overview: true,
+					expenses: true,
+					add: true,
+					categories: true,
+					settings: true,
+					account: true,
+					expenseDetails: view === "expenses" && expenseSection === "history",
 					plans: view === "expenses" && expenseSection === "plans",
 					splits: view === "expenses" && eligibleParticipants.length > 1,
 				})
@@ -5635,6 +5635,7 @@ export const MiniApp = () => {
 							aria-haspopup="menu"
 							aria-expanded={accountMenuOpen}
 							onClick={() => {
+								dismissCoachmark("account");
 								setSpaceMenuOpen(false);
 								setAccountMenuOpen((open) => !open);
 							}}
@@ -5652,6 +5653,14 @@ export const MiniApp = () => {
 								/>
 							)}
 						</button>
+						{activeCoachmark === "account" && (
+							<CoachTip
+								className="is-account"
+								text={uiText(language, "coachAccount")}
+								closeLabel={uiText(language, "coachDismiss")}
+								onDismiss={() => dismissCoachmark("account")}
+							/>
+						)}
 						{accountMenuOpen && (
 							<div className="mini-account-menu" role="menu">
 								<div className="mini-account-summary">
@@ -6189,13 +6198,19 @@ export const MiniApp = () => {
 					active={view === "overview"}
 					label={uiText(language, "navOverview")}
 					icon={<House />}
-					onClick={() => setView("overview")}
+					onClick={() => {
+						dismissCoachmark("overview");
+						setView("overview");
+					}}
 				/>
 				<NavButton
 					active={view === "expenses"}
 					label={uiText(language, "navExpenses")}
 					icon={<Receipt />}
-					onClick={openAllExpenses}
+					onClick={() => {
+						dismissCoachmark("expenses");
+						openAllExpenses();
+					}}
 				/>
 				<NavButton
 					active={false}
@@ -6207,25 +6222,45 @@ export const MiniApp = () => {
 						setAddChoiceOpen(true);
 					}}
 				/>
-				{activeCoachmark === "add" && (
-					<CoachTip
-						className="is-add"
-						text={uiText(language, "coachAdd")}
-						closeLabel={uiText(language, "coachDismiss")}
-						onDismiss={() => dismissCoachmark("add")}
-					/>
-				)}
+				{activeCoachmark &&
+					(activeCoachmark === "overview" ||
+						activeCoachmark === "expenses" ||
+						activeCoachmark === "add" ||
+						activeCoachmark === "categories" ||
+						activeCoachmark === "settings") && (
+						<CoachTip
+							className={`is-nav is-${activeCoachmark}`}
+							text={uiText(
+								language,
+								activeCoachmark === "overview"
+									? "coachOverview"
+									: activeCoachmark === "expenses"
+										? "coachExpenses"
+										: activeCoachmark === "add"
+											? "coachAdd"
+											: activeCoachmark === "categories"
+												? "coachCategories"
+												: "coachSettings",
+							)}
+							closeLabel={uiText(language, "coachDismiss")}
+							onDismiss={() => dismissCoachmark(activeCoachmark)}
+						/>
+					)}
 				<NavButton
 					active={view === "categories"}
 					label={uiText(language, "navCategories")}
 					icon={<Tag />}
-					onClick={() => setView("categories")}
+					onClick={() => {
+						dismissCoachmark("categories");
+						setView("categories");
+					}}
 				/>
 				<NavButton
 					active={view === "profile" || view === "vendors" || view === "spaces"}
 					label={uiText(language, "settings")}
 					icon={<GearSix />}
 					onClick={() => {
+						dismissCoachmark("settings");
 						setAccountMenuOpen(false);
 						setView("profile");
 					}}
@@ -8258,15 +8293,15 @@ const ExpensesView = ({
 					</button>
 				)}
 				{coachmark &&
-					(coachmark === "expenses" ||
+					(coachmark === "expenseDetails" ||
 						coachmark === "plans" ||
 						coachmark === "splits") && (
 						<CoachTip
-							className={`is-section is-${coachmark}`}
+							className={`is-section is-${coachmark === "expenseDetails" ? "expenses" : coachmark}`}
 							text={uiText(
 								language,
-								coachmark === "expenses"
-									? "coachExpenses"
+								coachmark === "expenseDetails"
+									? "coachExpenseDetails"
 									: coachmark === "plans"
 										? "coachPlans"
 										: "coachSplits",
