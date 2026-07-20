@@ -3334,10 +3334,6 @@ export const MiniApp = () => {
 			})),
 		);
 	}, [categories, overviewExpenses, currency]);
-	const hasAnyBudgets = categories.some(
-		(category) => (category.budget_amount || 0) > 0,
-	);
-
 	const openCategory = (id: number, nextPeriod: Period = "all") => {
 		setExpenseSection("history");
 		setPeriod(nextPeriod);
@@ -5270,7 +5266,6 @@ export const MiniApp = () => {
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
-								hasAnyBudgets={hasAnyBudgets}
 								expenses={overviewExpenses}
 								latestExpenses={expenses}
 								plans={plans}
@@ -6990,7 +6985,6 @@ const Overview = ({
 	total,
 	currency,
 	categories,
-	hasAnyBudgets,
 	expenses,
 	latestExpenses,
 	plans,
@@ -7015,7 +7009,6 @@ const Overview = ({
 	total: number;
 	currency: string;
 	categories: HomeCategoryRow<Category & { filteredTotal: number }>[];
-	hasAnyBudgets: boolean;
 	expenses: Expense[];
 	latestExpenses: Expense[];
 	plans: PurchasePlan[];
@@ -7214,7 +7207,7 @@ const Overview = ({
 					<div className="mini-section-head">
 						<h2>{uiText(language, "categoryOverview")}</h2>
 						<button type="button" onClick={onManageBudgets}>
-							{uiText(language, hasAnyBudgets ? "configure" : "addLimit")}
+							{uiText(language, "all")}
 						</button>
 					</div>
 					<div className="mini-home-categories">

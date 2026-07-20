@@ -56,7 +56,7 @@ export const homeCategoryRows = <T extends CategoryOverviewInput>(
 			(left, right) =>
 				Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) ||
 				right.homeAmount - left.homeAmount,
-		)
-		.slice(0, maxRows);
-	return rows;
+		);
+	const pinnedCount = rows.filter((category) => category.pinned).length;
+	return rows.slice(0, Math.max(maxRows, pinnedCount));
 };

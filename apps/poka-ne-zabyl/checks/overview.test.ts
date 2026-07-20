@@ -48,3 +48,19 @@ test("combines category totals with budget state", () => {
 	assert.equal(rows[3].homeAmount, 100);
 	assert.equal(rows[3].homeDifference, 200);
 });
+
+test("shows every pinned category beyond the default five rows", () => {
+	const rows = homeCategoryRows([
+		...Array.from({ length: 7 }, (_, index) => ({
+			id: index + 1,
+			filteredTotal: index,
+			pinned: true,
+		})),
+		{ id: 8, filteredTotal: 1000 },
+	]);
+
+	assert.deepEqual(
+		rows.map(({ id }) => id),
+		[7, 6, 5, 4, 3, 2, 1],
+	);
+});
