@@ -2318,7 +2318,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Expense moved to the selected space */
+                /** @description Expense moved or cloned into the selected space */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2334,7 +2334,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Current user cannot move this expense */
+                /** @description Current user cannot transfer this expense */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2459,7 +2459,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Expense containing the moved item */
+                /** @description Expense containing the moved or cloned item */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2475,7 +2475,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Current user cannot move this expense item */
+                /** @description Current user cannot transfer this expense item */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2821,7 +2821,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Planned purchase moved to the selected space */
+                /** @description Planned purchase moved or cloned into the selected space */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -2952,7 +2952,7 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Planned purchase containing the moved item */
+                /** @description Planned purchase containing the moved or cloned item */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -4196,6 +4196,165 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": components["schemas"]["ConfirmEmailRegistrationRequest"];
+                };
+            };
+            responses: {
+                /** @description Auth response and refresh cookie */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/phone/login/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a Russian phone login code
+         * @description Accepts Russian mobile numbers and returns a generic response when no account exists.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RequestPhoneLoginRequest"];
+                };
+            };
+            responses: {
+                /** @description Generic SMS delivery response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/phone/login/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in with a Russian phone and one-time SMS code */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmPhoneLoginRequest"];
+                };
+            };
+            responses: {
+                /** @description Auth response and refresh cookie */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AuthResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/phone/register/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request a Russian phone registration code */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RequestPhoneRegistrationRequest"];
+                };
+            };
+            responses: {
+                /** @description Generic registration or existing-account login code response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/phone/register/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create an account after confirming the SMS code */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ConfirmPhoneRegistrationRequest"];
                 };
             };
             responses: {
@@ -5543,8 +5702,8 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Manage sandbox subscription
-         * @description Temporary subscription controls available only to the configured developer user while Robokassa test mode is enabled.
+         * Manage private developer controls
+         * @description Sandbox subscription controls require Robokassa test mode. The configured system administrator may also control maintenance mode in production.
          */
         patch: {
             parameters: {
@@ -5564,6 +5723,8 @@ export interface paths {
                         additional_units?: number;
                         /** @description Development-only reset of current displayed and chargeable usage without deleting processing history. */
                         reset_usage?: boolean;
+                        /** @description Show the maintenance screen to regular users while preserving system administrator access. */
+                        maintenance_enabled?: boolean;
                         /** @enum {string} */
                         notification?: "subscription_expiring" | "subscription_expired" | "quota_low" | "quota_exhausted";
                     };
@@ -7579,6 +7740,29 @@ export interface components {
             /** @description Separate consent to personal data processing for account creation. */
             personal_data_consent: boolean;
         };
+        RequestPhoneLoginRequest: {
+            /** @example +7 999 123-45-67 */
+            phone: string;
+        };
+        ConfirmPhoneLoginRequest: {
+            phone: string;
+            code: string;
+        };
+        RequestPhoneRegistrationRequest: {
+            name: string;
+            phone: string;
+            /** @description Separate consent to personal data processing for account creation. */
+            personal_data_consent: boolean;
+        };
+        ConfirmPhoneRegistrationRequest: {
+            name: string;
+            phone: string;
+            code: string;
+            language?: string;
+            timezone?: string;
+            /** @description Separate consent to personal data processing for account creation. */
+            personal_data_consent: boolean;
+        };
         RequestEmailLinkRequest: {
             /** Format: email */
             email: string;
@@ -7674,6 +7858,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             email?: string;
+            phone?: string;
             emailVerified?: boolean;
             name?: string;
             auth_type?: string;
@@ -8323,6 +8508,10 @@ export interface components {
             hash?: string;
             country?: string;
             language?: string;
+            timezone?: string;
+            currency?: string;
+            /** @description Explicit location declaration required only when creating a new account through Telegram. */
+            outside_russia?: boolean;
         };
         TelegramWebAppLoginRequest: {
             telegramInitData?: string;
@@ -9024,6 +9213,10 @@ export interface components {
             dev_tools_enabled?: boolean;
             /** @description Whether the current user is the configured support administrator. */
             feedback_admin_enabled?: boolean;
+            /** @description Whether the current user may control production maintenance mode. */
+            system_admin_enabled?: boolean;
+            /** @description Whether regular users are currently blocked by maintenance mode. */
+            maintenance_enabled?: boolean;
         };
         /** @description At least one of message, photo, or audio is required. */
         FeedbackCreateRequest: {

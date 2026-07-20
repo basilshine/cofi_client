@@ -2597,6 +2597,12 @@
 	font-size: 12px;
 	font-weight: 750;
 }
+.mini-dev-tools .mini-dev-maintenance-action {
+	width: 100%;
+	border-color: var(--mini-green);
+	background: var(--mini-green);
+	color: var(--mini-paper);
+}
 .mini-dev-tools form:not(.mini-dev-inline) > button {
 	border-color: var(--mini-green);
 	background: var(--mini-green);

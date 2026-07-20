@@ -475,6 +475,8 @@ type Quota = {
 	additional_limit?: number;
 	dev_tools_enabled?: boolean;
 	feedback_admin_enabled?: boolean;
+	system_admin_enabled?: boolean;
+	maintenance_enabled?: boolean;
 };
 
 type AppNotification = {
@@ -624,6 +626,7 @@ type DeveloperQuotaPatch = {
 	additional_limit?: number;
 	additional_units?: number;
 	reset_usage?: boolean;
+	maintenance_enabled?: boolean;
 	notification?:
 		| "subscription_expiring"
 		| "subscription_expired"
@@ -836,6 +839,8 @@ const budgetWarningText = (warning: BudgetWarning) =>
 const previewMode =
 	["localhost", "127.0.0.1"].includes(window.location.hostname) &&
 	new URLSearchParams(window.location.search).get("preview") === "1";
+const maintenanceAdminAccess =
+	new URLSearchParams(window.location.search).get("admin") === "1";
 const previewCategories: Category[] = [
 	{
 		id: 1,
@@ -1190,6 +1195,9 @@ const apiRequest = async <T,>(
 			error?: string;
 			code?: string;
 		};
+		if (body.code === "maintenance") {
+			window.dispatchEvent(new Event("pnz:maintenance"));
+		}
 		throw new ApiError(
 			body.error || "Не удалось загрузить данные",
 			response.status,
@@ -1359,6 +1367,11 @@ export const MiniApp = () => {
 		const timer = window.setTimeout(() => setNotice(""), 5_000);
 		return () => window.clearTimeout(timer);
 	}, [notice]);
+	useEffect(() => {
+		const showMaintenance = () => setServiceUnavailable(true);
+		window.addEventListener("pnz:maintenance", showMaintenance);
+		return () => window.removeEventListener("pnz:maintenance", showMaintenance);
+	}, []);
 	const [period, setPeriod] = useState<Period>("month");
 	const [dateFrom, setDateFrom] = useState("");
 	const [dateTo, setDateTo] = useState("");
@@ -1772,6 +1785,8 @@ export const MiniApp = () => {
 				additional_limit: 0,
 				dev_tools_enabled: true,
 				feedback_admin_enabled: true,
+				system_admin_enabled: true,
+				maintenance_enabled: false,
 			};
 			setQuota(previewQuota);
 			setAccountQuota(previewQuota);
@@ -2032,7 +2047,14 @@ export const MiniApp = () => {
 			});
 			await acceptAuth(auth);
 		} catch (err) {
-			const unavailable = isServiceUnavailableError(err);
+			let unavailable = isServiceUnavailableError(err);
+			if (!unavailable && !maintenanceAdminAccess) {
+				try {
+					await apiRequest("/spaces");
+				} catch (probeError) {
+					unavailable = isServiceUnavailableError(probeError);
+				}
+			}
 			setServiceUnavailable(unavailable);
 			setError(unavailable && err instanceof Error ? err.message : "");
 			setLoading(false);
@@ -2327,6 +2349,9 @@ export const MiniApp = () => {
 		if (previewMode) {
 			setAccountQuota((current) => {
 				if (!current) return current;
+				if (patch.maintenance_enabled !== undefined) {
+					return { ...current, maintenance_enabled: patch.maintenance_enabled };
+				}
 				if (patch.reset_usage) {
 					return { ...current, used: 0, remaining: current.limit };
 				}
@@ -2357,11 +2382,15 @@ export const MiniApp = () => {
 				};
 			});
 			setNotice(
-				patch.reset_usage
-					? "Использование обнулено"
-					: patch.notification
-						? "Тестовое уведомление отправлено"
-						: "Тестовая подписка обновлена",
+				patch.maintenance_enabled !== undefined
+					? patch.maintenance_enabled
+						? "Режим обслуживания включён"
+						: "Сервис снова доступен"
+					: patch.reset_usage
+						? "Использование обнулено"
+						: patch.notification
+							? "Тестовое уведомление отправлено"
+							: "Тестовая подписка обновлена",
 			);
 			if (patch.reset_usage) {
 				setDeveloperDashboard((current) =>
@@ -2384,11 +2413,15 @@ export const MiniApp = () => {
 			setAccountQuota(updated);
 			if (activeSpace?.is_personal) setQuota(updated);
 			setNotice(
-				patch.reset_usage
-					? "Использование обнулено"
-					: patch.notification
-						? "Тестовое уведомление отправлено"
-						: "Тестовая подписка обновлена",
+				patch.maintenance_enabled !== undefined
+					? patch.maintenance_enabled
+						? "Режим обслуживания включён"
+						: "Сервис снова доступен"
+					: patch.reset_usage
+						? "Использование обнулено"
+						: patch.notification
+							? "Тестовое уведомление отправлено"
+							: "Тестовая подписка обновлена",
 			);
 			void refreshDeveloperDashboard();
 		} catch (err) {
@@ -9959,6 +9992,13 @@ const ProfileView = ({
 					onRefresh={onRefreshDeveloperDashboard}
 				/>
 			)}
+			{quota?.system_admin_enabled && (
+				<MaintenanceDeveloperTools
+					enabled={Boolean(quota.maintenance_enabled)}
+					loading={billingLoading}
+					onToggle={(enabled) => onDevUpdate({ maintenance_enabled: enabled })}
+				/>
+			)}
 			{quota?.feedback_admin_enabled && (
 				<FeedbackDeveloperTools
 					feedback={developerFeedback}
@@ -10638,6 +10678,52 @@ const BillingDeveloperTools = ({
 					</fieldset>
 				</div>
 			</details>
+		</div>
+	</details>
+);
+
+const MaintenanceDeveloperTools = ({
+	enabled,
+	loading,
+	onToggle,
+}: {
+	enabled: boolean;
+	loading: boolean;
+	onToggle: (enabled: boolean) => void;
+}) => (
+	<details className="mini-dev-tools" open={enabled || undefined}>
+		<summary>
+			<span>
+				<b>Управление сервисом</b>
+				<small>
+					{enabled
+						? "Сейчас идут технические работы"
+						: "Сервис доступен пользователям"}
+				</small>
+			</span>
+			<CaretDown size={18} weight="bold" />
+		</summary>
+		<div className="mini-dev-content">
+			<div className="mini-dev-section-head">
+				<div>
+					<strong>
+						{enabled ? "Режим обслуживания включён" : "Обычный режим"}
+					</strong>
+					<small>
+						{enabled
+							? "Пользователи видят экран паузы. Ваш доступ сохранён."
+							: "Включайте только на время технических работ."}
+					</small>
+				</div>
+			</div>
+			<button
+				className="mini-dev-maintenance-action"
+				type="button"
+				disabled={loading}
+				onClick={() => onToggle(!enabled)}
+			>
+				{enabled ? "Вернуть сервис" : "Начать обслуживание"}
+			</button>
 		</div>
 	</details>
 );
