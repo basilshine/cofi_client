@@ -5810,6 +5810,25 @@
 .mini-modal-note {
 	color: var(--mini-muted);
 }
+.mini-timezone-field {
+	gap: 8px;
+}
+.mini-timezone-preview {
+	display: grid;
+	gap: 2px;
+	padding: 10px 12px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-soft);
+}
+.mini-timezone-preview b {
+	color: var(--mini-ink);
+	font-size: 13px;
+}
+.mini-timezone-preview small {
+	color: var(--mini-muted);
+	font-size: 11px;
+}
 .mini-form-error {
 	color: var(--mini-red);
 }

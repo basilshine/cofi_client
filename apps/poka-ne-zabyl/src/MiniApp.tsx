@@ -765,6 +765,13 @@ const timezoneOptions = [
 	["Europe/London", "Лондон"],
 	["America/New_York", "Нью-Йорк"],
 ] as const;
+const notificationTimeOptions = Array.from({ length: 48 }, (_, index) => {
+	const hours = Math.floor(index / 2)
+		.toString()
+		.padStart(2, "0");
+	const minutes = index % 2 === 0 ? "00" : "30";
+	return `${hours}:${minutes}`;
+});
 type CapturePacket = {
 	source_document_id: number;
 	space_id?: number;
@@ -13761,6 +13768,12 @@ const ProfileEditor = ({
 	onSave: () => void;
 }) => {
 	const language = normalizeUILanguage(user.language);
+	const [timezoneNow, setTimezoneNow] = useState(() => new Date());
+	useEffect(() => {
+		const timer = window.setInterval(() => setTimezoneNow(new Date()), 60_000);
+		return () => window.clearInterval(timer);
+	}, []);
+	const timezoneTime = formatTimezoneTime(user.timezone, language, timezoneNow);
 	return (
 		<Modal
 			title={uiText(
@@ -13841,7 +13854,7 @@ const ProfileEditor = ({
 					</select>
 				</label>
 			)}
-			<label>
+			<label className="mini-timezone-field">
 				{uiText(language, "timezone")}
 				<select
 					value={user.timezone}
@@ -13850,14 +13863,26 @@ const ProfileEditor = ({
 					}
 				>
 					{!timezoneOptions.some(([zone]) => zone === user.timezone) && (
-						<option value={user.timezone}>{user.timezone}</option>
+						<option value={user.timezone}>
+							{timezoneOptionLabel(user.timezone, language, timezoneNow)}
+						</option>
 					)}
 					{timezoneOptions.map(([zone]) => (
 						<option key={zone} value={zone}>
-							{localizedTimezoneName(zone, language)}
+							{timezoneOptionLabel(zone, language, timezoneNow)}
 						</option>
 					))}
 				</select>
+				<span className="mini-timezone-preview">
+					<b>
+						{language === "ru"
+							? `Сейчас ${timezoneTime}`
+							: language === "es"
+								? `Ahora ${timezoneTime}`
+								: `Now ${timezoneTime}`}
+					</b>
+					<small>{localizedTimezoneName(user.timezone, language)}</small>
+				</span>
 			</label>
 			{mode === "notifications" && (
 				<div className="mini-field">
@@ -13903,14 +13928,25 @@ const ProfileEditor = ({
 			{mode === "notifications" && notificationChannel && (
 				<label>
 					{uiText(language, "notificationTime")}
-					<input
-						type="time"
-						step={60}
+					<select
 						value={user.notificationTime || "09:00"}
 						onChange={(event) =>
 							onChange({ ...user, notificationTime: event.target.value })
 						}
-					/>
+					>
+						{!notificationTimeOptions.includes(
+							user.notificationTime || "09:00",
+						) && (
+							<option value={user.notificationTime}>
+								{user.notificationTime}
+							</option>
+						)}
+						{notificationTimeOptions.map((time) => (
+							<option key={time} value={time}>
+								{time}
+							</option>
+						))}
+					</select>
 					<small className="mini-modal-note">
 						{uiText(language, "notificationTimeHint")}
 					</small>
@@ -15857,19 +15893,51 @@ const formatDate = (value: string, language: UILanguage) =>
 		new Date(value),
 	);
 const localizedTimezoneName = (timezone: string, language: UILanguage) => {
+	const configured = timezoneOptions.find(([zone]) => zone === timezone)?.[1];
+	const location =
+		language === "ru" && configured
+			? configured.replace(/\s*\(UTC[^)]*\)$/, "")
+			: timezone.split("/").pop()?.split("_").join(" ") || timezone;
+	return `${location} · ${timezoneOffset(timezone, language)}`;
+};
+const timezoneOffset = (timezone: string, language: UILanguage) => {
 	try {
 		return (
 			new Intl.DateTimeFormat(language, {
 				timeZone: timezone,
-				timeZoneName: "longGeneric",
+				timeZoneName: "shortOffset",
 			})
 				.formatToParts(new Date())
-				.find((part) => part.type === "timeZoneName")?.value || timezone
+				.find((part) => part.type === "timeZoneName")
+				?.value.replace("GMT", "UTC") || "UTC"
 		);
 	} catch {
-		return timezone;
+		return "UTC";
 	}
 };
+const formatTimezoneTime = (
+	timezone: string,
+	language: UILanguage,
+	now: Date,
+) => {
+	try {
+		return new Intl.DateTimeFormat(language, {
+			timeZone: timezone,
+			hour: "2-digit",
+			minute: "2-digit",
+			day: "numeric",
+			month: "short",
+		}).format(now);
+	} catch {
+		return "";
+	}
+};
+const timezoneOptionLabel = (
+	timezone: string,
+	language: UILanguage,
+	now: Date,
+) =>
+	`${localizedTimezoneName(timezone, language)} · ${formatTimezoneTime(timezone, language, now)}`;
 const expenseCountText = (count: number, language: UILanguage) => {
 	if (language === "en")
 		return `${count} ${count === 1 ? "expense" : "expenses"}`;
