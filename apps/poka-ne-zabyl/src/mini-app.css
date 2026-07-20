@@ -1033,7 +1033,7 @@
 	border: 1px solid rgba(41, 69, 199, 0.24);
 	border-radius: 8px;
 	background: rgba(252, 249, 242, 0.96);
-	box-shadow: 0 8px 0 #f4efe4, 0 12px 22px rgba(23, 27, 45, 0.14);
+	box-shadow: 0 10px 22px rgba(23, 27, 45, 0.14);
 	color: var(--mini-ink);
 	text-align: left;
 	opacity: 0;
