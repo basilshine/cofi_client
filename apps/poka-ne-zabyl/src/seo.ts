@@ -38,6 +38,34 @@ export const PUBLIC_PAGE_SEO = [
 		language: "ru",
 	},
 	{
+		path: "/en/privacy",
+		title: "Privacy Notice — Poka ne zabyl",
+		description:
+			"How Poka ne zabyl collects, uses, stores, and protects personal data, including international processing and user rights.",
+		language: "en",
+	},
+	{
+		path: "/en/consent",
+		title: "Data Processing Consent — Poka ne zabyl",
+		description:
+			"Consent terms for personal data processing in Poka ne zabyl and instructions for withdrawing consent.",
+		language: "en",
+	},
+	{
+		path: "/es/privacy",
+		title: "Aviso de privacidad — Poka ne zabyl",
+		description:
+			"Cómo Poka ne zabyl recopila, utiliza, conserva y protege los datos personales, incluido el tratamiento internacional y los derechos del usuario.",
+		language: "es",
+	},
+	{
+		path: "/es/consent",
+		title: "Consentimiento de tratamiento — Poka ne zabyl",
+		description:
+			"Condiciones del consentimiento para el tratamiento de datos personales en Poka ne zabyl y cómo retirarlo.",
+		language: "es",
+	},
+	{
 		path: "/refunds",
 		title: "Возвраты — Пока не забыл",
 		description:

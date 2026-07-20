@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
 	landingAppPath,
+	legalPagePath,
 	preferredLandingLocale,
 } from "../src/landing-locale.ts";
 
@@ -24,4 +25,10 @@ test("landing app links preserve the selected language", () => {
 		landingAppPath("es", "view=subscription"),
 		"/app?view=subscription&lang=es",
 	);
+});
+
+test("legal links preserve the selected language", () => {
+	assert.equal(legalPagePath("ru", "consent"), "/consent");
+	assert.equal(legalPagePath("en", "privacy"), "/en/privacy");
+	assert.equal(legalPagePath("es", "consent"), "/es/consent");
 });

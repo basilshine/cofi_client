@@ -64,7 +64,7 @@ import {
 	replaceHashtagAtCursor,
 	tagsAfterNotesEdit,
 } from "./hashtags";
-import { preferredLandingLocale } from "./landing-locale";
+import { legalPagePath, preferredLandingLocale } from "./landing-locale";
 import {
 	type UILanguage,
 	languageOptions,
@@ -16094,7 +16094,11 @@ const BrowserEntry = ({
 										/>
 										<span>
 											{copy.consentPrefix}
-											<a href="/consent" target="_blank" rel="noreferrer">
+											<a
+												href={legalPagePath(language, "consent")}
+												target="_blank"
+												rel="noreferrer"
+											>
 												{copy.consentLink}
 											</a>
 										</span>
@@ -16157,10 +16161,18 @@ const BrowserEntry = ({
 						<a href="/offer" target="_blank" rel="noreferrer">
 							{copy.offer}
 						</a>
-						<a href="/privacy" target="_blank" rel="noreferrer">
+						<a
+							href={legalPagePath(language, "privacy")}
+							target="_blank"
+							rel="noreferrer"
+						>
 							{copy.privacy}
 						</a>
-						<a href="/consent" target="_blank" rel="noreferrer">
+						<a
+							href={legalPagePath(language, "consent")}
+							target="_blank"
+							rel="noreferrer"
+						>
 							{copy.dataProcessing}
 						</a>
 						<a href="/refunds" target="_blank" rel="noreferrer">

@@ -18,7 +18,11 @@ import {
 	localizeLandingTree,
 	localizedLandingImage,
 } from "./landing-i18n";
-import { landingAppPath, preferredLandingLocale } from "./landing-locale";
+import {
+	landingAppPath,
+	legalPagePath,
+	preferredLandingLocale,
+} from "./landing-locale";
 
 const MiniApp = lazy(async () => {
 	const module = await import("./MiniApp");
@@ -73,9 +77,17 @@ export const App = ({ pathname }: { pathname?: string }) => {
 		case "/offer":
 			return <OfferPage />;
 		case "/privacy":
-			return <PrivacyPage />;
+			return <PrivacyPage locale="ru" />;
+		case "/en/privacy":
+			return <PrivacyPage locale="en" />;
+		case "/es/privacy":
+			return <PrivacyPage locale="es" />;
 		case "/consent":
-			return <ConsentPage />;
+			return <ConsentPage locale="ru" />;
+		case "/en/consent":
+			return <ConsentPage locale="en" />;
+		case "/es/consent":
+			return <ConsentPage locale="es" />;
 		case "/refunds":
 			return <RefundPage />;
 		case "/payment/success":
@@ -894,37 +906,193 @@ const NoteReviewIcon = () => (
 	</svg>
 );
 
-const LegalHeader = () => (
+const LegalHeader = ({ locale }: { locale: LandingLocale }) => (
 	<header className="legal-header shell">
-		<Brand />
-		<a
-			className="text-link"
-			href={TELEGRAM_URL}
-			rel="noreferrer"
-			target="_blank"
-		>
-			Telegram <ArrowRight size={17} />
+		<Brand locale={locale} />
+		<a className="text-link" href={landingAppPath(locale)}>
+			{locale === "en"
+				? "Open the app"
+				: locale === "es"
+					? "Abrir la aplicación"
+					: "Открыть приложение"}{" "}
+			<ArrowRight size={17} />
 		</a>
 	</header>
 );
 
 const LegalPage = ({
 	title,
+	locale = "ru",
 	children,
 }: {
 	title: string;
+	locale?: LandingLocale;
 	children: React.ReactNode;
 }) => (
 	<main className="legal-page">
-		<LegalHeader />
+		<LegalHeader locale={locale} />
 		<article className="legal-document shell">
-			<p className="section-label">Действует с {EFFECTIVE_DATE}</p>
+			<p className="section-label">
+				{locale === "en"
+					? "Effective July 21, 2026"
+					: locale === "es"
+						? "Vigente desde el 21 de julio de 2026"
+						: `Действует с ${EFFECTIVE_DATE}`}
+			</p>
 			<h1>{title}</h1>
 			{children}
 		</article>
-		<SiteFooter />
+		<SiteFooter locale={locale} />
 	</main>
 );
+
+type InternationalLegalLocale = Exclude<LandingLocale, "ru">;
+
+const internationalLegalCopy = {
+	en: {
+		privacyPageTitle: "Privacy Notice — Poka ne zabyl",
+		privacyTitle: "Privacy Notice",
+		privacyLead:
+			"This notice explains how Poka ne zabyl collects, uses, stores, and protects personal data when you use the web app or optional Telegram features.",
+		controller: "Data controller",
+		controllerText:
+			"The controller responsible for the service is the following Russian individual entrepreneur:",
+		data: "Personal data we collect",
+		dataItems: [
+			"your name, verified email address or mobile phone number, and authentication records;",
+			"Telegram ID, username, chat and message identifiers when you choose to connect Telegram;",
+			"texts, voice recordings, receipt photos, documents, expenses, plans, categories, and shared-space data you submit;",
+			"device, browser, IP address, security events, and technical logs;",
+			"subscription, order, quota, and payment status without bank card details.",
+		],
+		purposes: "Purposes and legal bases",
+		purposeItems: [
+			"To create and operate your account, provide recognition, store records, support shared spaces, and process purchases where this is necessary to perform our agreement or take steps at your request.",
+			"To prevent abuse, secure accounts, diagnose failures, and improve reliability where this is necessary for our legitimate interests and does not override your rights.",
+			"To keep payment, accounting, and compliance records where required by law.",
+			"For optional processing where you have given specific consent. You may withdraw that consent at any time.",
+		],
+		automation: "Recognition and automated processing",
+		automationText:
+			"Automated tools may turn text, audio, and images into draft expenses or plans. You review and confirm the result. The service does not use this recognition to make decisions that produce legal or similarly significant effects about you.",
+		recipients: "Service providers and processing locations",
+		recipientParagraphs: [
+			"We use Telegram as an optional communication channel, SMS.RU for phone verification calls, Robokassa for payments, Russian hosting and storage providers, and recognition technology providers. Each provider receives only the data needed for its task.",
+			"Core account records and uploaded source files for this service are hosted in Russia. If your data is subject to GDPR or another law governing international processing, the applicable mandatory safeguards and rights continue to apply. We do not start an additional cross-border transfer to a provider unless a valid legal mechanism is available.",
+		],
+		retention: "Retention",
+		retentionParagraphs: [
+			"We keep data only while it is needed for the purposes above, while your account is active, or for a mandatory legal retention period.",
+			"Original photos and voice recordings are kept for 3 days on Basic and 30 days on Plus. Confirmed expense and plan records remain until you delete them, close the account, or ask us to erase them where the law permits.",
+		],
+		rights: "Your rights",
+		rightsText:
+			"Depending on the law that applies to you, you may request access, correction, deletion, restriction, portability, or object to processing. You may withdraw consent without affecting processing that was lawful before withdrawal and lodge a complaint with your local data protection authority.",
+		contactPrefix: "Send privacy requests to",
+		security: "Security and analytics",
+		securityText:
+			"We use access controls, short-lived verification codes, request limits, audit records, and technical safeguards. Public landing pages use Yandex Metrica for basic traffic measurement; session replay and form analytics are disabled, and authenticated app pages are not tracked by Metrica.",
+		changes: "Changes",
+		changesText:
+			"We may update this notice when the service, providers, or legal requirements change. The current version and effective date are always published on this page.",
+		consentPageTitle: "Data Processing Consent — Poka ne zabyl",
+		consentTitle: "Consent to Personal Data Processing",
+		consentLead:
+			"This consent applies only to processing activities for which consent is the appropriate legal basis.",
+		consentIntroBefore: "I voluntarily consent to",
+		consentIntroAfter:
+			"processing the personal data described below in accordance with the",
+		privacyLink: "Privacy Notice",
+		consentData: "Data covered by consent",
+		consentDataText:
+			"Account identifiers and contact details; optional Telegram identifiers; texts, audio, images, and documents I submit; expense and plan data; technical records; and subscription, quota, order, and payment status without bank card details.",
+		consentPurposes: "Purposes",
+		consentPurposesText:
+			"Providing recognition and account features I request, storing and displaying my records, supporting shared spaces, responding to support requests, and enabling optional connected channels.",
+		consentActions: "Processing operations",
+		consentActionsText:
+			"Collection, recording, organization, storage, correction, retrieval, use, disclosure to authorized processors, restriction, and deletion by automated means.",
+		consentLimits: "Limits of this consent",
+		consentLimitsText:
+			"This consent does not authorize marketing and does not cover solely automated decisions with legal or similarly significant effects. Processing necessary to perform our agreement, protect the service, process payments, or comply with law may rely on another lawful basis described in the Privacy Notice.",
+		withdrawal: "Withdrawal",
+		withdrawalBefore: "I may withdraw consent at any time by contacting",
+		withdrawalAfter:
+			"Withdrawal does not affect prior lawful processing. We will stop consent-based processing unless another legal basis requires or permits us to continue. Some requested features may then become unavailable.",
+	},
+	es: {
+		privacyPageTitle: "Aviso de privacidad — Poka ne zabyl",
+		privacyTitle: "Aviso de privacidad",
+		privacyLead:
+			"Este aviso explica cómo Poka ne zabyl recopila, utiliza, conserva y protege los datos personales al usar la aplicación web o las funciones opcionales de Telegram.",
+		controller: "Responsable del tratamiento",
+		controllerText:
+			"El responsable del tratamiento del servicio es el siguiente empresario individual ruso:",
+		data: "Datos personales que recopilamos",
+		dataItems: [
+			"nombre, correo electrónico verificado o número de teléfono y registros de autenticación;",
+			"ID de Telegram, nombre de usuario e identificadores de chats y mensajes si decides conectar Telegram;",
+			"textos, grabaciones de voz, fotos de recibos, documentos, gastos, planes, categorías y datos de espacios compartidos que envíes;",
+			"dispositivo, navegador, dirección IP, eventos de seguridad y registros técnicos;",
+			"suscripción, pedidos, cuotas y estado de pagos sin datos de la tarjeta bancaria.",
+		],
+		purposes: "Finalidades y bases jurídicas",
+		purposeItems: [
+			"Crear y gestionar tu cuenta, reconocer entradas, guardar registros, ofrecer espacios compartidos y procesar compras cuando sea necesario para ejecutar nuestro contrato o atender tu solicitud.",
+			"Prevenir abusos, proteger cuentas, diagnosticar fallos y mejorar la fiabilidad cuando sea necesario para nuestros intereses legítimos y no prevalezcan tus derechos.",
+			"Conservar registros de pagos, contabilidad y cumplimiento cuando lo exija la ley.",
+			"Realizar tratamientos opcionales para los que hayas dado un consentimiento específico, que puedes retirar en cualquier momento.",
+		],
+		automation: "Reconocimiento y tratamiento automatizado",
+		automationText:
+			"Las herramientas automatizadas pueden convertir texto, audio e imágenes en borradores de gastos o planes. Tú revisas y confirmas el resultado. El servicio no utiliza este reconocimiento para tomar decisiones que produzcan efectos jurídicos o de importancia similar sobre ti.",
+		recipients: "Proveedores y lugares de tratamiento",
+		recipientParagraphs: [
+			"Utilizamos Telegram como canal opcional, SMS.RU para llamadas de verificación, Robokassa para pagos, proveedores rusos de alojamiento y almacenamiento y proveedores de tecnología de reconocimiento. Cada proveedor recibe solo los datos necesarios para su función.",
+			"Los registros principales de la cuenta y los archivos originales se alojan en Rusia. Si tus datos están sujetos al RGPD u otra norma sobre tratamiento internacional, siguen siendo aplicables las garantías y los derechos obligatorios correspondientes. No iniciamos una transferencia adicional a otro proveedor sin un mecanismo jurídico válido.",
+		],
+		retention: "Conservación",
+		retentionParagraphs: [
+			"Conservamos los datos solo mientras sean necesarios para las finalidades indicadas, mientras la cuenta esté activa o durante un plazo obligatorio por ley.",
+			"Las fotos y grabaciones originales se conservan 3 días en Basic y 30 días en Plus. Los registros confirmados permanecen hasta que los elimines, cierres la cuenta o solicites su supresión cuando la ley lo permita.",
+		],
+		rights: "Tus derechos",
+		rightsText:
+			"Según la legislación aplicable, puedes solicitar acceso, rectificación, supresión, limitación o portabilidad, y oponerte al tratamiento. Puedes retirar el consentimiento sin afectar al tratamiento lícito anterior y presentar una reclamación ante tu autoridad local de protección de datos.",
+		contactPrefix: "Envía las solicitudes de privacidad a",
+		security: "Seguridad y analítica",
+		securityText:
+			"Aplicamos controles de acceso, códigos de corta duración, límites de solicitudes, registros de auditoría y medidas técnicas. Las páginas públicas utilizan Yandex Metrica para medición básica; la reproducción de sesiones y la analítica de formularios están desactivadas y las páginas autenticadas no son rastreadas por Metrica.",
+		changes: "Cambios",
+		changesText:
+			"Podemos actualizar este aviso cuando cambien el servicio, los proveedores o los requisitos legales. La versión vigente y su fecha siempre se publican en esta página.",
+		consentPageTitle: "Consentimiento de tratamiento — Poka ne zabyl",
+		consentTitle: "Consentimiento para el tratamiento de datos personales",
+		consentLead:
+			"Este consentimiento se aplica solo a las actividades para las que el consentimiento sea la base jurídica adecuada.",
+		consentIntroBefore: "Consiento voluntariamente que",
+		consentIntroAfter:
+			"trate los datos personales descritos a continuación conforme al",
+		privacyLink: "Aviso de privacidad",
+		consentData: "Datos incluidos",
+		consentDataText:
+			"Identificadores de cuenta y datos de contacto; identificadores opcionales de Telegram; textos, audios, imágenes y documentos que envíe; datos de gastos y planes; registros técnicos; y estado de suscripción, cuotas, pedidos y pagos sin datos de la tarjeta.",
+		consentPurposes: "Finalidades",
+		consentPurposesText:
+			"Prestar las funciones de reconocimiento y cuenta que solicite, guardar y mostrar mis registros, permitir espacios compartidos, responder a solicitudes de soporte y habilitar canales opcionales conectados.",
+		consentActions: "Operaciones de tratamiento",
+		consentActionsText:
+			"Recopilación, registro, organización, conservación, rectificación, consulta, uso, comunicación a encargados autorizados, limitación y supresión por medios automatizados.",
+		consentLimits: "Límites del consentimiento",
+		consentLimitsText:
+			"Este consentimiento no autoriza comunicaciones comerciales ni decisiones exclusivamente automatizadas con efectos jurídicos o similares. El tratamiento necesario para ejecutar el contrato, proteger el servicio, procesar pagos o cumplir la ley puede basarse en otra base jurídica descrita en el Aviso de privacidad.",
+		withdrawal: "Retirada",
+		withdrawalBefore:
+			"Puedo retirar el consentimiento en cualquier momento escribiendo a",
+		withdrawalAfter:
+			"La retirada no afecta al tratamiento lícito anterior. Dejaremos de tratar datos sobre la base del consentimiento salvo que otra base jurídica permita o exija continuar. Algunas funciones solicitadas podrían dejar de estar disponibles.",
+	},
+} as const;
 
 const OfferPage = () => {
 	usePageTitle("Публичная оферта — Пока не забыл");
@@ -1075,8 +1243,64 @@ const OfferPage = () => {
 	);
 };
 
-const PrivacyPage = () => {
-	usePageTitle("Политика конфиденциальности — Пока не забыл");
+const InternationalPrivacyPage = ({
+	locale,
+}: {
+	locale: InternationalLegalLocale;
+}) => {
+	const copy = internationalLegalCopy[locale];
+	return (
+		<LegalPage title={copy.privacyTitle} locale={locale}>
+			<p className="legal-lead">{copy.privacyLead}</p>
+			<h2>1. {copy.controller}</h2>
+			<p>
+				{copy.controllerText} {operator.name}, INN {operator.inn}, OGRNIP{" "}
+				{operator.ogrnip}. {copy.contactPrefix}{" "}
+				<a href={`mailto:${EMAIL}`}>{EMAIL}</a>.
+			</p>
+			<h2>2. {copy.data}</h2>
+			<ul>
+				{copy.dataItems.map((item) => (
+					<li key={item}>{item}</li>
+				))}
+			</ul>
+			<h2>3. {copy.purposes}</h2>
+			<ul>
+				{copy.purposeItems.map((item) => (
+					<li key={item}>{item}</li>
+				))}
+			</ul>
+			<h2>4. {copy.automation}</h2>
+			<p>{copy.automationText}</p>
+			<h2>5. {copy.recipients}</h2>
+			{copy.recipientParagraphs.map((paragraph) => (
+				<p key={paragraph}>{paragraph}</p>
+			))}
+			<h2>6. {copy.retention}</h2>
+			{copy.retentionParagraphs.map((paragraph) => (
+				<p key={paragraph}>{paragraph}</p>
+			))}
+			<h2>7. {copy.rights}</h2>
+			<p>{copy.rightsText}</p>
+			<p>
+				{copy.contactPrefix} <a href={`mailto:${EMAIL}`}>{EMAIL}</a>.
+			</p>
+			<h2>8. {copy.security}</h2>
+			<p>{copy.securityText}</p>
+			<h2>9. {copy.changes}</h2>
+			<p>{copy.changesText}</p>
+			<OperatorDetails locale={locale} />
+		</LegalPage>
+	);
+};
+
+const PrivacyPage = ({ locale }: { locale: LandingLocale }) => {
+	usePageTitle(
+		locale === "ru"
+			? "Политика конфиденциальности — Пока не забыл"
+			: internationalLegalCopy[locale].privacyPageTitle,
+	);
+	if (locale !== "ru") return <InternationalPrivacyPage locale={locale} />;
 	return (
 		<LegalPage title="Политика обработки персональных данных">
 			<p className="legal-lead">
@@ -1193,8 +1417,45 @@ const PrivacyPage = () => {
 	);
 };
 
-const ConsentPage = () => {
-	usePageTitle("Согласие на обработку данных — Пока не забыл");
+const InternationalConsentPage = ({
+	locale,
+}: {
+	locale: InternationalLegalLocale;
+}) => {
+	const copy = internationalLegalCopy[locale];
+	return (
+		<LegalPage title={copy.consentTitle} locale={locale}>
+			<p className="legal-lead">{copy.consentLead}</p>
+			<p>
+				{copy.consentIntroBefore} {operator.name}, INN {operator.inn},{" "}
+				{copy.consentIntroAfter}{" "}
+				<a href={legalPagePath(locale, "privacy")}>{copy.privacyLink}</a>.
+			</p>
+			<h2>{copy.consentData}</h2>
+			<p>{copy.consentDataText}</p>
+			<h2>{copy.consentPurposes}</h2>
+			<p>{copy.consentPurposesText}</p>
+			<h2>{copy.consentActions}</h2>
+			<p>{copy.consentActionsText}</p>
+			<h2>{copy.consentLimits}</h2>
+			<p>{copy.consentLimitsText}</p>
+			<h2>{copy.withdrawal}</h2>
+			<p>
+				{copy.withdrawalBefore} <a href={`mailto:${EMAIL}`}>{EMAIL}</a>.{" "}
+				{copy.withdrawalAfter}
+			</p>
+			<OperatorDetails locale={locale} />
+		</LegalPage>
+	);
+};
+
+const ConsentPage = ({ locale }: { locale: LandingLocale }) => {
+	usePageTitle(
+		locale === "ru"
+			? "Согласие на обработку данных — Пока не забыл"
+			: internationalLegalCopy[locale].consentPageTitle,
+	);
+	if (locale !== "ru") return <InternationalConsentPage locale={locale} />;
 	return (
 		<LegalPage title="Согласие на обработку персональных данных">
 			<p className="legal-lead">
@@ -1307,41 +1568,77 @@ const PaymentStatus = ({ success }: { success: boolean }) => {
 	);
 };
 
-const OperatorDetails = () => (
-	<section className="operator-details">
-		<h2>Реквизиты и контакты</h2>
-		<dl>
-			<div>
-				<dt>Исполнитель</dt>
-				<dd>{operator.name}</dd>
-			</div>
-			<div>
-				<dt>ИНН</dt>
-				<dd>{operator.inn}</dd>
-			</div>
-			<div>
-				<dt>ОГРНИП</dt>
-				<dd>{operator.ogrnip}</dd>
-			</div>
-			<div>
-				<dt>Адрес</dt>
-				<dd>{operator.address}</dd>
-			</div>
-			<div>
-				<dt>Электронная почта</dt>
-				<dd>
-					<a href={`mailto:${EMAIL}`}>{EMAIL}</a>
-				</dd>
-			</div>
-			<div>
-				<dt>Телефон</dt>
-				<dd>
-					<a href="tel:+79138078160">{PHONE}</a>
-				</dd>
-			</div>
-		</dl>
-	</section>
-);
+const OperatorDetails = ({
+	locale = "ru",
+}: {
+	locale?: LandingLocale;
+}) => {
+	const labels =
+		locale === "en"
+			? {
+					title: "Controller details and contacts",
+					operator: "Controller",
+					inn: "Tax ID (INN)",
+					ogrnip: "Registration number (OGRNIP)",
+					address: "Registered address",
+					email: "Email",
+					phone: "Phone",
+				}
+			: locale === "es"
+				? {
+						title: "Datos y contacto del responsable",
+						operator: "Responsable",
+						inn: "Identificación fiscal (INN)",
+						ogrnip: "Número de registro (OGRNIP)",
+						address: "Domicilio registrado",
+						email: "Correo electrónico",
+						phone: "Teléfono",
+					}
+				: {
+						title: "Реквизиты и контакты",
+						operator: "Исполнитель",
+						inn: "ИНН",
+						ogrnip: "ОГРНИП",
+						address: "Адрес",
+						email: "Электронная почта",
+						phone: "Телефон",
+					};
+	return (
+		<section className="operator-details">
+			<h2>{labels.title}</h2>
+			<dl>
+				<div>
+					<dt>{labels.operator}</dt>
+					<dd>{operator.name}</dd>
+				</div>
+				<div>
+					<dt>{labels.inn}</dt>
+					<dd>{operator.inn}</dd>
+				</div>
+				<div>
+					<dt>{labels.ogrnip}</dt>
+					<dd>{operator.ogrnip}</dd>
+				</div>
+				<div>
+					<dt>{labels.address}</dt>
+					<dd>{operator.address}</dd>
+				</div>
+				<div>
+					<dt>{labels.email}</dt>
+					<dd>
+						<a href={`mailto:${EMAIL}`}>{EMAIL}</a>
+					</dd>
+				</div>
+				<div>
+					<dt>{labels.phone}</dt>
+					<dd>
+						<a href="tel:+79138078160">{PHONE}</a>
+					</dd>
+				</div>
+			</dl>
+		</section>
+	);
+};
 
 const SiteFooter = ({ locale = "ru" }: { locale?: LandingLocale }) =>
 	localizeLandingTree(
@@ -1353,8 +1650,8 @@ const SiteFooter = ({ locale = "ru" }: { locale?: LandingLocale }) =>
 				</div>
 				<nav aria-label="Юридические документы">
 					<a href="/offer">Оферта</a>
-					<a href="/privacy">Конфиденциальность</a>
-					<a href="/consent">Согласие</a>
+					<a href={legalPagePath(locale, "privacy")}>Конфиденциальность</a>
+					<a href={legalPagePath(locale, "consent")}>Согласие</a>
 					<a href="/refunds">Возвраты</a>
 				</nav>
 				<div className="footer__contacts">

@@ -20,3 +20,8 @@ export const landingAppPath = (locale: LandingLocale, query = "") => {
 	const suffix = params.toString();
 	return `/app${suffix ? `?${suffix}` : ""}`;
 };
+
+export const legalPagePath = (
+	locale: LandingLocale,
+	page: "privacy" | "consent",
+) => (locale === "ru" ? `/${page}` : `/${locale}/${page}`);
