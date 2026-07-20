@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { browserAuthCopy } from "../src/browser-auth-copy.ts";
 import {
+	type UIMessage,
 	normalizeUILanguage,
 	uiText,
-	type UIMessage,
 } from "../src/mini-i18n.ts";
 
 const criticalCaptureMessages: UIMessage[] = [
@@ -41,5 +42,14 @@ test("capture and review flows do not leak Russian copy into other locales", () 
 				`${language}.${key}`,
 			);
 		}
+	}
+});
+
+test("browser authentication does not leak Russian copy into other locales", () => {
+	for (const language of ["en", "es"] as const) {
+		assert.doesNotMatch(
+			JSON.stringify(browserAuthCopy(language)),
+			/[А-Яа-яЁё]/,
+		);
 	}
 });

@@ -1,5 +1,5 @@
 export const coachmarkIDs = [
-	"space",
+	"spaceSwitcher",
 	"overview",
 	"expenses",
 	"add",

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { preferredLandingLocale } from "../src/landing-locale.ts";
+import {
+	landingAppPath,
+	preferredLandingLocale,
+} from "../src/landing-locale.ts";
 
 test("chooses a supported browser language and defaults to English", () => {
 	assert.equal(preferredLandingLocale("ru-RU"), "ru");
@@ -12,4 +15,13 @@ test("chooses a supported browser language and defaults to English", () => {
 test("keeps an explicit language choice", () => {
 	assert.equal(preferredLandingLocale("en-US", "ru"), "ru");
 	assert.equal(preferredLandingLocale("ru-RU", "es"), "es");
+});
+
+test("landing app links preserve the selected language", () => {
+	assert.equal(landingAppPath("ru"), "/app");
+	assert.equal(landingAppPath("en"), "/app?lang=en");
+	assert.equal(
+		landingAppPath("es", "view=subscription"),
+		"/app?view=subscription&lang=es",
+	);
 });

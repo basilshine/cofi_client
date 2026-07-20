@@ -18,7 +18,7 @@ import {
 	localizeLandingTree,
 	localizedLandingImage,
 } from "./landing-i18n";
-import { preferredLandingLocale } from "./landing-locale";
+import { landingAppPath, preferredLandingLocale } from "./landing-locale";
 
 const MiniApp = lazy(async () => {
 	const module = await import("./MiniApp");
@@ -139,7 +139,10 @@ const AppButton = ({
 	light?: boolean;
 	locale?: LandingLocale;
 }) => (
-	<a className={`button ${light ? "button--light" : ""}`} href="/app">
+	<a
+		className={`button ${light ? "button--light" : ""}`}
+		href={landingAppPath(locale)}
+	>
 		{locale === "en"
 			? "Open the app"
 			: locale === "es"
@@ -657,7 +660,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 									<Check size={18} weight="bold" /> Фото и голос хранятся 3 дня
 								</li>
 							</ul>
-							<a className="pricing-plan__action" href="/app">
+							<a className="pricing-plan__action" href={landingAppPath(locale)}>
 								Начать с Базового <ArrowRight size={18} />
 							</a>
 						</article>
@@ -700,7 +703,10 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 									<Check size={18} weight="bold" /> Пакеты разборов дешевле
 								</li>
 							</ul>
-							<a className="pricing-plan__action" href="/app?view=subscription">
+							<a
+								className="pricing-plan__action"
+								href={landingAppPath(locale, "view=subscription")}
+							>
 								Подключить Плюс <ArrowRight size={18} />
 							</a>
 						</article>

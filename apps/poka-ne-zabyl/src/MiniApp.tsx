@@ -31,6 +31,7 @@ import {
 	Star,
 	Storefront,
 	Tag,
+	TextAa,
 	Trash,
 	UsersThree,
 	WarningCircle,
@@ -51,6 +52,7 @@ import {
 	avatarCropLayout,
 	avatarFileFromCanvas,
 } from "./avatar-crop";
+import { browserAuthCopy } from "./browser-auth-copy";
 import { captureSourceKind } from "./capture-source";
 import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
 import { groupRowsByExpense } from "./expense-groups";
@@ -62,6 +64,7 @@ import {
 	replaceHashtagAtCursor,
 	tagsAfterNotesEdit,
 } from "./hashtags";
+import { preferredLandingLocale } from "./landing-locale";
 import {
 	type UILanguage,
 	languageOptions,
@@ -643,6 +646,13 @@ type CheckoutResponse = {
 	method: "POST";
 	fields: Record<string, string>;
 	order_id: number;
+};
+
+type ActivationCodeResponse = {
+	code?: string;
+	reward_type: "plus_30d" | "pack_100";
+	units: number;
+	plus_days: number;
 };
 
 type AuthResponse = { token: string; user: User };
@@ -1288,6 +1298,10 @@ const planTarget = (): PlanTarget | null => {
 
 const requestedPlan = planTarget();
 const requestedQuery = new URLSearchParams(window.location.search);
+const requestedEntryLanguage = preferredLandingLocale(
+	navigator.language,
+	requestedQuery.get("lang") || WebApp.initDataUnsafe.user?.language_code,
+);
 const requestedSpaceID = Number(requestedQuery.get("space_id"));
 const requestedPreviewLanguage = normalizeUILanguage(
 	requestedQuery.get("lang") ?? undefined,
@@ -1364,6 +1378,7 @@ export const MiniApp = () => {
 	const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 	const [seenCoachmarks, setSeenCoachmarks] = useState<CoachmarkID[]>([]);
 	const [coachmarksReady, setCoachmarksReady] = useState(false);
+	const [largeText, setLargeText] = useState(false);
 	const [selectedNotification, setSelectedNotification] =
 		useState<AppNotification | null>(null);
 	const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -1371,6 +1386,8 @@ export const MiniApp = () => {
 		useState<DeveloperDashboard | null>(null);
 	const [developerDashboardLoading, setDeveloperDashboardLoading] =
 		useState(false);
+	const [generatedActivationCode, setGeneratedActivationCode] =
+		useState<ActivationCodeResponse | null>(null);
 	const [developerFeedback, setDeveloperFeedback] = useState<
 		DeveloperFeedback[]
 	>([]);
@@ -1414,6 +1431,21 @@ export const MiniApp = () => {
 		}
 		setCoachmarksReady(true);
 	}, [user?.id]);
+	useEffect(() => {
+		try {
+			setLargeText(window.localStorage.getItem("pnz:large-text") === "true");
+		} catch {
+			setLargeText(false);
+		}
+	}, []);
+	const updateLargeText = (enabled: boolean) => {
+		setLargeText(enabled);
+		try {
+			window.localStorage.setItem("pnz:large-text", String(enabled));
+		} catch {
+			// The setting still applies until the page closes.
+		}
+	};
 	const dismissCoachmark = (id: CoachmarkID) => {
 		if (!user?.id) return;
 		setSeenCoachmarks((current) => {
@@ -1513,9 +1545,12 @@ export const MiniApp = () => {
 		useState<BeforeInstallPromptEvent | null>(null);
 	const [installGuideOpen, setInstallGuideOpen] = useState(false);
 	const [dismissedInstallPrompt, setDismissedInstallPrompt] = useState(false);
-	const language = normalizeUILanguage(
-		user?.language || WebApp.initDataUnsafe.user?.language_code,
-	);
+	const language = user
+		? normalizeUILanguage(user.language)
+		: requestedEntryLanguage;
+	useEffect(() => {
+		document.documentElement.lang = language;
+	}, [language]);
 	const registrationLocaleIncomplete = Boolean(
 		user && (!user.country.trim() || !user.currency.trim()),
 	);
@@ -2200,6 +2235,77 @@ export const MiniApp = () => {
 		} catch (err) {
 			setError(
 				err instanceof Error ? err.message : "Не удалось изменить подписку",
+			);
+		} finally {
+			setBillingLoading(false);
+		}
+	};
+
+	const redeemActivationCode = async (
+		code: string,
+	): Promise<ActivationCodeResponse> => {
+		if (previewMode) {
+			const reward: ActivationCodeResponse = {
+				reward_type: "pack_100",
+				units: 100,
+				plus_days: 0,
+			};
+			setAccountQuota((current) =>
+				current
+					? {
+							...current,
+							additional_limit: (current.additional_limit || 0) + 100,
+							remaining: current.remaining + 100,
+							limit: current.limit + 100,
+						}
+					: current,
+			);
+			setNotice("Промокод активирован: добавлено 100 разборов");
+			return reward;
+		}
+		const reward = await apiRequest<ActivationCodeResponse>(
+			"/billing/activation-codes/redeem",
+			token,
+			{ method: "POST", body: JSON.stringify({ code }) },
+		);
+		const updated = await apiRequest<Quota>("/quota", token);
+		setAccountQuota(updated);
+		if (activeSpace?.is_personal) setQuota(updated);
+		setNotice(
+			reward.plus_days > 0
+				? "Промокод активирован: Плюс подключён на 30 дней"
+				: "Промокод активирован: добавлено 100 разборов",
+		);
+		return reward;
+	};
+
+	const generateActivationCode = async (
+		rewardType: ActivationCodeResponse["reward_type"],
+	) => {
+		if (billingLoading) return;
+		setBillingLoading(true);
+		setError("");
+		try {
+			const generated = previewMode
+				? {
+						code: "PNZ-DEMO-2026-CODE-0001",
+						reward_type: rewardType,
+						units: rewardType === "plus_30d" ? 400 : 100,
+						plus_days: rewardType === "plus_30d" ? 30 : 0,
+					}
+				: await apiRequest<ActivationCodeResponse>(
+						"/billing/activation-codes",
+						token,
+						{
+							method: "POST",
+							body: JSON.stringify({ reward_type: rewardType }),
+						},
+					);
+			setGeneratedActivationCode(generated);
+			setNotice("Одноразовый промокод создан");
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Не удалось создать промокод",
 			);
 		} finally {
 			setBillingLoading(false);
@@ -3662,7 +3768,7 @@ export const MiniApp = () => {
 		!addChoiceOpen &&
 		!captureOpen
 			? nextCoachmark(seenCoachmarks, {
-					space: spaces.length <= 1,
+					spaceSwitcher: true,
 					overview: true,
 					expenses: true,
 					add: true,
@@ -5427,11 +5533,12 @@ export const MiniApp = () => {
 
 	if (serviceUnavailable)
 		return <ServiceUnavailable language={language} onRetry={retryService} />;
-	if (loading && !token) return <LoadingScreen />;
+	if (loading && !token) return <LoadingScreen language={language} />;
 	if (!token && !WebApp.initData)
 		return (
 			<BrowserEntry
 				error={error}
+				language={language}
 				homeScreenStatus={homeScreenStatus}
 				browserInstallAvailable={Boolean(browserInstallPrompt)}
 				installGuideOpen={installGuideOpen}
@@ -5465,7 +5572,7 @@ export const MiniApp = () => {
 	if (view === "review") {
 		return (
 			<div
-				className="mini-app mini-review-app"
+				className={`mini-app mini-review-app${largeText ? " is-large-text" : ""}`}
 				onFocusCapture={keepFocusedControlVisible}
 				onKeyDown={focusNextFieldOnEnter}
 				onPointerDown={dismissKeyboard}
@@ -5506,7 +5613,7 @@ export const MiniApp = () => {
 
 	return (
 		<div
-			className="mini-app"
+			className={`mini-app${largeText ? " is-large-text" : ""}`}
 			onFocusCapture={keepFocusedControlVisible}
 			onKeyDown={focusNextFieldOnEnter}
 			onPointerDown={dismissKeyboard}
@@ -5546,7 +5653,7 @@ export const MiniApp = () => {
 							aria-haspopup="menu"
 							aria-expanded={spaceMenuOpen}
 							onClick={() => {
-								dismissCoachmark("space");
+								dismissCoachmark("spaceSwitcher");
 								setAccountMenuOpen(false);
 								setSpaceMenuOpen((open) => !open);
 							}}
@@ -5560,12 +5667,12 @@ export const MiniApp = () => {
 								</span>
 							</span>
 						</button>
-						{activeCoachmark === "space" && (
+						{activeCoachmark === "spaceSwitcher" && (
 							<CoachTip
 								className="is-space"
 								text={uiText(language, "coachSpace")}
 								closeLabel={uiText(language, "coachDismiss")}
-								onDismiss={() => dismissCoachmark("space")}
+								onDismiss={() => dismissCoachmark("spaceSwitcher")}
 							/>
 						)}
 						{spaceMenuOpen && (
@@ -5971,6 +6078,7 @@ export const MiniApp = () => {
 								avatarURL={profileAvatarURL}
 								avatarSaving={profileAvatarSaving}
 								language={language}
+								largeText={largeText}
 								quota={accountQuota}
 								developerDashboard={developerDashboard}
 								developerDashboardLoading={developerDashboardLoading}
@@ -5991,6 +6099,7 @@ export const MiniApp = () => {
 								onManageNotifications={() => {
 									void openNotificationSettings();
 								}}
+								onLargeText={updateLargeText}
 								onDevUpdate={(patch) => void updateDeveloperQuota(patch)}
 								onRefreshDeveloperDashboard={() =>
 									void refreshDeveloperDashboard()
@@ -6003,6 +6112,10 @@ export const MiniApp = () => {
 								}
 								feedbackMediaLoading={feedbackMediaLoading}
 								billingLoading={billingLoading}
+								generatedActivationCode={generatedActivationCode}
+								onGenerateActivationCode={(rewardType) =>
+									void generateActivationCode(rewardType)
+								}
 							/>
 						)}
 						{view === "subscription" && (
@@ -6016,6 +6129,7 @@ export const MiniApp = () => {
 									void updateSubscriptionAutoRenew(enabled)
 								}
 								onBuyPack={() => setPackPickerOpen(true)}
+								onRedeemCode={redeemActivationCode}
 							/>
 						)}
 					</>
@@ -9785,6 +9899,7 @@ const SubscriptionView = ({
 	onStartPlus,
 	onToggleAutoRenew,
 	onBuyPack,
+	onRedeemCode,
 }: {
 	language: UILanguage;
 	quota: Quota | null;
@@ -9793,7 +9908,11 @@ const SubscriptionView = ({
 	onStartPlus: () => void;
 	onToggleAutoRenew: (enabled: boolean) => void;
 	onBuyPack: () => void;
+	onRedeemCode: (code: string) => Promise<ActivationCodeResponse>;
 }) => {
+	const [activationCode, setActivationCode] = useState("");
+	const [activationLoading, setActivationLoading] = useState(false);
+	const [activationError, setActivationError] = useState("");
 	const plus = ["medium", "plus"].includes(quota?.plan || "");
 	const autoRenewAvailable = Boolean(quota?.auto_renew_available);
 	const autoRenewEnabled = Boolean(quota?.auto_renew_enabled);
@@ -9858,6 +9977,12 @@ const SubscriptionView = ({
 					packsPrice: plus
 						? "Для Плюса: 100 от 79 ₽"
 						: "Для Базового: 100 от 99 ₽",
+					promoTitle: "Есть промокод?",
+					promoBody: "Активируйте подарок для своего аккаунта.",
+					promoPlaceholder: "Введите промокод",
+					promoAction: "Активировать",
+					promoInvalid: "Код не найден или уже использован.",
+					promoFailed: "Не удалось активировать код. Попробуйте ещё раз.",
 					ratesTitle: "Как списываются разборы",
 					ratesHint: "Только после успешного результата",
 					retryNote:
@@ -9914,6 +10039,12 @@ const SubscriptionView = ({
 						packsPrice: plus
 							? "Con Plus: 100 desde 79 ₽"
 							: "Básico: 100 desde 99 ₽",
+						promoTitle: "¿Tienes un código?",
+						promoBody: "Activa el regalo en tu cuenta.",
+						promoPlaceholder: "Introduce el código",
+						promoAction: "Activar",
+						promoInvalid: "El código no existe o ya fue utilizado.",
+						promoFailed: "No se pudo activar el código. Inténtalo de nuevo.",
 						ratesTitle: "Cómo se descuentan",
 						ratesHint: "Solo tras un resultado correcto",
 						retryNote:
@@ -9969,6 +10100,12 @@ const SubscriptionView = ({
 						packsPrice: plus
 							? "With Plus: 100 from 79 ₽"
 							: "Basic: 100 from 99 ₽",
+						promoTitle: "Have a promo code?",
+						promoBody: "Activate the gift for your account.",
+						promoPlaceholder: "Enter promo code",
+						promoAction: "Activate",
+						promoInvalid: "This code does not exist or was already used.",
+						promoFailed: "Could not activate the code. Try again.",
 						ratesTitle: "How additions are charged",
 						ratesHint: "Only after a successful result",
 						retryNote:
@@ -10165,6 +10302,55 @@ const SubscriptionView = ({
 				</button>
 			</section>
 
+			<section className="subscription-promo">
+				<Tag size={24} weight="fill" />
+				<div>
+					<h2>{copy.promoTitle}</h2>
+					<p>{copy.promoBody}</p>
+				</div>
+				<form
+					onSubmit={async (event) => {
+						event.preventDefault();
+						if (!activationCode.trim() || activationLoading) return;
+						setActivationLoading(true);
+						setActivationError("");
+						try {
+							await onRedeemCode(activationCode);
+							setActivationCode("");
+						} catch (err) {
+							setActivationError(
+								err instanceof ApiError &&
+									err.code === "activation_code_unavailable"
+									? copy.promoInvalid
+									: copy.promoFailed,
+							);
+						} finally {
+							setActivationLoading(false);
+						}
+					}}
+				>
+					<input
+						type="text"
+						value={activationCode}
+						maxLength={32}
+						autoCapitalize="characters"
+						autoComplete="off"
+						placeholder={copy.promoPlaceholder}
+						aria-label={copy.promoTitle}
+						onChange={(event) =>
+							setActivationCode(event.currentTarget.value.toUpperCase())
+						}
+					/>
+					<button
+						type="submit"
+						disabled={activationLoading || !activationCode.trim()}
+					>
+						{copy.promoAction}
+					</button>
+				</form>
+				{activationError && <div role="alert">{activationError}</div>}
+			</section>
+
 			<details className="mini-plan-rates">
 				<summary>
 					<span>
@@ -10195,6 +10381,7 @@ const ProfileView = ({
 	avatarURL,
 	avatarSaving,
 	language,
+	largeText,
 	quota,
 	developerDashboard,
 	developerDashboardLoading,
@@ -10206,6 +10393,7 @@ const ProfileView = ({
 	homeScreenStatus,
 	onEdit,
 	onManageNotifications,
+	onLargeText,
 	onManageVendors,
 	onManageSpaces,
 	onLinkEmail,
@@ -10219,11 +10407,14 @@ const ProfileView = ({
 	onOpenFeedbackMedia,
 	feedbackMediaLoading,
 	billingLoading,
+	generatedActivationCode,
+	onGenerateActivationCode,
 }: {
 	user: User | null;
 	avatarURL: string;
 	avatarSaving: boolean;
 	language: UILanguage;
+	largeText: boolean;
 	quota: Quota | null;
 	developerDashboard: DeveloperDashboard | null;
 	developerDashboardLoading: boolean;
@@ -10235,6 +10426,7 @@ const ProfileView = ({
 	homeScreenStatus: HomeScreenStatus;
 	onEdit: () => void;
 	onManageNotifications: () => void;
+	onLargeText: (enabled: boolean) => void;
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
 	onLinkEmail: () => void;
@@ -10251,6 +10443,10 @@ const ProfileView = ({
 	) => void;
 	feedbackMediaLoading: boolean;
 	billingLoading: boolean;
+	generatedActivationCode: ActivationCodeResponse | null;
+	onGenerateActivationCode: (
+		rewardType: ActivationCodeResponse["reward_type"],
+	) => void;
 }) => {
 	const installDisabled = ["checking", "unsupported", "added"].includes(
 		homeScreenStatus,
@@ -10281,6 +10477,8 @@ const ProfileView = ({
 					testModeEnabled={Boolean(quota.maintenance_enabled)}
 					onApply={onDevUpdate}
 					onRefresh={onRefreshDeveloperDashboard}
+					generatedActivationCode={generatedActivationCode}
+					onGenerateActivationCode={onGenerateActivationCode}
 				/>
 			)}
 			{quota?.system_admin_enabled && (
@@ -10489,6 +10687,43 @@ const ProfileView = ({
 						</button>
 					</div>
 				</section>
+
+				<section className="mini-profile-group">
+					<h2>{uiText(language, "accessibility")}</h2>
+					<div className="mini-profile-list">
+						<div className="mini-accessibility-setting">
+							<div className="mini-accessibility-copy">
+								<TextAa size={20} />
+								<span>
+									<strong>{uiText(language, "textSize")}</strong>
+									<small>{uiText(language, "textSizeHint")}</small>
+								</span>
+							</div>
+							<div
+								className="mini-text-size-control"
+								role="group"
+								aria-label={uiText(language, "textSize")}
+							>
+								<button
+									className={largeText ? "" : "is-active"}
+									type="button"
+									aria-pressed={!largeText}
+									onClick={() => onLargeText(false)}
+								>
+									{uiText(language, "textSizeStandard")}
+								</button>
+								<button
+									className={largeText ? "is-active" : ""}
+									type="button"
+									aria-pressed={largeText}
+									onClick={() => onLargeText(true)}
+								>
+									{uiText(language, "textSizeLarge")}
+								</button>
+							</div>
+						</div>
+					</div>
+				</section>
 			</div>
 		</section>
 	);
@@ -10528,6 +10763,8 @@ const BillingDeveloperTools = ({
 	testModeEnabled,
 	onApply,
 	onRefresh,
+	generatedActivationCode,
+	onGenerateActivationCode,
 }: {
 	quota: Quota;
 	dashboard: DeveloperDashboard | null;
@@ -10536,6 +10773,10 @@ const BillingDeveloperTools = ({
 	testModeEnabled: boolean;
 	onApply: (patch: DeveloperQuotaPatch) => void;
 	onRefresh: () => void;
+	generatedActivationCode: ActivationCodeResponse | null;
+	onGenerateActivationCode: (
+		rewardType: ActivationCodeResponse["reward_type"],
+	) => void;
 }) => (
 	<details className="mini-dev-tools">
 		<summary>
@@ -10974,6 +11215,63 @@ const BillingDeveloperTools = ({
 							<button type="submit">Отправить</button>
 						</form>
 					</fieldset>
+				</div>
+			</details>
+			<details className="mini-dev-panel">
+				<summary>
+					<span>
+						<b>Одноразовые промокоды</b>
+						<small>Плюс на 30 дней или 100 дополнительных разборов</small>
+					</span>
+					<CaretDown size={17} weight="bold" />
+				</summary>
+				<div className="mini-dev-panel-body">
+					<form
+						className="mini-dev-inline"
+						onSubmit={(event) => {
+							event.preventDefault();
+							onGenerateActivationCode(
+								new FormData(event.currentTarget).get(
+									"reward_type",
+								) as ActivationCodeResponse["reward_type"],
+							);
+						}}
+					>
+						<select name="reward_type" aria-label="Награда промокода">
+							<option value="plus_30d">Плюс · 30 дней</option>
+							<option value="pack_100">Пакет · 100 разборов</option>
+						</select>
+						<button type="submit" disabled={loading}>
+							Создать код
+						</button>
+					</form>
+					{generatedActivationCode?.code && (
+						<div className="mini-dev-generated-code">
+							<span>
+								<small>
+									{generatedActivationCode.reward_type === "plus_30d"
+										? "Плюс на 30 дней"
+										: "100 дополнительных разборов"}
+								</small>
+								<code>{generatedActivationCode.code}</code>
+							</span>
+							<button
+								type="button"
+								aria-label="Скопировать промокод"
+								onClick={() =>
+									void navigator.clipboard.writeText(
+										generatedActivationCode.code || "",
+									)
+								}
+							>
+								<Copy size={18} />
+							</button>
+							<p>
+								Код сработает один раз. После закрытия страницы он не
+								восстанавливается.
+							</p>
+						</div>
+					)}
 				</div>
 			</details>
 		</div>
@@ -14710,6 +15008,11 @@ const notificationTitle = (type: string, language: UILanguage) => {
 			en: "Plus payment received",
 			es: "Pago de Plus recibido",
 		},
+		activation_code_redeemed: {
+			ru: "Промокод активирован",
+			en: "Promo code activated",
+			es: "Código promocional activado",
+		},
 		recurring_expense: {
 			ru: "Повторяющийся расход",
 			en: "Recurring expense",
@@ -15267,14 +15570,22 @@ const OpeningOverlay = ({
 const LoadingScreen = ({
 	label,
 	onCancel,
-}: { label?: string; onCancel?: () => void } = {}) => {
-	const language = normalizeUILanguage(
-		WebApp.initDataUnsafe.user?.language_code,
-	);
+	language,
+}: {
+	label?: string;
+	onCancel?: () => void;
+	language?: UILanguage;
+} = {}) => {
+	const resolvedLanguage =
+		language ||
+		preferredLandingLocale(
+			navigator.language,
+			WebApp.initDataUnsafe.user?.language_code,
+		);
 	return (
 		<div className="mini-loading">
 			<KnotLoader />
-			<span>{label || uiText(language, "loadingExpenses")}</span>
+			<span>{label || uiText(resolvedLanguage, "loadingExpenses")}</span>
 			{onCancel && <LoadingCancelButton onClick={onCancel} />}
 		</div>
 	);
@@ -15339,6 +15650,7 @@ const formatRussianPhone = (value: string) => {
 
 const BrowserEntry = ({
 	error,
+	language,
 	homeScreenStatus,
 	browserInstallAvailable,
 	installGuideOpen,
@@ -15348,6 +15660,7 @@ const BrowserEntry = ({
 	onEmailAuth,
 }: {
 	error: string;
+	language: UILanguage;
 	homeScreenStatus: HomeScreenStatus;
 	browserInstallAvailable: boolean;
 	installGuideOpen: boolean;
@@ -15356,8 +15669,13 @@ const BrowserEntry = ({
 	onTelegramAuth: (user: TelegramWidgetUser) => Promise<void>;
 	onEmailAuth: (auth: AuthResponse) => Promise<void>;
 }) => {
-	const [region, setRegion] = useState<"ru" | "outside">("ru");
-	const [method, setMethod] = useState<"phone" | "email" | "telegram">("phone");
+	const copy = browserAuthCopy(language);
+	const [region, setRegion] = useState<"ru" | "outside">(
+		language === "ru" ? "ru" : "outside",
+	);
+	const [method, setMethod] = useState<"phone" | "email" | "telegram">(
+		language === "ru" ? "phone" : "email",
+	);
 	const [authMode, setAuthMode] = useState<"login" | "register">("register");
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -15449,27 +15767,27 @@ const BrowserEntry = ({
 				requestError instanceof Error
 					? requestError.message
 					: isPhone
-						? "Не удалось запустить проверочный звонок"
-						: "Не удалось отправить код";
+						? copy.failedCall
+						: copy.failedSend;
 			setLocalError(
 				message.includes("email already registered")
-					? "Эта почта уже зарегистрирована. Выберите «Войти»."
+					? copy.emailRegistered
 					: message.includes("Verification call could not be started")
-						? "Не удалось запустить звонок. Проверьте номер или войдите по почте."
+						? copy.callFailed
 						: message.includes("wait a minute")
 							? isPhone
-								? "Звонок уже запрошен. Новый можно запросить через минуту."
-								: "Код уже отправлен. Новый можно запросить через минуту."
+								? copy.callWait
+								: copy.codeWait
 							: message.includes("hourly authentication code limit reached")
 								? isPhone
-									? "Вы уже запросили 3 звонка за последний час. Попробуйте позже."
-									: "Вы уже запросили 3 кода за последний час. Попробуйте позже."
+									? copy.hourlyCall
+									: copy.hourlyCode
 								: message.includes("daily authentication code limit reached")
 									? isPhone
-										? "Суточный лимит звонков исчерпан. Попробуйте завтра."
-										: "Суточный лимит кодов исчерпан. Попробуйте завтра."
+										? copy.dailyCall
+										: copy.dailyCode
 									: message.includes("rate limit exceeded")
-										? "Слишком много попыток. Подождите и попробуйте снова."
+										? copy.tooMany
 										: message,
 			);
 		} finally {
@@ -15495,7 +15813,7 @@ const BrowserEntry = ({
 						country: isPhone
 							? "RU"
 							: browserRegistrationCountry(navigator.language),
-						language: navigator.language.split("-")[0] || "ru",
+						language,
 						timezone,
 						currency: isPhone ? "RUB" : "",
 						personal_data_consent: personalDataConsent,
@@ -15505,10 +15823,10 @@ const BrowserEntry = ({
 			await onEmailAuth(auth);
 		} catch (requestError) {
 			const message =
-				requestError instanceof Error ? requestError.message : "Неверный код";
+				requestError instanceof Error ? requestError.message : copy.invalidCode;
 			setLocalError(
 				message.includes("invalid or expired code")
-					? "Неверный код или срок его действия истёк."
+					? copy.invalidCode
 					: message,
 			);
 		} finally {
@@ -15523,13 +15841,13 @@ const BrowserEntry = ({
 				.replace(/\D/g, "")
 				.slice(0, codeLength);
 			if (clipboardCode.length !== codeLength) {
-				setClipboardHint(`В буфере нет кода из ${codeLength} цифр`);
+				setClipboardHint(copy.clipboardMissing(codeLength));
 				return;
 			}
 			setCode(clipboardCode);
-			setClipboardHint("Код вставлен");
+			setClipboardHint(copy.codePasted);
 		} catch {
-			setClipboardHint("Зажмите поле и выберите «Вставить»");
+			setClipboardHint(copy.pasteManually);
 		}
 	};
 
@@ -15542,11 +15860,11 @@ const BrowserEntry = ({
 			<section className="browser-entry-brand">
 				<div className="mini-brand">
 					<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
-					<span>Пока не забыл</span>
+					<span>{uiText(language, "brand")}</span>
 				</div>
 				<div>
-					<h1>Ваши расходы рядом</h1>
-					<p>Откройте те же пространства, покупки и планы.</p>
+					<h1>{copy.taglineTitle}</h1>
+					<p>{copy.taglineBody}</p>
 				</div>
 			</section>
 			<section className="browser-auth-panel">
@@ -15555,23 +15873,23 @@ const BrowserEntry = ({
 						<div className="browser-auth-heading">
 							<span>
 								{method === "telegram"
-									? "Без нового пароля"
+									? copy.telegramEyebrow
 									: authMode === "register"
-										? "Первый шаг"
-										: "С возвращением"}
+										? copy.registerEyebrow
+										: copy.loginEyebrow}
 							</span>
 							<h2>
 								{method === "telegram"
-									? "Войти через Telegram"
+									? copy.telegramTitle
 									: authMode === "register"
-										? "Создать аккаунт"
-										: "Войти"}
+										? copy.registerTitle
+										: copy.loginTitle}
 							</h2>
 						</div>
 						<div
 							className="browser-auth-tabs"
 							role="tablist"
-							aria-label="Способ входа"
+							aria-label={copy.methodLabel}
 						>
 							{region === "ru" && (
 								<button
@@ -15579,7 +15897,7 @@ const BrowserEntry = ({
 									className={method === "phone" ? "active" : ""}
 									onClick={() => changeMethod("phone")}
 								>
-									Телефон
+									{copy.phone}
 								</button>
 							)}
 							<button
@@ -15587,7 +15905,7 @@ const BrowserEntry = ({
 								className={method === "email" ? "active" : ""}
 								onClick={() => changeMethod("email")}
 							>
-								Почта
+								{copy.email}
 							</button>
 							{region === "outside" && (
 								<button
@@ -15604,16 +15922,14 @@ const BrowserEntry = ({
 							type="button"
 							onClick={() => changeRegion(region === "ru" ? "outside" : "ru")}
 						>
-							{region === "ru"
-								? "Я нахожусь за пределами России"
-								: "Я нахожусь в России"}
+							{region === "ru" ? copy.outsideRussia : copy.inRussia}
 						</button>
 					</>
 				)}
 				{method === "telegram" ? (
 					<div className="browser-telegram-auth">
 						<TelegramLoginButton onAuth={onTelegramAuth} />
-						<small>Доступно пользователям за пределами России</small>
+						<small>{copy.telegramOutside}</small>
 					</div>
 				) : (
 					<div className="browser-email-auth">
@@ -15629,21 +15945,17 @@ const BrowserEntry = ({
 									</span>
 									<div>
 										<strong>
-											{isPhone
-												? "Введите последние 4 цифры"
-												: "Введите код из письма"}
+											{isPhone ? copy.phoneCodeTitle : copy.emailCodeTitle}
 										</strong>
 										<small>
-											{isPhone ? "Звоним на " : "Отправили на "}
+											{isPhone ? copy.calling : copy.sentTo}
 											<span className="browser-code-email">{contact}</span>
 										</small>
 									</div>
 								</div>
 								<label className="browser-code-field">
 									<span>
-										{isPhone
-											? "Последние 4 цифры входящего номера"
-											: "Код из 6 цифр"}
+										{isPhone ? copy.phoneCodeLabel : copy.emailCodeLabel}
 									</span>
 									<div className="browser-otp-field">
 										<input
@@ -15683,9 +15995,9 @@ const BrowserEntry = ({
 								>
 									{codeExpired
 										? isPhone
-											? "Срок подтверждения истёк. Запросите новый звонок."
-											: "Срок действия кода истёк. Отправьте новый."
-										: `Код действует ещё ${codeTimeLeft}`}
+											? copy.phoneExpired
+											: copy.emailExpired
+										: copy.codeValid(codeTimeLeft)}
 								</div>
 								{clipboardHint && (
 									<small className="browser-clipboard-hint">
@@ -15701,10 +16013,10 @@ const BrowserEntry = ({
 									onClick={confirmCode}
 								>
 									{loading
-										? "Проверяем…"
+										? copy.checking
 										: authMode === "register"
-											? "Создать аккаунт"
-											: "Войти"}
+											? copy.registerTitle
+											: copy.loginTitle}
 								</button>
 								<div className="browser-code-actions">
 									{!isPhone &&
@@ -15715,7 +16027,7 @@ const BrowserEntry = ({
 												type="button"
 												onClick={() => void pasteCode()}
 											>
-												Вставить код
+												{copy.pasteCode}
 											</button>
 										)}
 									<button
@@ -15725,10 +16037,10 @@ const BrowserEntry = ({
 										onClick={requestCode}
 									>
 										{resendSeconds > 0
-											? `Снова через ${formatCountdown(resendSeconds)}`
+											? copy.retryAfter(formatCountdown(resendSeconds))
 											: isPhone
-												? "Позвонить ещё раз"
-												: "Отправить снова"}
+												? copy.callAgain
+												: copy.sendAgain}
 									</button>
 								</div>
 								<button
@@ -15736,30 +16048,28 @@ const BrowserEntry = ({
 									type="button"
 									onClick={resetCodeStep}
 								>
-									{isPhone ? "Изменить номер" : "Изменить почту"}
+									{isPhone ? copy.changePhone : copy.changeEmail}
 								</button>
 								<small className="browser-code-help">
-									{isPhone
-										? "Отвечать не нужно. Запомните последние четыре цифры номера, с которого поступит звонок."
-										: "Не нашли письмо? Проверьте папку «Спам»."}
+									{isPhone ? copy.phoneHelp : copy.emailHelp}
 								</small>
 							</div>
 						) : (
 							<>
 								{authMode === "register" && (
 									<label>
-										Имя
+										{copy.name}
 										<input
 											type="text"
 											autoComplete="name"
 											value={name}
 											onChange={(event) => setName(event.target.value)}
-											placeholder="Как к вам обращаться"
+											placeholder={copy.namePlaceholder}
 										/>
 									</label>
 								)}
 								<label>
-									{isPhone ? "Телефон" : "Почта"}
+									{isPhone ? copy.phone : copy.email}
 									<input
 										type={isPhone ? "tel" : "email"}
 										autoComplete={isPhone ? "tel" : "email"}
@@ -15786,9 +16096,9 @@ const BrowserEntry = ({
 											}
 										/>
 										<span>
-											Даю отдельное{" "}
+											{copy.consentPrefix}
 											<a href="/consent" target="_blank" rel="noreferrer">
-												согласие на обработку персональных данных
+												{copy.consentLink}
 											</a>
 										</span>
 									</label>
@@ -15806,26 +16116,26 @@ const BrowserEntry = ({
 								>
 									{loading
 										? isPhone
-											? "Запрашиваем звонок…"
-											: "Отправляем…"
+											? copy.requestingCall
+											: copy.sending
 										: isPhone
-											? "Позвонить мне"
-											: "Получить код"}
+											? copy.callMe
+											: copy.getCode}
 								</button>
 								<small>
 									{authMode === "register"
 										? isPhone
-											? "Пароль не нужен — подтвердите номер по входящему звонку."
-											: "Пароль не нужен — вход подтверждается кодом из письма."
+											? copy.registerPhoneHint
+											: copy.registerEmailHint
 										: isPhone
-											? "Введите номер, указанный при регистрации или в профиле."
-											: "Введите почту, указанную при регистрации или в профиле."}
+											? copy.loginPhoneHint
+											: copy.loginEmailHint}
 								</small>
 								<div className="browser-auth-mode-switch">
 									<span>
 										{authMode === "register"
-											? "Уже есть аккаунт?"
-											: "Ещё нет аккаунта?"}
+											? copy.alreadyAccount
+											: copy.noAccount}
 									</span>
 									<button
 										type="button"
@@ -15835,7 +16145,7 @@ const BrowserEntry = ({
 											)
 										}
 									>
-										{authMode === "register" ? "Войти" : "Создать"}
+										{authMode === "register" ? copy.loginTitle : copy.create}
 									</button>
 								</div>
 							</>
@@ -15848,16 +16158,16 @@ const BrowserEntry = ({
 				{!codeSent && (
 					<div className="browser-legal">
 						<a href="/offer" target="_blank" rel="noreferrer">
-							Оферта
+							{copy.offer}
 						</a>
 						<a href="/privacy" target="_blank" rel="noreferrer">
-							Конфиденциальность
+							{copy.privacy}
 						</a>
 						<a href="/consent" target="_blank" rel="noreferrer">
-							Обработка данных
+							{copy.dataProcessing}
 						</a>
 						<a href="/refunds" target="_blank" rel="noreferrer">
-							Возвраты
+							{copy.refunds}
 						</a>
 					</div>
 				)}
@@ -15865,11 +16175,11 @@ const BrowserEntry = ({
 					<div className="browser-install-card">
 						<House size={22} weight="fill" />
 						<div>
-							<strong>Добавьте приложение на экран</strong>
-							<small>Открывайте расходы одним касанием.</small>
+							<strong>{copy.installTitle}</strong>
+							<small>{copy.installBody}</small>
 						</div>
 						<button type="button" onClick={() => void onInstall()}>
-							{browserInstallAvailable ? "Установить" : "Инструкция"}
+							{browserInstallAvailable ? copy.install : copy.instruction}
 						</button>
 					</div>
 				)}
@@ -16045,6 +16355,7 @@ const TelegramLoginButton = ({
 		script.setAttribute("data-size", "large");
 		script.setAttribute("data-radius", "8");
 		script.setAttribute("data-userpic", "false");
+		script.setAttribute("data-lang", document.documentElement.lang || "en");
 		script.setAttribute("data-request-access", "write");
 		script.setAttribute("data-onauth", "window.onTelegramAuth(user)");
 		container.current?.replaceChildren(script);
