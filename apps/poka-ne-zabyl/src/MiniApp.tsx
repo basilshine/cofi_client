@@ -13657,9 +13657,7 @@ const BrowserEntry = ({
 	onEmailAuth: (auth: AuthResponse) => Promise<void>;
 }) => {
 	const [region, setRegion] = useState<"ru" | "outside">("ru");
-	const [method, setMethod] = useState<"phone" | "email" | "telegram">(
-		"phone",
-	);
+	const [method, setMethod] = useState<"phone" | "email" | "telegram">("phone");
 	const [authMode, setAuthMode] = useState<"login" | "register">("register");
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -13720,14 +13718,18 @@ const BrowserEntry = ({
 		setLoading(true);
 		setLocalError("");
 		try {
-			await apiRequest(`/auth/${isPhone ? "phone" : "email"}/${authMode}/request`, "", {
-				method: "POST",
-				body: JSON.stringify({
-					name: name.trim(),
-					...(isPhone ? { phone: phone.trim() } : { email: email.trim() }),
-					personal_data_consent: personalDataConsent,
-				}),
-			});
+			await apiRequest(
+				`/auth/${isPhone ? "phone" : "email"}/${authMode}/request`,
+				"",
+				{
+					method: "POST",
+					body: JSON.stringify({
+						name: name.trim(),
+						...(isPhone ? { phone: phone.trim() } : { email: email.trim() }),
+						personal_data_consent: personalDataConsent,
+					}),
+				},
+			);
 			const now = Date.now();
 			setCodeSent(true);
 			setClockTime(now);
@@ -13761,9 +13763,7 @@ const BrowserEntry = ({
 					method: "POST",
 					body: JSON.stringify({
 						name: name.trim(),
-						...(isPhone
-							? { phone: phone.trim() }
-							: { email: email.trim() }),
+						...(isPhone ? { phone: phone.trim() } : { email: email.trim() }),
 						code: code.trim(),
 						country: "RU",
 						language: navigator.language.split("-")[0] || "ru",
@@ -14035,7 +14035,9 @@ const BrowserEntry = ({
 												? setPhone(event.target.value)
 												: setEmail(event.target.value)
 										}
-										placeholder={isPhone ? "+7 999 123-45-67" : "name@example.com"}
+										placeholder={
+											isPhone ? "+7 999 123-45-67" : "name@example.com"
+										}
 									/>
 								</label>
 								{authMode === "register" && (
