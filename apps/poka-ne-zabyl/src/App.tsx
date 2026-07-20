@@ -1,6 +1,5 @@
 import {
 	ArrowRight,
-	CalendarCheck,
 	ChatCircleText,
 	Check,
 	Microphone,
@@ -102,6 +101,13 @@ const TelegramButton = ({ light = false }: { light?: boolean }) => (
 	>
 		<TelegramLogo size={20} weight="fill" />
 		Открыть бота
+	</a>
+);
+
+const AppButton = ({ light = false }: { light?: boolean }) => (
+	<a className={`button ${light ? "button--light" : ""}`} href="/app">
+		Открыть приложение
+		<ArrowRight size={18} weight="bold" />
 	</a>
 );
 
@@ -255,7 +261,7 @@ const SharedStory = () => (
 );
 
 const LandingPage = () => {
-	usePageTitle("Приложение и Telegram-бот для учёта расходов — Пока не забыл");
+	usePageTitle("Приложение для учёта расходов | Пока не забыл");
 	useEffect(() => {
 		const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
 		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -286,33 +292,28 @@ const LandingPage = () => {
 						<a href="#mini-app">Приложение</a>
 						<a href="#pricing">Тарифы</a>
 						<a href="#shared">Для компании</a>
-						<TelegramButton />
+						<AppButton />
 					</nav>
 				</header>
 				<div className="hero__stage shell">
 					<div className="hero__copy">
-						<p className="hero__kicker">
-							Приложение для телефона и Telegram-бот
-						</p>
-						<h1>
-							Расходы,
-							<br />
-							пока не забылись
-						</h1>
+						<p className="hero__kicker">Приложение для телефона</p>
+						<h1>Расходы, пока не забылись</h1>
 						<p className="hero__lead">
-							Откройте приложение в браузере и добавьте его на главный экран:
-							оно запускается отдельно, как привычное приложение. Быстрые
-							расходы отправляйте боту текстом, голосом или фото чека.
+							Откройте по ссылке, добавьте на экран телефона и пользуйтесь как
+							обычным приложением. Telegram остаётся быстрым помощником.
 						</p>
 						<div className="hero__actions">
-							<TelegramButton />
-							<a className="text-link" href="/app">
-								Открыть приложение <ArrowRight size={18} />
+							<AppButton />
+							<a
+								className="text-link"
+								href={TELEGRAM_URL}
+								rel="noreferrer"
+								target="_blank"
+							>
+								Открыть бота <TelegramLogo size={18} weight="fill" />
 							</a>
 						</div>
-						<p className="hero__trust">
-							Устанавливается без магазина приложений · данные общие с Telegram
-						</p>
 					</div>
 
 					<div className="hero-demo" aria-label="Пример записи расхода">
@@ -406,10 +407,47 @@ const LandingPage = () => {
 				</div>
 			</section>
 
+			<section className="pwa-section" id="mini-app">
+				<div className="shell pwa-layout" data-reveal>
+					<div className="pwa-copy">
+						<h2>Приложение без магазина приложений</h2>
+						<p>
+							PWA открывается по обычной ссылке, а затем добавляется на главный
+							экран. После установки оно запускается отдельным окном и остаётся
+							под рукой, как привычное приложение.
+						</p>
+						<ol className="install-flow">
+							<li>
+								<strong>Откройте</strong>
+								<span>Нажмите «Открыть приложение» на этой странице.</span>
+							</li>
+							<li>
+								<strong>Добавьте</strong>
+								<span>Выберите установку или добавление на главный экран.</span>
+							</li>
+							<li>
+								<strong>Пользуйтесь</strong>
+								<span>Открывайте по иконке без App Store и Google Play.</span>
+							</li>
+						</ol>
+						<AppButton />
+					</div>
+					<figure className="pwa-device">
+						<img
+							alt="Главный экран приложения с расходами, планами и лимитами"
+							decoding="async"
+							height="1040"
+							src="/pwa-home.png"
+							width="520"
+						/>
+						<figcaption>Так приложение выглядит после установки</figcaption>
+					</figure>
+				</div>
+			</section>
+
 			<section className="steps-section" id="how">
 				<div className="shell" data-reveal>
 					<div className="section-heading">
-						<p className="section-label">Три коротких шага</p>
 						<h2>Сказали. Проверили. Запомнили.</h2>
 						<p>
 							Личный учёт расходов без таблиц, обязательных форм и попыток
@@ -422,8 +460,8 @@ const LandingPage = () => {
 							<ChatCircleText size={30} />
 							<h3>Отправьте как удобно</h3>
 							<p>
-								В приложении вручную — или текст, голосовое и фото чека в
-								Telegram.
+								В приложении вручную, текстом, голосом или по фото. В Telegram
+								работают те же быстрые способы.
 							</p>
 						</article>
 						<article>
@@ -447,8 +485,7 @@ const LandingPage = () => {
 			<section className="review-section" id="review">
 				<div className="shell review-layout" data-reveal>
 					<div className="review-copy">
-						<p className="section-label">Сначала проверка</p>
-						<h2>Бот не решает за вас</h2>
+						<h2>Сервис не решает за вас</h2>
 						<p>
 							Он предлагает готовую запись. Вы подтверждаете её, исправляете или
 							отменяете.
@@ -469,78 +506,73 @@ const LandingPage = () => {
 				</div>
 			</section>
 
-			<section className="miniapp-section" id="mini-app">
+			<section className="miniapp-section" id="capabilities">
 				<div className="shell miniapp-layout">
 					<div className="miniapp-copy" data-reveal>
-						<p className="section-label">
-							Устанавливаемое приложение и Telegram
-						</p>
-						<h2>Расходы, лимиты и планы. Всё видно.</h2>
+						<h2>Больше, чем список расходов</h2>
 						<p>
-							Откройте по ссылке и добавьте на главный экран телефона. После
-							установки приложение запускается в отдельном окне: посмотрите
-							месяц, проверьте лимиты и сохраните будущие покупки.
+							Приложение собирает историю, планы, лимиты и общие расходы в одном
+							месте. Нужное находится за несколько касаний.
 						</p>
-						<div className="limit-promise">
-							<CalendarCheck size={28} weight="light" />
+						<dl className="app-capabilities">
 							<div>
-								<strong>Порядок сейчас и на будущее</strong>
-								<span>
-									Лимиты помогают не выйти за рамки, а планы сохраняют будущие
-									покупки отдельно от расходов.
-								</span>
+								<dt>История и поиск</dt>
+								<dd>Ищите по покупке, магазину, категории или #тегу.</dd>
 							</div>
-						</div>
-						<ul className="miniapp-points">
-							<li>
-								<Check size={17} weight="bold" /> Проверка распознанных расходов
-							</li>
-							<li>
-								<Check size={17} weight="bold" /> История, категории и лимиты
-							</li>
-							<li>
-								<Check size={17} weight="bold" /> Отметьте «Куплено», когда план
-								станет расходом
-							</li>
-						</ul>
+							<div>
+								<dt>Лимиты по категориям</dt>
+								<dd>
+									Следите за неделей или месяцем и получайте предупреждения.
+								</dd>
+							</div>
+							<div>
+								<dt>Планы покупок</dt>
+								<dd>
+									Собирайте списки, суммы и даты, затем отмечайте купленное.
+								</dd>
+							</div>
+							<div>
+								<dt>Личное и общее</dt>
+								<dd>
+									Переключайте пространства и получайте уведомления из каждого.
+								</dd>
+							</div>
+						</dl>
 					</div>
 
 					<div className="app-showcase" data-reveal>
 						<figure className="app-shot app-shot--plans">
 							<div className="app-shot__speaker" aria-hidden="true" />
 							<img
-								alt="Экран планов покупок с датами, суммами и действием Куплено"
+								alt="Меню личного и семейного пространства"
 								decoding="async"
 								height="1040"
-								loading="lazy"
-								src="/mini-app-plans.png"
+								src="/pwa-spaces.png"
 								width="520"
 							/>
-							<figcaption>Планы с датой и без даты</figcaption>
+							<figcaption>Личное и семейное рядом</figcaption>
 						</figure>
 						<figure className="app-shot app-shot--overview">
 							<div className="app-shot__speaker" aria-hidden="true" />
 							<img
-								alt="Главный экран приложения с расходами, кандидатами, планами и лимитами"
+								alt="Экран планов покупок со списками, суммами и датами"
 								decoding="async"
 								height="1040"
-								loading="lazy"
-								src="/mini-app-overview.png"
+								src="/pwa-plans.png"
 								width="520"
 							/>
-							<figcaption>Главная со всем важным на сегодня</figcaption>
+							<figcaption>Планы превращаются в расходы</figcaption>
 						</figure>
 						<figure className="app-shot app-shot--plus">
 							<div className="app-shot__speaker" aria-hidden="true" />
 							<img
-								alt="Профиль приложения с тарифом, остатком разборов и подключением Плюс"
+								alt="Единый список уведомлений из личного и семейного пространства"
 								decoding="async"
 								height="1040"
-								loading="lazy"
-								src="/mini-app-plus.png"
+								src="/pwa-notifications.png"
 								width="520"
 							/>
-							<figcaption>Тариф и остатки всегда перед глазами</figcaption>
+							<figcaption>Уведомления из всех пространств</figcaption>
 						</figure>
 					</div>
 				</div>
@@ -684,7 +716,7 @@ const LandingPage = () => {
 						<UsersThree size={42} weight="light" />
 						<h2>
 							Личные расходы.
-							<br />И общие — когда нужны.
+							<br />И общие, когда нужны.
 						</h2>
 						<p>
 							Личный учёт остаётся простым. Общие расходы подключаются только
@@ -703,12 +735,11 @@ const LandingPage = () => {
 					</div>
 					<div>
 						<details>
-							<summary>Приложение работает только внутри Telegram?</summary>
+							<summary>Что такое PWA и нужно ли что-то скачивать?</summary>
 							<p>
-								Нет. Откройте приложение в обычном браузере и выберите «Добавить
-								на главный экран». После установки оно запускается отдельно, как
-								привычное приложение, и не требует магазина приложений.
-								Telegram-бот остаётся быстрым способом записывать расходы.
+								PWA означает устанавливаемое веб-приложение. Откройте его по
+								ссылке и добавьте на главный экран. Оно запускается отдельно и
+								не требует App Store или Google Play.
 							</p>
 						</details>
 						<details>
@@ -737,8 +768,8 @@ const LandingPage = () => {
 						<details>
 							<summary>Можно пользоваться только лично?</summary>
 							<p>
-								Да. Групповой чат и общие расходы — дополнительный сценарий, а
-								не обязательное условие.
+								Да. Групповой чат и общие расходы являются дополнительным
+								сценарием. Это не обязательное условие.
 							</p>
 						</details>
 						<details>
@@ -759,7 +790,15 @@ const LandingPage = () => {
 					</span>
 					<p>Покупка уже случилась.</p>
 					<h2>Запишите, пока не забыли.</h2>
-					<TelegramButton light />
+					<AppButton light />
+					<a
+						className="text-link text-link--inverse"
+						href={TELEGRAM_URL}
+						rel="noreferrer"
+						target="_blank"
+					>
+						Открыть бота <TelegramLogo size={18} weight="fill" />
+					</a>
 				</div>
 			</section>
 
@@ -1005,10 +1044,9 @@ const PrivacyPage = () => {
 			<p>
 				Данные используются для регистрации, связи аккаунта с Telegram,
 				подтверждённой электронной почтой или телефоном, входа в браузерное
-				приложение,
-				распознавания пользовательского ввода, сохранения расходов, работы
-				групповых сценариев, поддержки, обеспечения безопасности, исполнения
-				договора, платежей и соблюдения закона.
+				приложение, распознавания пользовательского ввода, сохранения расходов,
+				работы групповых сценариев, поддержки, обеспечения безопасности,
+				исполнения договора, платежей и соблюдения закона.
 			</p>
 			<p>
 				Основаниями являются согласие субъекта, заключение и исполнение
@@ -1028,7 +1066,8 @@ const PrivacyPage = () => {
 				Для работы используются Telegram как канал взаимодействия, SMS.RU для
 				доставки одноразовых кодов, Robokassa для оплаты, российские поставщики
 				хостинга и хранения, а также поставщики технологий распознавания. Им
-				передаётся только объём данных, необходимый для соответствующей операции.
+				передаётся только объём данных, необходимый для соответствующей
+				операции.
 			</p>
 			<p>
 				Основные пользовательские записи и исходные файлы российского запуска
@@ -1094,11 +1133,10 @@ const ConsentPage = () => {
 			<h2>Состав данных</h2>
 			<p>
 				Telegram ID, имя и username, подтверждённые адрес электронной почты или
-				номер мобильного телефона, идентификаторы чатов и сообщений, отправленные
-				тексты, аудиозаписи,
-				изображения и документы, сведения о расходах, технические данные и
-				сведения о тарифе, лимитах, заказах и платежах без реквизитов банковской
-				карты.
+				номер мобильного телефона, идентификаторы чатов и сообщений,
+				отправленные тексты, аудиозаписи, изображения и документы, сведения о
+				расходах, технические данные и сведения о тарифе, лимитах, заказах и
+				платежах без реквизитов банковской карты.
 			</p>
 			<h2>Цели</h2>
 			<p>
@@ -1235,7 +1273,7 @@ const SiteFooter = () => (
 		<div className="shell footer__top">
 			<div>
 				<Brand inverse />
-				<p>Устанавливаемое приложение и Telegram-бот для учёта расходов.</p>
+				<p>Приложение для учёта расходов с быстрым помощником в Telegram.</p>
 			</div>
 			<nav aria-label="Юридические документы">
 				<a href="/offer">Оферта</a>

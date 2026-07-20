@@ -6,11 +6,11 @@ brand
 
 ## Users
 
-People opening the page mainly from a phone who want to record everyday expenses in a compact installable PWA or through Telegram without learning a traditional finance app.
+People opening the page mainly from a phone who want one clear application for everyday expenses, without learning a traditional finance app or understanding what PWA means.
 
 ## Product Purpose
 
-Present one expense service with two entry points: an app that opens from a link and installs to the phone home screen for manual entry, history, limits, and plans; and `@poka_ne_zabyl_bot` for fast text, voice, and receipt capture. Both lead to the same records and review flow. Use “installable web app” in customer copy and keep “PWA” as a secondary technical explanation. Show the free Basic plan, Plus for regular use, and optional parse packs without making payment the main product story.
+Present the installable browser application as the primary product surface until a native mobile application exists. It opens from a link, installs to the phone home screen, and covers manual and smart entry, history, search, category limits, purchase plans, Spaces, and notifications. Present `@poka_ne_zabyl_bot` as a fast companion for text, voice, receipt capture, and timely reminders. Both entry points use the same records and review flow. Use “application” in customer copy, explain the familiar installation action, and keep “PWA” as a secondary technical term. Show the free Basic plan, Plus for regular use, and optional parse packs without making payment the main product story.
 
 ## Brand Personality
 
@@ -27,7 +27,7 @@ Generic fintech, corporate SaaS, childish mascots, scrapbook nostalgia, and paym
 - Use the hand-drawn mark as a quiet signature that can be replaced later.
 - Keep one memorable motion idea and remove decorative motion.
 - State current capabilities plainly and keep optional group features secondary.
-- Keep the PWA and Telegram as two entry points into one product, not competing products.
+- Lead with the installable application; keep Telegram visible as its fast companion rather than a competing product.
 - Prefer current product screenshots over illustrative interface mockups.
 - Explain plan limits as capacity for new work; never imply that a downgrade hides history or existing data.
 
