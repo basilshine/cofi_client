@@ -339,6 +339,7 @@ type User = {
 	id: number;
 	name: string;
 	email: string;
+	phone?: string;
 	emailVerified?: boolean;
 	telegramId?: number;
 	telegramUsername?: string;
@@ -2236,6 +2237,7 @@ export const MiniApp = () => {
 					photo_url: telegramUser.photo_url || "",
 					auth_date: telegramUser.auth_date,
 					hash: telegramUser.hash,
+					outside_russia: true,
 				}),
 			});
 			await acceptAuth(auth);
@@ -13630,8 +13632,8 @@ const TelegramEntry = ({ error }: { error: string }) => {
 };
 
 const OTP_POSITIONS = [0, 1, 2, 3, 4, 5] as const;
-const EMAIL_CODE_TTL_MS = 10 * 60 * 1000;
-const EMAIL_CODE_RESEND_MS = 60 * 1000;
+const AUTH_CODE_TTL_MS = 10 * 60 * 1000;
+const AUTH_CODE_RESEND_MS = 60 * 1000;
 const formatCountdown = (seconds: number) =>
 	`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
@@ -13654,10 +13656,14 @@ const BrowserEntry = ({
 	onTelegramAuth: (user: TelegramWidgetUser) => Promise<void>;
 	onEmailAuth: (auth: AuthResponse) => Promise<void>;
 }) => {
-	const [method, setMethod] = useState<"telegram" | "email">("email");
-	const [emailMode, setEmailMode] = useState<"login" | "register">("register");
+	const [region, setRegion] = useState<"ru" | "outside">("ru");
+	const [method, setMethod] = useState<"phone" | "email" | "telegram">(
+		"phone",
+	);
+	const [authMode, setAuthMode] = useState<"login" | "register">("register");
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
+	const [phone, setPhone] = useState("");
 	const [code, setCode] = useState("");
 	const [codeSent, setCodeSent] = useState(false);
 	const [clockTime, setClockTime] = useState(0);
@@ -13694,24 +13700,39 @@ const BrowserEntry = ({
 		setClipboardHint("");
 		setLocalError("");
 	};
+	const changeRegion = (nextRegion: "ru" | "outside") => {
+		setRegion(nextRegion);
+		setMethod(nextRegion === "ru" ? "phone" : "email");
+		resetCodeStep();
+	};
+	const changeMethod = (nextMethod: "phone" | "email" | "telegram") => {
+		setMethod(nextMethod);
+		resetCodeStep();
+	};
+	const isPhone = method === "phone";
+	const contact = isPhone ? phone.trim() : email.trim();
+	const phoneDigits = phone.replace(/\D/g, "");
+	const validPhone =
+		phoneDigits.length === 10 ||
+		(phoneDigits.length === 11 && /^[78]/.test(phoneDigits));
 
 	const requestCode = async () => {
 		setLoading(true);
 		setLocalError("");
 		try {
-			await apiRequest(`/auth/email/${emailMode}/request`, "", {
+			await apiRequest(`/auth/${isPhone ? "phone" : "email"}/${authMode}/request`, "", {
 				method: "POST",
 				body: JSON.stringify({
 					name: name.trim(),
-					email: email.trim(),
+					...(isPhone ? { phone: phone.trim() } : { email: email.trim() }),
 					personal_data_consent: personalDataConsent,
 				}),
 			});
 			const now = Date.now();
 			setCodeSent(true);
 			setClockTime(now);
-			setCodeExpiresAt(now + EMAIL_CODE_TTL_MS);
-			setResendAvailableAt(now + EMAIL_CODE_RESEND_MS);
+			setCodeExpiresAt(now + AUTH_CODE_TTL_MS);
+			setResendAvailableAt(now + AUTH_CODE_RESEND_MS);
 			setCode("");
 			setClipboardHint("");
 		} catch (requestError) {
@@ -13734,13 +13755,15 @@ const BrowserEntry = ({
 		setLocalError("");
 		try {
 			const auth = await apiRequest<AuthResponse>(
-				`/auth/email/${emailMode}/confirm`,
+				`/auth/${isPhone ? "phone" : "email"}/${authMode}/confirm`,
 				"",
 				{
 					method: "POST",
 					body: JSON.stringify({
 						name: name.trim(),
-						email: email.trim(),
+						...(isPhone
+							? { phone: phone.trim() }
+							: { email: email.trim() }),
 						code: code.trim(),
 						country: "RU",
 						language: navigator.language.split("-")[0] || "ru",
@@ -13797,31 +13820,63 @@ const BrowserEntry = ({
 			</section>
 			<section className="browser-auth-panel">
 				{!codeSent && (
-					<div
-						className="browser-auth-tabs"
-						role="tablist"
-						aria-label="Способ входа"
-					>
-						<button
-							type="button"
-							className={method === "email" ? "active" : ""}
-							onClick={() => setMethod("email")}
+					<>
+						<div className="browser-region-picker">
+							<span>Где вы сейчас находитесь?</span>
+							<div role="group" aria-label="Местоположение">
+								<button
+									type="button"
+									className={region === "ru" ? "active" : ""}
+									onClick={() => changeRegion("ru")}
+								>
+									В России
+								</button>
+								<button
+									type="button"
+									className={region === "outside" ? "active" : ""}
+									onClick={() => changeRegion("outside")}
+								>
+									За пределами
+								</button>
+							</div>
+						</div>
+						<div
+							className="browser-auth-tabs"
+							role="tablist"
+							aria-label="Способ входа"
 						>
-							Почта
-						</button>
-						<button
-							type="button"
-							className={method === "telegram" ? "active" : ""}
-							onClick={() => setMethod("telegram")}
-						>
-							Telegram
-						</button>
-					</div>
+							{region === "ru" && (
+								<button
+									type="button"
+									className={method === "phone" ? "active" : ""}
+									onClick={() => changeMethod("phone")}
+								>
+									Телефон
+								</button>
+							)}
+							<button
+								type="button"
+								className={method === "email" ? "active" : ""}
+								onClick={() => changeMethod("email")}
+							>
+								Почта
+							</button>
+							{region === "outside" && (
+								<button
+									type="button"
+									className={method === "telegram" ? "active" : ""}
+									onClick={() => changeMethod("telegram")}
+								>
+									Telegram
+								</button>
+							)}
+						</div>
+					</>
 				)}
 				{method === "telegram" ? (
 					<div className="browser-telegram-auth">
 						<TelegramLoginButton onAuth={onTelegramAuth} />
-						<small>Первый вход и создание аккаунта</small>
+						<small>Доступно пользователям за пределами России</small>
 					</div>
 				) : (
 					<div className="browser-email-auth">
@@ -13832,10 +13887,12 @@ const BrowserEntry = ({
 										<PaperPlaneTilt size={22} weight="fill" />
 									</span>
 									<div>
-										<strong>Введите код из письма</strong>
+										<strong>
+											Введите код {isPhone ? "из SMS" : "из письма"}
+										</strong>
 										<small>
 											Отправили на{" "}
-											<span className="browser-code-email">{email.trim()}</span>
+											<span className="browser-code-email">{contact}</span>
 										</small>
 									</div>
 								</div>
@@ -13887,7 +13944,7 @@ const BrowserEntry = ({
 								>
 									{loading
 										? "Проверяем…"
-										: emailMode === "register"
+										: authMode === "register"
 											? "Создать аккаунт"
 											: "Войти"}
 								</button>
@@ -13917,10 +13974,12 @@ const BrowserEntry = ({
 									type="button"
 									onClick={resetCodeStep}
 								>
-									Изменить почту
+									{isPhone ? "Изменить номер" : "Изменить почту"}
 								</button>
 								<small className="browser-code-help">
-									Не нашли письмо? Проверьте папку «Спам».
+									{isPhone
+										? "SMS обычно приходит в течение минуты."
+										: "Не нашли письмо? Проверьте папку «Спам»."}
 								</small>
 							</div>
 						) : (
@@ -13931,9 +13990,9 @@ const BrowserEntry = ({
 								>
 									<button
 										type="button"
-										className={emailMode === "login" ? "active" : ""}
+										className={authMode === "login" ? "active" : ""}
 										onClick={() => {
-											setEmailMode("login");
+											setAuthMode("login");
 											resetCodeStep();
 											setPersonalDataConsent(false);
 										}}
@@ -13942,9 +14001,9 @@ const BrowserEntry = ({
 									</button>
 									<button
 										type="button"
-										className={emailMode === "register" ? "active" : ""}
+										className={authMode === "register" ? "active" : ""}
 										onClick={() => {
-											setEmailMode("register");
+											setAuthMode("register");
 											resetCodeStep();
 											setPersonalDataConsent(false);
 										}}
@@ -13952,7 +14011,7 @@ const BrowserEntry = ({
 										Регистрация
 									</button>
 								</div>
-								{emailMode === "register" && (
+								{authMode === "register" && (
 									<label>
 										Имя
 										<input
@@ -13965,17 +14024,21 @@ const BrowserEntry = ({
 									</label>
 								)}
 								<label>
-									Почта
+									{isPhone ? "Телефон" : "Почта"}
 									<input
-										type="email"
-										autoComplete="email"
-										inputMode="email"
-										value={email}
-										onChange={(event) => setEmail(event.target.value)}
-										placeholder="name@example.com"
+										type={isPhone ? "tel" : "email"}
+										autoComplete={isPhone ? "tel" : "email"}
+										inputMode={isPhone ? "tel" : "email"}
+										value={isPhone ? phone : email}
+										onChange={(event) =>
+											isPhone
+												? setPhone(event.target.value)
+												: setEmail(event.target.value)
+										}
+										placeholder={isPhone ? "+7 999 123-45-67" : "name@example.com"}
 									/>
 								</label>
-								{emailMode === "register" && (
+								{authMode === "register" && (
 									<label className="browser-consent">
 										<input
 											type="checkbox"
@@ -13997,18 +14060,18 @@ const BrowserEntry = ({
 									type="button"
 									disabled={
 										loading ||
-										!email.includes("@") ||
-										(emailMode === "register" && !name.trim()) ||
-										(emailMode === "register" && !personalDataConsent)
+										(isPhone ? !validPhone : !email.includes("@")) ||
+										(authMode === "register" && !name.trim()) ||
+										(authMode === "register" && !personalDataConsent)
 									}
 									onClick={requestCode}
 								>
 									{loading ? "Отправляем…" : "Получить код"}
 								</button>
 								<small>
-									{emailMode === "register"
-										? "Пароль не нужен — вход подтверждается кодом из письма."
-										: "Введите почту, указанную при регистрации или в профиле."}
+									{authMode === "register"
+										? `Пароль не нужен — вход подтверждается кодом ${isPhone ? "из SMS" : "из письма"}.`
+										: `Введите ${isPhone ? "номер" : "почту"}, указанные при регистрации или в профиле.`}
 								</small>
 							</>
 						)}
