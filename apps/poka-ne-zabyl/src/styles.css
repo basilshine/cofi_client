@@ -238,6 +238,39 @@ button:focus-visible {
 	align-items: center;
 	gap: 30px;
 }
+.language-switcher {
+	display: flex;
+	align-items: center;
+	gap: 3px;
+	margin-left: auto;
+	margin-right: 24px;
+	padding: 3px;
+	border: 1px solid rgba(27, 28, 32, 0.14);
+	border-radius: 999px;
+	background: rgba(255, 255, 255, 0.45);
+	box-shadow: 0 8px 24px rgba(37, 45, 78, 0.06);
+	backdrop-filter: blur(10px);
+}
+.hero__nav .language-switcher a {
+	display: grid;
+	min-width: 32px;
+	height: 28px;
+	place-items: center;
+	border-radius: 999px;
+	color: rgba(27, 28, 32, 0.58);
+	font-size: .68rem;
+	font-weight: 750;
+	letter-spacing: .06em;
+	text-decoration: none;
+}
+.hero__nav .language-switcher a:hover {
+	color: var(--blue);
+}
+.hero__nav .language-switcher a[aria-current="page"] {
+	color: white;
+	background: var(--blue);
+	box-shadow: 0 4px 12px rgba(36, 74, 215, 0.22);
+}
 .hero__nav nav > a:not(.button) {
 	font-size: .9rem;
 	font-weight: 600;
@@ -1545,7 +1578,14 @@ button:focus-visible {
 	.hero__nav {
 		min-height: 68px;
 	}
-	.hero__nav nav > a:not(.button) {
+	.language-switcher {
+		margin-right: 10px;
+	}
+	.hero__nav .language-switcher a {
+		min-width: 29px;
+		height: 27px;
+	}
+	.hero__nav > nav:not(.language-switcher) > a:not(.button) {
 		display: none;
 	}
 	.hero__nav .button {

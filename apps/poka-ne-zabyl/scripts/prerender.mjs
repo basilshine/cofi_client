@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -44,10 +44,120 @@ const withoutDefaultSeo = (html) =>
 		.replace(/\s*<link\s+rel="canonical"[\s\S]*?\/>/i, "")
 		.replace(/\s*<title>[\s\S]*?<\/title>/i, "");
 
-const pageHead = ({ path, title, description }) => {
+const landingAlternates = `
+		<link rel="alternate" hreflang="ru" href="${origin}/" />
+		<link rel="alternate" hreflang="en" href="${origin}/en/" />
+		<link rel="alternate" hreflang="es" href="${origin}/es/" />
+		<link rel="alternate" hreflang="x-default" href="${origin}/" />`;
+
+const localizedFaq = {
+	en: [
+		[
+			"What is a PWA, and do I need to download anything?",
+			"A PWA is an installable web app. Open it from a link and add it to your home screen. It runs in its own window and does not require the App Store or Google Play.",
+		],
+		[
+			"Does the bot save everything without review?",
+			"No. It prepares the expense, and you confirm or edit the result.",
+		],
+		[
+			"What remains available without Plus?",
+			"Expense history, manual entry, editing, and access to your data remain available. Limits apply to new smart entries and to creating new categories, limits, plans, and spaces.",
+		],
+		[
+			"Do purchased packs disappear when Plus ends?",
+			"No. Your purchased balance is stored separately and remains available after the subscription ends.",
+		],
+		[
+			"Can I use it just for myself?",
+			"Yes. Shared spaces and expense splitting are there only when you need them.",
+		],
+		[
+			"Where are data and receipts stored?",
+			"Core data and source files for the Russian service are hosted on infrastructure in Russia.",
+		],
+	],
+	es: [
+		[
+			"¿Qué es una PWA y tengo que descargar algo?",
+			"Una PWA es una aplicación web instalable. Ábrela desde un enlace y añádela a la pantalla de inicio. Funciona en su propia ventana y no necesita App Store ni Google Play.",
+		],
+		[
+			"¿El bot guarda todo sin que lo revise?",
+			"No. Prepara el gasto y tú confirmas o corriges el resultado.",
+		],
+		[
+			"¿Qué seguirá disponible sin Plus?",
+			"El historial, la entrada manual, la edición y el acceso a tus datos siguen disponibles. Los límites se aplican a nuevos registros inteligentes y a la creación de categorías, límites, planes y espacios.",
+		],
+		[
+			"¿Desaparecen los paquetes comprados cuando termina Plus?",
+			"No. El saldo comprado se guarda por separado y sigue disponible cuando termina la suscripción.",
+		],
+		[
+			"¿Puedo usarlo solo para mí?",
+			"Sí. Los espacios compartidos y la división de gastos están ahí solo cuando los necesitas.",
+		],
+		[
+			"¿Dónde se guardan los datos y recibos?",
+			"Los datos principales y los archivos originales del servicio ruso se alojan en infraestructura situada en Rusia.",
+		],
+	],
+};
+
+const localizedStructuredData = ({ path, description, language }) => {
+	if (language === "ru") return "";
+	const faq = localizedFaq[language];
+	return `<script type="application/ld+json">${JSON.stringify({
+		"@context": "https://schema.org",
+		"@graph": [
+			{
+				"@type": "SoftwareApplication",
+				"@id": `${origin}${path}#application`,
+				name: "Пока не забыл",
+				url: `${origin}${path}`,
+				installUrl: `${origin}/app`,
+				description,
+				applicationCategory: "FinanceApplication",
+				operatingSystem: "Web, Android, iOS, Telegram",
+				inLanguage: language,
+				offers: [
+					{
+						"@type": "Offer",
+						name: language === "es" ? "Básico" : "Basic",
+						price: "0",
+						priceCurrency: "RUB",
+					},
+					{
+						"@type": "Offer",
+						name: "Plus",
+						price: "249",
+						priceCurrency: "RUB",
+					},
+				],
+			},
+			{
+				"@type": "FAQPage",
+				"@id": `${origin}${path}#faq`,
+				mainEntity: faq.map(([name, text]) => ({
+					"@type": "Question",
+					name,
+					acceptedAnswer: { "@type": "Answer", text },
+				})),
+			},
+		],
+	}).replaceAll("<", "\\u003c")}</script>`;
+};
+
+const pageHead = ({ path, title, description, language }) => {
 	const canonical = `${origin}${path}`;
 	const structuredData =
-		path === "/"
+		localizedStructuredData({
+			path,
+			description,
+			language,
+		}) ||
+		(path === "/"
 			? `<script type="application/ld+json">${JSON.stringify({
 					"@context": "https://schema.org",
 					"@graph": [
@@ -159,14 +269,15 @@ const pageHead = ({ path, title, description }) => {
 						},
 					],
 				}).replaceAll("<", "\\u003c")}</script>`
-			: "";
+			: "");
 
 	return `
 		<title>${escapeAttribute(title)}</title>
 		<meta name="description" content="${escapeAttribute(description)}" />
 		<link rel="canonical" href="${canonical}" />
+		${["/", "/en/", "/es/"].includes(path) ? landingAlternates : ""}
 		<meta property="og:type" content="website" />
-		<meta property="og:locale" content="ru_RU" />
+		<meta property="og:locale" content="${language === "es" ? "es_ES" : language === "en" ? "en_US" : "ru_RU"}" />
 		<meta property="og:site_name" content="Пока не забыл" />
 		<meta property="og:title" content="${escapeAttribute(title)}" />
 		<meta property="og:description" content="${escapeAttribute(description)}" />
@@ -175,7 +286,7 @@ const pageHead = ({ path, title, description }) => {
 		<meta property="og:image:width" content="1200" />
 		<meta property="og:image:height" content="630" />
 		<meta property="og:image:type" content="image/png" />
-		<meta property="og:image:alt" content="Пока не забыл — учёт расходов в приложении и Telegram" />
+		<meta property="og:image:alt" content="${language === "es" ? "Пока не забыл: aplicación de control de gastos con Telegram" : language === "en" ? "Пока не забыл: expense tracking app with Telegram" : "Пока не забыл — учёт расходов в приложении и Telegram"}" />
 		<meta name="twitter:card" content="summary_large_image" />
 		${structuredData}`;
 };
@@ -185,12 +296,19 @@ const withHead = (html, head) =>
 
 for (const seo of PUBLIC_PAGE_SEO) {
 	const html = withHead(template, `${pageHead(seo)}\n${metrikaScript}`)
+		.replace(/<html lang="[^"]*"/, `<html lang="${seo.language}"`)
 		.replace(
 			'<div id="root"></div>',
 			`<div id="root">${render(seo.path)}</div>`,
 		)
 		.replace("</body>", `${metrikaNoScript}\n\t</body>`);
-	const output = seo.path === "/" ? "index.html" : `${seo.path.slice(1)}.html`;
+	const output =
+		seo.path === "/"
+			? "index.html"
+			: seo.path.endsWith("/")
+				? `${seo.path.slice(1)}index.html`
+				: `${seo.path.slice(1)}.html`;
+	await mkdir(dirname(join(distDir, output)), { recursive: true });
 	await writeFile(join(distDir, output), html);
 
 	assert(html.includes(`<link rel="canonical" href="${origin}${seo.path}"`));
@@ -201,6 +319,10 @@ for (const seo of PUBLIC_PAGE_SEO) {
 		assert(html.includes("/assets/poka-ne-zabyl-og.png"));
 		assert(html.includes('"name":"Базовый","price":"0"'));
 		assert(html.includes('"name":"Плюс","price":"249"'));
+	}
+	if (["/en/", "/es/"].includes(seo.path)) {
+		assert(html.includes(`hreflang="${seo.language}"`));
+		assert(html.includes('"@type":"FAQPage"'));
 	}
 }
 

@@ -9,6 +9,15 @@ import {
 } from "@phosphor-icons/react";
 import type { CSSProperties } from "react";
 import { Suspense, lazy, useEffect } from "react";
+import {
+	type LandingLocale,
+	landingHomePath,
+	landingLocaleFromPath,
+	landingSeo,
+	landingText,
+	localizeLandingTree,
+	localizedLandingImage,
+} from "./landing-i18n";
 
 const MiniApp = lazy(async () => {
 	const module = await import("./MiniApp");
@@ -63,7 +72,7 @@ export const App = ({ pathname }: { pathname?: string }) => {
 		case "/payment/failed":
 			return <PaymentStatus success={false} />;
 		default:
-			return <LandingPage />;
+			return <LandingPage locale={landingLocaleFromPath(path)} />;
 	}
 };
 
@@ -82,8 +91,17 @@ const BrandMark = () => (
 	/>
 );
 
-const Brand = ({ inverse = false }: { inverse?: boolean }) => (
-	<a className={`brand ${inverse ? "brand--inverse" : ""}`} href="/">
+const Brand = ({
+	inverse = false,
+	locale = "ru",
+}: {
+	inverse?: boolean;
+	locale?: LandingLocale;
+}) => (
+	<a
+		className={`brand ${inverse ? "brand--inverse" : ""}`}
+		href={landingHomePath(locale)}
+	>
 		<span className="brand__mark">
 			<BrandMark />
 		</span>
@@ -103,9 +121,19 @@ const TelegramButton = ({ light = false }: { light?: boolean }) => (
 	</a>
 );
 
-const AppButton = ({ light = false }: { light?: boolean }) => (
+const AppButton = ({
+	light = false,
+	locale = "ru",
+}: {
+	light?: boolean;
+	locale?: LandingLocale;
+}) => (
 	<a className={`button ${light ? "button--light" : ""}`} href="/app">
-		Открыть приложение
+		{locale === "en"
+			? "Open the app"
+			: locale === "es"
+				? "Abrir la aplicación"
+				: "Открыть приложение"}
 		<ArrowRight size={18} weight="bold" />
 	</a>
 );
@@ -185,10 +213,13 @@ const captureStories = [
 	},
 ] as const;
 
-const CaptureStory = () => (
+const CaptureStory = ({ locale = "ru" }: { locale?: LandingLocale }) => (
 	<div
 		className="capture-story"
-		aria-label="Как расход проходит от ввода до сохранения"
+		aria-label={landingText(
+			locale,
+			"Как расход проходит от ввода до сохранения",
+		)}
 	>
 		{captureStories.map((story) => (
 			<figure
@@ -204,26 +235,53 @@ const CaptureStory = () => (
 							<ChatCircleText size={18} weight="fill" />
 						)}
 						{story.mode === "photo" && <Receipt size={18} weight="fill" />}
-						{story.mode === "voice"
-							? "Голос"
-							: story.mode === "text"
-								? "Текст"
-								: "Фото чека"}
+						{landingText(
+							locale,
+							story.mode === "voice"
+								? "Голос"
+								: story.mode === "text"
+									? "Текст"
+									: "Фото чека",
+						)}
 					</span>
-					<strong>{story.phase}</strong>
+					<strong>{landingText(locale, story.phase)}</strong>
 				</div>
 				<div className="capture-fragment__canvas">
-					<img src={story.image} alt="" />
+					<img src={localizedLandingImage(locale, story.image)} alt="" />
 				</div>
-				<figcaption>{story.caption}</figcaption>
+				<figcaption>{landingText(locale, story.caption)}</figcaption>
 			</figure>
 		))}
 	</div>
 );
 
-const LandingPage = () => {
-	usePageTitle("Приложение для учёта расходов | Пока не забыл");
+const LanguageSwitcher = ({ locale }: { locale: LandingLocale }) => (
+	<nav
+		className="language-switcher"
+		aria-label={
+			locale === "ru"
+				? "Выбор языка"
+				: locale === "es"
+					? "Selector de idioma"
+					: "Language selector"
+		}
+	>
+		{(["ru", "en", "es"] as const).map((code) => (
+			<a
+				aria-current={locale === code ? "page" : undefined}
+				href={landingHomePath(code)}
+				key={code}
+			>
+				{code.toUpperCase()}
+			</a>
+		))}
+	</nav>
+);
+
+const LandingPage = ({ locale }: { locale: LandingLocale }) => {
+	usePageTitle(landingSeo[locale].title);
 	useEffect(() => {
+		document.documentElement.lang = locale;
 		const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
 		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
 			for (const element of elements) element.classList.add("is-visible");
@@ -243,17 +301,18 @@ const LandingPage = () => {
 		return () => observer.disconnect();
 	}, []);
 
-	return (
+	return localizeLandingTree(
 		<main className="landing-page">
 			<section className="hero">
 				<header className="hero__nav shell">
-					<Brand />
+					<Brand locale={locale} />
+					<LanguageSwitcher locale={locale} />
 					<nav aria-label="Основная навигация">
 						<a href="#how">Как это работает</a>
 						<a href="#mini-app">Приложение</a>
 						<a href="#pricing">Тарифы</a>
 						<a href="#shared">Для компании</a>
-						<AppButton />
+						<AppButton locale={locale} />
 					</nav>
 				</header>
 				<div className="hero__stage shell">
@@ -265,7 +324,7 @@ const LandingPage = () => {
 							обычным приложением. Telegram остаётся быстрым помощником.
 						</p>
 						<div className="hero__actions">
-							<AppButton />
+							<AppButton locale={locale} />
 							<a
 								className="text-link"
 								href={TELEGRAM_URL}
@@ -391,7 +450,7 @@ const LandingPage = () => {
 								<span>Открывайте по иконке без App Store и Google Play.</span>
 							</li>
 						</ol>
-						<AppButton />
+						<AppButton locale={locale} />
 					</div>
 					<figure className="pwa-device">
 						<img
@@ -463,7 +522,7 @@ const LandingPage = () => {
 							</li>
 						</ul>
 					</div>
-					<CaptureStory />
+					<CaptureStory locale={locale} />
 				</div>
 			</section>
 
@@ -787,7 +846,7 @@ const LandingPage = () => {
 					</span>
 					<p>Покупка уже случилась.</p>
 					<h2>Запишите, пока не забыли.</h2>
-					<AppButton light />
+					<AppButton light locale={locale} />
 					<a
 						className="text-link text-link--inverse"
 						href={TELEGRAM_URL}
@@ -799,8 +858,9 @@ const LandingPage = () => {
 				</div>
 			</section>
 
-			<SiteFooter />
-		</main>
+			<SiteFooter locale={locale} />
+		</main>,
+		locale,
 	);
 };
 
@@ -1265,32 +1325,34 @@ const OperatorDetails = () => (
 	</section>
 );
 
-const SiteFooter = () => (
-	<footer className="footer">
-		<div className="shell footer__top">
-			<div>
-				<Brand inverse />
-				<p>Приложение для учёта расходов с быстрым помощником в Telegram.</p>
+const SiteFooter = ({ locale = "ru" }: { locale?: LandingLocale }) =>
+	localizeLandingTree(
+		<footer className="footer">
+			<div className="shell footer__top">
+				<div>
+					<Brand inverse locale={locale} />
+					<p>Приложение для учёта расходов с быстрым помощником в Telegram.</p>
+				</div>
+				<nav aria-label="Юридические документы">
+					<a href="/offer">Оферта</a>
+					<a href="/privacy">Конфиденциальность</a>
+					<a href="/consent">Согласие</a>
+					<a href="/refunds">Возвраты</a>
+				</nav>
+				<div className="footer__contacts">
+					<a href={`mailto:${EMAIL}`}>{EMAIL}</a>
+					<a href="tel:+79138078160">{PHONE}</a>
+				</div>
 			</div>
-			<nav aria-label="Юридические документы">
-				<a href="/offer">Оферта</a>
-				<a href="/privacy">Конфиденциальность</a>
-				<a href="/consent">Согласие</a>
-				<a href="/refunds">Возвраты</a>
-			</nav>
-			<div className="footer__contacts">
-				<a href={`mailto:${EMAIL}`}>{EMAIL}</a>
-				<a href="tel:+79138078160">{PHONE}</a>
+			<div className="shell footer__bottom">
+				<span>© 2026 {operator.name}</span>
+				<span>
+					ИНН {operator.inn} · ОГРНИП {operator.ogrnip}
+				</span>
 			</div>
-		</div>
-		<div className="shell footer__bottom">
-			<span>© 2026 {operator.name}</span>
-			<span>
-				ИНН {operator.inn} · ОГРНИП {operator.ogrnip}
-			</span>
-		</div>
-	</footer>
-);
+		</footer>,
+		locale,
+	);
 
 const usePageTitle = (title: string) => {
 	useEffect(() => {
