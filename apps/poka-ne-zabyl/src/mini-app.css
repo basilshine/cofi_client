@@ -854,6 +854,38 @@
 	font-size: 14px;
 	line-height: 1.5;
 }
+.mini-first-expense-locale {
+	display: flex;
+	width: min(100%, 330px);
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 10px 12px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	text-align: left;
+}
+.mini-first-expense-locale span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-first-expense-locale small {
+	color: var(--mini-muted);
+	font-size: 10px;
+}
+.mini-first-expense-locale strong {
+	overflow: hidden;
+	font-size: 12px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-first-expense-locale svg {
+	flex: 0 0 auto;
+	color: var(--mini-green);
+}
 .mini-first-expense-primary {
 	display: inline-flex;
 	width: min(100%, 330px);
@@ -4669,6 +4701,57 @@
 	min-width: 190px;
 	place-items: center;
 	padding: 0 18px;
+}
+.mini-locale-setup {
+	align-content: center;
+}
+.mini-locale-setup > .mini-brand-mark {
+	width: 64px;
+	height: 64px;
+}
+.mini-locale-setup > div {
+	display: grid;
+	max-width: 340px;
+	gap: 7px;
+}
+.mini-locale-setup > div p,
+.mini-locale-setup > div h1,
+.mini-locale-setup > div span {
+	margin: 0;
+}
+.mini-locale-setup > div p,
+.mini-locale-setup > small {
+	color: var(--mini-muted);
+	font-size: 12px;
+}
+.mini-locale-setup > div h1 {
+	font-size: 28px;
+	line-height: 1.15;
+}
+.mini-locale-setup > div span {
+	color: var(--mini-muted);
+	font-size: 14px;
+	line-height: 1.45;
+}
+.mini-locale-setup > label {
+	display: grid;
+	width: min(100%, 340px);
+	gap: 6px;
+	color: var(--mini-muted);
+	font-size: 12px;
+	text-align: left;
+}
+.mini-locale-setup select {
+	min-height: 48px;
+	padding: 0 12px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	font: inherit;
+}
+.mini-locale-setup .mini-save {
+	width: min(100%, 340px);
 }
 .mini-browser-entry {
 	--mini-ink: #171b2d;

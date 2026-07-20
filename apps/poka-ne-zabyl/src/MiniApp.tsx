@@ -79,6 +79,7 @@ import {
 } from "./overview";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
 import { filterPurchasePlans, planPeriodBounds } from "./purchase-plan-filter";
+import { browserRegistrationCountry } from "./registration-locale";
 import {
 	ApiError,
 	REQUEST_TIMEOUT_MS,
@@ -596,6 +597,13 @@ const currencyOptions = [
 	["USD", "Доллар США"],
 	["EUR", "Евро"],
 	["KZT", "Казахстанский тенге"],
+	["BYN", "Белорусский рубль"],
+	["AMD", "Армянский драм"],
+	["AZN", "Азербайджанский манат"],
+	["KGS", "Кыргызский сом"],
+	["UZS", "Узбекский сум"],
+	["TJS", "Таджикский сомони"],
+	["MDL", "Молдавский лей"],
 	["THB", "Тайский бат"],
 	["CNY", "Китайский юань"],
 	["GEL", "Грузинский лари"],
@@ -1322,6 +1330,9 @@ export const MiniApp = () => {
 	const [dismissedInstallPrompt, setDismissedInstallPrompt] = useState(false);
 	const language = normalizeUILanguage(
 		user?.language || WebApp.initDataUnsafe.user?.language_code,
+	);
+	const registrationLocaleIncomplete = Boolean(
+		user && (!user.country.trim() || !user.currency.trim()),
 	);
 	const itemNameSuggestions = useMemo(() => {
 		const seen = new Set<string>();
@@ -2232,6 +2243,8 @@ export const MiniApp = () => {
 		setLoading(true);
 		setError("");
 		try {
+			const timezone =
+				Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 			const auth = await apiRequest<AuthResponse>("/auth/telegram/login", "", {
 				method: "POST",
 				body: JSON.stringify({
@@ -2242,6 +2255,9 @@ export const MiniApp = () => {
 					photo_url: telegramUser.photo_url || "",
 					auth_date: telegramUser.auth_date,
 					hash: telegramUser.hash,
+					country: browserRegistrationCountry(navigator.language),
+					language: navigator.language.split("-")[0] || "ru",
+					timezone,
 					outside_russia: true,
 				}),
 			});
@@ -4181,11 +4197,32 @@ export const MiniApp = () => {
 		}
 	};
 
-	const saveProfile = async () => {
-		if (!editingProfile) return;
+	const openProfileEditor = () => {
+		if (!user) return;
+		setProfileEditorMode("profile");
+		setEditingProfile({
+			...user,
+			name: user.name || WebApp.initDataUnsafe.user?.first_name || "",
+			country: user.country || "RU",
+			language: user.language || "ru",
+			timezone:
+				user.timezone ||
+				Intl.DateTimeFormat().resolvedOptions().timeZone ||
+				"UTC",
+			notificationTime: user.notificationTime || "09:00",
+			currency: user.currency || "RUB",
+			dateFormat: user.dateFormat || "DD/MM/YYYY",
+		});
+	};
+
+	const saveProfile = async (profile: User | null = editingProfile) => {
+		if (!profile) return;
+		const shouldBootstrapSpace = Boolean(
+			user && (!user.country.trim() || !user.currency.trim()),
+		);
 		const profileToSave = {
-			...editingProfile,
-			name: editingProfile.name.trim(),
+			...profile,
+			name: profile.name.trim(),
 		};
 		if (previewMode) {
 			setUser(profileToSave);
@@ -4199,6 +4236,9 @@ export const MiniApp = () => {
 				method: "PUT",
 				body: JSON.stringify(profileToSave),
 			});
+			const freshSpaces = shouldBootstrapSpace
+				? await apiRequest<Space[]>("/spaces", token)
+				: null;
 			if (profileEditorMode === "notifications") {
 				await apiRequest("/me/notification-channels", token, {
 					method: "PUT",
@@ -4214,6 +4254,11 @@ export const MiniApp = () => {
 				});
 			}
 			setUser(saved);
+			if (freshSpaces) {
+				setSpaces(freshSpaces);
+				setSpaceID(freshSpaces[0]?.id || 0);
+				setView("overview");
+			}
 			setEditingProfile(null);
 			setNotice(uiText(language, "profileSaved"));
 		} catch (err) {
@@ -4956,6 +5001,26 @@ export const MiniApp = () => {
 			/>
 		);
 	if (error && !token) return <TelegramEntry error={error} />;
+	if (token && user && registrationLocaleIncomplete) {
+		const localeDraft = editingProfile || {
+			...user,
+			language: user.language || "ru",
+			timezone:
+				user.timezone ||
+				Intl.DateTimeFormat().resolvedOptions().timeZone ||
+				"UTC",
+			notificationTime: user.notificationTime || "09:00",
+			dateFormat: user.dateFormat || "DD/MM/YYYY",
+		};
+		return (
+			<RegistrationLocaleSetup
+				user={localeDraft}
+				saving={saving}
+				onChange={setEditingProfile}
+				onSave={() => void saveProfile(localeDraft)}
+			/>
+		);
+	}
 	if (view === "review") {
 		return (
 			<div
@@ -5284,6 +5349,7 @@ export const MiniApp = () => {
 								members={members}
 								hasAnyExpenses={expenses.length > 0}
 								pendingCandidates={pendingReviewCandidates}
+								onConfigureLocale={openProfileEditor}
 								onCategory={openCategory}
 								onManageBudgets={() => setView("categories")}
 								onExpense={(expense) =>
@@ -5445,24 +5511,7 @@ export const MiniApp = () => {
 								onLinkTelegram={() => setTelegramLinkOpen(true)}
 								onAvatarUpload={(file) => void uploadProfileAvatar(file)}
 								onAvatarRemove={() => void removeProfileAvatar()}
-								onEdit={() => {
-									if (!user) return;
-									setProfileEditorMode("profile");
-									setEditingProfile({
-										...user,
-										name:
-											user.name || WebApp.initDataUnsafe.user?.first_name || "",
-										country: user.country || "RU",
-										language: user.language || "ru",
-										timezone:
-											user.timezone ||
-											Intl.DateTimeFormat().resolvedOptions().timeZone ||
-											"Europe/Moscow",
-										notificationTime: user.notificationTime || "09:00",
-										currency: user.currency || "RUB",
-										dateFormat: user.dateFormat || "DD.MM.YYYY",
-									});
-								}}
+								onEdit={openProfileEditor}
 								onManageNotifications={() => {
 									void openNotificationSettings();
 								}}
@@ -7013,6 +7062,7 @@ const Overview = ({
 	onReviewCandidate,
 	onCapture,
 	onManual,
+	onConfigureLocale,
 }: {
 	user: User | null;
 	language: UILanguage;
@@ -7037,9 +7087,19 @@ const Overview = ({
 	onReviewCandidate: (candidate: ReviewCandidate) => void;
 	onCapture: (mode?: CaptureMode) => void;
 	onManual: () => void;
+	onConfigureLocale: () => void;
 }) => {
 	if (!hasAnyExpenses && plans.length === 0 && pendingCandidates.length === 0) {
-		return <FirstExpenseEmpty onCapture={onCapture} onManual={onManual} />;
+		return (
+			<FirstExpenseEmpty
+				country={user?.country || "RU"}
+				currency={currency}
+				language={language}
+				onCapture={onCapture}
+				onManual={onManual}
+				onConfigureLocale={onConfigureLocale}
+			/>
+		);
 	}
 
 	const month = new Intl.DateTimeFormat(language, { month: "long" }).format(
@@ -7294,11 +7354,19 @@ const Overview = ({
 };
 
 const FirstExpenseEmpty = ({
+	country,
+	currency,
+	language,
 	onCapture,
 	onManual,
+	onConfigureLocale,
 }: {
+	country: string;
+	currency: string;
+	language: UILanguage;
 	onCapture: (mode?: CaptureMode) => void;
 	onManual: () => void;
+	onConfigureLocale: () => void;
 }) => (
 	<section className="mini-first-expense">
 		<div className="mini-first-expense-mark">
@@ -7309,6 +7377,20 @@ const FirstExpenseEmpty = ({
 			<h1>Добавьте первый расход</h1>
 			<span>Напишите сумму, скажите её голосом или сфотографируйте чек.</span>
 		</div>
+		<button
+			className="mini-first-expense-locale"
+			type="button"
+			onClick={onConfigureLocale}
+		>
+			<span>
+				<small>Страна и валюта</small>
+				<strong>
+					{localizedRegionName(country, language)} ·{" "}
+					{localizedCurrencyName(currency, language)}
+				</strong>
+			</span>
+			<PencilSimple size={16} />
+		</button>
 		<button
 			className="mini-first-expense-primary"
 			type="button"
@@ -12486,6 +12568,73 @@ const CategoryEditor = ({
 	);
 };
 
+const RegistrationLocaleSetup = ({
+	user,
+	saving,
+	onChange,
+	onSave,
+}: {
+	user: User;
+	saving: boolean;
+	onChange: (user: User) => void;
+	onSave: () => void;
+}) => {
+	const language = normalizeUILanguage(user.language);
+	return (
+		<main className="mini-entry mini-locale-setup">
+			<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+			<div>
+				<p>Последний шаг</p>
+				<h1>Выберите страну и валюту</h1>
+				<span>
+					Они нужны для личного пространства и правильного отображения сумм.
+				</span>
+			</div>
+			<label>
+				{uiText(language, "country")}
+				<select
+					value={user.country}
+					onChange={(event) =>
+						onChange({ ...user, country: event.target.value })
+					}
+				>
+					<option value="">Выберите страну</option>
+					{countryOptions.map(([code]) => (
+						<option key={code} value={code}>
+							{localizedRegionName(code, language)}
+						</option>
+					))}
+				</select>
+			</label>
+			<label>
+				{uiText(language, "currency")}
+				<select
+					value={user.currency}
+					onChange={(event) =>
+						onChange({ ...user, currency: event.target.value })
+					}
+				>
+					<option value="">Выберите валюту</option>
+					{currencyOptions.map(([code]) => (
+						<option key={code} value={code}>
+							{code} — {localizedCurrencyName(code, language)}
+						</option>
+					))}
+				</select>
+			</label>
+			<button
+				className="mini-save"
+				type="button"
+				disabled={saving || !user.country || !user.currency}
+				onClick={onSave}
+			>
+				{saving ? "Сохраняем…" : "Продолжить"}
+			</button>
+			<small>Позже это можно изменить в настройках профиля.</small>
+		</main>
+	);
+};
+
 const ProfileEditor = ({
 	user,
 	mode,
@@ -13799,6 +13948,8 @@ const BrowserEntry = ({
 		setLoading(true);
 		setLocalError("");
 		try {
+			const timezone =
+				Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 			const auth = await apiRequest<AuthResponse>(
 				`/auth/${isPhone ? "phone" : "email"}/${authMode}/confirm`,
 				"",
@@ -13808,12 +13959,12 @@ const BrowserEntry = ({
 						name: name.trim(),
 						...(isPhone ? { phone: phone.trim() } : { email: email.trim() }),
 						code: code.trim(),
-						country: "RU",
+						country: isPhone
+							? "RU"
+							: browserRegistrationCountry(navigator.language),
 						language: navigator.language.split("-")[0] || "ru",
-						timezone:
-							Intl.DateTimeFormat().resolvedOptions().timeZone ||
-							"Europe/Moscow",
-						currency: "RUB",
+						timezone,
+						currency: isPhone ? "RUB" : "",
 						personal_data_consent: personalDataConsent,
 					}),
 				},
