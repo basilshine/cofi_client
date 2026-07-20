@@ -2201,6 +2201,57 @@
 .subscription-current .mini-profile-actions {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.subscription-renewal {
+	display: grid;
+	gap: 10px;
+	padding: 12px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-soft);
+}
+.subscription-renewal > div {
+	display: grid;
+	grid-template-columns: 24px minmax(0, 1fr);
+	align-items: start;
+	gap: 8px;
+}
+.subscription-renewal svg {
+	margin-top: 1px;
+	color: var(--mini-muted);
+}
+.subscription-renewal span {
+	display: grid;
+	gap: 3px;
+}
+.subscription-renewal b {
+	font-size: 12px;
+}
+.subscription-renewal small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	line-height: 1.45;
+}
+.subscription-renewal.is-enabled {
+	border-color: rgba(41, 69, 199, 0.25);
+	background: rgba(41, 69, 199, 0.055);
+}
+.subscription-renewal.is-enabled svg {
+	color: var(--mini-green);
+}
+.subscription-renewal button {
+	justify-self: start;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--mini-green);
+	font-size: 12px;
+	font-weight: 750;
+	text-decoration: underline;
+	text-underline-offset: 3px;
+}
+.subscription-renewal button:disabled {
+	opacity: 0.55;
+}
 .subscription-current .mini-profile-actions button:active,
 .subscription-packs button:active {
 	scale: 0.96;

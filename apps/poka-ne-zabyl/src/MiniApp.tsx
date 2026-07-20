@@ -477,6 +477,8 @@ type Quota = {
 	feedback_admin_enabled?: boolean;
 	system_admin_enabled?: boolean;
 	maintenance_enabled?: boolean;
+	auto_renew_available?: boolean;
+	auto_renew_enabled?: boolean;
 };
 
 type AppNotification = {
@@ -1787,6 +1789,8 @@ export const MiniApp = () => {
 				feedback_admin_enabled: true,
 				system_admin_enabled: true,
 				maintenance_enabled: false,
+				auto_renew_available: true,
+				auto_renew_enabled: false,
 			};
 			setQuota(previewQuota);
 			setAccountQuota(previewQuota);
@@ -2075,7 +2079,12 @@ export const MiniApp = () => {
 				token,
 				{
 					method: "POST",
-					body: JSON.stringify({ product_code: productCode }),
+					body: JSON.stringify({
+						product_code: productCode,
+						auto_renew:
+							productCode === "plus_30d" &&
+							Boolean(accountQuota?.auto_renew_available),
+					}),
 					signal: controller.signal,
 				},
 			);
@@ -2091,6 +2100,42 @@ export const MiniApp = () => {
 				setOpeningLabel("");
 				setBillingLoading(false);
 			}
+		}
+	};
+
+	const updateSubscriptionAutoRenew = async (enabled: boolean) => {
+		if (!token || billingLoading) return;
+		setBillingLoading(true);
+		setError("");
+		if (previewMode) {
+			setAccountQuota((current) =>
+				current ? { ...current, auto_renew_enabled: enabled } : current,
+			);
+			setBillingLoading(false);
+			return;
+		}
+		try {
+			const result = await apiRequest<{ auto_renew_enabled: boolean }>(
+				"/billing/subscription/auto-renew",
+				token,
+				{ method: "PATCH", body: JSON.stringify({ enabled }) },
+			);
+			setAccountQuota((current) =>
+				current
+					? { ...current, auto_renew_enabled: result.auto_renew_enabled }
+					: current,
+			);
+			setNotice(
+				result.auto_renew_enabled
+					? "Автопродление включено"
+					: "Автопродление отключено",
+			);
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Не удалось изменить подписку",
+			);
+		} finally {
+			setBillingLoading(false);
 		}
 	};
 
@@ -5860,6 +5905,9 @@ export const MiniApp = () => {
 								billingLoading={billingLoading}
 								onBack={() => setView("profile")}
 								onStartPlus={() => void startCheckout("plus_30d")}
+								onToggleAutoRenew={(enabled) =>
+									void updateSubscriptionAutoRenew(enabled)
+								}
 								onBuyPack={() => setPackPickerOpen(true)}
 							/>
 						)}
@@ -9563,6 +9611,7 @@ const SubscriptionView = ({
 	billingLoading,
 	onBack,
 	onStartPlus,
+	onToggleAutoRenew,
 	onBuyPack,
 }: {
 	language: UILanguage;
@@ -9570,9 +9619,12 @@ const SubscriptionView = ({
 	billingLoading: boolean;
 	onBack: () => void;
 	onStartPlus: () => void;
+	onToggleAutoRenew: (enabled: boolean) => void;
 	onBuyPack: () => void;
 }) => {
 	const plus = ["medium", "plus"].includes(quota?.plan || "");
+	const autoRenewAvailable = Boolean(quota?.auto_renew_available);
+	const autoRenewEnabled = Boolean(quota?.auto_renew_enabled);
 	const recurringLimit = quota?.recurring_limit || 0;
 	const recurringUsed = quota?.recurring_used || 0;
 	const allowanceLimit = plus ? recurringLimit : quota?.limit || 20;
@@ -9592,7 +9644,18 @@ const SubscriptionView = ({
 					welcome: "Приветственный набор",
 					purchased: "Куплено дополнительно",
 					total: "Доступно всего",
-					expires: "Следующее продление",
+					nextCharge: "Следующее списание",
+					validUntil: "Действует до",
+					autoRenewOn: "Автопродление включено",
+					autoRenewOff: "Автопродление выключено",
+					autoRenewPurchase: "Автопродление после оплаты",
+					autoRenewTerms:
+						"249 ₽ будут списываться каждые 30 дней. Автопродление можно отключить здесь в любой момент.",
+					autoRenewDisabledNote:
+						"Повторных списаний не будет. При следующей оплате Плюса автопродление включится.",
+					autoRenewUnavailable:
+						"Плюс действует 30 дней и пока продлевается только вручную.",
+					disableAutoRenew: "Отключить автопродление",
 					plusTitle: "Зачем нужен Плюс",
 					basicNote: "Для спокойного ручного учёта и знакомства с разборами.",
 					plusNote:
@@ -9638,7 +9701,18 @@ const SubscriptionView = ({
 						welcome: "Paquete de bienvenida",
 						purchased: "Comprado adicionalmente",
 						total: "Total disponible",
-						expires: "Próxima renovación",
+						nextCharge: "Próximo cobro",
+						validUntil: "Válido hasta",
+						autoRenewOn: "Renovación automática activada",
+						autoRenewOff: "Renovación automática desactivada",
+						autoRenewPurchase: "Renovación automática tras el pago",
+						autoRenewTerms:
+							"Se cobrarán 249 ₽ cada 30 días. Puedes desactivar la renovación aquí en cualquier momento.",
+						autoRenewDisabledNote:
+							"No habrá más cargos. La renovación automática se activará con el próximo pago de Plus.",
+						autoRenewUnavailable:
+							"Plus dura 30 días y por ahora solo se renueva manualmente.",
+						disableAutoRenew: "Desactivar renovación automática",
 						plusTitle: "Por qué elegir Plus",
 						basicNote: "Para el control manual y probar los registros rápidos.",
 						plusNote: "Para uso frecuente, planes y espacios compartidos.",
@@ -9682,7 +9756,18 @@ const SubscriptionView = ({
 						welcome: "Welcome allowance",
 						purchased: "Purchased allowance",
 						total: "Total available",
-						expires: "Next renewal",
+						nextCharge: "Next charge",
+						validUntil: "Valid until",
+						autoRenewOn: "Auto-renewal is on",
+						autoRenewOff: "Auto-renewal is off",
+						autoRenewPurchase: "Auto-renewal after payment",
+						autoRenewTerms:
+							"249 ₽ will be charged every 30 days. You can turn off auto-renewal here at any time.",
+						autoRenewDisabledNote:
+							"There will be no further charges. Auto-renewal will start with your next Plus payment.",
+						autoRenewUnavailable:
+							"Plus lasts 30 days and can currently be renewed manually only.",
+						disableAutoRenew: "Turn off auto-renewal",
 						plusTitle: "Why choose Plus",
 						basicNote: "For manual tracking and trying quick additions.",
 						plusNote: "For regular use, planning, and shared spaces.",
@@ -9801,9 +9886,42 @@ const SubscriptionView = ({
 				</div>
 				{quota?.plan_expires_at && (
 					<small className="mini-plan-expiry">
-						{copy.expires}: {formatDateTime(quota.plan_expires_at, language)}
+						{autoRenewEnabled ? copy.nextCharge : copy.validUntil}:{" "}
+						{formatDateTime(quota.plan_expires_at, language)}
 					</small>
 				)}
+				<div
+					className={`subscription-renewal${autoRenewEnabled ? " is-enabled" : ""}`}
+				>
+					<div>
+						<ArrowClockwise size={18} weight="bold" />
+						<span>
+							<b>
+								{autoRenewEnabled
+									? copy.autoRenewOn
+									: plus
+										? copy.autoRenewOff
+										: copy.autoRenewPurchase}
+							</b>
+							<small>
+								{autoRenewAvailable
+									? plus && !autoRenewEnabled
+										? copy.autoRenewDisabledNote
+										: copy.autoRenewTerms
+									: copy.autoRenewUnavailable}
+							</small>
+						</span>
+					</div>
+					{plus && autoRenewEnabled && (
+						<button
+							type="button"
+							disabled={billingLoading}
+							onClick={() => onToggleAutoRenew(false)}
+						>
+							{copy.disableAutoRenew}
+						</button>
+					)}
+				</div>
 				<div className="mini-profile-actions">
 					<button type="button" disabled={billingLoading} onClick={onStartPlus}>
 						{billingLoading
@@ -14340,6 +14458,21 @@ const notificationTitle = (type: string, language: UILanguage) => {
 			ru: "Подписка закончилась",
 			en: "Subscription ended",
 			es: "La suscripción terminó",
+		},
+		subscription_renewal_upcoming: {
+			ru: "Скоро продление Плюса",
+			en: "Plus renewal coming up",
+			es: "Próxima renovación de Plus",
+		},
+		subscription_renewal_failed: {
+			ru: "Не удалось продлить Плюс",
+			en: "Plus renewal failed",
+			es: "No se pudo renovar Plus",
+		},
+		subscription_renewed: {
+			ru: "Плюс автоматически продлён",
+			en: "Plus renewed automatically",
+			es: "Plus se renovó automáticamente",
 		},
 		capture_review_ready: {
 			ru: "Разбор готов",

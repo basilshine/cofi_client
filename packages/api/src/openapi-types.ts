@@ -5778,7 +5778,7 @@ export interface paths {
         post: {
             parameters: {
                 query?: {
-                    /** @description Space whose shared tenant receives the purchased allowance. */
+                    /** @description Legacy navigation context. Billing always targets the authenticated user's personal tenant. */
                     space_id?: number;
                 };
                 header?: never;
@@ -5790,6 +5790,8 @@ export interface paths {
                     "application/json": {
                         /** @enum {string} */
                         product_code: "plus_30d" | "pack_100" | "pack_500" | "pack_1500";
+                        /** @description Request a recurring parent payment for Plus. Ignored for packs and while recurring payments are disabled. */
+                        auto_renew?: boolean;
                     };
                 };
             };
@@ -5830,6 +5832,60 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/subscription/auto-renew": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change Plus auto-renewal
+         * @description Disables an existing recurring subscription or re-enables it when a valid recurring parent payment exists.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        enabled: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Updated auto-renewal state */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            auto_renew_enabled: boolean;
+                        };
+                    };
+                };
+                /** @description A new recurring parent payment is required before auto-renewal can be enabled. */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/billing/robokassa/result": {
@@ -9217,6 +9273,10 @@ export interface components {
             system_admin_enabled?: boolean;
             /** @description Whether regular users are currently blocked by maintenance mode. */
             maintenance_enabled?: boolean;
+            /** @description Whether recurring Robokassa payments are enabled for this deployment. */
+            auto_renew_available?: boolean;
+            /** @description Whether the personal Plus subscription will renew automatically. */
+            auto_renew_enabled?: boolean;
         };
         /** @description At least one of message, photo, or audio is required. */
         FeedbackCreateRequest: {
