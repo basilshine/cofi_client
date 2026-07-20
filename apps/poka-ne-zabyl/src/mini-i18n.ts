@@ -871,6 +871,20 @@ export const normalizeUILanguage = (value?: string): UILanguage => {
 export const uiText = (language: UILanguage, key: UIMessage) =>
 	messages[language][key];
 
+export const spaceMemberCountText = (count: number, language: UILanguage) => {
+	if (count <= 1)
+		return language === "ru"
+			? "Только вы"
+			: language === "es"
+				? "Solo tú"
+				: "Only you";
+	if (language === "ru") {
+		const form = new Intl.PluralRules("ru").select(count);
+		return `${count} ${form === "one" ? "участник" : form === "few" ? "участника" : "участников"}`;
+	}
+	return `${count} ${language === "es" ? "participantes" : "members"}`;
+};
+
 export const languageOptions: [UILanguage, string][] = [
 	["ru", "Русский"],
 	["en", "English"],

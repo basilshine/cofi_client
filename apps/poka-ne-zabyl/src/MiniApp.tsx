@@ -61,6 +61,7 @@ import {
 	localizedCurrencyName,
 	localizedRegionName,
 	normalizeUILanguage,
+	spaceMemberCountText,
 	uiText,
 } from "./mini-i18n";
 import {
@@ -141,6 +142,7 @@ type Space = {
 	name: string;
 	description?: string;
 	currency: string;
+	member_count?: number;
 };
 
 type SpaceMember = {
@@ -1548,6 +1550,7 @@ export const MiniApp = () => {
 					is_personal: true,
 					name: "Личные расходы",
 					currency: "RUB",
+					member_count: 1,
 				},
 				{
 					id: 2,
@@ -1556,6 +1559,7 @@ export const MiniApp = () => {
 					is_personal: false,
 					name: "Семейный бюджет",
 					currency: "RUB",
+					member_count: 2,
 				},
 			]);
 			setMembers([
@@ -3308,7 +3312,13 @@ export const MiniApp = () => {
 				: space.owner_user_id === user?.id
 					? "spaceOwner"
 					: "spaceMember",
-		)} · ${space.currency}`;
+		)} · ${space.currency} · ${spaceMemberCountText(
+			Math.max(
+				1,
+				space.member_count || (space.id === spaceID ? members.length : 0),
+			),
+			language,
+		)}`;
 	const currency = user?.currency || activeSpace?.currency || "RUB";
 	const overviewExpenses = expensesForMonth(expenses);
 	const overviewTotal = overviewExpenses.reduce(
