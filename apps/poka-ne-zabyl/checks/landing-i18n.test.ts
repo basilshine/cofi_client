@@ -27,6 +27,17 @@ test("landing app links preserve the selected language", () => {
 	);
 });
 
+test("landing app links keep ad attribution without leaking other query data", () => {
+	assert.equal(
+		landingAppPath(
+			"ru",
+			"view=subscription",
+			"?yclid=123&utm_source=yandex&preview=1",
+		),
+		"/app?view=subscription&yclid=123&utm_source=yandex",
+	);
+});
+
 test("legal links preserve the selected language", () => {
 	assert.equal(legalPagePath("ru", "consent"), "/consent");
 	assert.equal(legalPagePath("en", "privacy"), "/en/privacy");

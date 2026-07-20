@@ -14,8 +14,26 @@ export const preferredLandingLocale = (
 	return language === "ru" || language === "es" ? language : "en";
 };
 
-export const landingAppPath = (locale: LandingLocale, query = "") => {
+const ATTRIBUTION_PARAMS = [
+	"yclid",
+	"utm_source",
+	"utm_medium",
+	"utm_campaign",
+	"utm_term",
+	"utm_content",
+] as const;
+
+export const landingAppPath = (
+	locale: LandingLocale,
+	query = "",
+	landingQuery = typeof window === "undefined" ? "" : window.location.search,
+) => {
+	const source = new URLSearchParams(landingQuery);
 	const params = new URLSearchParams(query);
+	for (const name of ATTRIBUTION_PARAMS) {
+		const value = source.get(name);
+		if (value && !params.has(name)) params.set(name, value);
+	}
 	if (locale !== "ru") params.set("lang", locale);
 	const suffix = params.toString();
 	return `/app${suffix ? `?${suffix}` : ""}`;
