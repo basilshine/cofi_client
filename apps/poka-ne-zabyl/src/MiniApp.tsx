@@ -2067,7 +2067,7 @@ export const MiniApp = () => {
 		const onInstalled = () => {
 			setBrowserInstallPrompt(null);
 			setHomeScreenStatus("added");
-			setNotice("Приложение добавлено на главный экран");
+			setNotice(browserAuthCopy(language).installedNotice);
 		};
 		window.addEventListener("beforeinstallprompt", onInstallPrompt);
 		window.addEventListener("appinstalled", onInstalled);
@@ -2075,17 +2075,17 @@ export const MiniApp = () => {
 			window.removeEventListener("beforeinstallprompt", onInstallPrompt);
 			window.removeEventListener("appinstalled", onInstalled);
 		};
-	}, []);
+	}, [language]);
 
 	useEffect(() => {
 		const handleHomeScreenAdded = () => {
 			setHomeScreenStatus("added");
-			setNotice("Приложение добавлено на главный экран");
+			setNotice(browserAuthCopy(language).installedNotice);
 		};
 		telegramWebApp.onEvent("homeScreenAdded", handleHomeScreenAdded);
 		return () =>
 			telegramWebApp.offEvent("homeScreenAdded", handleHomeScreenAdded);
-	}, []);
+	}, [language]);
 
 	const login = async () => {
 		try {
@@ -3936,7 +3936,7 @@ export const MiniApp = () => {
 	const installOnHomeScreen = async () => {
 		if (WebApp.initData && telegramWebApp.addToHomeScreen) {
 			telegramWebApp.addToHomeScreen();
-			setNotice("Подтвердите добавление приложения на главный экран");
+			setNotice(browserAuthCopy(language).confirmInstallNotice);
 			return;
 		}
 		if (browserInstallPrompt) {
@@ -6290,13 +6290,13 @@ export const MiniApp = () => {
 				<div className="capture-status is-quota is-install" role="status">
 					<House size={22} weight="fill" />
 					<div>
-						<strong>Пока не забыл всегда под рукой</strong>
-						<small>Добавьте приложение на главный экран телефона.</small>
+						<strong>{browserAuthCopy(language).installTitle}</strong>
+						<small>{browserAuthCopy(language).installBody}</small>
 					</div>
 					<button
 						className="capture-status-dismiss"
 						type="button"
-						aria-label="Закрыть"
+						aria-label={uiText(language, "close")}
 						onClick={() => setDismissedInstallPrompt(true)}
 					>
 						<X size={17} />
@@ -6309,7 +6309,9 @@ export const MiniApp = () => {
 							void installOnHomeScreen();
 						}}
 					>
-						{browserInstallPrompt ? "Установить" : "Как добавить"}
+						{browserInstallPrompt
+							? browserAuthCopy(language).install
+							: browserAuthCopy(language).instruction}
 					</button>
 				</div>
 			)}
@@ -6409,7 +6411,10 @@ export const MiniApp = () => {
 			</nav>
 
 			{installGuideOpen && (
-				<InstallGuide onClose={() => setInstallGuideOpen(false)} />
+				<InstallGuide
+					language={language}
+					onClose={() => setInstallGuideOpen(false)}
+				/>
 			)}
 
 			{addChoiceOpen && (
@@ -15427,34 +15432,26 @@ const Modal = ({
 	);
 };
 
-const InstallGuide = ({ onClose }: { onClose: () => void }) => {
+const InstallGuide = ({
+	language,
+	onClose,
+}: {
+	language: UILanguage;
+	onClose: () => void;
+}) => {
+	const copy = browserAuthCopy(language);
 	const platform = homeScreenPlatform(navigator.userAgent);
 	const steps =
 		platform === "ios"
-			? [
-					"Откройте эту страницу в Safari.",
-					"Нажмите «Поделиться» в панели браузера.",
-					"Выберите «На экран Домой», затем «Добавить».",
-				]
+			? copy.installGuideIOS
 			: platform === "android"
-				? [
-						"Откройте меню браузера ⋮.",
-						"Выберите «Установить приложение» или «Добавить на главный экран».",
-						"Подтвердите установку.",
-					]
-				: [
-						"Откройте меню браузера.",
-						"Выберите «Установить Пока не забыл».",
-						"Подтвердите установку приложения.",
-					];
+				? copy.installGuideAndroid
+				: copy.installGuideDesktop;
 	return (
-		<Modal title="Добавить на главный экран" onClose={onClose}>
+		<Modal title={copy.installGuideTitle} onClose={onClose}>
 			<div className="install-guide">
 				<House size={34} weight="fill" />
-				<p>
-					Приложение откроется отдельным окном и будет доступно как обычная
-					иконка.
-				</p>
+				<p>{copy.installGuideBody}</p>
 				<ol>
 					{steps.map((step) => (
 						<li key={step}>{step}</li>
@@ -15466,7 +15463,7 @@ const InstallGuide = ({ onClose }: { onClose: () => void }) => {
 				type="button"
 				onClick={onClose}
 			>
-				Понятно
+				{copy.installGuideDone}
 			</button>
 		</Modal>
 	);
@@ -16184,7 +16181,9 @@ const BrowserEntry = ({
 					</div>
 				)}
 			</section>
-			{installGuideOpen && <InstallGuide onClose={onCloseInstallGuide} />}
+			{installGuideOpen && (
+				<InstallGuide language={language} onClose={onCloseInstallGuide} />
+			)}
 		</main>
 	);
 };
