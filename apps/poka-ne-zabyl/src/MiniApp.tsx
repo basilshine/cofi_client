@@ -13732,6 +13732,11 @@ const BrowserEntry = ({
 		setMethod(nextMethod);
 		resetCodeStep();
 	};
+	const changeAuthMode = (nextMode: "login" | "register") => {
+		setAuthMode(nextMode);
+		setPersonalDataConsent(false);
+		resetCodeStep();
+	};
 	const isPhone = method === "phone";
 	const contact = isPhone ? phone.trim() : email.trim();
 	const phoneDigits = phone.replace(/\D/g, "");
@@ -13848,24 +13853,21 @@ const BrowserEntry = ({
 			<section className="browser-auth-panel">
 				{!codeSent && (
 					<>
-						<div className="browser-region-picker">
-							<span>Где вы сейчас находитесь?</span>
-							<div role="group" aria-label="Местоположение">
-								<button
-									type="button"
-									className={region === "ru" ? "active" : ""}
-									onClick={() => changeRegion("ru")}
-								>
-									В России
-								</button>
-								<button
-									type="button"
-									className={region === "outside" ? "active" : ""}
-									onClick={() => changeRegion("outside")}
-								>
-									За пределами
-								</button>
-							</div>
+						<div className="browser-auth-heading">
+							<span>
+								{method === "telegram"
+									? "Без нового пароля"
+									: authMode === "register"
+										? "Первый шаг"
+										: "С возвращением"}
+							</span>
+							<h2>
+								{method === "telegram"
+									? "Войти через Telegram"
+									: authMode === "register"
+										? "Создать аккаунт"
+										: "Войти"}
+							</h2>
 						</div>
 						<div
 							className="browser-auth-tabs"
@@ -13898,6 +13900,15 @@ const BrowserEntry = ({
 								</button>
 							)}
 						</div>
+						<button
+							className="browser-region-link"
+							type="button"
+							onClick={() => changeRegion(region === "ru" ? "outside" : "ru")}
+						>
+							{region === "ru"
+								? "Я нахожусь за пределами России"
+								: "Я нахожусь в России"}
+						</button>
 					</>
 				)}
 				{method === "telegram" ? (
@@ -14011,33 +14022,6 @@ const BrowserEntry = ({
 							</div>
 						) : (
 							<>
-								<div
-									className="browser-email-modes"
-									aria-label="Действие с почтой"
-								>
-									<button
-										type="button"
-										className={authMode === "login" ? "active" : ""}
-										onClick={() => {
-											setAuthMode("login");
-											resetCodeStep();
-											setPersonalDataConsent(false);
-										}}
-									>
-										Войти
-									</button>
-									<button
-										type="button"
-										className={authMode === "register" ? "active" : ""}
-										onClick={() => {
-											setAuthMode("register");
-											resetCodeStep();
-											setPersonalDataConsent(false);
-										}}
-									>
-										Регистрация
-									</button>
-								</div>
 								{authMode === "register" && (
 									<label>
 										Имя
@@ -14101,8 +14085,27 @@ const BrowserEntry = ({
 								<small>
 									{authMode === "register"
 										? `Пароль не нужен — вход подтверждается кодом ${isPhone ? "из SMS" : "из письма"}.`
-										: `Введите ${isPhone ? "номер" : "почту"}, указанные при регистрации или в профиле.`}
+										: isPhone
+											? "Введите номер, указанный при регистрации или в профиле."
+											: "Введите почту, указанную при регистрации или в профиле."}
 								</small>
+								<div className="browser-auth-mode-switch">
+									<span>
+										{authMode === "register"
+											? "Уже есть аккаунт?"
+											: "Ещё нет аккаунта?"}
+									</span>
+									<button
+										type="button"
+										onClick={() =>
+											changeAuthMode(
+												authMode === "register" ? "login" : "register",
+											)
+										}
+									>
+										{authMode === "register" ? "Войти" : "Создать"}
+									</button>
+								</div>
 							</>
 						)}
 					</div>
