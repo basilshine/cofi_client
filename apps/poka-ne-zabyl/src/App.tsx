@@ -112,29 +112,76 @@ const AppButton = ({ light = false }: { light?: boolean }) => (
 
 const captureStories = [
 	{
-		type: "input",
-		step: "01 / 03",
-		label: "Вы вводите",
-		caption: "Напишите расход одной фразой",
-		image: "/pwa-capture-input.png",
+		mode: "voice",
+		stage: "input",
+		phase: "Запишите голосом",
+		caption: "Скажите сумму и назначение расхода",
+		image: "/pwa-flow-voice-input.png",
 		offset: "0s",
 	},
 	{
-		type: "review",
-		step: "02 / 03",
-		label: "Сервис предлагает",
-		caption: "Исправьте данные, сохраните или удалите запись",
-		image: "/pwa-capture-review.png",
-		actionsImage: "/pwa-capture-actions.png",
+		mode: "voice",
+		stage: "review",
+		phase: "Проверьте запись",
+		caption: "Приложение заполнит сумму, продавца и категорию",
+		image: "/pwa-flow-voice-review.png",
+		offset: "-32s",
+	},
+	{
+		mode: "voice",
+		stage: "saved",
+		phase: "Сохраните расход",
+		caption: "Подтверждённая запись появится в истории",
+		image: "/pwa-flow-voice-saved.png",
+		offset: "-28s",
+	},
+	{
+		mode: "text",
+		stage: "input",
+		phase: "Напишите текстом",
+		caption: "Достаточно одной обычной фразы",
+		image: "/pwa-flow-text-input.png",
+		offset: "-24s",
+	},
+	{
+		mode: "text",
+		stage: "review",
+		phase: "Исправьте при необходимости",
+		caption: "Все распознанные поля остаются доступными",
+		image: "/pwa-flow-text-review.png",
+		offset: "-20s",
+	},
+	{
+		mode: "text",
+		stage: "saved",
+		phase: "Подтвердите результат",
+		caption: "До подтверждения сервис ничего не решает за вас",
+		image: "/pwa-flow-text-saved.png",
+		offset: "-16s",
+	},
+	{
+		mode: "photo",
+		stage: "input",
+		phase: "Сфотографируйте чек",
+		caption: "Можно снять чек или выбрать фото из галереи",
+		image: "/pwa-flow-photo-input.png",
 		offset: "-12s",
 	},
 	{
-		type: "saved",
-		step: "03 / 03",
-		label: "Вы подтверждаете",
-		caption: "И только тогда расход появляется в истории",
-		image: "/pwa-capture-saved.png",
-		offset: "-6s",
+		mode: "photo",
+		stage: "review",
+		phase: "Сверьте позиции",
+		caption: "Проверьте магазин, сумму и содержимое чека",
+		image: "/pwa-flow-photo-review.png",
+		offset: "-8s",
+	},
+	{
+		mode: "photo",
+		stage: "saved",
+		phase: "Получите готовую запись",
+		caption: "Расход сохранится вместе с распознанными позициями",
+		image: "/pwa-flow-photo-saved.png",
+		offset: "-4s",
 	},
 ] as const;
 
@@ -146,23 +193,27 @@ const CaptureStory = () => (
 		{captureStories.map((story) => (
 			<figure
 				aria-hidden="true"
-				className={`story-scene capture-fragment capture-fragment--${story.type}`}
-				key={story.type}
+				className={`story-scene capture-fragment capture-fragment--${story.mode} capture-fragment--${story.stage}`}
+				key={`${story.mode}-${story.phase}`}
 				style={{ "--scene-offset": story.offset } as CSSProperties}
 			>
 				<div className="capture-fragment__heading">
-					<span>{story.step}</span>
-					<strong>{story.label}</strong>
+					<span className="capture-fragment__mode">
+						{story.mode === "voice" && <Microphone size={18} weight="fill" />}
+						{story.mode === "text" && (
+							<ChatCircleText size={18} weight="fill" />
+						)}
+						{story.mode === "photo" && <Receipt size={18} weight="fill" />}
+						{story.mode === "voice"
+							? "Голос"
+							: story.mode === "text"
+								? "Текст"
+								: "Фото чека"}
+					</span>
+					<strong>{story.phase}</strong>
 				</div>
 				<div className="capture-fragment__canvas">
 					<img src={story.image} alt="" />
-					{"actionsImage" in story && (
-						<img
-							className="capture-fragment__actions"
-							src={story.actionsImage}
-							alt=""
-						/>
-					)}
 				</div>
 				<figcaption>{story.caption}</figcaption>
 			</figure>
@@ -402,10 +453,10 @@ const LandingPage = () => {
 						</p>
 						<ul>
 							<li>
-								<Check size={18} /> Показывает, что распознал
+								<Check size={18} /> Принимает голос, текст и фото чека
 							</li>
 							<li>
-								<Check size={18} /> Не прячет сумму и категорию
+								<Check size={18} /> Показывает сумму, позиции и категорию
 							</li>
 							<li>
 								<Check size={18} /> Сохраняет только после подтверждения
