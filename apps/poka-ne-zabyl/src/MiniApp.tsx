@@ -5311,7 +5311,11 @@ export const MiniApp = () => {
 						onCancel={cancelBlockingLoad}
 					/>
 				) : savedReviewExpense ? (
-					<ReviewSaved expense={savedReviewExpense} onClose={closeReview} />
+					<ReviewSaved
+						expense={savedReviewExpense}
+						language={language}
+						onClose={closeReview}
+					/>
 				) : reviewDraft ? (
 					<ReviewEditor
 						draft={reviewDraft}
@@ -6114,6 +6118,7 @@ export const MiniApp = () => {
 
 			{captureOpen && (
 				<CaptureComposer
+					language={language}
 					purpose={capturePurpose}
 					initialMode={captureMode}
 					saving={captureSubmitting}
@@ -6455,6 +6460,7 @@ export const MiniApp = () => {
 			)}
 			{editingVendor && (
 				<VendorEditor
+					language={language}
 					vendor={editingVendor}
 					expenses={expenses}
 					saving={saving}
@@ -6547,6 +6553,7 @@ export const MiniApp = () => {
 			)}
 			{editingSpace && !invitingSpace && (
 				<SpaceEditor
+					language={language}
 					space={editingSpace}
 					canEditCurrency={editingSpace.owner_user_id === user?.id}
 					saving={saving}
@@ -7032,17 +7039,24 @@ const ReviewEditor = ({
 	return (
 		<main className="review-shell" data-enter-navigation>
 			<header className="review-topbar">
-				<button type="button" aria-label="Закрыть" onClick={onClose}>
+				<button
+					type="button"
+					aria-label={uiText(language, "close")}
+					onClick={onClose}
+				>
 					<X size={22} />
 				</button>
 				<div>
 					<span>{uiText(language, "brand")}</span>
 					<b>
-						{estimatedItemPhoto
-							? "Проверьте оценку"
-							: mediaURL
-								? "Проверьте чек"
-								: "Проверьте расход"}
+						{uiText(
+							language,
+							estimatedItemPhoto
+								? "reviewEstimate"
+								: mediaURL
+									? "reviewReceipt"
+									: "reviewExpense",
+						)}
 					</b>
 				</div>
 				<span className="review-currency">{draft.sourceCurrency}</span>
@@ -7053,12 +7067,17 @@ const ReviewEditor = ({
 					<summary>
 						<span>
 							<Receipt size={19} />
-							{estimatedItemPhoto ? "Исходное фото" : "Оригинал чека"}
+							{uiText(
+								language,
+								estimatedItemPhoto ? "sourcePhoto" : "originalReceipt",
+							)}
 						</span>
-						<em>{estimatedItemPhoto ? "Сравнить" : "Сверить"}</em>
+						<em>
+							{uiText(language, estimatedItemPhoto ? "compare" : "reconcile")}
+						</em>
 					</summary>
 					<figure className="review-source">
-						<img src={mediaURL} alt="Исходный чек" />
+						<img src={mediaURL} alt={uiText(language, "sourceReceipt")} />
 					</figure>
 				</details>
 			)}
@@ -7071,26 +7090,42 @@ const ReviewEditor = ({
 					<div>
 						<b>
 							{incompleteItems > 0
-								? `Заполните позиции: ${incompleteItems}`
+								? uiText(language, "fillItems").replace(
+										"{count}",
+										String(incompleteItems),
+									)
 								: estimatedItemPhoto
-									? "Цена оценена по фото"
+									? uiText(language, "priceEstimatedFromPhoto")
 									: totalMatches === false
-										? "Сумма не сходится"
+										? uiText(language, "totalMismatch")
 										: totalMatches
-											? "Сумма сошлась"
-											: "Проверьте позиции"}
+											? uiText(language, "totalMatches")
+											: uiText(language, "reviewItems")}
 						</b>
 						<small>
 							{estimatedItemPhoto
-								? "Проверьте название и сумму перед сохранением"
+								? uiText(language, "reviewNameAndAmount")
 								: draft.receiptTotal !== null && totalMatches === false
-									? `В чеке ${formatMoney(draft.receiptTotal, draft.sourceCurrency)}, в позициях ${formatMoney(total, draft.sourceCurrency)}`
-									: `Позиции: ${draft.items.length} · ${formatMoney(total, draft.sourceCurrency)}`}
+									? uiText(language, "receiptItemsAmounts")
+											.replace(
+												"{receipt}",
+												formatMoney(draft.receiptTotal, draft.sourceCurrency),
+											)
+											.replace(
+												"{items}",
+												formatMoney(total, draft.sourceCurrency),
+											)
+									: uiText(language, "itemsSummary")
+											.replace("{count}", String(draft.items.length))
+											.replace(
+												"{total}",
+												formatMoney(total, draft.sourceCurrency),
+											)}
 						</small>
 					</div>
 				</div>
 				<label className="review-field review-field--title">
-					<span>Название</span>
+					<span>{uiText(language, "title")}</span>
 					<input
 						value={draft.title}
 						onChange={(event) =>
@@ -7100,13 +7135,14 @@ const ReviewEditor = ({
 				</label>
 				<div className="review-meta">
 					<div className="review-field">
-						<span>Где покупали</span>
+						<span>{uiText(language, "purchasePlace")}</span>
 						<VendorAutocomplete
 							vendors={vendors}
-							ariaLabel="Где покупали"
-							placeholder={
-								sharedVendorName === null ? "Разные продавцы" : "Не определён"
-							}
+							ariaLabel={uiText(language, "purchasePlace")}
+							placeholder={uiText(
+								language,
+								sharedVendorName === null ? "multipleVendors" : "undetermined",
+							)}
 							value={sharedVendorName ?? ""}
 							onChange={(vendorName) => {
 								onChange({
@@ -7120,18 +7156,21 @@ const ReviewEditor = ({
 							}}
 						/>
 						<small className="review-field-hint">
-							Изменение применится ко всем позициям
+							{uiText(language, "applyVendorToAll")}
 						</small>
 						<button
 							className="review-item-vendor-toggle"
 							type="button"
 							onClick={() => setShowItemVendors((shown) => !shown)}
 						>
-							{showItemVendors ? "Скрыть продавцов позиций" : "Разные продавцы"}
+							{uiText(
+								language,
+								showItemVendors ? "hideItemVendors" : "multipleVendors",
+							)}
 						</button>
 					</div>
 					<label className="review-field">
-						<span>Дата</span>
+						<span>{uiText(language, "date")}</span>
 						<input
 							type="date"
 							value={draft.expenseDate}
@@ -7143,7 +7182,7 @@ const ReviewEditor = ({
 				</div>
 
 				<div className="review-lines-head">
-					<h2>Позиции</h2>
+					<h2>{uiText(language, "items")}</h2>
 					<span>{draft.items.length}</span>
 				</div>
 				<div className="review-lines">
@@ -7152,11 +7191,14 @@ const ReviewEditor = ({
 							<div className="review-line-head">
 								<span>
 									<b>{index + 1}</b>
-									Позиция
+									{uiText(language, "item")}
 								</span>
 								<button
 									type="button"
-									aria-label={`Удалить позицию ${index + 1}`}
+									aria-label={uiText(language, "removeItem").replace(
+										"{number}",
+										String(index + 1),
+									)}
 									onClick={() =>
 										applyItems(
 											draft.items.filter((_, itemIndex) => itemIndex !== index),
@@ -7167,7 +7209,10 @@ const ReviewEditor = ({
 								</button>
 							</div>
 							<input
-								aria-label={`Название позиции ${index + 1}`}
+								aria-label={uiText(language, "itemName").replace(
+									"{number}",
+									String(index + 1),
+								)}
 								value={item.name}
 								onChange={(event) =>
 									onChange({
@@ -7183,7 +7228,10 @@ const ReviewEditor = ({
 							<div className="review-line-details">
 								<div className="review-line-controls">
 									<AmountInput
-										ariaLabel={`Цена позиции ${index + 1}`}
+										ariaLabel={uiText(language, "itemPrice").replace(
+											"{number}",
+											String(index + 1),
+										)}
 										amount={item.amount}
 										onChange={(amount) =>
 											onChange({
@@ -7199,7 +7247,10 @@ const ReviewEditor = ({
 									<span>{draft.sourceCurrency}</span>
 								</div>
 								<select
-									aria-label={`Категория позиции ${index + 1}`}
+									aria-label={uiText(language, "itemCategory").replace(
+										"{number}",
+										String(index + 1),
+									)}
 									value={item.category_key || "other"}
 									onChange={(event) =>
 										onChange({
@@ -7223,8 +7274,11 @@ const ReviewEditor = ({
 								<VendorAutocomplete
 									className="review-line-vendor"
 									vendors={vendors}
-									ariaLabel={`Где купили позицию ${index + 1}`}
-									placeholder="Где купили"
+									ariaLabel={uiText(language, "itemPurchasePlace").replace(
+										"{number}",
+										String(index + 1),
+									)}
+									placeholder={uiText(language, "whereBought")}
 									value={item.vendor_name}
 									onChange={(vendorName) => {
 										applyItems(
@@ -7286,17 +7340,20 @@ const ReviewEditor = ({
 						})
 					}
 				>
-					<Plus size={17} weight="bold" /> Добавить позицию
+					<Plus size={17} weight="bold" /> {uiText(language, "addItem")}
 				</button>
 				<div className="review-total-row">
-					<span>Итого</span>
+					<span>{uiText(language, "total")}</span>
 					<strong>{formatMoney(total, draft.sourceCurrency)}</strong>
 				</div>
 				{error && <div className="mini-alert">{error}</div>}
 			</section>
 			<footer className="review-actions">
 				<button type="button" disabled={saving || invalid} onClick={onSave}>
-					{deleting ? "Подождите…" : saving ? "Сохраняем…" : "Сохранить расход"}
+					{uiText(
+						language,
+						deleting ? "wait" : saving ? "saving" : "saveExpense",
+					)}
 				</button>
 				<button
 					className="review-delete"
@@ -7305,7 +7362,7 @@ const ReviewEditor = ({
 					onClick={onDelete}
 				>
 					<Trash size={18} />
-					{deleting ? "Удаляем…" : "Удалить распознанный расход"}
+					{uiText(language, deleting ? "deleting" : "deleteRecognizedExpense")}
 				</button>
 			</footer>
 		</main>
@@ -7314,9 +7371,11 @@ const ReviewEditor = ({
 
 const ReviewSaved = ({
 	expense,
+	language,
 	onClose,
 }: {
 	expense: Expense;
+	language: UILanguage;
 	onClose: () => void;
 }) => {
 	const items = Array.isArray(expense.items) ? expense.items : [];
@@ -7329,12 +7388,12 @@ const ReviewSaved = ({
 			<div className="review-saved-mark">
 				<Check size={34} weight="bold" />
 			</div>
-			<p>Готово</p>
-			<h1>Расход сохранён</h1>
+			<p>{uiText(language, "done")}</p>
+			<h1>{uiText(language, "expenseSaved")}</h1>
 			<article>
 				<header>
 					<span>{expenseSellerName(expense)}</span>
-					<small>{formatDate(expense.expense_date)}</small>
+					<small>{formatDate(expense.expense_date, language)}</small>
 				</header>
 				{items.map((item) => (
 					<div key={item.id || item.name}>
@@ -7343,12 +7402,12 @@ const ReviewSaved = ({
 					</div>
 				))}
 				<footer>
-					<span>Итого</span>
+					<span>{uiText(language, "total")}</span>
 					<strong>{formatMoney(total, expense.currency)}</strong>
 				</footer>
 			</article>
 			<button type="button" onClick={onClose}>
-				Закрыть
+				{uiText(language, "close")}
 			</button>
 		</main>
 	);
@@ -7453,17 +7512,18 @@ const Overview = ({
 	return (
 		<section className="mini-view mini-overview">
 			<div className="mini-title">
-				<p>Привет{user?.name ? `, ${user.name.split(" ")[0]}` : ""}</p>
+				<p>
+					{uiText(language, "greeting")}
+					{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+				</p>
 				<h1>{monthName}</h1>
 			</div>
 			<div className="mini-overview-grid">
 				<div className="mini-overview-summary">
 					<div className="mini-total">
-						<span>В этом месяце</span>
+						<span>{uiText(language, "thisMonth")}</span>
 						<strong>{formatMoney(total, currency)}</strong>
-						<small>
-							{expenses.length} {expenseWord(expenses.length)}
-						</small>
+						<small>{expenseCountText(expenses.length, language)}</small>
 						<button
 							className="mini-total-plans"
 							type="button"
@@ -7602,9 +7662,9 @@ const Overview = ({
 					{participants.length > 1 && (
 						<section className="mini-home-splits">
 							<div className="mini-section-head">
-								<h2>Совместные расходы</h2>
+								<h2>{uiText(language, "sharedExpenses")}</h2>
 								<button type="button" onClick={onSplits}>
-									Все
+									{uiText(language, "all")}
 								</button>
 							</div>
 							<button
@@ -7621,9 +7681,15 @@ const Overview = ({
 											<span key={balance.key}>
 												<b>
 													{balance.debtorUserID === currentUserID
-														? `Вы должны ${balance.creditorName}`
+														? uiText(language, "youOwe").replace(
+																"{name}",
+																balance.creditorName,
+															)
 														: balance.creditorUserID === currentUserID
-															? `${balance.debtorName} должен вам`
+															? uiText(language, "owesYou").replace(
+																	"{name}",
+																	balance.debtorName,
+																)
 															: `${balance.debtorName} → ${balance.creditorName}`}
 												</b>
 												<strong>{formatMoney(balance.amount, currency)}</strong>
@@ -7631,8 +7697,8 @@ const Overview = ({
 										))
 									) : (
 										<span>
-											<b>Пока всё общее без разделения</b>
-											<small>Откройте расход, чтобы распределить доли</small>
+											<b>{uiText(language, "sharedNotSplit")}</b>
+											<small>{uiText(language, "openExpenseToSplit")}</small>
 										</span>
 									)}
 								</span>
@@ -7694,15 +7760,15 @@ const Overview = ({
 							);
 						})}
 						{categories.length === 0 && (
-							<Empty text="В этом месяце расходов пока нет" />
+							<Empty text={uiText(language, "noExpensesThisMonth")} />
 						)}
 					</div>
 				</div>
 				<div className="mini-overview-recent">
 					<div className="mini-section-head">
-						<h2>Последние</h2>
+						<h2>{uiText(language, "recent")}</h2>
 						<button type="button" onClick={onExpenses}>
-							Все
+							{uiText(language, "all")}
 						</button>
 					</div>
 					<ExpenseList
@@ -7739,9 +7805,9 @@ const FirstExpenseEmpty = ({
 			<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
 		</div>
 		<div className="mini-first-expense-copy">
-			<p>Личное пространство готово</p>
-			<h1>Добавьте первый расход</h1>
-			<span>Напишите сумму, скажите её голосом или сфотографируйте чек.</span>
+			<p>{uiText(language, "personalSpaceReady")}</p>
+			<h1>{uiText(language, "addFirstExpense")}</h1>
+			<span>{uiText(language, "firstExpenseHint")}</span>
 		</div>
 		<button
 			className="mini-first-expense-locale"
@@ -7749,7 +7815,7 @@ const FirstExpenseEmpty = ({
 			onClick={onConfigureLocale}
 		>
 			<span>
-				<small>Страна и валюта</small>
+				<small>{uiText(language, "countryAndCurrency")}</small>
 				<strong>
 					{localizedRegionName(country, language)} ·{" "}
 					{localizedCurrencyName(currency, language)}
@@ -7763,25 +7829,27 @@ const FirstExpenseEmpty = ({
 			onClick={() => onCapture()}
 		>
 			<Plus size={20} weight="bold" />
-			Добавить расход
+			{uiText(language, "addExpense")}
 		</button>
-		<div className="mini-first-expense-label">Или сразу</div>
+		<div className="mini-first-expense-label">
+			{uiText(language, "orDirectly")}
+		</div>
 		<div className="mini-first-expense-actions">
 			<button type="button" onClick={() => onCapture("text")}>
 				<ChatCircleText size={22} />
-				Текст
+				{uiText(language, "captureText")}
 			</button>
 			<button type="button" onClick={() => onCapture("voice")}>
 				<Microphone size={22} />
-				Голос
+				{uiText(language, "captureVoice")}
 			</button>
 			<button type="button" onClick={() => onCapture("photo")}>
 				<Camera size={22} />
-				Фото
+				{uiText(language, "capturePhoto")}
 			</button>
 			<button type="button" onClick={onManual}>
 				<NotePencil size={22} />
-				Вручную
+				{uiText(language, "captureManual")}
 			</button>
 		</div>
 	</section>
@@ -8041,6 +8109,7 @@ const ExpensesView = ({
 				/>
 			) : section === "splits" ? (
 				<SplitsView
+					language={language}
 					expenses={expenses}
 					splits={splits}
 					participants={participants}
@@ -8284,6 +8353,7 @@ const ExpensesView = ({
 };
 
 const SplitsView = ({
+	language,
 	expenses,
 	splits,
 	participants,
@@ -8291,6 +8361,7 @@ const SplitsView = ({
 	currency,
 	onOpenExpense,
 }: {
+	language: UILanguage;
 	expenses: Expense[];
 	splits: ExpenseSplit[];
 	participants: SpaceParticipant[];
@@ -8315,16 +8386,13 @@ const SplitsView = ({
 					<UsersThree size={21} weight="fill" />
 				</span>
 				<div>
-					<b>Доли совместных расходов</b>
-					<small>
-						Автор расхода оплачивает его целиком, остальные возвращают свои
-						доли.
-					</small>
+					<b>{uiText(language, "splitSharesTitle")}</b>
+					<small>{uiText(language, "splitSharesHint")}</small>
 				</div>
 			</div>
 			{balances.length > 0 && (
 				<section className="mini-split-balances">
-					<h2>Кто кому</h2>
+					<h2>{uiText(language, "whoOwesWhom")}</h2>
 					{balances.map((balance) => (
 						<div key={balance.key}>
 							<span className="mini-split-avatar">
@@ -8333,12 +8401,20 @@ const SplitsView = ({
 							<span>
 								<b>
 									{balance.debtorUserID === currentUserID
-										? `Вы должны ${balance.creditorName}`
+										? uiText(language, "youOwe").replace(
+												"{name}",
+												balance.creditorName,
+											)
 										: balance.creditorUserID === currentUserID
-											? `${balance.debtorName} должен вам`
-											: `${balance.debtorName} должен ${balance.creditorName}`}
+											? uiText(language, "owesYou").replace(
+													"{name}",
+													balance.debtorName,
+												)
+											: uiText(language, "owesAnother")
+													.replace("{debtor}", balance.debtorName)
+													.replace("{creditor}", balance.creditorName)}
 								</b>
-								<small>По разделённым расходам</small>
+								<small>{uiText(language, "splitBalanceHint")}</small>
 							</span>
 							<strong>{formatMoney(balance.amount, currency)}</strong>
 						</div>
@@ -8347,7 +8423,7 @@ const SplitsView = ({
 			)}
 			<section className="mini-split-expenses">
 				<div className="mini-section-head">
-					<h2>Разделённые расходы</h2>
+					<h2>{uiText(language, "splitExpenses")}</h2>
 					{splitExpenses.length > 0 && <span>{splitExpenses.length}</span>}
 				</div>
 				{splitExpenses.length > 0 ? (
@@ -8363,7 +8439,7 @@ const SplitsView = ({
 								<span className="mini-split-expense-main">
 									<span>
 										<b>{expense.title || expense.items[0]?.name}</b>
-										<small>{formatDate(expense.expense_date)}</small>
+										<small>{formatDate(expense.expense_date, language)}</small>
 									</span>
 									<strong>{formatMoney(money.amount, money.currency)}</strong>
 								</span>
@@ -8376,7 +8452,8 @@ const SplitsView = ({
 												)}
 											</i>
 											<small>
-												{split.participant?.display_name || "Участник"}
+												{split.participant?.display_name ||
+													uiText(language, "participant")}
 											</small>
 											<b>{formatMoney(split.amount, money.currency)}</b>
 										</span>
@@ -8388,8 +8465,8 @@ const SplitsView = ({
 				) : (
 					<div className="mini-split-empty">
 						<ArrowsLeftRight size={24} />
-						<b>Разделённых расходов пока нет</b>
-						<small>Откройте любой расход и выберите «Разделить».</small>
+						<b>{uiText(language, "noSplitExpenses")}</b>
+						<small>{uiText(language, "openAnyExpenseToSplit")}</small>
 					</div>
 				)}
 			</section>
@@ -8816,7 +8893,7 @@ const ExpenseItemList = ({
 					</span>
 					<span className="mini-expense-amount">
 						<b>{formatMoney(money.amount, money.currency)}</b>
-						<small>{formatDate(row.expense.expense_date)}</small>
+						<small>{formatDate(row.expense.expense_date, language)}</small>
 					</span>
 				</button>
 			);
@@ -8867,7 +8944,7 @@ const GroupedExpenseItemList = ({
 							>
 								<b>{expense.title || rows[0].item.name || "Расход"}</b>
 								<small>
-									{formatDate(expense.expense_date)} · {rows.length}{" "}
+									{formatDate(expense.expense_date, language)} · {rows.length}{" "}
 									{itemWord(rows.length)}
 								</small>
 								{author && (
@@ -8941,7 +9018,7 @@ const ExpenseList = ({
 							{expense.items
 								.map((item) => item.name)
 								.slice(0, 2)
-								.join(", ") || formatDate(expense.expense_date)}
+								.join(", ") || formatDate(expense.expense_date, language)}
 						</small>
 						{author && (
 							<small className="mini-record-author">
@@ -8951,7 +9028,7 @@ const ExpenseList = ({
 					</span>
 					<span className="mini-expense-amount">
 						<b>{formatMoney(money.amount, money.currency)}</b>
-						<small>{formatDate(expense.expense_date)}</small>
+						<small>{formatDate(expense.expense_date, language)}</small>
 					</span>
 				</button>
 			);
@@ -9018,7 +9095,7 @@ const CaptureSourceViewer = ({
 				<div>
 					<b>{captureSourceLabel(viewer.capture)}</b>
 					{viewer.capture.created_at && (
-						<small>{formatDate(viewer.capture.created_at)}</small>
+						<small>{formatDate(viewer.capture.created_at, language)}</small>
 					)}
 					<SourceExpiryNote capture={viewer.capture} language={language} />
 				</div>
@@ -9287,16 +9364,14 @@ const VendorsView = ({
 		</button>
 		<div className="mini-title-row">
 			<div className="mini-title">
-				<h1>Продавцы</h1>
+				<h1>{uiText(language, "vendorsTitle")}</h1>
 			</div>
 			<button className="mini-add-button" type="button" onClick={onAdd}>
 				<Plus size={18} weight="bold" />
-				Добавить
+				{uiText(language, "add")}
 			</button>
 		</div>
-		<p className="mini-intro">
-			Объединяйте название магазина и юридическое имя из чека.
-		</p>
+		<p className="mini-intro">{uiText(language, "vendorsIntro")}</p>
 		<div className="mini-vendors">
 			{vendors.map((vendor) => (
 				<button key={vendor.id} type="button" onClick={() => onEdit(vendor)}>
@@ -9307,13 +9382,13 @@ const VendorsView = ({
 						<b>{vendor.name}</b>
 						<small>
 							{vendor.aliases?.map((alias) => alias.alias).join(", ") ||
-								"Псевдонимов пока нет"}
+								uiText(language, "noAliases")}
 						</small>
 					</span>
 					<PencilSimple size={18} />
 				</button>
 			))}
-			{vendors.length === 0 && <Empty text="Продавцов пока нет" />}
+			{vendors.length === 0 && <Empty text={uiText(language, "noVendors")} />}
 		</div>
 	</section>
 );
@@ -9356,12 +9431,12 @@ const SpacesView = ({
 			</button>
 			<div className="mini-title-row">
 				<div className="mini-title">
-					<p>Личные и общие</p>
-					<h1>Пространства</h1>
+					<p>{uiText(language, "personalAndShared")}</p>
+					<h1>{uiText(language, "spaces")}</h1>
 				</div>
 				<button className="mini-add-button" type="button" onClick={onAdd}>
 					<Plus size={18} weight="bold" />
-					Добавить
+					{uiText(language, "add")}
 				</button>
 			</div>
 			<div className="mini-spaces">
@@ -9380,7 +9455,10 @@ const SpacesView = ({
 						<button
 							className="mini-icon-button"
 							type="button"
-							aria-label={`Настроить ${space.name}`}
+							aria-label={uiText(language, "configureSpace").replace(
+								"{name}",
+								space.name,
+							)}
 							onClick={() => onEdit(space)}
 						>
 							<GearSix size={19} />
@@ -9388,9 +9466,16 @@ const SpacesView = ({
 					</article>
 				))}
 			</div>
-			{spaces.length === 0 && <Empty text="Создайте первое пространство" />}
+			{spaces.length === 0 && (
+				<Empty text={uiText(language, "createFirstSpace")} />
+			)}
 			<div className="mini-section-head">
-				<h2>Участники · {members.length}</h2>
+				<h2>
+					{uiText(language, "membersCount").replace(
+						"{count}",
+						String(members.length),
+					)}
+				</h2>
 				{onInvite && activeSpace && (
 					<button
 						type="button"
@@ -9398,7 +9483,7 @@ const SpacesView = ({
 						onClick={() => onInvite(activeSpace)}
 					>
 						<PaperPlaneTilt size={17} weight="bold" />
-						Пригласить
+						{uiText(language, "invite")}
 					</button>
 				)}
 			</div>
@@ -9408,17 +9493,24 @@ const SpacesView = ({
 						canManageMembers && activeSpace?.owner_user_id !== member.user_id;
 					return (
 						<div key={member.user_id}>
-							<span>{(member.name || "У").slice(0, 1).toUpperCase()}</span>
+							<span>
+								{(member.name || uiText(language, "user"))
+									.slice(0, 1)
+									.toUpperCase()}
+							</span>
 							<p>
-								<b>{member.name || "Пользователь"}</b>
-								<small>{memberRole(member.role)}</small>
+								<b>{member.name || uiText(language, "user")}</b>
+								<small>{memberRole(member.role, language)}</small>
 							</p>
 							{canRemove && (
 								<button
 									className="mini-icon-button mini-member-remove"
 									type="button"
 									disabled={saving}
-									aria-label={`Удалить ${member.name || "участника"}`}
+									aria-label={uiText(language, "removeMember").replace(
+										"{name}",
+										member.name || uiText(language, "participant"),
+									)}
 									onClick={() => onRemoveMember(member)}
 								>
 									<Trash size={18} />
@@ -11103,6 +11195,7 @@ const FeedbackMediaModal = ({
 );
 
 const CaptureComposer = ({
+	language,
 	purpose,
 	initialMode,
 	saving,
@@ -11111,6 +11204,7 @@ const CaptureComposer = ({
 	onManual,
 	onSubmit,
 }: {
+	language: UILanguage;
 	purpose: CapturePurpose;
 	initialMode: CaptureMode;
 	saving: boolean;
@@ -11175,7 +11269,7 @@ const CaptureComposer = ({
 	const startRecording = async () => {
 		setLocalError("");
 		if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-			setLocalError("Запись голоса не поддерживается на этом устройстве");
+			setLocalError(uiText(language, "captureVoiceUnsupported"));
 			return;
 		}
 		try {
@@ -11203,7 +11297,7 @@ const CaptureComposer = ({
 				const type = nextRecorder.mimeType || mimeType || "audio/webm";
 				const blob = new Blob(chunks.current, { type });
 				if (blob.size === 0) {
-					setLocalError("Не удалось записать голос");
+					setLocalError(uiText(language, "captureVoiceFailed"));
 					return;
 				}
 				const extension = type.includes("mp4") ? "m4a" : "webm";
@@ -11228,7 +11322,7 @@ const CaptureComposer = ({
 			clearRecordingTimers();
 			stopTracks();
 			setRecording(false);
-			setLocalError("Разрешите доступ к микрофону и попробуйте ещё раз");
+			setLocalError(uiText(language, "captureMicrophoneDenied"));
 		}
 	};
 
@@ -11237,15 +11331,15 @@ const CaptureComposer = ({
 		event.target.value = "";
 		if (!selected.length) return;
 		if (selected.some((file) => !file.type.startsWith("image/"))) {
-			setLocalError("Выберите фотографию");
+			setLocalError(uiText(language, "captureChoosePhoto"));
 			return;
 		}
 		if (selected.some((file) => file.size > 10 * 1024 * 1024)) {
-			setLocalError("Каждая фотография должна быть меньше 10 МБ");
+			setLocalError(uiText(language, "capturePhotoTooLarge"));
 			return;
 		}
 		if (photos.length + selected.length > 5) {
-			setLocalError("Можно добавить не больше 5 фотографий");
+			setLocalError(uiText(language, "capturePhotoLimit"));
 			return;
 		}
 		const next = selected.map((file) => {
@@ -11279,17 +11373,17 @@ const CaptureComposer = ({
 	const title =
 		mode === "text"
 			? isPlan
-				? "Описать план"
-				: "Написать расход"
+				? uiText(language, "captureDescribePlan")
+				: uiText(language, "captureWriteExpense")
 			: mode === "voice"
-				? "Записать голосом"
+				? uiText(language, "captureVoiceTitle")
 				: mode === "photo"
 					? isPlan
-						? "Фото покупки"
-						: "Фото чека"
+						? uiText(language, "capturePhotoPurchase")
+						: uiText(language, "capturePhotoReceipt")
 					: isPlan
-						? "Добавить план"
-						: "Добавить расход";
+						? uiText(language, "addPlan")
+						: uiText(language, "addExpense");
 	return (
 		<Modal title={title} onClose={onClose}>
 			{mode === "choose" && (
@@ -11300,7 +11394,7 @@ const CaptureComposer = ({
 						onClick={() => setMode("text")}
 					>
 						<ChatCircleText size={25} />
-						<span>Текст</span>
+						<span>{uiText(language, "captureText")}</span>
 					</button>
 					<button
 						type="button"
@@ -11308,7 +11402,7 @@ const CaptureComposer = ({
 						onClick={() => setMode("voice")}
 					>
 						<Microphone size={25} />
-						<span>Голос</span>
+						<span>{uiText(language, "captureVoice")}</span>
 					</button>
 					<button
 						type="button"
@@ -11316,11 +11410,11 @@ const CaptureComposer = ({
 						onClick={() => setMode("photo")}
 					>
 						<Camera size={25} />
-						<span>Фото</span>
+						<span>{uiText(language, "capturePhoto")}</span>
 					</button>
 					<button type="button" disabled={saving} onClick={onManual}>
 						<NotePencil size={25} />
-						<span>Вручную</span>
+						<span>{uiText(language, "captureManual")}</span>
 					</button>
 				</div>
 			)}
@@ -11331,8 +11425,8 @@ const CaptureComposer = ({
 						maxLength={2000}
 						placeholder={
 							isPlan
-								? "Купить кроссовки за 8 000 ₽ к августу"
-								: "Кофе 350, такси 620"
+								? uiText(language, "capturePlanExample")
+								: uiText(language, "captureExpenseExample")
 						}
 						value={text}
 						onChange={(event) => setText(event.target.value)}
@@ -11343,7 +11437,7 @@ const CaptureComposer = ({
 							disabled={saving}
 							onClick={() => setMode("choose")}
 						>
-							Назад
+							{uiText(language, "captureBack")}
 						</button>
 						<button
 							className="capture-submit"
@@ -11352,7 +11446,7 @@ const CaptureComposer = ({
 							onClick={() => void onSubmit({ kind: "text", text })}
 						>
 							<PaperPlaneTilt size={18} />
-							{saving ? "Разбираем…" : "Отправить"}
+							{uiText(language, saving ? "captureProcessing" : "captureSend")}
 						</button>
 					</div>
 				</div>
@@ -11366,7 +11460,7 @@ const CaptureComposer = ({
 					<strong aria-live="polite">
 						{recording
 							? `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} / 1:00`
-							: "До 1 минуты"}
+							: uiText(language, "captureVoiceLimit")}
 					</strong>
 					{voiceURL && (
 						// biome-ignore lint/a11y/useMediaCaption: no transcript exists before upload
@@ -11378,7 +11472,7 @@ const CaptureComposer = ({
 							type="button"
 							onClick={() => void startRecording()}
 						>
-							Начать запись
+							{uiText(language, "captureStartRecording")}
 						</button>
 					)}
 					{recording && (
@@ -11387,7 +11481,7 @@ const CaptureComposer = ({
 							type="button"
 							onClick={stopRecording}
 						>
-							Остановить
+							{uiText(language, "captureStopRecording")}
 						</button>
 					)}
 					<div className="capture-actions">
@@ -11400,7 +11494,7 @@ const CaptureComposer = ({
 								setMode("choose");
 							}}
 						>
-							Назад
+							{uiText(language, "captureBack")}
 						</button>
 						{voiceFile && (
 							<button
@@ -11416,7 +11510,7 @@ const CaptureComposer = ({
 								}
 							>
 								<PaperPlaneTilt size={18} />
-								{saving ? "Разбираем…" : "Отправить"}
+								{uiText(language, saving ? "captureProcessing" : "captureSend")}
 							</button>
 						)}
 					</div>
@@ -11432,25 +11526,40 @@ const CaptureComposer = ({
 					)}
 					<strong>
 						{photos.length
-							? `${photos.length} из 5 фотографий`
+							? uiText(language, "capturePhotosCount").replace(
+									"{count}",
+									String(photos.length),
+								)
 							: isPlan
-								? "Добавьте фото покупки или списка"
-								: "Добавьте фото чека или покупки"}
+								? uiText(language, "captureAddPlanPhotos")
+								: uiText(language, "captureAddExpensePhotos")}
 					</strong>
 					<small>
 						{photos.length
-							? "Проверьте кадры и отправьте их одним разбором"
-							: "Можно снять несколько фото или выбрать их из галереи"}
+							? uiText(language, "captureReviewPhotos")
+							: uiText(language, "capturePhotoHint")}
 					</small>
 					{photos.length > 0 && (
-						<div className="capture-photo-preview" aria-label="Выбранные фото">
+						<div
+							className="capture-photo-preview"
+							aria-label={uiText(language, "captureSelectedPhotos")}
+						>
 							{photos.map((photo, index) => (
 								<figure key={photo.id}>
-									<img src={photo.url} alt={`Фото ${index + 1}`} />
+									<img
+										src={photo.url}
+										alt={uiText(language, "capturePhotoNumber").replace(
+											"{number}",
+											String(index + 1),
+										)}
+									/>
 									<span>{index + 1}</span>
 									<button
 										type="button"
-										aria-label={`Удалить фото ${index + 1}`}
+										aria-label={uiText(language, "captureRemovePhoto").replace(
+											"{number}",
+											String(index + 1),
+										)}
 										onClick={() => removePhoto(photo.id)}
 									>
 										<X size={15} weight="bold" />
@@ -11466,7 +11575,10 @@ const CaptureComposer = ({
 							onClick={() => cameraInput.current?.click()}
 						>
 							<Camera size={19} />
-							{photos.length ? "Ещё фото" : "Снять фото"}
+							{uiText(
+								language,
+								photos.length ? "captureMorePhotos" : "captureTakePhoto",
+							)}
 						</button>
 						<button
 							type="button"
@@ -11474,7 +11586,10 @@ const CaptureComposer = ({
 							onClick={() => galleryInput.current?.click()}
 						>
 							<ImageSquare size={19} />
-							{photos.length ? "Добавить" : "Из галереи"}
+							{uiText(
+								language,
+								photos.length ? "captureAddMore" : "captureFromGallery",
+							)}
 						</button>
 					</div>
 					<div
@@ -11488,7 +11603,7 @@ const CaptureComposer = ({
 								setMode("choose");
 							}}
 						>
-							Назад
+							{uiText(language, "captureBack")}
 						</button>
 						{photos.length > 0 && (
 							<button
@@ -11503,7 +11618,7 @@ const CaptureComposer = ({
 								}
 							>
 								<PaperPlaneTilt size={18} />
-								{saving ? "Разбираем…" : "Отправить"}
+								{uiText(language, saving ? "captureProcessing" : "captureSend")}
 							</button>
 						)}
 					</div>
@@ -11528,7 +11643,10 @@ const CaptureComposer = ({
 			/>
 			{saving && mode === "choose" && (
 				<div className="capture-processing">
-					{isPlan ? "Разбираем план…" : "Разбираем расход…"}
+					{uiText(
+						language,
+						isPlan ? "captureProcessingPlan" : "captureProcessingExpense",
+					)}
 				</div>
 			)}
 			{(localError || error) && (
@@ -11726,7 +11844,7 @@ const ExpenseDetail = ({
 			<div className="mini-record-meta">
 				<div>
 					<small>{uiText(language, "purchaseDate")}</small>
-					<b>{formatDate(expense.expense_date)}</b>
+					<b>{formatDate(expense.expense_date, language)}</b>
 				</div>
 				<div>
 					<small>
@@ -12578,7 +12696,7 @@ const ExpenseEditor = ({
 
 	return (
 		<Modal
-			title={creating ? "Новый расход" : "Редактировать расход"}
+			title={uiText(language, creating ? "newExpense" : "editExpense")}
 			onClose={onClose}
 		>
 			{expense.source_document_id && (
@@ -12590,13 +12708,13 @@ const ExpenseEditor = ({
 						onClick={onSource}
 					>
 						<SourceIcon capture={capture} size={18} />
-						{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
+						{uiText(language, sourceLoading ? "loading" : "viewSource")}
 					</button>
 					<SourceExpiryNote capture={capture} language={language} />
 				</div>
 			)}
 			<label>
-				{creating ? "На что потратили" : "Название"}
+				{uiText(language, creating ? "spentOn" : "title")}
 				<input
 					list={itemNameListID}
 					value={expense.title}
@@ -12619,13 +12737,14 @@ const ExpenseEditor = ({
 				</datalist>
 			</label>
 			<div className="mini-field">
-				<span>Где покупали</span>
+				<span>{uiText(language, "purchasePlace")}</span>
 				<VendorAutocomplete
 					vendors={vendors}
-					ariaLabel="Где покупали"
-					placeholder={
-						sharedVendorName === null ? "Разные продавцы" : "Не определён"
-					}
+					ariaLabel={uiText(language, "purchasePlace")}
+					placeholder={uiText(
+						language,
+						sharedVendorName === null ? "multipleVendors" : "undetermined",
+					)}
 					value={sharedVendorName ?? ""}
 					onChange={(vendorName) => {
 						onChange({
@@ -12645,13 +12764,13 @@ const ExpenseEditor = ({
 				/>
 				{!creating && expense.items.length > 1 && (
 					<small className="mini-field-hint">
-						Изменение применится ко всем позициям
+						{uiText(language, "applyVendorToAll")}
 					</small>
 				)}
 			</div>
 			{!creating && (
 				<label>
-					Дата
+					{uiText(language, "date")}
 					<input
 						type="date"
 						value={expense.expense_date.slice(0, 10)}
@@ -12662,7 +12781,7 @@ const ExpenseEditor = ({
 				</label>
 			)}
 			<div className="mini-editor-items">
-				{!creating && <span>Позиции</span>}
+				{!creating && <span>{uiText(language, "items")}</span>}
 				{expense.items.map((item, index) => (
 					<div
 						key={item.id || index}
@@ -12670,7 +12789,10 @@ const ExpenseEditor = ({
 					>
 						{!creating && (
 							<input
-								aria-label="Название позиции"
+								aria-label={uiText(language, "itemName").replace(
+									"{number}",
+									String(index + 1),
+								)}
 								value={item.name}
 								onChange={(event) =>
 									onChange({
@@ -12686,7 +12808,10 @@ const ExpenseEditor = ({
 						)}
 						{!creating && (
 							<AmountInput
-								ariaLabel="Сумма позиции"
+								ariaLabel={uiText(language, "itemPrice").replace(
+									"{number}",
+									String(index + 1),
+								)}
 								amount={item.amount}
 								onChange={(amount) =>
 									onChange({
@@ -12700,9 +12825,11 @@ const ExpenseEditor = ({
 						)}
 						{creating && (
 							<label className="mini-editor-field" htmlFor="new-expense-amount">
-								<span className="mini-editor-label">Сумма</span>
+								<span className="mini-editor-label">
+									{uiText(language, "amount")}
+								</span>
 								<AmountInput
-									ariaLabel="Сумма"
+									ariaLabel={uiText(language, "amount")}
 									amount={item.amount}
 									id="new-expense-amount"
 									onChange={(amount) =>
@@ -12721,9 +12848,16 @@ const ExpenseEditor = ({
 								creating ? "mini-editor-field" : "mini-editor-field--contents"
 							}
 						>
-							{creating && <span className="mini-editor-label">Категория</span>}
+							{creating && (
+								<span className="mini-editor-label">
+									{uiText(language, "category")}
+								</span>
+							)}
 							<select
-								aria-label="Категория позиции"
+								aria-label={uiText(language, "itemCategory").replace(
+									"{number}",
+									String(index + 1),
+								)}
 								value={item.category_id || 0}
 								onChange={(event) =>
 									onChange({
@@ -12750,8 +12884,11 @@ const ExpenseEditor = ({
 							<VendorAutocomplete
 								className="mini-editor-vendor"
 								vendors={vendors}
-								ariaLabel="Где купили позицию"
-								placeholder="Где купили"
+								ariaLabel={uiText(language, "itemPurchasePlace").replace(
+									"{number}",
+									String(index + 1),
+								)}
+								placeholder={uiText(language, "whereBought")}
 								value={itemVendorName(item)}
 								onChange={(vendorName) => updateItemVendor(index, vendorName)}
 							/>
@@ -12774,7 +12911,7 @@ const ExpenseEditor = ({
 						}
 					>
 						<Plus size={17} weight="bold" />
-						Добавить позицию
+						{uiText(language, "addItem")}
 					</button>
 				)}
 			</div>
@@ -12824,7 +12961,7 @@ const ExpenseEditor = ({
 					}
 					onClick={onSave}
 				>
-					{saving ? "Сохраняем…" : "Сохранить"}
+					{uiText(language, saving ? "saving" : "save")}
 				</button>
 				{onDelete && (
 					<button
@@ -12834,7 +12971,7 @@ const ExpenseEditor = ({
 						onClick={onDelete}
 					>
 						<Trash size={18} />
-						Удалить расход
+						{uiText(language, "deleteExpense")}
 					</button>
 				)}
 			</div>
@@ -12887,9 +13024,10 @@ const ExpenseItemEditor = ({
 	);
 
 	return (
-		<Modal title="Редактировать покупку" onClose={onClose}>
+		<Modal title={uiText(language, "editPurchase")} onClose={onClose}>
 			<p className="mini-field-note">
-				{expense.title || "Расход"} · {formatDate(expense.expense_date)}
+				{expense.title || uiText(language, "viewExpense")} ·{" "}
+				{formatDate(expense.expense_date, language)}
 			</p>
 			{expense.source_document_id && (
 				<div className="mini-source-access">
@@ -12900,29 +13038,29 @@ const ExpenseItemEditor = ({
 						onClick={onSource}
 					>
 						<SourceIcon capture={capture} size={18} />
-						{sourceLoading ? "Загружаем…" : "Посмотреть исходник"}
+						{uiText(language, sourceLoading ? "loading" : "viewSource")}
 					</button>
 					<SourceExpiryNote capture={capture} language={language} />
 				</div>
 			)}
 			<label>
-				Название
+				{uiText(language, "title")}
 				<input
 					value={item.name}
 					onChange={(event) => onChange({ ...item, name: event.target.value })}
 				/>
 			</label>
 			<label htmlFor="expense-item-amount">
-				Сумма
+				{uiText(language, "amount")}
 				<AmountInput
-					ariaLabel="Сумма"
+					ariaLabel={uiText(language, "amount")}
 					amount={item.amount}
 					id="expense-item-amount"
 					onChange={(amount) => onChange({ ...item, amount })}
 				/>
 			</label>
 			<label>
-				Категория
+				{uiText(language, "category")}
 				<select
 					value={item.category_id || 0}
 					onChange={(event) => {
@@ -12947,11 +13085,11 @@ const ExpenseItemEditor = ({
 				</select>
 			</label>
 			<div className="mini-field">
-				<span>Где купили</span>
+				<span>{uiText(language, "whereBought")}</span>
 				<VendorAutocomplete
 					vendors={vendors}
-					ariaLabel="Где купили"
-					placeholder="Не определён"
+					ariaLabel={uiText(language, "whereBought")}
+					placeholder={uiText(language, "undetermined")}
 					value={vendorName}
 					onChange={(value) => {
 						onChange({
@@ -12990,7 +13128,7 @@ const ExpenseItemEditor = ({
 					disabled={saving || !item.name.trim() || item.amount <= 0}
 					onClick={onSave}
 				>
-					{saving ? "Сохраняем…" : "Сохранить"}
+					{uiText(language, saving ? "saving" : "save")}
 				</button>
 				<button
 					className="mini-secondary-action"
@@ -13009,7 +13147,7 @@ const ExpenseItemEditor = ({
 						onClick={onDelete}
 					>
 						<Trash size={18} />
-						Удалить покупку
+						{uiText(language, "deleteExpenseItem")}
 					</button>
 				)}
 			</div>
@@ -13018,6 +13156,7 @@ const ExpenseItemEditor = ({
 };
 
 const VendorEditor = ({
+	language,
 	vendor,
 	vendors,
 	expenses,
@@ -13028,6 +13167,7 @@ const VendorEditor = ({
 	onMerge,
 	onDelete,
 }: {
+	language: UILanguage;
 	vendor: Vendor;
 	vendors: Vendor[];
 	expenses: Expense[];
@@ -13062,11 +13202,14 @@ const VendorEditor = ({
 	).slice(0, 3);
 	return (
 		<Modal
-			title={vendor.id === 0 ? "Новый продавец" : "Настроить продавца"}
+			title={uiText(
+				language,
+				vendor.id === 0 ? "newVendor" : "configureVendor",
+			)}
 			onClose={onClose}
 		>
 			<label>
-				Название для списка
+				{uiText(language, "vendorListName")}
 				<input
 					maxLength={120}
 					value={vendor.name}
@@ -13079,7 +13222,7 @@ const VendorEditor = ({
 				<div className="mini-vendor-examples">
 					<strong>
 						<ShoppingBagOpen size={18} />
-						Что покупали здесь
+						{uiText(language, "purchasesHere")}
 					</strong>
 					<ul>
 						{purchaseExamples.map((name) => (
@@ -13089,7 +13232,7 @@ const VendorEditor = ({
 				</div>
 			)}
 			<label>
-				Другие названия из чеков
+				{uiText(language, "receiptAliases")}
 				<textarea
 					rows={4}
 					placeholder={"ИП Иванов Иван Иванович\nООО «С Блеском»"}
@@ -13105,8 +13248,10 @@ const VendorEditor = ({
 				/>
 			</label>
 			<p className="mini-field-note">
-				В следующий раз эти названия автоматически станут «
-				{vendor.name || "Название"}».
+				{uiText(language, "aliasFuture").replace(
+					"{name}",
+					vendor.name || uiText(language, "title"),
+				)}
 			</p>
 			<div className="mini-modal-actions">
 				<button
@@ -13115,19 +13260,21 @@ const VendorEditor = ({
 					disabled={saving || !vendor.name.trim()}
 					onClick={onSave}
 				>
-					{saving ? "Сохраняем…" : "Сохранить"}
+					{uiText(language, saving ? "saving" : "save")}
 				</button>
 				{vendor.id > 0 && mergeTargets.length > 0 && (
 					<div className="mini-vendor-merge">
 						<label>
-							Объединить с
+							{uiText(language, "mergeVendorWith")}
 							<select
 								value={targetVendorID}
 								onChange={(event) =>
 									setTargetVendorID(Number(event.target.value))
 								}
 							>
-								<option value={0}>Выберите основное название</option>
+								<option value={0}>
+									{uiText(language, "selectPrimaryVendor")}
+								</option>
 								{mergeTargets.map((target) => (
 									<option key={target.id} value={target.id}>
 										{target.name}
@@ -13140,7 +13287,7 @@ const VendorEditor = ({
 							disabled={saving || !targetVendorID}
 							onClick={() => onMerge(targetVendorID)}
 						>
-							Объединить
+							{uiText(language, "merge")}
 						</button>
 					</div>
 				)}
@@ -13152,7 +13299,7 @@ const VendorEditor = ({
 						onClick={onDelete}
 					>
 						<Trash size={18} />
-						Удалить продавца
+						{uiText(language, "deleteVendor")}
 					</button>
 				)}
 			</div>
@@ -13493,9 +13640,9 @@ const ProfileEditor = ({
 					{!timezoneOptions.some(([zone]) => zone === user.timezone) && (
 						<option value={user.timezone}>{user.timezone}</option>
 					)}
-					{timezoneOptions.map(([zone, name]) => (
+					{timezoneOptions.map(([zone]) => (
 						<option key={zone} value={zone}>
-							{language === "ru" ? name : zone}
+							{localizedTimezoneName(zone, language)}
 						</option>
 					))}
 				</select>
@@ -13980,6 +14127,7 @@ const SpaceInviteDialog = ({
 };
 
 const SpaceEditor = ({
+	language,
 	space,
 	canEditCurrency,
 	saving,
@@ -13989,6 +14137,7 @@ const SpaceEditor = ({
 	onInvite,
 	onDelete,
 }: {
+	language: UILanguage;
 	space: Space;
 	canEditCurrency: boolean;
 	saving: boolean;
@@ -13999,11 +14148,11 @@ const SpaceEditor = ({
 	onDelete?: () => void;
 }) => (
 	<Modal
-		title={space.id ? "Настройки пространства" : "Новое пространство"}
+		title={uiText(language, space.id ? "spaceSettings" : "newSpace")}
 		onClose={onClose}
 	>
 		<label>
-			Название
+			{uiText(language, "spaceName")}
 			<input
 				disabled={space.is_personal}
 				maxLength={120}
@@ -14012,7 +14161,7 @@ const SpaceEditor = ({
 			/>
 		</label>
 		<label>
-			Валюта пространства
+			{uiText(language, "spaceCurrency")}
 			<select
 				disabled={!canEditCurrency}
 				value={space.currency}
@@ -14023,29 +14172,28 @@ const SpaceEditor = ({
 				{!currencyOptions.some(([code]) => code === space.currency) && (
 					<option value={space.currency}>{space.currency}</option>
 				)}
-				{currencyOptions.map(([code, name]) => (
+				{currencyOptions.map(([code]) => (
 					<option key={code} value={code}>
-						{code} — {name}
+						{code} — {localizedCurrencyName(code, language)}
 					</option>
 				))}
 			</select>
 		</label>
 		<p className="mini-field-note">
-			{canEditCurrency
-				? "При смене валюты расходы и лимиты пересчитаются. Исходные суммы сохранятся."
-				: "Валюту может менять только владелец пространства."}
+			{uiText(
+				language,
+				canEditCurrency ? "currencyConvertHint" : "ownerCurrencyOnly",
+			)}
 		</p>
 		{onInvite && (
 			<div className="mini-invite-block">
 				<div>
-					<b>Участники</b>
-					<small>
-						Пригласите по ссылке, email или из другого пространства.
-					</small>
+					<b>{uiText(language, "participant")}</b>
+					<small>{uiText(language, "invitePeopleHint")}</small>
 				</div>
 				<button type="button" disabled={saving} onClick={onInvite}>
 					<PaperPlaneTilt size={18} weight="bold" />
-					Пригласить
+					{uiText(language, "invite")}
 				</button>
 			</div>
 		)}
@@ -14058,7 +14206,7 @@ const SpaceEditor = ({
 				}
 				onClick={onSave}
 			>
-				{saving ? "Сохраняем…" : space.id ? "Сохранить" : "Создать"}
+				{uiText(language, saving ? "saving" : space.id ? "save" : "create")}
 			</button>
 			{onDelete && (
 				<button
@@ -14068,7 +14216,7 @@ const SpaceEditor = ({
 					onClick={onDelete}
 				>
 					<Trash size={18} />
-					{canEditCurrency ? "Удалить пространство" : "Покинуть пространство"}
+					{uiText(language, canEditCurrency ? "deleteSpace" : "leaveSpace")}
 				</button>
 			)}
 		</div>
@@ -15467,14 +15615,30 @@ const dateTimeInputValue = (value?: string | null) => {
 	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
 	return local.toISOString().slice(0, 16);
 };
-const formatDate = (value: string) =>
-	new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(
+const formatDate = (value: string, language: UILanguage) =>
+	new Intl.DateTimeFormat(language, { day: "numeric", month: "short" }).format(
 		new Date(value),
 	);
-const localizedTimezoneName = (timezone: string, language: UILanguage) =>
-	language === "ru"
-		? timezoneOptions.find(([value]) => value === timezone)?.[1] || timezone
-		: timezone;
+const localizedTimezoneName = (timezone: string, language: UILanguage) => {
+	try {
+		return (
+			new Intl.DateTimeFormat(language, {
+				timeZone: timezone,
+				timeZoneName: "longGeneric",
+			})
+				.formatToParts(new Date())
+				.find((part) => part.type === "timeZoneName")?.value || timezone
+		);
+	} catch {
+		return timezone;
+	}
+};
+const expenseCountText = (count: number, language: UILanguage) => {
+	if (language === "en")
+		return `${count} ${count === 1 ? "expense" : "expenses"}`;
+	if (language === "es") return `${count} ${count === 1 ? "gasto" : "gastos"}`;
+	return `${count} ${expenseWord(count)}`;
+};
 const expenseWord = (count: number) =>
 	count % 10 === 1 && count % 100 !== 11
 		? "расход"
@@ -15491,9 +15655,17 @@ const itemWord = (count: number) =>
 				(count % 100 < 10 || count % 100 >= 20)
 			? "покупки"
 			: "покупок";
-const memberRole = (role: string) =>
-	({ owner: "Владелец", admin: "Администратор", editor: "Редактор" })[role] ||
-	"Участник";
+const memberRole = (role: string, language: UILanguage) =>
+	uiText(
+		language,
+		(
+			{
+				owner: "spaceOwner",
+				admin: "spaceAdmin",
+				editor: "spaceEditor",
+			} as const
+		)[role as "owner" | "admin" | "editor"] || "spaceMember",
+	);
 function isoDay(offset: number) {
 	const date = new Date();
 	date.setDate(date.getDate() + offset);
