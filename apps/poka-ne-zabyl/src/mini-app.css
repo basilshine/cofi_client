@@ -5044,6 +5044,9 @@
 	grid-template-columns: repeat(6, minmax(0, 1fr));
 	gap: 7px;
 }
+.browser-otp-cells.phone {
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 .browser-otp-cell {
 	display: grid;
 	min-width: 0;

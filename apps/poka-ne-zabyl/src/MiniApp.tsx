@@ -20,6 +20,7 @@ import {
 	NotePencil,
 	PaperPlaneTilt,
 	PencilSimple,
+	PhoneCall,
 	Plus,
 	PushPin,
 	Receipt,
@@ -13987,7 +13988,8 @@ const TelegramEntry = ({ error }: { error: string }) => {
 	);
 };
 
-const OTP_POSITIONS = [0, 1, 2, 3, 4, 5] as const;
+const EMAIL_OTP_POSITIONS = [0, 1, 2, 3, 4, 5] as const;
+const PHONE_OTP_POSITIONS = [0, 1, 2, 3] as const;
 const AUTH_CODE_TTL_MS = 10 * 60 * 1000;
 const AUTH_CODE_RESEND_MS = 60 * 1000;
 const formatCountdown = (seconds: number) =>
@@ -14083,6 +14085,8 @@ const BrowserEntry = ({
 		resetCodeStep();
 	};
 	const isPhone = method === "phone";
+	const otpPositions = isPhone ? PHONE_OTP_POSITIONS : EMAIL_OTP_POSITIONS;
+	const codeLength = otpPositions.length;
 	const contact = isPhone ? phone.trim() : email.trim();
 	const phoneDigits = phone.replace(/\D/g, "");
 	const validPhone =
@@ -14116,18 +14120,26 @@ const BrowserEntry = ({
 			const message =
 				requestError instanceof Error
 					? requestError.message
-					: "Не удалось отправить код";
+					: isPhone
+						? "Не удалось запустить проверочный звонок"
+						: "Не удалось отправить код";
 			setLocalError(
 				message.includes("email already registered")
 					? "Эта почта уже зарегистрирована. Выберите «Войти»."
-					: message.includes("SMS could not be delivered")
-						? "Не удалось доставить SMS. Проверьте номер или войдите по почте."
+					: message.includes("Verification call could not be started")
+						? "Не удалось запустить звонок. Проверьте номер или войдите по почте."
 						: message.includes("wait a minute")
-							? "Код уже отправлен. Новый можно запросить через минуту."
+							? isPhone
+								? "Звонок уже запрошен. Новый можно запросить через минуту."
+								: "Код уже отправлен. Новый можно запросить через минуту."
 							: message.includes("hourly authentication code limit reached")
-								? "Вы уже запросили 3 кода за последний час. Попробуйте позже."
+								? isPhone
+									? "Вы уже запросили 3 звонка за последний час. Попробуйте позже."
+									: "Вы уже запросили 3 кода за последний час. Попробуйте позже."
 								: message.includes("daily authentication code limit reached")
-									? "Суточный лимит кодов исчерпан. Попробуйте завтра."
+									? isPhone
+										? "Суточный лимит звонков исчерпан. Попробуйте завтра."
+										: "Суточный лимит кодов исчерпан. Попробуйте завтра."
 									: message.includes("rate limit exceeded")
 										? "Слишком много попыток. Подождите и попробуйте снова."
 										: message,
@@ -14164,8 +14176,12 @@ const BrowserEntry = ({
 			);
 			await onEmailAuth(auth);
 		} catch (requestError) {
+			const message =
+				requestError instanceof Error ? requestError.message : "Неверный код";
 			setLocalError(
-				requestError instanceof Error ? requestError.message : "Неверный код",
+				message.includes("invalid or expired code")
+					? "Неверный код или срок его действия истёк."
+					: message,
 			);
 		} finally {
 			setLoading(false);
@@ -14177,9 +14193,9 @@ const BrowserEntry = ({
 		try {
 			const clipboardCode = (await navigator.clipboard.readText())
 				.replace(/\D/g, "")
-				.slice(0, 6);
-			if (clipboardCode.length !== 6) {
-				setClipboardHint("В буфере нет кода из 6 цифр");
+				.slice(0, codeLength);
+			if (clipboardCode.length !== codeLength) {
+				setClipboardHint(`В буфере нет кода из ${codeLength} цифр`);
 				return;
 			}
 			setCode(clipboardCode);
@@ -14277,38 +14293,55 @@ const BrowserEntry = ({
 							<div className="browser-code-step">
 								<div className="browser-code-heading">
 									<span className="browser-code-icon" aria-hidden="true">
-										<PaperPlaneTilt size={22} weight="fill" />
+										{isPhone ? (
+											<PhoneCall size={22} weight="fill" />
+										) : (
+											<PaperPlaneTilt size={22} weight="fill" />
+										)}
 									</span>
 									<div>
 										<strong>
-											Введите код {isPhone ? "из SMS" : "из письма"}
+											{isPhone
+												? "Введите последние 4 цифры"
+												: "Введите код из письма"}
 										</strong>
 										<small>
-											Отправили на{" "}
+											{isPhone ? "Звоним на " : "Отправили на "}
 											<span className="browser-code-email">{contact}</span>
 										</small>
 									</div>
 								</div>
 								<label className="browser-code-field">
-									<span>Код из 6 цифр</span>
+									<span>
+										{isPhone
+											? "Последние 4 цифры входящего номера"
+											: "Код из 6 цифр"}
+									</span>
 									<div className="browser-otp-field">
 										<input
 											className="browser-code-input"
 											type="text"
 											inputMode="numeric"
 											autoComplete="one-time-code"
-											maxLength={6}
+											maxLength={codeLength}
 											value={code}
 											onChange={(event) => {
-												setCode(event.target.value.replace(/\D/g, ""));
+												setCode(
+													event.target.value
+														.replace(/\D/g, "")
+														.slice(0, codeLength),
+												);
 												setClipboardHint("");
 											}}
 										/>
-										<div className="browser-otp-cells" aria-hidden="true">
-											{OTP_POSITIONS.map((index) => (
+										<div
+											className={`browser-otp-cells${isPhone ? " phone" : ""}`}
+											aria-hidden="true"
+										>
+											{otpPositions.map((index) => (
 												<span
 													key={`otp-${index}`}
-													className={`browser-otp-cell${code[index] ? " filled" : ""}${index === code.length && code.length < 6 ? " active" : ""}`}
+													className={`browser-otp-cell${code[index] ? " filled" : ""}${index === code.length && code.length < codeLength ? " active" : ""}`}
 												>
 													{code[index] || ""}
 												</span>
@@ -14321,7 +14354,9 @@ const BrowserEntry = ({
 									aria-live="polite"
 								>
 									{codeExpired
-										? "Срок действия кода истёк. Отправьте новый."
+										? isPhone
+											? "Срок подтверждения истёк. Запросите новый звонок."
+											: "Срок действия кода истёк. Отправьте новый."
 										: `Код действует ещё ${codeTimeLeft}`}
 								</div>
 								{clipboardHint && (
@@ -14332,7 +14367,9 @@ const BrowserEntry = ({
 								<button
 									className="browser-primary-action"
 									type="button"
-									disabled={loading || code.length !== 6 || codeExpired}
+									disabled={
+										loading || code.length !== codeLength || codeExpired
+									}
 									onClick={confirmCode}
 								>
 									{loading
@@ -14342,15 +14379,17 @@ const BrowserEntry = ({
 											: "Войти"}
 								</button>
 								<div className="browser-code-actions">
-									{typeof navigator !== "undefined" && navigator.clipboard && (
-										<button
-											className="browser-auth-link"
-											type="button"
-											onClick={() => void pasteCode()}
-										>
-											Вставить код
-										</button>
-									)}
+									{!isPhone &&
+										typeof navigator !== "undefined" &&
+										navigator.clipboard && (
+											<button
+												className="browser-auth-link"
+												type="button"
+												onClick={() => void pasteCode()}
+											>
+												Вставить код
+											</button>
+										)}
 									<button
 										className="browser-auth-link browser-resend-code"
 										type="button"
@@ -14359,7 +14398,9 @@ const BrowserEntry = ({
 									>
 										{resendSeconds > 0
 											? `Снова через ${formatCountdown(resendSeconds)}`
-											: "Отправить снова"}
+											: isPhone
+												? "Позвонить ещё раз"
+												: "Отправить снова"}
 									</button>
 								</div>
 								<button
@@ -14371,7 +14412,7 @@ const BrowserEntry = ({
 								</button>
 								<small className="browser-code-help">
 									{isPhone
-										? "SMS обычно приходит в течение минуты."
+										? "Отвечать не нужно. Запомните последние четыре цифры номера, с которого поступит звонок."
 										: "Не нашли письмо? Проверьте папку «Спам»."}
 								</small>
 							</div>
@@ -14435,11 +14476,19 @@ const BrowserEntry = ({
 									}
 									onClick={requestCode}
 								>
-									{loading ? "Отправляем…" : "Получить код"}
+									{loading
+										? isPhone
+											? "Запрашиваем звонок…"
+											: "Отправляем…"
+										: isPhone
+											? "Позвонить мне"
+											: "Получить код"}
 								</button>
 								<small>
 									{authMode === "register"
-										? `Пароль не нужен — вход подтверждается кодом ${isPhone ? "из SMS" : "из письма"}.`
+										? isPhone
+											? "Пароль не нужен — подтвердите номер по входящему звонку."
+											: "Пароль не нужен — вход подтверждается кодом из письма."
 										: isPhone
 											? "Введите номер, указанный при регистрации или в профиле."
 											: "Введите почту, указанную при регистрации или в профиле."}

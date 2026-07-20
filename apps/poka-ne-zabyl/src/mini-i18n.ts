@@ -256,7 +256,7 @@ const messages = {
 		notificationMethod: "Куда присылать",
 		notificationsOff: "Не присылать",
 		notificationMethodHint:
-			"В приложении уведомления сохраняются всегда. SMS используются только для входа и регистрации.",
+			"В приложении уведомления сохраняются всегда. Проверочные звонки используются только для входа и регистрации.",
 		emailChannel: "Почта",
 		telegramChannel: "Telegram",
 		notificationTime: "Время уведомлений",
@@ -546,7 +546,7 @@ const messages = {
 		notificationMethod: "Send notifications to",
 		notificationsOff: "Do not send",
 		notificationMethodHint:
-			"Notifications always remain in the app. SMS is used only for sign-in and registration.",
+			"Notifications always remain in the app. Phone verification calls are used only for sign-in and registration.",
 		emailChannel: "Email",
 		telegramChannel: "Telegram",
 		notificationTime: "Notification time",
@@ -838,7 +838,7 @@ const messages = {
 		notificationMethod: "Enviar notificaciones a",
 		notificationsOff: "No enviar",
 		notificationMethodHint:
-			"Las notificaciones siempre quedan en la aplicación. Los SMS solo se usan para iniciar sesión y registrarse.",
+			"Las notificaciones siempre quedan en la aplicación. Las llamadas de verificación solo se usan para iniciar sesión y registrarse.",
 		emailChannel: "Correo",
 		telegramChannel: "Telegram",
 		notificationTime: "Hora de las notificaciones",
