@@ -10106,6 +10106,7 @@ const ProfileView = ({
 					dashboard={developerDashboard}
 					dashboardLoading={developerDashboardLoading}
 					loading={billingLoading}
+					testModeEnabled={Boolean(quota.maintenance_enabled)}
 					onApply={onDevUpdate}
 					onRefresh={onRefreshDeveloperDashboard}
 				/>
@@ -10352,6 +10353,7 @@ const BillingDeveloperTools = ({
 	dashboard,
 	dashboardLoading,
 	loading,
+	testModeEnabled,
 	onApply,
 	onRefresh,
 }: {
@@ -10359,6 +10361,7 @@ const BillingDeveloperTools = ({
 	dashboard: DeveloperDashboard | null;
 	dashboardLoading: boolean;
 	loading: boolean;
+	testModeEnabled: boolean;
 	onApply: (patch: DeveloperQuotaPatch) => void;
 	onRefresh: () => void;
 }) => (
@@ -10666,7 +10669,12 @@ const BillingDeveloperTools = ({
 					<CaretDown size={17} weight="bold" />
 				</summary>
 				<div className="mini-dev-panel-body">
-					<fieldset disabled={loading}>
+					{!testModeEnabled && (
+						<p className="mini-dev-empty">
+							Включите тестовый режим в разделе управления сервисом.
+						</p>
+					)}
+					<fieldset disabled={loading || !testModeEnabled}>
 						<form
 							key={`${quota.plan}-${quota.plan_expires_at}-${quota.recurring_limit}-${quota.additional_limit}`}
 							onSubmit={(event) => {
@@ -10815,7 +10823,7 @@ const MaintenanceDeveloperTools = ({
 				<b>Управление сервисом</b>
 				<small>
 					{enabled
-						? "Сейчас идут технические работы"
+						? "Тестовые инструменты и оплаты включены"
 						: "Сервис доступен пользователям"}
 				</small>
 			</span>
@@ -10825,12 +10833,12 @@ const MaintenanceDeveloperTools = ({
 			<div className="mini-dev-section-head">
 				<div>
 					<strong>
-						{enabled ? "Режим обслуживания включён" : "Обычный режим"}
+						{enabled ? "Тестовый режим включён" : "Рабочий режим"}
 					</strong>
 					<small>
 						{enabled
-							? "Пользователи видят экран паузы. Ваш доступ сохранён."
-							: "Включайте только на время технических работ."}
+							? "Пользователи видят экран паузы. Для вас доступны тестовые оплаты и инструменты."
+							: "Включайте только на время проверки изменений."}
 					</small>
 				</div>
 			</div>
@@ -10840,7 +10848,7 @@ const MaintenanceDeveloperTools = ({
 				disabled={loading}
 				onClick={() => onToggle(!enabled)}
 			>
-				{enabled ? "Вернуть сервис" : "Начать обслуживание"}
+				{enabled ? "Вернуть рабочий режим" : "Включить тестовый режим"}
 			</button>
 		</div>
 	</details>
