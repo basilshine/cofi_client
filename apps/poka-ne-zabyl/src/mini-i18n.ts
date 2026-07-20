@@ -250,8 +250,9 @@ const messages = {
 		backToNotifications: "К уведомлениям",
 		notificationSettings: "Настройки уведомлений",
 		notificationMethod: "Куда присылать",
+		notificationsOff: "Не присылать",
 		notificationMethodHint:
-			"В приложении уведомления сохраняются всегда. Здесь выбирается способ доставки напоминаний.",
+			"В приложении уведомления сохраняются всегда. SMS используются только для входа и регистрации.",
 		emailChannel: "Почта",
 		telegramChannel: "Telegram",
 		notificationTime: "Время уведомлений",
@@ -535,8 +536,9 @@ const messages = {
 		backToNotifications: "Back to notifications",
 		notificationSettings: "Notification settings",
 		notificationMethod: "Send notifications to",
+		notificationsOff: "Do not send",
 		notificationMethodHint:
-			"Notifications always remain in the app. Choose how reminders are delivered.",
+			"Notifications always remain in the app. SMS is used only for sign-in and registration.",
 		emailChannel: "Email",
 		telegramChannel: "Telegram",
 		notificationTime: "Notification time",
@@ -821,8 +823,9 @@ const messages = {
 		backToNotifications: "Volver a notificaciones",
 		notificationSettings: "Ajustes de notificaciones",
 		notificationMethod: "Enviar notificaciones a",
+		notificationsOff: "No enviar",
 		notificationMethodHint:
-			"Las notificaciones siempre quedan en la aplicación. Elige cómo recibir los recordatorios.",
+			"Las notificaciones siempre quedan en la aplicación. Los SMS solo se usan para iniciar sesión y registrarse.",
 		emailChannel: "Correo",
 		telegramChannel: "Telegram",
 		notificationTime: "Hora de las notificaciones",

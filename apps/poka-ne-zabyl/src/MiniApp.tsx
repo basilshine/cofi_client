@@ -3,6 +3,7 @@ import {
 	ArrowLeft,
 	ArrowRight,
 	BellRinging,
+	BellSlash,
 	CalendarBlank,
 	Camera,
 	CaretDown,
@@ -12499,7 +12500,7 @@ const ProfileEditor = ({
 	notificationChannelsAvailable: Record<NotificationChannel, boolean>;
 	saving: boolean;
 	onChange: (user: User) => void;
-	onNotificationChannelChange: (channel: NotificationChannel) => void;
+	onNotificationChannelChange: (channel: NotificationChannel | "") => void;
 	onClose: () => void;
 	onSave: () => void;
 }) => {
@@ -12606,6 +12607,15 @@ const ProfileEditor = ({
 				<div className="mini-field">
 					<span>{uiText(language, "notificationMethod")}</span>
 					<div className="mini-notification-channels">
+						<button
+							type="button"
+							className={notificationChannel === "" ? "active" : ""}
+							aria-pressed={notificationChannel === ""}
+							onClick={() => onNotificationChannelChange("")}
+						>
+							<BellSlash size={20} />
+							{uiText(language, "notificationsOff")}
+						</button>
 						{notificationChannelsAvailable.email && (
 							<button
 								type="button"
@@ -12634,7 +12644,7 @@ const ProfileEditor = ({
 					</small>
 				</div>
 			)}
-			{mode === "notifications" && (
+			{mode === "notifications" && notificationChannel && (
 				<label>
 					{uiText(language, "notificationTime")}
 					<input
@@ -12661,7 +12671,8 @@ const ProfileEditor = ({
 					!user.language.trim() ||
 					!user.timezone.trim() ||
 					(mode === "notifications" &&
-						(!user.notificationTime || !notificationChannel))
+						Boolean(notificationChannel) &&
+						!user.notificationTime)
 				}
 				onClick={onSave}
 			>
