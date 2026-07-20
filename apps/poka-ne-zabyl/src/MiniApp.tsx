@@ -6594,7 +6594,7 @@ export const MiniApp = () => {
 						}))
 					}
 					onClose={() => setEditingProfile(null)}
-					onSave={saveProfile}
+					onSave={() => void saveProfile()}
 				/>
 			)}
 			{avatarCropFile && (
