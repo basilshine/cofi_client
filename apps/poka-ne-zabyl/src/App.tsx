@@ -144,6 +144,14 @@ const TelegramButton = ({ light = false }: { light?: boolean }) => (
 	</a>
 );
 
+const trackLandingAppClick = () => {
+	(
+		window as Window & {
+			ym?: (counter: number, method: string, goal: string) => void;
+		}
+	).ym?.(110761833, "reachGoal", "landing_app_click");
+};
+
 const AppButton = ({
 	light = false,
 	locale = "ru",
@@ -154,6 +162,7 @@ const AppButton = ({
 	<a
 		className={`button ${light ? "button--light" : ""}`}
 		href={landingAppPath(locale)}
+		onClick={trackLandingAppClick}
 	>
 		{locale === "en"
 			? "Open the app"
@@ -672,7 +681,11 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 									<Check size={18} weight="bold" /> Фото и голос хранятся 3 дня
 								</li>
 							</ul>
-							<a className="pricing-plan__action" href={landingAppPath(locale)}>
+							<a
+								className="pricing-plan__action"
+								href={landingAppPath(locale)}
+								onClick={trackLandingAppClick}
+							>
 								Начать с Базового <ArrowRight size={18} />
 							</a>
 						</article>
@@ -718,6 +731,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 							<a
 								className="pricing-plan__action"
 								href={landingAppPath(locale, "view=subscription")}
+								onClick={trackLandingAppClick}
 							>
 								Подключить Плюс <ArrowRight size={18} />
 							</a>
