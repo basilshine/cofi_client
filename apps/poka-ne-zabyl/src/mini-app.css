@@ -2609,6 +2609,50 @@
 .mini-profile-avatar-actions button:last-child {
 	color: var(--mini-red);
 }
+.mini-avatar-crop {
+	display: grid;
+	justify-items: center;
+	gap: 14px;
+}
+.mini-avatar-crop-preview {
+	width: min(256px, 72vw);
+	aspect-ratio: 1;
+	overflow: hidden;
+	border: 4px solid var(--mini-paper);
+	border-radius: 50%;
+	background: var(--mini-soft);
+	box-shadow: 0 0 0 1px var(--mini-line), 0 12px 28px rgba(23, 27, 45, 0.16);
+}
+.mini-avatar-crop canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+	cursor: grab;
+	touch-action: none;
+}
+.mini-avatar-crop canvas:active {
+	cursor: grabbing;
+}
+.mini-avatar-crop p {
+	max-width: 300px;
+	margin: 0;
+	color: var(--mini-muted);
+	font-size: 12px;
+	line-height: 1.45;
+	text-align: center;
+}
+.mini-avatar-crop label {
+	display: grid;
+	width: min(320px, 100%);
+	gap: 7px;
+	color: var(--mini-muted);
+	font-size: 12px;
+}
+.mini-avatar-crop input[type="range"] {
+	min-height: 28px;
+	padding: 0;
+	accent-color: var(--mini-green);
+}
 .mini-profile-list > button {
 	display: flex;
 	width: 100%;

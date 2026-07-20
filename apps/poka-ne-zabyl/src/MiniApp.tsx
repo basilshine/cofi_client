@@ -44,6 +44,11 @@ import {
 	useState,
 } from "react";
 import "./mini-app.css";
+import {
+	AVATAR_IMAGE_SIZE,
+	avatarCropLayout,
+	avatarFileFromCanvas,
+} from "./avatar-crop";
 import { captureSourceKind } from "./capture-source";
 import { groupRowsByExpense } from "./expense-groups";
 import { type Period, periodBounds } from "./expense-period";
@@ -1191,6 +1196,7 @@ export const MiniApp = () => {
 	const [user, setUser] = useState<User | null>(null);
 	const [profileAvatarURL, setProfileAvatarURL] = useState("");
 	const [profileAvatarSaving, setProfileAvatarSaving] = useState(false);
+	const [avatarCropFile, setAvatarCropFile] = useState<File | null>(null);
 	const [spaces, setSpaces] = useState<Space[]>([]);
 	const [spaceID, setSpaceID] = useState(0);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
@@ -4138,8 +4144,8 @@ export const MiniApp = () => {
 		}
 	};
 
-	const uploadProfileAvatar = async (file: File) => {
-		if (file.size > 5 * 1024 * 1024) {
+	const selectProfileAvatar = (file: File) => {
+		if (file.size > 20 * 1024 * 1024) {
 			setNotice(uiText(language, "avatarTooLarge"));
 			return;
 		}
@@ -4147,10 +4153,14 @@ export const MiniApp = () => {
 			setNotice(uiText(language, "avatarFormatError"));
 			return;
 		}
+		setAvatarCropFile(file);
+	};
+
+	const uploadProfileAvatar = async (file: File) => {
 		if (previewMode) {
 			setProfileAvatarURL(URL.createObjectURL(file));
 			setNotice(uiText(language, "avatarSaved"));
-			return;
+			return true;
 		}
 		const body = new FormData();
 		body.append("avatar", file);
@@ -4162,12 +4172,14 @@ export const MiniApp = () => {
 			});
 			setUser(saved);
 			setNotice(uiText(language, "avatarSaved"));
+			return true;
 		} catch (err) {
 			setNotice(
 				err instanceof Error
 					? err.message
 					: uiText(language, "avatarSaveFailed"),
 			);
+			return false;
 		} finally {
 			setProfileAvatarSaving(false);
 		}
@@ -5509,7 +5521,7 @@ export const MiniApp = () => {
 								onManageSpaces={() => setView("spaces")}
 								onLinkEmail={() => setEmailLinkOpen(true)}
 								onLinkTelegram={() => setTelegramLinkOpen(true)}
-								onAvatarUpload={(file) => void uploadProfileAvatar(file)}
+								onAvatarUpload={selectProfileAvatar}
 								onAvatarRemove={() => void removeProfileAvatar()}
 								onEdit={openProfileEditor}
 								onManageNotifications={() => {
@@ -6200,6 +6212,21 @@ export const MiniApp = () => {
 					}
 					onClose={() => setEditingProfile(null)}
 					onSave={saveProfile}
+				/>
+			)}
+			{avatarCropFile && (
+				<AvatarCropDialog
+					file={avatarCropFile}
+					language={language}
+					saving={profileAvatarSaving}
+					onClose={() => setAvatarCropFile(null)}
+					onError={() => {
+						setAvatarCropFile(null);
+						setNotice(uiText(language, "avatarFormatError"));
+					}}
+					onSave={async (file) => {
+						if (await uploadProfileAvatar(file)) setAvatarCropFile(null);
+					}}
 				/>
 			)}
 			{emailLinkOpen && (
@@ -13568,6 +13595,172 @@ const NotificationCenter = ({
 		)}
 	</Modal>
 );
+
+const AvatarCropDialog = ({
+	file,
+	language,
+	saving,
+	onClose,
+	onError,
+	onSave,
+}: {
+	file: File;
+	language: UILanguage;
+	saving: boolean;
+	onClose: () => void;
+	onError: () => void;
+	onSave: (file: File) => Promise<void>;
+}) => {
+	const canvasRef = useRef<HTMLCanvasElement | null>(null);
+	const imageRef = useRef<HTMLImageElement | null>(null);
+	const dragRef = useRef<{
+		pointerID: number;
+		x: number;
+		y: number;
+		offsetX: number;
+		offsetY: number;
+	} | null>(null);
+	const [ready, setReady] = useState(false);
+	const [exporting, setExporting] = useState(false);
+	const [zoom, setZoom] = useState(1);
+	const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+	useEffect(() => {
+		const url = URL.createObjectURL(file);
+		const image = new Image();
+		image.onload = () => {
+			imageRef.current = image;
+			setReady(true);
+		};
+		image.onerror = onError;
+		image.src = url;
+		return () => URL.revokeObjectURL(url);
+	}, [file]);
+
+	useEffect(() => {
+		const canvas = canvasRef.current;
+		const image = imageRef.current;
+		if (!canvas || !image || !ready) return;
+		const context = canvas.getContext("2d");
+		if (!context) return;
+		const layout = avatarCropLayout(
+			image.naturalWidth,
+			image.naturalHeight,
+			zoom,
+			offset.x,
+			offset.y,
+		);
+		context.fillStyle = "#ffffff";
+		context.fillRect(0, 0, AVATAR_IMAGE_SIZE, AVATAR_IMAGE_SIZE);
+		context.drawImage(
+			image,
+			layout.drawX,
+			layout.drawY,
+			layout.width,
+			layout.height,
+		);
+	}, [offset, ready, zoom]);
+
+	const movePhoto = (x: number, y: number) => {
+		const image = imageRef.current;
+		if (!image) return;
+		const layout = avatarCropLayout(
+			image.naturalWidth,
+			image.naturalHeight,
+			zoom,
+			x,
+			y,
+		);
+		setOffset({ x: layout.offsetX, y: layout.offsetY });
+	};
+
+	return (
+		<Modal title={uiText(language, "avatarCropTitle")} onClose={onClose}>
+			<div className="mini-avatar-crop">
+				<div className="mini-avatar-crop-preview">
+					<canvas
+						ref={canvasRef}
+						width={AVATAR_IMAGE_SIZE}
+						height={AVATAR_IMAGE_SIZE}
+						onPointerDown={(event) => {
+							event.currentTarget.setPointerCapture(event.pointerId);
+							dragRef.current = {
+								pointerID: event.pointerId,
+								x: event.clientX,
+								y: event.clientY,
+								offsetX: offset.x,
+								offsetY: offset.y,
+							};
+						}}
+						onPointerMove={(event) => {
+							const drag = dragRef.current;
+							if (!drag || drag.pointerID !== event.pointerId) return;
+							const scale = AVATAR_IMAGE_SIZE / event.currentTarget.clientWidth;
+							movePhoto(
+								drag.offsetX + (event.clientX - drag.x) * scale,
+								drag.offsetY + (event.clientY - drag.y) * scale,
+							);
+						}}
+						onPointerUp={() => {
+							dragRef.current = null;
+						}}
+						onPointerCancel={() => {
+							dragRef.current = null;
+						}}
+					/>
+				</div>
+				<p>{uiText(language, "avatarCropHint")}</p>
+				<label>
+					<span>{uiText(language, "avatarZoom")}</span>
+					<input
+						type="range"
+						min="1"
+						max="3"
+						step="0.01"
+						value={zoom}
+						onChange={(event) => {
+							const nextZoom = Number(event.currentTarget.value);
+							setZoom(nextZoom);
+							const image = imageRef.current;
+							if (!image) return;
+							const layout = avatarCropLayout(
+								image.naturalWidth,
+								image.naturalHeight,
+								nextZoom,
+								offset.x,
+								offset.y,
+							);
+							setOffset({ x: layout.offsetX, y: layout.offsetY });
+						}}
+					/>
+				</label>
+			</div>
+			<div className="mini-modal-actions">
+				<button
+					className="mini-save"
+					type="button"
+					disabled={!ready || saving || exporting}
+					onClick={async () => {
+						const canvas = canvasRef.current;
+						if (!canvas) return;
+						setExporting(true);
+						try {
+							await onSave(await avatarFileFromCanvas(canvas));
+						} catch {
+							onError();
+						} finally {
+							setExporting(false);
+						}
+					}}
+				>
+					{saving || exporting
+						? uiText(language, "saving")
+						: uiText(language, "avatarApply")}
+				</button>
+			</div>
+		</Modal>
+	);
+};
 
 const Modal = ({
 	title,
