@@ -5,8 +5,9 @@ import {
 	cloneElement,
 	isValidElement,
 } from "react";
+import type { LandingLocale } from "./landing-locale";
 
-export type LandingLocale = "ru" | "en" | "es";
+export type { LandingLocale } from "./landing-locale";
 
 export const landingLocaleFromPath = (path: string): LandingLocale => {
 	if (path === "/en") return "en";

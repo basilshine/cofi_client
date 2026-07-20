@@ -18,6 +18,7 @@ import {
 	localizeLandingTree,
 	localizedLandingImage,
 } from "./landing-i18n";
+import { preferredLandingLocale } from "./landing-locale";
 
 const MiniApp = lazy(async () => {
 	const module = await import("./MiniApp");
@@ -28,6 +29,7 @@ const TELEGRAM_URL = "https://t.me/poka_ne_zabyl_bot";
 const EMAIL = "support@poka-ne-zabyl.ru";
 const PHONE = "+7 913 807-81-60";
 const EFFECTIVE_DATE = "16 июля 2026 года";
+const LANDING_LANGUAGE_KEY = "pnz:landing-language";
 
 const operator = {
 	name: "ИП Еньшин Василий Сергеевич",
@@ -40,6 +42,15 @@ const operator = {
 export const App = ({ pathname }: { pathname?: string }) => {
 	const path =
 		(pathname ?? window.location.pathname).replace(/\/+$/, "") || "/";
+
+	useEffect(() => {
+		if (pathname !== undefined || path !== "/") return;
+		const locale = preferredLandingLocale(
+			navigator.language,
+			window.localStorage.getItem(LANDING_LANGUAGE_KEY),
+		);
+		if (locale !== "ru") window.location.replace(landingHomePath(locale));
+	}, [path, pathname]);
 
 	useEffect(() => {
 		if (!window.location.hash) {
@@ -271,6 +282,7 @@ const LanguageSwitcher = ({ locale }: { locale: LandingLocale }) => (
 				aria-current={locale === code ? "page" : undefined}
 				href={landingHomePath(code)}
 				key={code}
+				onClick={() => window.localStorage.setItem(LANDING_LANGUAGE_KEY, code)}
 			>
 				{code.toUpperCase()}
 			</a>
