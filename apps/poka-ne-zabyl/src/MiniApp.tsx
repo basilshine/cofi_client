@@ -13647,6 +13647,20 @@ const AUTH_CODE_TTL_MS = 10 * 60 * 1000;
 const AUTH_CODE_RESEND_MS = 60 * 1000;
 const formatCountdown = (seconds: number) =>
 	`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+const formatRussianPhone = (value: string) => {
+	const digits = value.replace(/\D/g, "");
+	if (!digits) return "";
+
+	const nationalNumber = (
+		/^[78]/.test(digits) ? digits.slice(1) : digits
+	).slice(0, 10);
+	let formatted = "+7";
+	if (nationalNumber) formatted += ` ${nationalNumber.slice(0, 3)}`;
+	if (nationalNumber.length > 3) formatted += ` ${nationalNumber.slice(3, 6)}`;
+	if (nationalNumber.length > 6) formatted += `-${nationalNumber.slice(6, 8)}`;
+	if (nationalNumber.length > 8) formatted += `-${nationalNumber.slice(8, 10)}`;
+	return formatted;
+};
 
 const BrowserEntry = ({
 	error,
@@ -14040,10 +14054,11 @@ const BrowserEntry = ({
 										type={isPhone ? "tel" : "email"}
 										autoComplete={isPhone ? "tel" : "email"}
 										inputMode={isPhone ? "tel" : "email"}
+										maxLength={isPhone ? 18 : undefined}
 										value={isPhone ? phone : email}
 										onChange={(event) =>
 											isPhone
-												? setPhone(event.target.value)
+												? setPhone(formatRussianPhone(event.target.value))
 												: setEmail(event.target.value)
 										}
 										placeholder={
