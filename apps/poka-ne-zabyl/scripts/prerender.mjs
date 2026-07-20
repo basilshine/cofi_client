@@ -131,8 +131,8 @@ const localizedStructuredData = ({ path, description, language }) => {
 					{
 						"@type": "Offer",
 						name: "Plus",
-						price: "249",
-						priceCurrency: "RUB",
+						price: "9.99",
+						priceCurrency: "USD",
 					},
 				],
 			},
@@ -323,6 +323,8 @@ for (const seo of PUBLIC_PAGE_SEO) {
 	if (["/en/", "/es/"].includes(seo.path)) {
 		assert(html.includes(`hreflang="${seo.language}"`));
 		assert(html.includes('"@type":"FAQPage"'));
+		assert(html.includes('"name":"Plus","price":"9.99","priceCurrency":"USD"'));
+		assert(html.includes("$9.99"));
 	}
 }
 

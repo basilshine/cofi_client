@@ -154,6 +154,7 @@ const translations: Record<
 		"Фото и голос хранятся 3 дня": "Photos and voice are stored for 3 days",
 		"Начать с Базового": "Start with Basic",
 		Плюс: "Plus",
+		"249 ₽": "$9.99\u00a0",
 		"/ 30 дней": "/ 30 days",
 		"Для регулярного учёта": "For regular tracking",
 		"Больше умных добавлений, планов и пространства для семейных сценариев.":
@@ -361,6 +362,7 @@ const translations: Record<
 		"Фото и голос хранятся 3 дня": "Las fotos y la voz se guardan 3 días",
 		"Начать с Базового": "Empezar con Básico",
 		Плюс: "Plus",
+		"249 ₽": "$9.99\u00a0",
 		"/ 30 дней": "/ 30 días",
 		"Для регулярного учёта": "Para un control habitual",
 		"Больше умных добавлений, планов и пространства для семейных сценариев.":
