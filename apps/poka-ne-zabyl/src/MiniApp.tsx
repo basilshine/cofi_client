@@ -65,6 +65,7 @@ import {
 	tagsAfterNotesEdit,
 } from "./hashtags";
 import { legalPagePath, preferredLandingLocale } from "./landing-locale";
+import { reachMetrikaGoal, trackFirstExpenseGoal } from "./metrika";
 import {
 	type UILanguage,
 	languageOptions,
@@ -1717,6 +1718,7 @@ export const MiniApp = () => {
 	useEffect(() => {
 		if (started.current) return;
 		started.current = true;
+		if (!previewMode) reachMetrikaGoal("app_open");
 		if (WebApp.initData) {
 			const useFullscreen = shouldUseFullscreen(telegramWebApp.platform);
 			WebApp.ready();
@@ -3609,6 +3611,7 @@ export const MiniApp = () => {
 				{ method: "POST", body: JSON.stringify(payload) },
 			);
 			setSavedReviewExpense(result.expense);
+			trackFirstExpenseGoal(user?.id, expenses.length);
 			setExpenses((current) => [
 				result.expense,
 				...current.filter((expense) => expense.id !== result.expense.id),
@@ -4096,6 +4099,7 @@ export const MiniApp = () => {
 					saveNotice = budgetWarningText(projected.budget_warnings[0]);
 				}
 				savedExpenseID = projected.expense.id;
+				trackFirstExpenseGoal(user?.id, expenses.length);
 			} else {
 				await apiRequest(
 					`/spaces/${spaceID}/expenses/${editingExpense.id}`,
@@ -15818,6 +15822,7 @@ const BrowserEntry = ({
 				},
 			);
 			await onEmailAuth(auth);
+			if (authMode === "register") reachMetrikaGoal("registration");
 		} catch (requestError) {
 			const message =
 				requestError instanceof Error ? requestError.message : copy.invalidCode;

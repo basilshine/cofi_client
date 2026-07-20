@@ -23,6 +23,7 @@ import {
 	legalPagePath,
 	preferredLandingLocale,
 } from "./landing-locale";
+import { reachMetrikaGoal } from "./metrika";
 
 const MiniApp = lazy(async () => {
 	const module = await import("./MiniApp");
@@ -144,13 +145,7 @@ const TelegramButton = ({ light = false }: { light?: boolean }) => (
 	</a>
 );
 
-const trackLandingAppClick = () => {
-	(
-		window as Window & {
-			ym?: (counter: number, method: string, goal: string) => void;
-		}
-	).ym?.(110761833, "reachGoal", "landing_app_click");
-};
+const trackLandingAppClick = () => reachMetrikaGoal("landing_app_click");
 
 const AppButton = ({
 	light = false,
