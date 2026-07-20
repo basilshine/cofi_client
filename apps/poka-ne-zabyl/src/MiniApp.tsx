@@ -52,6 +52,7 @@ import {
 	avatarFileFromCanvas,
 } from "./avatar-crop";
 import { captureSourceKind } from "./capture-source";
+import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
 import { groupRowsByExpense } from "./expense-groups";
 import { type Period, periodBounds } from "./expense-period";
 import {
@@ -1335,6 +1336,8 @@ export const MiniApp = () => {
 	const [notificationsOpen, setNotificationsOpen] = useState(false);
 	const [spaceMenuOpen, setSpaceMenuOpen] = useState(false);
 	const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+	const [seenCoachmarks, setSeenCoachmarks] = useState<CoachmarkID[]>([]);
+	const [coachmarksReady, setCoachmarksReady] = useState(false);
 	const [selectedNotification, setSelectedNotification] =
 		useState<AppNotification | null>(null);
 	const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -1371,6 +1374,36 @@ export const MiniApp = () => {
 	};
 	const [error, setError] = useState("");
 	const [notice, setNotice] = useState("");
+	useEffect(() => {
+		setCoachmarksReady(false);
+		if (!user?.id) return;
+		try {
+			setSeenCoachmarks(
+				parseCoachmarks(
+					window.localStorage.getItem(`pnz:coachmarks:v1:${user.id}`),
+				),
+			);
+		} catch {
+			setSeenCoachmarks([]);
+		}
+		setCoachmarksReady(true);
+	}, [user?.id]);
+	const dismissCoachmark = (id: CoachmarkID) => {
+		if (!user?.id) return;
+		setSeenCoachmarks((current) => {
+			if (current.includes(id)) return current;
+			const next = [...current, id];
+			try {
+				window.localStorage.setItem(
+					`pnz:coachmarks:v1:${user.id}`,
+					JSON.stringify(next),
+				);
+			} catch {
+				// The hint still closes when browser storage is unavailable.
+			}
+			return next;
+		});
+	};
 	useEffect(() => {
 		if (!notice) return;
 		const timer = window.setTimeout(() => setNotice(""), 5_000);
@@ -3594,6 +3627,26 @@ export const MiniApp = () => {
 			),
 		[participants],
 	);
+	const hasStarted =
+		expenses.length > 0 ||
+		plans.length > 0 ||
+		captures.length > 0 ||
+		reviewCandidates.length > 0;
+	const activeCoachmark =
+		coachmarksReady &&
+		!loading &&
+		!spaceMenuOpen &&
+		!accountMenuOpen &&
+		!addChoiceOpen &&
+		!captureOpen
+			? nextCoachmark(seenCoachmarks, {
+					space: view === "overview" && spaces.length <= 1 && !hasStarted,
+					add: view === "overview" && !hasStarted,
+					expenses: view === "expenses" && expenseSection === "history",
+					plans: view === "expenses" && expenseSection === "plans",
+					splits: view === "expenses" && eligibleParticipants.length > 1,
+				})
+			: null;
 	const splitsByExpense = useMemo(() => {
 		const grouped = new Map<number, ExpenseSplit[]>();
 		for (const split of expenseSplits) {
@@ -5466,6 +5519,7 @@ export const MiniApp = () => {
 							aria-haspopup="menu"
 							aria-expanded={spaceMenuOpen}
 							onClick={() => {
+								dismissCoachmark("space");
 								setAccountMenuOpen(false);
 								setSpaceMenuOpen((open) => !open);
 							}}
@@ -5479,6 +5533,14 @@ export const MiniApp = () => {
 								</span>
 							</span>
 						</button>
+						{activeCoachmark === "space" && (
+							<CoachTip
+								className="is-space"
+								text={uiText(language, "coachSpace")}
+								closeLabel={uiText(language, "coachDismiss")}
+								onDismiss={() => dismissCoachmark("space")}
+							/>
+						)}
 						{spaceMenuOpen && (
 							<div className="mini-space-menu" role="menu">
 								{activeSpace && (
@@ -5793,6 +5855,8 @@ export const MiniApp = () => {
 									setRecordDetail({ kind: "plan-item", plan, itemIndex })
 								}
 								onBuyPlan={buyPlan}
+								coachmark={activeCoachmark}
+								onDismissCoachmark={dismissCoachmark}
 							/>
 						)}
 						{view === "vendors" && (
@@ -6138,8 +6202,19 @@ export const MiniApp = () => {
 					primary
 					label={uiText(language, "navAdd")}
 					icon={<Plus weight="bold" />}
-					onClick={() => setAddChoiceOpen(true)}
+					onClick={() => {
+						dismissCoachmark("add");
+						setAddChoiceOpen(true);
+					}}
 				/>
+				{activeCoachmark === "add" && (
+					<CoachTip
+						className="is-add"
+						text={uiText(language, "coachAdd")}
+						closeLabel={uiText(language, "coachDismiss")}
+						onDismiss={() => dismissCoachmark("add")}
+					/>
+				)}
 				<NavButton
 					active={view === "categories"}
 					label={uiText(language, "navCategories")}
@@ -7984,6 +8059,8 @@ const ExpensesView = ({
 	onOpenPlan,
 	onOpenPlanItem,
 	onBuyPlan,
+	coachmark,
+	onDismissCoachmark,
 }: {
 	items: ExpenseItemRow[];
 	expenses: Expense[];
@@ -8025,6 +8102,8 @@ const ExpensesView = ({
 	onOpenPlan: (plan: PurchasePlan) => void;
 	onOpenPlanItem: (plan: PurchasePlan, itemIndex: number) => void;
 	onBuyPlan: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
+	coachmark: CoachmarkID | null;
+	onDismissCoachmark: (id: CoachmarkID) => void;
 }) => {
 	const [filtersOpen, setFiltersOpen] = useState(false);
 	const [filterContextVisible, setFilterContextVisible] = useState(false);
@@ -8178,6 +8257,24 @@ const ExpensesView = ({
 						)}
 					</button>
 				)}
+				{coachmark &&
+					(coachmark === "expenses" ||
+						coachmark === "plans" ||
+						coachmark === "splits") && (
+						<CoachTip
+							className={`is-section is-${coachmark}`}
+							text={uiText(
+								language,
+								coachmark === "expenses"
+									? "coachExpenses"
+									: coachmark === "plans"
+										? "coachPlans"
+										: "coachSplits",
+							)}
+							closeLabel={uiText(language, "coachDismiss")}
+							onDismiss={() => onDismissCoachmark(coachmark)}
+						/>
+					)}
 			</div>
 			{section === "plans" ? (
 				<PlansView
@@ -15001,6 +15098,30 @@ const InstallGuide = ({ onClose }: { onClose: () => void }) => {
 		</Modal>
 	);
 };
+
+const CoachTip = ({
+	text,
+	className,
+	closeLabel,
+	onDismiss,
+}: {
+	text: string;
+	className: string;
+	closeLabel: string;
+	onDismiss: () => void;
+}) => (
+	<div className={`mini-coach-tip ${className}`} role="status">
+		<span>{text}</span>
+		<button
+			className="mini-coach-tip-close"
+			type="button"
+			aria-label={closeLabel}
+			onClick={onDismiss}
+		>
+			<X size={15} weight="bold" />
+		</button>
+	</div>
+);
 
 const NavButton = ({
 	active,
