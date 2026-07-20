@@ -3,7 +3,6 @@ import {
 	ChatCircleText,
 	Check,
 	Microphone,
-	Paperclip,
 	Receipt,
 	TelegramLogo,
 	UsersThree,
@@ -113,149 +112,60 @@ const AppButton = ({ light = false }: { light?: boolean }) => (
 
 const captureStories = [
 	{
-		type: "voice",
-		label: "Голосом",
-		prompt: "Кофе и круассан, 550 рублей",
-		title: "Кофейня",
-		amount: "550 ₽",
-		detail: "Еда · сегодня",
+		type: "input",
+		step: "01 / 03",
+		label: "Вы вводите",
+		caption: "Напишите расход одной фразой",
+		image: "/pwa-capture-input.png",
 		offset: "0s",
 	},
 	{
-		type: "text",
-		label: "Текстом",
-		prompt: "Такси 780 ₽ домой",
-		title: "Такси",
-		amount: "780 ₽",
-		detail: "Транспорт · сегодня",
+		type: "review",
+		step: "02 / 03",
+		label: "Сервис предлагает",
+		caption: "Исправьте данные, сохраните или удалите запись",
+		image: "/pwa-capture-review.png",
+		actionsImage: "/pwa-capture-actions.png",
 		offset: "-12s",
 	},
 	{
-		type: "photo",
-		label: "Фото чека",
-		prompt: "Чек из магазина",
-		title: "Пятёрочка",
-		amount: "2 840 ₽",
-		detail: "Продукты · сегодня",
+		type: "saved",
+		step: "03 / 03",
+		label: "Вы подтверждаете",
+		caption: "И только тогда расход появляется в истории",
+		image: "/pwa-capture-saved.png",
 		offset: "-6s",
 	},
 ] as const;
 
 const CaptureStory = () => (
-	<div className="capture-story" aria-label="Три способа записать расход">
+	<div
+		className="capture-story"
+		aria-label="Как расход проходит от ввода до сохранения"
+	>
 		{captureStories.map((story) => (
-			<div
+			<figure
 				aria-hidden="true"
-				className={`story-scene capture-scene capture-scene--${story.type}`}
+				className={`story-scene capture-fragment capture-fragment--${story.type}`}
 				key={story.type}
 				style={{ "--scene-offset": story.offset } as CSSProperties}
 			>
-				<div className="capture-source">
-					<span className="capture-source__label">{story.label}</span>
-					{story.type === "voice" && (
-						<>
-							<div className="comic-bubble">
-								<span>{story.prompt}</span>
-							</div>
-							<div className="story-composer story-composer--voice">
-								<Microphone size={22} weight="fill" />
-								<div className="story-wave" aria-hidden="true">
-									{voiceBars.slice(0, 11).map((bar) => (
-										<i key={bar.id} style={{ height: bar.height }} />
-									))}
-								</div>
-								<time>0:04</time>
-							</div>
-						</>
-					)}
-					{story.type === "text" && (
-						<div className="story-composer">
-							<Paperclip size={21} />
-							<span className="typed-line">{story.prompt}</span>
-							<span className="composer-send-dot" />
-						</div>
-					)}
-					{story.type === "photo" && (
-						<div className="story-photo">
-							<div>
-								<Receipt size={48} weight="light" />
-								<span>2 840 ₽</span>
-							</div>
-							<p>
-								<Paperclip size={18} /> {story.prompt}
-							</p>
-						</div>
+				<div className="capture-fragment__heading">
+					<span>{story.step}</span>
+					<strong>{story.label}</strong>
+				</div>
+				<div className="capture-fragment__canvas">
+					<img src={story.image} alt="" />
+					{"actionsImage" in story && (
+						<img
+							className="capture-fragment__actions"
+							src={story.actionsImage}
+							alt=""
+						/>
 					)}
 				</div>
-				<div className="capture-result">
-					<div className="capture-result__top">
-						<span>
-							<Check size={16} weight="bold" /> Распознано
-						</span>
-						<small>{story.label}</small>
-					</div>
-					<p>{story.title}</p>
-					<strong>{story.amount}</strong>
-					<span>{story.detail}</span>
-					<span className="capture-result__action">Проверить и сохранить</span>
-				</div>
-			</div>
-		))}
-	</div>
-);
-
-const sharedStories = [
-	{
-		name: "Маша",
-		first: "Билеты 12 400, на двоих",
-		secondName: "Антон",
-		second: "Да, делим поровну",
-		result: "По 6 200 ₽ каждому",
-		offset: "0s",
-	},
-	{
-		name: "Дима",
-		first: "Ужин 4 800, я оплатил",
-		secondName: "Лена",
-		second: "Нас было четверо",
-		result: "По 1 200 ₽ с человека",
-		offset: "-12s",
-	},
-	{
-		name: "Оля",
-		first: "Подарок маме 9 000",
-		secondName: "Саша",
-		second: "Запиши 4 000 на меня",
-		result: "Оля 5 000 ₽ · Саша 4 000 ₽",
-		offset: "-6s",
-	},
-] as const;
-
-const SharedStory = () => (
-	<div className="shared-story" data-reveal aria-label="Примеры общих расходов">
-		{sharedStories.map((story) => (
-			<div
-				aria-hidden="true"
-				className="story-scene shared-scene"
-				key={story.first}
-				style={{ "--scene-offset": story.offset } as CSSProperties}
-			>
-				<p>
-					<b>{story.name}</b>
-					<span>{story.first}</span>
-				</p>
-				<p>
-					<b>{story.secondName}</b>
-					<span>{story.second}</span>
-				</p>
-				<div className="shared-result">
-					<span>
-						<Check size={17} weight="bold" /> Пока не забыл
-					</span>
-					<strong>{story.result}</strong>
-					<small>Добавлено в общие расходы</small>
-				</div>
-			</div>
+				<figcaption>{story.caption}</figcaption>
+			</figure>
 		))}
 	</div>
 );
@@ -714,16 +624,51 @@ const LandingPage = () => {
 				<div className="shell shared-layout">
 					<div data-reveal>
 						<UsersThree size={42} weight="light" />
-						<h2>
-							Личные расходы.
-							<br />И общие, когда нужны.
-						</h2>
+						<h2>Разделите общий расход</h2>
 						<p>
-							Личный учёт остаётся простым. Общие расходы подключаются только
-							когда нужны.
+							Выберите расход и участников. Приложение посчитает доли и покажет,
+							кто кому должен.
 						</p>
 					</div>
-					<SharedStory />
+					<div
+						className="split-showcase"
+						data-reveal
+						aria-label="Разделение общего расхода в приложении"
+					>
+						<figure className="app-shot split-shot split-shot--detail">
+							<div className="app-shot__speaker" aria-hidden="true" />
+							<img
+								alt="Общий расход с долями участников"
+								decoding="async"
+								height="1040"
+								src="/pwa-splits-detail.png"
+								width="520"
+							/>
+							<figcaption>Откройте общий расход</figcaption>
+						</figure>
+						<figure className="app-shot split-shot split-shot--editor">
+							<div className="app-shot__speaker" aria-hidden="true" />
+							<img
+								alt="Распределение суммы между участниками"
+								decoding="async"
+								height="1040"
+								src="/pwa-splits-editor.png"
+								width="520"
+							/>
+							<figcaption>Распределите доли</figcaption>
+						</figure>
+						<figure className="app-shot split-shot split-shot--list">
+							<div className="app-shot__speaker" aria-hidden="true" />
+							<img
+								alt="Итог разделения с суммой долга"
+								decoding="async"
+								height="1040"
+								src="/pwa-splits-list.png"
+								width="520"
+							/>
+							<figcaption>Посмотрите, кто кому должен</figcaption>
+						</figure>
+					</div>
 				</div>
 			</section>
 
@@ -768,8 +713,9 @@ const LandingPage = () => {
 						<details>
 							<summary>Можно пользоваться только лично?</summary>
 							<p>
-								Да. Групповой чат и общие расходы являются дополнительным
-								сценарием. Это не обязательное условие.
+								Да. Общие пространства и разделение расходов подключаются только
+								когда нужны. Приложение посчитает доли и покажет, кто кому
+								должен.
 							</p>
 						</details>
 						<details>

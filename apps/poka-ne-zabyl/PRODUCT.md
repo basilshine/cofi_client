@@ -10,7 +10,7 @@ People opening the page mainly from a phone who want one clear application for e
 
 ## Product Purpose
 
-Present the installable browser application as the primary product surface until a native mobile application exists. It opens from a link, installs to the phone home screen, and covers manual and smart entry, history, search, category limits, purchase plans, Spaces, and notifications. Present `@poka_ne_zabyl_bot` as a fast companion for text, voice, receipt capture, and timely reminders. Both entry points use the same records and review flow. Use “application” in customer copy, explain the familiar installation action, and keep “PWA” as a secondary technical term. Show the free Basic plan, Plus for regular use, and optional parse packs without making payment the main product story.
+Present the installable browser application as the primary product surface until a native mobile application exists. It opens from a link, installs to the phone home screen, and covers manual and smart entry, history, search, category limits, purchase plans, Spaces, notifications, and participant-owned expense splits with clear balances. Present `@poka_ne_zabyl_bot` as a fast companion for text, voice, receipt capture, and timely reminders. Both entry points use the same records and review flow. Use “application” in customer copy, explain the familiar installation action, and keep “PWA” as a secondary technical term. Show the free Basic plan, Plus for regular use, and optional parse packs without making payment the main product story.
 
 ## Brand Personality
 
