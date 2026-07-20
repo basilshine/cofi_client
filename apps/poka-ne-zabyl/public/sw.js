@@ -1,4 +1,4 @@
-const CACHE_NAME = "pnz-offline-v3";
+const CACHE_NAME = "pnz-offline-v4";
 const OFFLINE_FILES = [
 	"/offline.html",
 	"/manifest.webmanifest?v=20260717",
@@ -23,13 +23,19 @@ self.addEventListener("activate", (event) => {
 						.map((key) => caches.delete(key)),
 				),
 			)
-			.then(() => self.clients.claim()),
+			.then(async () => {
+				await self.clients.claim();
+				const clients = await self.clients.matchAll({ type: "window" });
+				await Promise.all(clients.map((client) => client.navigate(client.url)));
+			}),
 	);
 });
 
 self.addEventListener("fetch", (event) => {
 	if (event.request.mode !== "navigate") return;
 	event.respondWith(
-		fetch(event.request).catch(() => caches.match("/offline.html")),
+		fetch(event.request, { cache: "no-store" }).catch(() =>
+			caches.match("/offline.html"),
+		),
 	);
 });
