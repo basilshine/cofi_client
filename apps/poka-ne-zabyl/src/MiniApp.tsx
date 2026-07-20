@@ -11097,7 +11097,7 @@ const FeedbackComposer = ({
 					idea: "Idea",
 					thanks: "Gracias",
 					other: "Otro",
-					photo: "Adjuntar foto",
+					photo: "Elegir imagen",
 					record: "Grabar voz",
 					stop: "Detener",
 					send: "Enviar",
@@ -11116,7 +11116,7 @@ const FeedbackComposer = ({
 						idea: "Idea",
 						thanks: "Thanks",
 						other: "Other",
-						photo: "Attach photo",
+						photo: "Choose image",
 						record: "Record voice",
 						stop: "Stop",
 						send: "Send",
@@ -11134,7 +11134,7 @@ const FeedbackComposer = ({
 						idea: "Идея",
 						thanks: "Спасибо",
 						other: "Другое",
-						photo: "Приложить фото",
+						photo: "Выбрать изображение",
 						record: "Записать голос",
 						stop: "Остановить",
 						send: "Отправить",
@@ -11294,7 +11294,7 @@ const FeedbackComposer = ({
 						disabled={saving}
 						onClick={() => photoInput.current?.click()}
 					>
-						<Camera size={19} />
+						<ImageSquare size={19} />
 						{copy.photo}
 					</button>
 					<button
@@ -11319,11 +11319,11 @@ const FeedbackComposer = ({
 					<div className="feedback-files">
 						{photo && (
 							<p>
-								<Camera size={17} />
+								<ImageSquare size={17} />
 								<span>{photo.name}</span>
 								<button
 									type="button"
-									aria-label="Убрать фото"
+									aria-label="Убрать изображение"
 									onClick={() => setPhoto(undefined)}
 								>
 									<X size={16} />
@@ -11354,7 +11354,6 @@ const FeedbackComposer = ({
 					className="capture-file-input"
 					type="file"
 					accept="image/*"
-					capture="environment"
 					onChange={(event) => {
 						selectPhoto(event.target.files?.[0]);
 						event.target.value = "";
