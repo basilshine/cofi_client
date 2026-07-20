@@ -13777,7 +13777,15 @@ const BrowserEntry = ({
 					? "Эта почта уже зарегистрирована. Выберите «Войти»."
 					: message.includes("SMS could not be delivered")
 						? "Не удалось доставить SMS. Проверьте номер или войдите по почте."
-						: message,
+						: message.includes("wait a minute")
+							? "Код уже отправлен. Новый можно запросить через минуту."
+							: message.includes("hourly authentication code limit reached")
+								? "Вы уже запросили 3 кода за последний час. Попробуйте позже."
+								: message.includes("daily authentication code limit reached")
+									? "Суточный лимит кодов исчерпан. Попробуйте завтра."
+									: message.includes("rate limit exceeded")
+										? "Слишком много попыток. Подождите и попробуйте снова."
+										: message,
 			);
 		} finally {
 			setLoading(false);
