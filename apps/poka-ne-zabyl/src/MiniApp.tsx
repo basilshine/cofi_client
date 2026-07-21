@@ -15650,7 +15650,7 @@ const BasicLimitNudge = ({
 			</div>
 		</div>
 		<button type="button" onClick={onUpgrade}>
-			{uiText(language, "moreWithPlus")}
+			{uiText(language, "plus")}
 			<ArrowRight size={15} weight="bold" />
 		</button>
 	</aside>
