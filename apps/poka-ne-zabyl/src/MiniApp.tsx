@@ -473,6 +473,10 @@ type Quota = {
 	limit: number;
 	used: number;
 	remaining: number;
+	max_spaces?: number;
+	max_custom_categories?: number;
+	max_category_budgets?: number;
+	max_active_plans?: number;
 	plan_expires_at?: string | null;
 	recurring_limit?: number;
 	recurring_used?: number;
@@ -1885,6 +1889,10 @@ export const MiniApp = () => {
 				limit: 20,
 				used: 7,
 				remaining: 13,
+				max_spaces: 2,
+				max_custom_categories: 3,
+				max_category_budgets: 3,
+				max_active_plans: 10,
 				recurring_limit: 0,
 				welcome_remaining: 13,
 				additional_limit: 0,
@@ -3754,6 +3762,14 @@ export const MiniApp = () => {
 	};
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
+	const accountHasPlus = ["medium", "plus"].includes(accountQuota?.plan || "");
+	const activeSpaceHasPlus = ["medium", "plus"].includes(quota?.plan || "");
+	const activeSpaceOwnedByUser = activeSpace?.owner_user_id === user?.id;
+	const showActiveSpaceBasicLimits =
+		Boolean(activeSpaceOwnedByUser && quota) && !activeSpaceHasPlus;
+	const ownedSpacesCount = spaces.filter(
+		(space) => space.owner_user_id === user?.id,
+	).length;
 	const eligibleParticipants = useMemo(
 		() =>
 			participants.filter(
@@ -5719,6 +5735,26 @@ export const MiniApp = () => {
 										</button>
 									))}
 								</div>
+								{accountQuota && !accountHasPlus && (
+									<BasicLimitNudge
+										className="is-menu"
+										language={language}
+										metrics={[
+											{
+												label: uiText(language, "parsesLimit"),
+												value: String(accountQuota.remaining),
+											},
+											{
+												label: uiText(language, "ownedSpacesLimit"),
+												value: `${ownedSpacesCount}/${accountQuota.max_spaces || 2}`,
+											},
+										]}
+										onUpgrade={() => {
+											setSpaceMenuOpen(false);
+											setView("subscription");
+										}}
+									/>
+								)}
 								<div className="mini-space-menu-actions">
 									{activeSpace && (
 										<button
@@ -5957,6 +5993,8 @@ export const MiniApp = () => {
 								expenses={expenses}
 								section={expenseSection}
 								plans={plans}
+								quota={quota}
+								showBasicLimits={showActiveSpaceBasicLimits}
 								planInitialPeriod={planInitialPeriod}
 								language={language}
 								categories={categories}
@@ -6002,6 +6040,7 @@ export const MiniApp = () => {
 									setRecordDetail({ kind: "plan-item", plan, itemIndex })
 								}
 								onBuyPlan={buyPlan}
+								onUpgrade={() => setView("subscription")}
 								coachmark={activeCoachmark}
 								onDismissCoachmark={dismissCoachmark}
 							/>
@@ -6021,9 +6060,12 @@ export const MiniApp = () => {
 								currency={activeSpace?.currency || currency}
 								language={language}
 								shared={members.length > 1}
+								quota={quota}
+								showBasicLimits={showActiveSpaceBasicLimits}
 								onOpen={openCategory}
 								onEdit={editCategory}
 								onPin={(category) => void toggleCategoryPin(category)}
+								onUpgrade={() => setView("subscription")}
 								onAdd={() =>
 									setEditingCategory({
 										id: 0,
@@ -6047,6 +6089,9 @@ export const MiniApp = () => {
 						{view === "spaces" && (
 							<SpacesView
 								spaces={spaces}
+								quota={accountQuota}
+								ownedSpacesCount={ownedSpacesCount}
+								showBasicLimits={Boolean(accountQuota) && !accountHasPlus}
 								language={language}
 								activeSpaceID={spaceID}
 								members={members}
@@ -6056,6 +6101,7 @@ export const MiniApp = () => {
 								onBack={() => setView("profile")}
 								onEdit={(space) => setEditingSpace({ ...space })}
 								onRemoveMember={removeSpaceMember}
+								onUpgrade={() => setView("subscription")}
 								onInvite={
 									activeSpace &&
 									!activeSpace.is_personal &&
@@ -8208,6 +8254,8 @@ const ExpensesView = ({
 	expenses,
 	section,
 	plans,
+	quota,
+	showBasicLimits,
 	planInitialPeriod,
 	language,
 	categories,
@@ -8244,6 +8292,7 @@ const ExpensesView = ({
 	onOpenPlan,
 	onOpenPlanItem,
 	onBuyPlan,
+	onUpgrade,
 	coachmark,
 	onDismissCoachmark,
 }: {
@@ -8251,6 +8300,8 @@ const ExpensesView = ({
 	expenses: Expense[];
 	section: ExpenseSection;
 	plans: PurchasePlan[];
+	quota: Quota | null;
+	showBasicLimits: boolean;
 	planInitialPeriod: Period;
 	language: UILanguage;
 	categories: Category[];
@@ -8287,6 +8338,7 @@ const ExpensesView = ({
 	onOpenPlan: (plan: PurchasePlan) => void;
 	onOpenPlanItem: (plan: PurchasePlan, itemIndex: number) => void;
 	onBuyPlan: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
+	onUpgrade: () => void;
 	coachmark: CoachmarkID | null;
 	onDismissCoachmark: (id: CoachmarkID) => void;
 }) => {
@@ -8464,6 +8516,8 @@ const ExpensesView = ({
 			{section === "plans" ? (
 				<PlansView
 					plans={plans}
+					quota={quota}
+					showBasicLimits={showBasicLimits}
 					initialPeriod={planInitialPeriod}
 					categories={categories}
 					vendors={vendors}
@@ -8475,6 +8529,7 @@ const ExpensesView = ({
 					onOpenPlan={onOpenPlan}
 					onOpenPlanItem={onOpenPlanItem}
 					onBuy={onBuyPlan}
+					onUpgrade={onUpgrade}
 					onSource={onPlanSource}
 				/>
 			) : section === "splits" ? (
@@ -8848,6 +8903,8 @@ const SplitsView = ({
 
 const PlansView = ({
 	plans,
+	quota,
+	showBasicLimits,
 	initialPeriod,
 	categories,
 	vendors,
@@ -8859,9 +8916,12 @@ const PlansView = ({
 	onOpenPlan,
 	onOpenPlanItem,
 	onBuy,
+	onUpgrade,
 	onSource,
 }: {
 	plans: PurchasePlan[];
+	quota: Quota | null;
+	showBasicLimits: boolean;
 	initialPeriod: Period;
 	categories: Category[];
 	vendors: Vendor[];
@@ -8873,6 +8933,7 @@ const PlansView = ({
 	onOpenPlan: (plan: PurchasePlan) => void;
 	onOpenPlanItem: (plan: PurchasePlan, itemIndex: number) => void;
 	onBuy: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
+	onUpgrade: () => void;
 	onSource: (plan: PurchasePlan) => void;
 }) => {
 	const [query, setQuery] = useState("");
@@ -9019,25 +9080,41 @@ const PlansView = ({
 			</div>
 		);
 	};
+	const basicPlanLimit = showBasicLimits && quota && (
+		<BasicLimitNudge
+			language={language}
+			metrics={[
+				{
+					label: uiText(language, "activePlansLimit"),
+					value: `${plans.length}/${quota.max_active_plans || 10}`,
+				},
+			]}
+			onUpgrade={onUpgrade}
+		/>
+	);
 
 	if (plans.length === 0) {
 		return (
-			<div className="mini-plans-empty">
-				<span>
-					<CalendarBlank size={26} />
-				</span>
-				<h2>{uiText(language, "noPlans")}</h2>
-				<p>{uiText(language, "noPlansHint")}</p>
-				<button type="button" onClick={onAdd}>
-					<Plus size={17} weight="bold" />
-					{uiText(language, "addPlan")}
-				</button>
+			<div className="mini-plan-workspace">
+				{basicPlanLimit}
+				<div className="mini-plans-empty">
+					<span>
+						<CalendarBlank size={26} />
+					</span>
+					<h2>{uiText(language, "noPlans")}</h2>
+					<p>{uiText(language, "noPlansHint")}</p>
+					<button type="button" onClick={onAdd}>
+						<Plus size={17} weight="bold" />
+						{uiText(language, "addPlan")}
+					</button>
+				</div>
 			</div>
 		);
 	}
 
 	return (
 		<div className="mini-plan-workspace">
+			{basicPlanLimit}
 			<div className="mini-expense-filter-stack">
 				<label className="mini-search">
 					<MagnifyingGlass size={19} />
@@ -9564,20 +9641,32 @@ const CategoriesView = ({
 	currency,
 	language,
 	shared,
+	quota,
+	showBasicLimits,
 	onOpen,
 	onEdit,
 	onPin,
+	onUpgrade,
 	onAdd,
 }: {
 	categories: Category[];
 	currency: string;
 	language: UILanguage;
 	shared: boolean;
+	quota: Quota | null;
+	showBasicLimits: boolean;
 	onOpen: (id: number) => void;
 	onEdit: (category: Category) => void;
 	onPin: (category: Category) => void;
+	onUpgrade: () => void;
 	onAdd: () => void;
 }) => {
+	const customCategoryCount = categories.filter(
+		(category) => !category.is_system,
+	).length;
+	const categoryBudgetCount = categories.filter(
+		(category) => (category.budget_amount || 0) > 0,
+	).length;
 	const orderedCategories = [...categories].sort(
 		(left, right) =>
 			Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) ||
@@ -9596,6 +9685,22 @@ const CategoriesView = ({
 				</button>
 			</div>
 			<p className="mini-intro">{uiText(language, "categoriesIntro")}</p>
+			{showBasicLimits && quota && (
+				<BasicLimitNudge
+					language={language}
+					metrics={[
+						{
+							label: uiText(language, "customCategoriesLimit"),
+							value: `${customCategoryCount}/${quota.max_custom_categories || 3}`,
+						},
+						{
+							label: uiText(language, "categoryBudgetsLimit"),
+							value: `${categoryBudgetCount}/${quota.max_category_budgets || 3}`,
+						},
+					]}
+					onUpgrade={onUpgrade}
+				/>
+			)}
 			<div className="mini-categories">
 				{orderedCategories.map((category) => {
 					const hasLimit = (category.budget_amount || 0) > 0;
@@ -9771,6 +9876,9 @@ const VendorsView = ({
 
 const SpacesView = ({
 	spaces,
+	quota,
+	ownedSpacesCount,
+	showBasicLimits,
 	language,
 	activeSpaceID,
 	members,
@@ -9779,12 +9887,16 @@ const SpacesView = ({
 	onBack,
 	onEdit,
 	onRemoveMember,
+	onUpgrade,
 	onInvite,
 	inviting,
 	saving,
 	onAdd,
 }: {
 	spaces: Space[];
+	quota: Quota | null;
+	ownedSpacesCount: number;
+	showBasicLimits: boolean;
 	language: UILanguage;
 	activeSpaceID: number;
 	members: SpaceMember[];
@@ -9793,6 +9905,7 @@ const SpacesView = ({
 	onBack: () => void;
 	onEdit: (space: Space) => void;
 	onRemoveMember: (member: SpaceMember) => void;
+	onUpgrade: () => void;
 	onInvite?: (space: Space) => void;
 	inviting: boolean;
 	saving: boolean;
@@ -9815,6 +9928,18 @@ const SpacesView = ({
 					{uiText(language, "add")}
 				</button>
 			</div>
+			{showBasicLimits && quota && (
+				<BasicLimitNudge
+					language={language}
+					metrics={[
+						{
+							label: uiText(language, "ownedSpacesLimit"),
+							value: `${ownedSpacesCount}/${quota.max_spaces || 2}`,
+						},
+					]}
+					onUpgrade={onUpgrade}
+				/>
+			)}
 			<div className="mini-spaces">
 				{spaces.map((space) => (
 					<article
@@ -15495,6 +15620,40 @@ const CoachTip = ({
 			<X size={15} weight="bold" />
 		</button>
 	</div>
+);
+
+const BasicLimitNudge = ({
+	language,
+	metrics,
+	onUpgrade,
+	className = "",
+}: {
+	language: UILanguage;
+	metrics: Array<{ label: string; value: string }>;
+	onUpgrade: () => void;
+	className?: string;
+}) => (
+	<aside
+		className={`mini-basic-limit-nudge${className ? ` ${className}` : ""}`}
+	>
+		<span className="mini-basic-limit-icon" aria-hidden="true">
+			<Star size={17} weight="fill" />
+		</span>
+		<div className="mini-basic-limit-copy">
+			<strong>{uiText(language, "basicLimits")}</strong>
+			<div>
+				{metrics.map((metric) => (
+					<small key={metric.label}>
+						{metric.label} <b>{metric.value}</b>
+					</small>
+				))}
+			</div>
+		</div>
+		<button type="button" onClick={onUpgrade}>
+			{uiText(language, "moreWithPlus")}
+			<ArrowRight size={15} weight="bold" />
+		</button>
+	</aside>
 );
 
 const NavButton = ({

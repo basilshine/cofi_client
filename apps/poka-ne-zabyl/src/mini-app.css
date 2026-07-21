@@ -365,6 +365,74 @@
 .mini-space-menu-actions button > svg:last-child {
 	justify-self: end;
 }
+.mini-basic-limit-nudge {
+	display: grid;
+	grid-template-columns: 32px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	padding: 10px 11px;
+	border: 1px solid rgba(41, 69, 199, 0.22);
+	border-radius: 8px;
+	background: rgba(238, 241, 250, 0.76);
+}
+.mini-basic-limit-icon {
+	display: grid;
+	width: 32px;
+	height: 32px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-paper);
+	color: var(--mini-green);
+}
+.mini-basic-limit-copy {
+	display: grid;
+	min-width: 0;
+	gap: 4px;
+}
+.mini-basic-limit-copy > strong {
+	font-size: 12px;
+}
+.mini-basic-limit-copy > div {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 3px 10px;
+}
+.mini-basic-limit-copy small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	line-height: 1.35;
+}
+.mini-basic-limit-copy b {
+	color: var(--mini-ink);
+	font-variant-numeric: tabular-nums;
+}
+.mini-basic-limit-nudge > button {
+	display: inline-flex;
+	min-height: 32px;
+	align-items: center;
+	gap: 4px;
+	padding: 0 8px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--mini-green);
+	font-size: 11px;
+	font-weight: 750;
+	white-space: nowrap;
+}
+.mini-basic-limit-nudge > button:hover,
+.mini-basic-limit-nudge > button:active {
+	background: var(--mini-paper);
+}
+.mini-basic-limit-nudge.is-menu {
+	margin: 2px 2px 8px;
+	grid-template-columns: 32px minmax(0, 1fr);
+}
+.mini-basic-limit-nudge.is-menu > button {
+	grid-column: 2;
+	justify-self: start;
+	margin-left: -8px;
+}
 .mini-header-context {
 	display: flex;
 	flex: none;
@@ -6838,6 +6906,14 @@
 	}
 }
 @media (max-width: 699px) {
+	.mini-basic-limit-nudge:not(.is-menu) {
+		grid-template-columns: 32px minmax(0, 1fr);
+	}
+	.mini-basic-limit-nudge:not(.is-menu) > button {
+		grid-column: 2;
+		justify-self: start;
+		margin-left: -8px;
+	}
 	.mini-date-range {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 6px;
