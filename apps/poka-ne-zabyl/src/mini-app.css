@@ -1704,6 +1704,29 @@
 	display: grid;
 	gap: 20px;
 }
+.mini-load-more {
+	display: grid;
+	min-height: 52px;
+	place-items: center;
+	padding: 8px 0 2px;
+}
+.mini-load-more > span,
+.mini-load-more > button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 38px;
+	padding: 7px 13px;
+	border: 0;
+	background: transparent;
+	color: var(--mini-muted);
+	font-size: 12px;
+	font-weight: 700;
+}
+.mini-load-more > button {
+	color: var(--mini-green);
+}
 .mini-plan-groups h2 {
 	margin: 0 2px;
 	color: var(--mini-muted);

@@ -1,5 +1,6 @@
 import {
 	ArrowClockwise,
+	ArrowDown,
 	ArrowLeft,
 	ArrowRight,
 	ArrowsLeftRight,
@@ -40,6 +41,7 @@ import {
 import WebApp from "@twa-dev/sdk";
 import {
 	type TouchEvent,
+	useCallback,
 	useEffect,
 	useId,
 	useMemo,
@@ -189,6 +191,17 @@ type ExpenseSplit = {
 type ExpenseSplitDecision = {
 	expense: Expense;
 	splits: Omit<ExpenseSplit, "expense_id">[];
+};
+
+type PageInfo = {
+	has_more?: boolean;
+	next_offset?: number;
+	total_count?: number;
+	month_total?: number;
+};
+
+type DashboardSummary = {
+	monthly_snapshot?: { total_spent: number };
 };
 
 type SpaceInviteSuggestions = {
@@ -1340,6 +1353,8 @@ export const MiniApp = () => {
 	const openedRequestedPlan = useRef(false);
 	const openedRequestedExpense = useRef(false);
 	const loadSequence = useRef(0);
+	const loadingMoreExpensesRef = useRef(false);
+	const loadingMorePlansRef = useRef(false);
 	const pullStart = useRef<{ x: number; y: number } | null>(null);
 	const currentPullDistance = useRef(0);
 	const blockingRequest = useRef<AbortController | null>(null);
@@ -1357,8 +1372,24 @@ export const MiniApp = () => {
 	const [members, setMembers] = useState<SpaceMember[]>([]);
 	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
 	const [expenseSplits, setExpenseSplits] = useState<ExpenseSplit[]>([]);
+	const [splitExpenses, setSplitExpenses] = useState<Expense[]>([]);
 	const [expenses, setExpenses] = useState<Expense[]>([]);
 	const [plans, setPlans] = useState<PurchasePlan[]>([]);
+	const [expensePage, setExpensePage] = useState({
+		hasMore: false,
+		nextOffset: 20,
+	});
+	const [planPage, setPlanPage] = useState({
+		hasMore: false,
+		nextOffset: 20,
+	});
+	const [loadingMoreExpenses, setLoadingMoreExpenses] = useState(false);
+	const [loadingMorePlans, setLoadingMorePlans] = useState(false);
+	const [overviewExpenseTotal, setOverviewExpenseTotal] = useState<
+		number | null
+	>(null);
+	const [monthPlanTotal, setMonthPlanTotal] = useState<number | null>(null);
+	const [planTotalCount, setPlanTotalCount] = useState(0);
 	const [captures, setCaptures] = useState<CapturePacket[]>([]);
 	const [reviewCandidates, setReviewCandidates] = useState<ReviewCandidate[]>(
 		[],
@@ -1880,6 +1911,7 @@ export const MiniApp = () => {
 			setCategorySpaceID(previewSpaceID);
 			setExpenses(previewExpenses);
 			setPlans(previewPlans);
+			setPlanTotalCount(previewPlans.length);
 			setCaptures(previewCaptures);
 			setReviewCandidates(previewReviewCandidates);
 			setCategories(previewCategories);
@@ -2704,9 +2736,9 @@ export const MiniApp = () => {
 		setServiceUnavailable(false);
 		setError("");
 		try {
-			// ponytail: the latest 200 records cover launch usage; add server filters when this ceiling becomes visible.
 			const [
 				expenseData,
+				dashboardData,
 				categoryData,
 				quotaData,
 				accountQuotaData,
@@ -2719,10 +2751,14 @@ export const MiniApp = () => {
 				reviewData,
 				feedbackStatusData,
 			] = await Promise.all([
-				apiRequest<{ expenses: Expense[] }>(
-					`/spaces/${spaceID}/expenses?limit=200&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+				apiRequest<{ expenses: Expense[] } & PageInfo>(
+					`/spaces/${spaceID}/expenses?limit=20&currency=${encodeURIComponent(user?.currency || "RUB")}`,
 					token,
 				),
+				apiRequest<DashboardSummary>(
+					`/dashboard?period=month&space_id=${spaceID}`,
+					token,
+				).catch(() => null),
 				apiRequest<{ categories: Category[] }>(
 					`/spaces/${spaceID}/categories`,
 					token,
@@ -2746,8 +2782,8 @@ export const MiniApp = () => {
 					`/spaces/${spaceID}/captures?limit=100`,
 					token,
 				),
-				apiRequest<{ plans: PurchasePlan[] }>(
-					`/spaces/${spaceID}/plans`,
+				apiRequest<{ plans: PurchasePlan[] } & PageInfo>(
+					`/spaces/${spaceID}/plans?limit=20`,
 					token,
 				),
 				apiRequest<{ candidates: ReviewCandidate[] }>(
@@ -2760,6 +2796,13 @@ export const MiniApp = () => {
 			]);
 			if (requestID !== loadSequence.current) return;
 			setExpenses(expenseData.expenses || []);
+			setExpensePage({
+				hasMore: Boolean(expenseData.has_more),
+				nextOffset: expenseData.next_offset || 20,
+			});
+			setOverviewExpenseTotal(
+				dashboardData?.monthly_snapshot?.total_spent ?? null,
+			);
 			setCaptures(captureData.captures || []);
 			setCategories(categoryData.categories || []);
 			setCategorySpaceID(spaceID);
@@ -2776,8 +2819,17 @@ export const MiniApp = () => {
 					})),
 				),
 			);
+			setSplitExpenses(
+				(splitData.decisions || []).map((decision) => decision.expense),
+			);
 			setVendors(vendorData || []);
 			setPlans(planData.plans || []);
+			setPlanPage({
+				hasMore: Boolean(planData.has_more),
+				nextOffset: planData.next_offset || 20,
+			});
+			setMonthPlanTotal(planData.month_total ?? null);
+			setPlanTotalCount(planData.total_count ?? planData.plans?.length ?? 0);
 			setReviewCandidates(reviewData.candidates || []);
 			if (accountQuotaData.dev_tools_enabled) {
 				void refreshDeveloperDashboard();
@@ -2815,6 +2867,105 @@ export const MiniApp = () => {
 			if (!background && requestID === loadSequence.current) setLoading(false);
 		}
 	};
+
+	const loadMoreExpenses = useCallback(async () => {
+		if (
+			previewMode ||
+			!token ||
+			!spaceID ||
+			loading ||
+			!expensePage.hasMore ||
+			loadingMoreExpensesRef.current
+		)
+			return;
+		loadingMoreExpensesRef.current = true;
+		setLoadingMoreExpenses(true);
+		const requestID = loadSequence.current;
+		try {
+			const data = await apiRequest<{ expenses: Expense[] } & PageInfo>(
+				`/spaces/${spaceID}/expenses?limit=20&offset=${expensePage.nextOffset}&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+				token,
+			);
+			if (requestID !== loadSequence.current) return;
+			setExpenses((current) => {
+				const known = new Set(current.map(({ id }) => id));
+				return [
+					...current,
+					...(data.expenses || []).filter(({ id }) => !known.has(id)),
+				];
+			});
+			setExpensePage({
+				hasMore: Boolean(data.has_more),
+				nextOffset: data.next_offset || expensePage.nextOffset + 20,
+			});
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : uiText(language, "loadMoreFailed"),
+			);
+		} finally {
+			loadingMoreExpensesRef.current = false;
+			setLoadingMoreExpenses(false);
+		}
+	}, [
+		expensePage.hasMore,
+		expensePage.nextOffset,
+		language,
+		loading,
+		spaceID,
+		token,
+		user?.currency,
+	]);
+
+	const loadMorePlans = useCallback(async () => {
+		if (
+			previewMode ||
+			!token ||
+			!spaceID ||
+			loading ||
+			!planPage.hasMore ||
+			loadingMorePlansRef.current
+		)
+			return;
+		loadingMorePlansRef.current = true;
+		setLoadingMorePlans(true);
+		const requestID = loadSequence.current;
+		try {
+			const data = await apiRequest<{ plans: PurchasePlan[] } & PageInfo>(
+				`/spaces/${spaceID}/plans?limit=20&offset=${planPage.nextOffset}`,
+				token,
+			);
+			if (requestID !== loadSequence.current) return;
+			setPlans((current) => {
+				const known = new Set(current.map(({ id }) => id));
+				return [
+					...current,
+					...(data.plans || []).filter(({ id }) => !known.has(id)),
+				];
+			});
+			setPlanPage({
+				hasMore: Boolean(data.has_more),
+				nextOffset: data.next_offset || planPage.nextOffset + 20,
+			});
+			if (typeof data.month_total === "number")
+				setMonthPlanTotal(data.month_total);
+			if (typeof data.total_count === "number")
+				setPlanTotalCount(data.total_count);
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : uiText(language, "loadMoreFailed"),
+			);
+		} finally {
+			loadingMorePlansRef.current = false;
+			setLoadingMorePlans(false);
+		}
+	}, [
+		language,
+		loading,
+		planPage.hasMore,
+		planPage.nextOffset,
+		spaceID,
+		token,
+	]);
 
 	const refreshCurrentView = async () => {
 		if (refreshing || loading || !token || !spaceID) return;
@@ -3636,6 +3787,7 @@ export const MiniApp = () => {
 					setCategorySpaceID(spaceID);
 				})
 				.catch(() => undefined);
+			void loadSpace(true);
 			if (result.budget_warnings?.[0]) {
 				setNotice(budgetWarningText(result.budget_warnings[0]));
 			}
@@ -3808,6 +3960,10 @@ export const MiniApp = () => {
 		}
 		return grouped;
 	}, [expenseSplits]);
+	const expensesWithSplitContext = useMemo(() => {
+		const known = new Set(expenses.map(({ id }) => id));
+		return [...expenses, ...splitExpenses.filter(({ id }) => !known.has(id))];
+	}, [expenses, splitExpenses]);
 	const spaceSubtitle = (space: Space) =>
 		`${uiText(
 			language,
@@ -3825,21 +3981,16 @@ export const MiniApp = () => {
 		)}`;
 	const currency = user?.currency || activeSpace?.currency || "RUB";
 	const overviewExpenses = expensesForMonth(expenses);
-	const overviewTotal = overviewExpenses.reduce(
-		(sum, expense) => sum + (expenseAmountInCurrency(expense, currency) ?? 0),
-		0,
-	);
+	const overviewTotal =
+		overviewExpenseTotal ??
+		overviewExpenses.reduce(
+			(sum, expense) => sum + (expenseAmountInCurrency(expense, currency) ?? 0),
+			0,
+		);
 	const categoryTotals = useMemo(() => {
 		const totals = new Map<number, number>();
-		for (const expense of overviewExpenses) {
-			for (const item of expense.items) {
-				if (item.category_id)
-					totals.set(
-						item.category_id,
-						(totals.get(item.category_id) || 0) +
-							(itemAmountInCurrency(item, expense, currency) ?? 0),
-					);
-			}
+		for (const category of categories) {
+			totals.set(category.id, category.month_spent ?? 0);
 		}
 		return homeCategoryRows(
 			categories.map((category) => ({
@@ -3847,7 +3998,7 @@ export const MiniApp = () => {
 				filteredTotal: totals.get(category.id) || 0,
 			})),
 		);
-	}, [categories, overviewExpenses, currency]);
+	}, [categories]);
 	const openCategory = (id: number, nextPeriod: Period = "all") => {
 		setExpenseSection("history");
 		setPeriod(nextPeriod);
@@ -4996,6 +5147,12 @@ export const MiniApp = () => {
 			setMembers([]);
 			setParticipants([]);
 			setExpenseSplits([]);
+			setSplitExpenses([]);
+			setExpensePage({ hasMore: false, nextOffset: 20 });
+			setPlanPage({ hasMore: false, nextOffset: 20 });
+			setOverviewExpenseTotal(null);
+			setMonthPlanTotal(null);
+			setPlanTotalCount(0);
 		}
 		setEditingSpace(null);
 		setNotice(owned ? "Пространство удалено" : "Вы покинули пространство");
@@ -5153,6 +5310,7 @@ export const MiniApp = () => {
 					? uiText(language, "planSaved")
 					: uiText(language, "planAdded"),
 			);
+			await loadSpace(true);
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : uiText(language, "planSaveFailed"),
@@ -5185,6 +5343,7 @@ export const MiniApp = () => {
 			setEditingPlan(null);
 			setRecordDetail(null);
 			setNotice(uiText(language, "planDeleted"));
+			await loadSpace(true);
 		} catch (err) {
 			setNotice(
 				err instanceof Error
@@ -5247,6 +5406,7 @@ export const MiniApp = () => {
 				? uiText(language, "planDeleted")
 				: uiText(language, "planItemDeleted"),
 		);
+		if (!previewMode) await loadSpace(true);
 	};
 
 	const movePlan = async (
@@ -5396,40 +5556,74 @@ export const MiniApp = () => {
 			requestedExpenseID <= 0 ||
 			openedRequestedExpense.current ||
 			requestedSpaceID !== spaceID ||
-			expenses.length === 0
+			loading
 		)
 			return;
-		const expense = expenses.find((item) => item.id === requestedExpenseID);
-		if (!expense) return;
 		openedRequestedExpense.current = true;
-		setExpenseSection("history");
-		setView("expenses");
-		setRecordDetail({ kind: "expense", expense });
-		if (
-			requestedQuery.get("split") === "1" &&
-			expense.user_id === user?.id &&
-			eligibleParticipants.length > 1
-		) {
-			setSplitEditorExpense(expense);
-		}
-	}, [spaceID, expenses, user?.id, eligibleParticipants]);
+		void (async () => {
+			try {
+				const expense =
+					expenses.find((item) => item.id === requestedExpenseID) ||
+					(await apiRequest<Expense>(
+						`/spaces/${spaceID}/expenses/${requestedExpenseID}`,
+						token,
+					));
+				setExpenses((current) =>
+					current.some(({ id }) => id === expense.id)
+						? current
+						: [expense, ...current],
+				);
+				setExpenseSection("history");
+				setView("expenses");
+				setRecordDetail({ kind: "expense", expense });
+				if (
+					requestedQuery.get("split") === "1" &&
+					expense.user_id === user?.id &&
+					eligibleParticipants.length > 1
+				) {
+					setSplitEditorExpense(expense);
+				}
+			} catch (err) {
+				setNotice(
+					err instanceof Error ? err.message : uiText(language, "nothingFound"),
+				);
+			}
+		})();
+	}, [
+		spaceID,
+		expenses,
+		user?.id,
+		eligibleParticipants,
+		language,
+		loading,
+		token,
+	]);
 
 	useEffect(() => {
 		if (
 			!requestedPlan ||
 			openedRequestedPlan.current ||
 			requestedPlan.spaceID !== spaceID ||
-			plans.length === 0 ||
 			categories.length === 0
 		)
 			return;
 		const plan = plans.find((item) => item.id === requestedPlan.planID);
-		if (!plan) return;
+		if (!plan) {
+			if (planPage.hasMore && !loadingMorePlans) void loadMorePlans();
+			return;
+		}
 		openedRequestedPlan.current = true;
 		setExpenseSection("plans");
 		setView("expenses");
 		buyPlan(plan);
-	}, [spaceID, plans, categories]);
+	}, [
+		spaceID,
+		plans,
+		categories,
+		planPage.hasMore,
+		loadingMorePlans,
+		loadMorePlans,
+	]);
 
 	const planAgain = () => {
 		if (!editingExpense || editingItemIndex === null) return;
@@ -5952,8 +6146,9 @@ export const MiniApp = () => {
 								currency={currency}
 								categories={categoryTotals}
 								expenses={overviewExpenses}
-								latestExpenses={expenses}
+								latestExpenses={expensesWithSplitContext}
 								plans={plans}
+								monthPlanTotal={monthPlanTotal}
 								vendors={vendors}
 								captures={captures}
 								members={members}
@@ -5990,9 +6185,10 @@ export const MiniApp = () => {
 						{view === "expenses" && (
 							<ExpensesView
 								items={filteredItems}
-								expenses={expenses}
+								expenses={expensesWithSplitContext}
 								section={expenseSection}
 								plans={plans}
+								planTotalCount={planTotalCount}
 								quota={quota}
 								showBasicLimits={showActiveSpaceBasicLimits}
 								planInitialPeriod={planInitialPeriod}
@@ -6013,6 +6209,10 @@ export const MiniApp = () => {
 								vendorID={vendorID}
 								groupByExpense={groupByExpense}
 								query={query}
+								expensesHasMore={expensePage.hasMore}
+								expensesLoadingMore={loadingMoreExpenses}
+								plansHasMore={planPage.hasMore}
+								plansLoadingMore={loadingMorePlans}
 								onPeriod={changePeriod}
 								onDateFrom={changeDateFrom}
 								onDateTo={changeDateTo}
@@ -6021,6 +6221,8 @@ export const MiniApp = () => {
 								onVendor={setVendorID}
 								onGrouping={setGroupByExpense}
 								onQuery={setQuery}
+								onLoadMoreExpenses={loadMoreExpenses}
+								onLoadMorePlans={loadMorePlans}
 								onSource={openExpenseSource}
 								onPlanSource={openPlanSource}
 								onOpenExpense={(expense) =>
@@ -7816,6 +8018,7 @@ const Overview = ({
 	expenses,
 	latestExpenses,
 	plans,
+	monthPlanTotal,
 	vendors,
 	captures,
 	members,
@@ -7845,6 +8048,7 @@ const Overview = ({
 	expenses: Expense[];
 	latestExpenses: Expense[];
 	plans: PurchasePlan[];
+	monthPlanTotal: number | null;
 	vendors: Vendor[];
 	captures: CapturePacket[];
 	members: SpaceMember[];
@@ -7898,10 +8102,9 @@ const Overview = ({
 		from: monthPlanBounds.from,
 		to: monthPlanBounds.to,
 	});
-	const monthPlannedTotal = monthPlans.reduce(
-		(sum, plan) => sum + (plan.expected_amount || 0),
-		0,
-	);
+	const monthPlannedTotal =
+		monthPlanTotal ??
+		monthPlans.reduce((sum, plan) => sum + (plan.expected_amount || 0), 0);
 	const splitBalances = splitBalanceRows(latestExpenses, splits, participants);
 	return (
 		<section className="mini-view mini-overview">
@@ -8254,6 +8457,7 @@ const ExpensesView = ({
 	expenses,
 	section,
 	plans,
+	planTotalCount,
 	quota,
 	showBasicLimits,
 	planInitialPeriod,
@@ -8274,6 +8478,10 @@ const ExpensesView = ({
 	vendorID,
 	groupByExpense,
 	query,
+	expensesHasMore,
+	expensesLoadingMore,
+	plansHasMore,
+	plansLoadingMore,
 	onPeriod,
 	onDateFrom,
 	onDateTo,
@@ -8282,6 +8490,8 @@ const ExpensesView = ({
 	onVendor,
 	onGrouping,
 	onQuery,
+	onLoadMoreExpenses,
+	onLoadMorePlans,
 	onSource,
 	onPlanSource,
 	onOpenExpense,
@@ -8300,6 +8510,7 @@ const ExpensesView = ({
 	expenses: Expense[];
 	section: ExpenseSection;
 	plans: PurchasePlan[];
+	planTotalCount: number;
 	quota: Quota | null;
 	showBasicLimits: boolean;
 	planInitialPeriod: Period;
@@ -8320,6 +8531,10 @@ const ExpensesView = ({
 	vendorID: number;
 	groupByExpense: boolean;
 	query: string;
+	expensesHasMore: boolean;
+	expensesLoadingMore: boolean;
+	plansHasMore: boolean;
+	plansLoadingMore: boolean;
 	onPeriod: (period: Period) => void;
 	onDateFrom: (value: string) => void;
 	onDateTo: (value: string) => void;
@@ -8328,6 +8543,8 @@ const ExpensesView = ({
 	onVendor: (id: number) => void;
 	onGrouping: (group: boolean) => void;
 	onQuery: (value: string) => void;
+	onLoadMoreExpenses: () => void;
+	onLoadMorePlans: () => void;
 	onSource: (expense: Expense) => void;
 	onPlanSource: (plan: PurchasePlan) => void;
 	onOpenExpense: (expense: Expense) => void;
@@ -8478,7 +8695,7 @@ const ExpensesView = ({
 					onClick={() => changeSection("plans")}
 				>
 					{uiText(language, "plans")}
-					{plans.length > 0 && <b>{plans.length}</b>}
+					{planTotalCount > 0 && <b>{planTotalCount}</b>}
 				</button>
 				{participants.length > 1 && (
 					<button
@@ -8516,6 +8733,7 @@ const ExpensesView = ({
 			{section === "plans" ? (
 				<PlansView
 					plans={plans}
+					totalCount={planTotalCount}
 					quota={quota}
 					showBasicLimits={showBasicLimits}
 					initialPeriod={planInitialPeriod}
@@ -8531,6 +8749,9 @@ const ExpensesView = ({
 					onBuy={onBuyPlan}
 					onUpgrade={onUpgrade}
 					onSource={onPlanSource}
+					hasMore={plansHasMore}
+					loadingMore={plansLoadingMore}
+					onLoadMore={onLoadMorePlans}
 				/>
 			) : section === "splits" ? (
 				<SplitsView
@@ -8773,6 +8994,12 @@ const ExpensesView = ({
 							onOpen={onOpenExpenseItem}
 						/>
 					)}
+					<LoadMorePage
+						language={language}
+						hasMore={expensesHasMore}
+						loading={expensesLoadingMore}
+						onLoadMore={onLoadMoreExpenses}
+					/>
 				</>
 			)}
 		</section>
@@ -8903,6 +9130,7 @@ const SplitsView = ({
 
 const PlansView = ({
 	plans,
+	totalCount,
 	quota,
 	showBasicLimits,
 	initialPeriod,
@@ -8918,8 +9146,12 @@ const PlansView = ({
 	onBuy,
 	onUpgrade,
 	onSource,
+	hasMore,
+	loadingMore,
+	onLoadMore,
 }: {
 	plans: PurchasePlan[];
+	totalCount: number;
 	quota: Quota | null;
 	showBasicLimits: boolean;
 	initialPeriod: Period;
@@ -8935,6 +9167,9 @@ const PlansView = ({
 	onBuy: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
 	onUpgrade: () => void;
 	onSource: (plan: PurchasePlan) => void;
+	hasMore: boolean;
+	loadingMore: boolean;
+	onLoadMore: () => void;
 }) => {
 	const [query, setQuery] = useState("");
 	const [period, setPeriod] = useState<Period>(initialPeriod);
@@ -9086,7 +9321,7 @@ const PlansView = ({
 			metrics={[
 				{
 					label: uiText(language, "activePlansLimit"),
-					value: `${plans.length}/${quota.max_active_plans || 10}`,
+					value: `${totalCount}/${quota.max_active_plans || 10}`,
 				},
 			]}
 			onUpgrade={onUpgrade}
@@ -9282,6 +9517,12 @@ const PlansView = ({
 			{filteredPlans.length === 0 && (
 				<Empty text={uiText(language, "nothingFound")} />
 			)}
+			<LoadMorePage
+				language={language}
+				hasMore={hasMore}
+				loading={loadingMore}
+				onLoadMore={onLoadMore}
+			/>
 		</div>
 	);
 };
@@ -15684,6 +15925,46 @@ const Empty = ({ text }: { text: string }) => (
 		<span>{text}</span>
 	</div>
 );
+const LoadMorePage = ({
+	language,
+	hasMore,
+	loading,
+	onLoadMore,
+}: {
+	language: UILanguage;
+	hasMore: boolean;
+	loading: boolean;
+	onLoadMore: () => void;
+}) => {
+	const anchorRef = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!hasMore || loading || !anchorRef.current) return;
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry.isIntersecting) onLoadMore();
+			},
+			{ rootMargin: "240px 0px" },
+		);
+		observer.observe(anchorRef.current);
+		return () => observer.disconnect();
+	}, [hasMore, loading, onLoadMore]);
+	if (!hasMore && !loading) return null;
+	return (
+		<div className="mini-load-more" ref={anchorRef} aria-live="polite">
+			{loading ? (
+				<span role="status">
+					<KnotLoader compact />
+					{uiText(language, "loadingMore")}
+				</span>
+			) : (
+				<button type="button" onClick={onLoadMore}>
+					{uiText(language, "showMore")}
+					<ArrowDown size={16} weight="bold" />
+				</button>
+			)}
+		</div>
+	);
+};
 const LoadingRows = () => (
 	<div className="mini-loading-rows">
 		<i />

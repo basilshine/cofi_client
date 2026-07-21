@@ -9,6 +9,9 @@ const messages = {
 		releaseToRefresh: "Отпустите, чтобы обновить",
 		refreshing: "Обновляем…",
 		loadingExpenses: "Загружаем расходы…",
+		loadingMore: "Загружаем ещё…",
+		showMore: "Показать ещё",
+		loadMoreFailed: "Не удалось загрузить следующую страницу",
 		servicePause: "Небольшая пауза",
 		serviceUnavailableTitle: "Скоро всё снова заработает",
 		serviceUnavailableText:
@@ -467,6 +470,9 @@ const messages = {
 		releaseToRefresh: "Release to refresh",
 		refreshing: "Refreshing…",
 		loadingExpenses: "Loading expenses…",
+		loadingMore: "Loading more…",
+		showMore: "Show more",
+		loadMoreFailed: "Could not load the next page",
 		servicePause: "A short pause",
 		serviceUnavailableTitle: "We’ll be back shortly",
 		serviceUnavailableText:
@@ -923,6 +929,9 @@ const messages = {
 		releaseToRefresh: "Suelta para actualizar",
 		refreshing: "Actualizando…",
 		loadingExpenses: "Cargando gastos…",
+		loadingMore: "Cargando más…",
+		showMore: "Mostrar más",
+		loadMoreFailed: "No se pudo cargar la página siguiente",
 		servicePause: "Una breve pausa",
 		serviceUnavailableTitle: "Volveremos enseguida",
 		serviceUnavailableText:
