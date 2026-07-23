@@ -72,6 +72,7 @@ import { reachMetrikaGoal, trackFirstExpenseGoal } from "./metrika";
 import {
 	type UILanguage,
 	languageOptions,
+	linkedIdentityErrorText,
 	localizedCategoryName,
 	localizedCurrencyName,
 	localizedRegionName,
@@ -7172,6 +7173,7 @@ export const MiniApp = () => {
 			{emailLinkOpen && (
 				<EmailLinkDialog
 					token={token}
+					language={language}
 					initialEmail={
 						user?.emailVerified &&
 						user?.email &&
@@ -7231,6 +7233,7 @@ export const MiniApp = () => {
 			{telegramLinkOpen && (
 				<TelegramLinkDialog
 					token={token}
+					language={language}
 					onClose={() => setTelegramLinkOpen(false)}
 					onLinked={(nextUser) => {
 						setUser(nextUser);
@@ -17308,11 +17311,13 @@ const AccountDeletionDialog = ({
 
 const EmailLinkDialog = ({
 	token,
+	language,
 	initialEmail,
 	onClose,
 	onLinked,
 }: {
 	token: string;
+	language: UILanguage;
 	initialEmail: string;
 	onClose: () => void;
 	onLinked: (user: User) => void;
@@ -17333,9 +17338,12 @@ const EmailLinkDialog = ({
 			setCodeSent(true);
 		} catch (requestError) {
 			setError(
-				requestError instanceof Error
-					? requestError.message
-					: "Не удалось отправить код",
+				linkedIdentityErrorText(
+					language,
+					"email",
+					requestError instanceof Error ? requestError.message : "",
+					"Не удалось отправить код",
+				),
 			);
 		} finally {
 			setSaving(false);
@@ -17356,7 +17364,12 @@ const EmailLinkDialog = ({
 			onLinked(nextUser);
 		} catch (requestError) {
 			setError(
-				requestError instanceof Error ? requestError.message : "Неверный код",
+				linkedIdentityErrorText(
+					language,
+					"email",
+					requestError instanceof Error ? requestError.message : "",
+					"Неверный код",
+				),
 			);
 		} finally {
 			setSaving(false);
@@ -17409,10 +17422,12 @@ const EmailLinkDialog = ({
 
 const TelegramLinkDialog = ({
 	token,
+	language,
 	onClose,
 	onLinked,
 }: {
 	token: string;
+	language: UILanguage;
 	onClose: () => void;
 	onLinked: (user: User) => void;
 }) => {
@@ -17434,14 +17449,13 @@ const TelegramLinkDialog = ({
 			});
 			onLinked(nextUser);
 		} catch (linkError) {
-			const message =
-				linkError instanceof Error
-					? linkError.message
-					: "Не удалось привязать Telegram";
 			setError(
-				message.includes("telegram already linked")
-					? "Этот Telegram уже привязан к другому аккаунту."
-					: message,
+				linkedIdentityErrorText(
+					language,
+					"telegram",
+					linkError instanceof Error ? linkError.message : "",
+					"Не удалось привязать Telegram",
+				),
 			);
 		}
 	};

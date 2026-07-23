@@ -3,6 +3,7 @@ import test from "node:test";
 import { browserAuthCopy } from "../src/browser-auth-copy.ts";
 import {
 	type UIMessage,
+	linkedIdentityErrorText,
 	normalizeUILanguage,
 	uiText,
 } from "../src/mini-i18n.ts";
@@ -52,4 +53,15 @@ test("browser authentication does not leak Russian copy into other locales", () 
 			/[А-Яа-яЁё]/,
 		);
 	}
+});
+
+test("localizes already-linked identity errors", () => {
+	assert.equal(
+		linkedIdentityErrorText("ru", "email", "Email is already linked", ""),
+		"Эта почта уже привязана к другому аккаунту.",
+	);
+	assert.equal(
+		linkedIdentityErrorText("ru", "telegram", "telegram already linked", ""),
+		"Этот Telegram уже привязан к другому аккаунту.",
+	);
 });

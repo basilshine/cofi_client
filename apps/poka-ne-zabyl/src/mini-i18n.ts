@@ -282,6 +282,8 @@ const messages = {
 			"После подтверждения по этому номеру можно входить без почты и Telegram.",
 		phoneLinkedNotice: "Телефон привязан. Теперь по нему можно входить",
 		phoneAlreadyLinked: "Этот номер уже привязан к другому аккаунту.",
+		emailAlreadyLinked: "Эта почта уже привязана к другому аккаунту.",
+		telegramAlreadyLinked: "Этот Telegram уже привязан к другому аккаунту.",
 		phoneLinkedHint: "Номер подтверждён и доступен для входа",
 		phoneUnlink: "Отвязать номер",
 		phoneUnlinkHint:
@@ -771,6 +773,9 @@ const messages = {
 			"Once confirmed, you can use this number to sign in without email or Telegram.",
 		phoneLinkedNotice: "Phone linked. You can now use it to sign in",
 		phoneAlreadyLinked: "This number is already linked to another account.",
+		emailAlreadyLinked: "This email is already linked to another account.",
+		telegramAlreadyLinked:
+			"This Telegram account is already linked to another account.",
 		phoneLinkedHint: "Verified and available for sign-in",
 		phoneUnlink: "Unlink phone",
 		phoneUnlinkHint:
@@ -1232,7 +1237,8 @@ const messages = {
 		accountAndLogin: "Cuenta e inicio de sesión",
 		dataAndAccount: "Datos y cuenta",
 		deleteAccount: "Eliminar cuenta y datos",
-		deleteAccountHint: "Eliminar permanentemente el perfil y el historial personal",
+		deleteAccountHint:
+			"Eliminar permanentemente el perfil y el historial personal",
 		deleteAccountWarning: "Esta acción no se puede deshacer",
 		deleteAccountConsequences:
 			"Se eliminarán los métodos de acceso, gastos, planes, análisis, notificaciones y archivos subidos. Después podrás vincular el teléfono, el correo y Telegram a otra cuenta.",
@@ -1258,6 +1264,10 @@ const messages = {
 			"Una vez confirmado, podrás iniciar sesión con este número sin correo ni Telegram.",
 		phoneLinkedNotice: "Teléfono vinculado. Ya puedes usarlo para acceder",
 		phoneAlreadyLinked: "Este número ya está vinculado a otra cuenta.",
+		emailAlreadyLinked:
+			"Este correo electrónico ya está vinculado a otra cuenta.",
+		telegramAlreadyLinked:
+			"Esta cuenta de Telegram ya está vinculada a otra cuenta.",
 		phoneLinkedHint: "Verificado y disponible para iniciar sesión",
 		phoneUnlink: "Desvincular teléfono",
 		phoneUnlinkHint:
@@ -1476,6 +1486,19 @@ export const normalizeUILanguage = (value?: string): UILanguage => {
 
 export const uiText = (language: UILanguage, key: UIMessage) =>
 	messages[language][key];
+
+export const linkedIdentityErrorText = (
+	language: UILanguage,
+	identity: "email" | "telegram",
+	message: string,
+	fallback: string,
+) =>
+	message.toLowerCase().includes("already linked")
+		? uiText(
+				language,
+				identity === "email" ? "emailAlreadyLinked" : "telegramAlreadyLinked",
+			)
+		: message || fallback;
 
 export const spaceMemberCountText = (count: number, language: UILanguage) => {
 	if (count <= 1)
