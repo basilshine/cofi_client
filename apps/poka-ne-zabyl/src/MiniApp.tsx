@@ -190,6 +190,8 @@ type ExpenseSplit = {
 	space_participant_id: number;
 	participant?: SpaceParticipant;
 	amount: number;
+	reporting_amount?: number;
+	reporting_currency?: string;
 };
 
 type ExpenseSplitDecision = {
@@ -202,6 +204,8 @@ type PageInfo = {
 	next_offset?: number;
 	total_count?: number;
 	month_total?: number;
+	reporting_month_total?: number;
+	reporting_currency?: string;
 };
 
 type DashboardSummary = {
@@ -228,6 +232,12 @@ type Category = {
 	budget_spent?: number;
 	budget_remaining?: number | null;
 	budget_percent?: number;
+	reporting_total?: number;
+	reporting_month_spent?: number;
+	reporting_budget_amount?: number;
+	reporting_budget_spent?: number;
+	reporting_budget_remaining?: number;
+	reporting_currency?: string;
 	pinned?: boolean;
 	is_system?: boolean;
 	created_by_user_id?: number | null;
@@ -332,6 +342,8 @@ type PurchasePlan = {
 	title: string;
 	expected_amount?: number | null;
 	currency: string;
+	reporting_expected_amount?: number | null;
+	reporting_currency?: string;
 	category_id?: number | null;
 	vendor_id?: number | null;
 	vendor_name?: string;
@@ -351,6 +363,7 @@ type PurchasePlanItem = {
 	purchase_plan_id?: number;
 	name: string;
 	expected_amount?: number | null;
+	reporting_expected_amount?: number | null;
 	category_id?: number | null;
 	notes?: string;
 	position?: number;
@@ -367,6 +380,62 @@ const participantUserID = (participant?: SpaceParticipant) =>
 
 const expenseSplitTotal = (expense: Expense) =>
 	expenseDisplayMoney(expense, expense.space_currency || expense.currency);
+
+const currencyCode = (value?: string) => value?.trim().toUpperCase() || "RUB";
+
+const categoryDisplayAmounts = (category: Category, targetCurrency: string) => {
+	const reporting =
+		currencyCode(category.reporting_currency) === currencyCode(targetCurrency);
+	return {
+		total: reporting
+			? (category.reporting_total ?? category.total)
+			: category.total,
+		monthSpent: reporting
+			? (category.reporting_month_spent ?? category.month_spent ?? 0)
+			: (category.month_spent ?? 0),
+		budgetAmount: reporting
+			? (category.reporting_budget_amount ?? category.budget_amount ?? 0)
+			: (category.budget_amount ?? 0),
+		budgetSpent: reporting
+			? (category.reporting_budget_spent ?? category.budget_spent ?? 0)
+			: (category.budget_spent ?? 0),
+		budgetRemaining: reporting
+			? (category.reporting_budget_remaining ?? category.budget_remaining ?? 0)
+			: (category.budget_remaining ?? 0),
+	};
+};
+
+const planDisplayMoney = (
+	plan: PurchasePlan,
+	targetCurrency: string,
+	item?: PurchasePlanItem,
+) => {
+	const reporting =
+		currencyCode(plan.reporting_currency) === currencyCode(targetCurrency);
+	return {
+		amount: reporting
+			? (item?.reporting_expected_amount ??
+				plan.reporting_expected_amount ??
+				item?.expected_amount ??
+				plan.expected_amount ??
+				0)
+			: (item?.expected_amount ?? plan.expected_amount ?? 0),
+		currency: reporting
+			? currencyCode(targetCurrency)
+			: currencyCode(plan.currency),
+	};
+};
+
+const splitDisplayMoney = (split: ExpenseSplit, targetCurrency: string) => {
+	const reporting =
+		currencyCode(split.reporting_currency) === currencyCode(targetCurrency);
+	return {
+		amount: reporting ? (split.reporting_amount ?? split.amount) : split.amount,
+		currency: reporting
+			? currencyCode(targetCurrency)
+			: currencyCode(split.reporting_currency || targetCurrency),
+	};
+};
 
 const participantInitials = (name: string) =>
 	name
@@ -389,6 +458,7 @@ const splitBalanceRows = (
 	expenses: Expense[],
 	splits: ExpenseSplit[],
 	participants: SpaceParticipant[],
+	targetCurrency: string,
 ): SplitBalanceRow[] => {
 	const expenseByID = new Map(expenses.map((expense) => [expense.id, expense]));
 	const participantByUserID = new Map(
@@ -402,8 +472,8 @@ const splitBalanceRows = (
 	for (const split of splits) {
 		const expense = expenseByID.get(split.expense_id);
 		const debtorUserID = split.user_id || participantUserID(split.participant);
-		if (!expense || debtorUserID === expense.user_id || split.amount <= 0)
-			continue;
+		const amount = splitDisplayMoney(split, targetCurrency).amount;
+		if (!expense || debtorUserID === expense.user_id || amount <= 0) continue;
 		const debtorName =
 			split.participant?.display_name ||
 			participantByUserID.get(debtorUserID)?.display_name ||
@@ -418,7 +488,7 @@ const splitBalanceRows = (
 			debtorUserID,
 			creditorName,
 			creditorUserID: expense.user_id,
-			amount: (current?.amount || 0) + split.amount,
+			amount: (current?.amount || 0) + amount,
 		});
 	}
 	return Array.from(balances.values()).sort(
@@ -2768,11 +2838,11 @@ export const MiniApp = () => {
 					token,
 				),
 				apiRequest<DashboardSummary>(
-					`/dashboard?period=month&space_id=${spaceID}`,
+					`/dashboard?period=month&space_id=${spaceID}&currency=${encodeURIComponent(user?.currency || "RUB")}`,
 					token,
 				).catch(() => null),
 				apiRequest<{ categories: Category[] }>(
-					`/spaces/${spaceID}/categories`,
+					`/spaces/${spaceID}/categories?currency=${encodeURIComponent(user?.currency || "RUB")}`,
 					token,
 				),
 				apiRequest<Quota>(`/quota?space_id=${spaceID}`, token),
@@ -2786,7 +2856,7 @@ export const MiniApp = () => {
 					token,
 				),
 				apiRequest<{ decisions: ExpenseSplitDecision[] }>(
-					`/spaces/${spaceID}/split-decisions?limit=200`,
+					`/spaces/${spaceID}/split-decisions?limit=200&currency=${encodeURIComponent(user?.currency || "RUB")}`,
 					token,
 				),
 				apiRequest<Vendor[]>(`/spaces/${spaceID}/vendors`, token),
@@ -2795,7 +2865,7 @@ export const MiniApp = () => {
 					token,
 				),
 				apiRequest<{ plans: PurchasePlan[] } & PageInfo>(
-					`/spaces/${spaceID}/plans?limit=20`,
+					`/spaces/${spaceID}/plans?limit=20&currency=${encodeURIComponent(user?.currency || "RUB")}`,
 					token,
 				),
 				apiRequest<{ candidates: ReviewCandidate[] }>(
@@ -2840,7 +2910,9 @@ export const MiniApp = () => {
 				hasMore: Boolean(planData.has_more),
 				nextOffset: planData.next_offset || 20,
 			});
-			setMonthPlanTotal(planData.month_total ?? null);
+			setMonthPlanTotal(
+				planData.reporting_month_total ?? planData.month_total ?? null,
+			);
 			setPlanTotalCount(planData.total_count ?? planData.plans?.length ?? 0);
 			setReviewCandidates(reviewData.candidates || []);
 			if (accountQuotaData.dev_tools_enabled) {
@@ -2943,7 +3015,7 @@ export const MiniApp = () => {
 		const requestID = loadSequence.current;
 		try {
 			const data = await apiRequest<{ plans: PurchasePlan[] } & PageInfo>(
-				`/spaces/${spaceID}/plans?limit=20&offset=${planPage.nextOffset}`,
+				`/spaces/${spaceID}/plans?limit=20&offset=${planPage.nextOffset}&currency=${encodeURIComponent(user?.currency || "RUB")}`,
 				token,
 			);
 			if (requestID !== loadSequence.current) return;
@@ -2958,8 +3030,10 @@ export const MiniApp = () => {
 				hasMore: Boolean(data.has_more),
 				nextOffset: data.next_offset || planPage.nextOffset + 20,
 			});
-			if (typeof data.month_total === "number")
-				setMonthPlanTotal(data.month_total);
+			if (typeof (data.reporting_month_total ?? data.month_total) === "number")
+				setMonthPlanTotal(
+					data.reporting_month_total ?? data.month_total ?? null,
+				);
 			if (typeof data.total_count === "number")
 				setPlanTotalCount(data.total_count);
 		} catch (err) {
@@ -3800,7 +3874,7 @@ export const MiniApp = () => {
 				current.filter((candidate) => candidate.id !== reviewDraft.candidateID),
 			);
 			void apiRequest<{ categories: Category[] }>(
-				`/spaces/${spaceID}/categories`,
+				`/spaces/${spaceID}/categories?currency=${encodeURIComponent(user?.currency || "RUB")}`,
 				token,
 			)
 				.then((data) => {
@@ -4014,17 +4088,19 @@ export const MiniApp = () => {
 			0,
 		);
 	const categoryTotals = useMemo(() => {
-		const totals = new Map<number, number>();
-		for (const category of categories) {
-			totals.set(category.id, category.month_spent ?? 0);
-		}
 		return homeCategoryRows(
-			categories.map((category) => ({
-				...category,
-				filteredTotal: totals.get(category.id) || 0,
-			})),
+			categories.map((category) => {
+				const display = categoryDisplayAmounts(category, currency);
+				return {
+					...category,
+					filteredTotal: display.monthSpent,
+					budget_amount: display.budgetAmount,
+					budget_spent: display.budgetSpent,
+					budget_remaining: display.budgetRemaining,
+				};
+			}),
 		);
-	}, [categories]);
+	}, [categories, currency]);
 	const openCategory = (id: number, nextPeriod: Period = "all") => {
 		setExpenseSection("history");
 		setPeriod(nextPeriod);
@@ -6332,7 +6408,7 @@ export const MiniApp = () => {
 						{view === "categories" && (
 							<CategoriesView
 								categories={categories}
-								currency={activeSpace?.currency || currency}
+								currency={currency}
 								language={language}
 								shared={members.length > 1}
 								quota={quota}
@@ -6857,6 +6933,7 @@ export const MiniApp = () => {
 			{recordDetail?.kind === "expense" && !splitEditorExpense && (
 				<ExpenseDetail
 					expense={recordDetail.expense}
+					currency={currency}
 					language={language}
 					categories={categories}
 					members={members}
@@ -6899,6 +6976,7 @@ export const MiniApp = () => {
 				<ExpenseDetail
 					expense={recordDetail.expense}
 					itemIndex={recordDetail.itemIndex}
+					currency={currency}
 					language={language}
 					categories={categories}
 					members={members}
@@ -6944,6 +7022,7 @@ export const MiniApp = () => {
 			{recordDetail?.kind === "plan" && (
 				<PlanDetail
 					plan={recordDetail.plan}
+					currency={currency}
 					language={language}
 					categories={categories}
 					vendors={vendors}
@@ -6982,6 +7061,7 @@ export const MiniApp = () => {
 				<PlanDetail
 					plan={recordDetail.plan}
 					itemIndex={recordDetail.itemIndex}
+					currency={currency}
 					language={language}
 					categories={categories}
 					vendors={vendors}
@@ -8242,8 +8322,16 @@ const Overview = ({
 	});
 	const monthPlannedTotal =
 		monthPlanTotal ??
-		monthPlans.reduce((sum, plan) => sum + (plan.expected_amount || 0), 0);
-	const splitBalances = splitBalanceRows(latestExpenses, splits, participants);
+		monthPlans.reduce(
+			(sum, plan) => sum + planDisplayMoney(plan, currency).amount,
+			0,
+		);
+	const splitBalances = splitBalanceRows(
+		latestExpenses,
+		splits,
+		participants,
+		currency,
+	);
 	return (
 		<section className="mini-view mini-overview">
 			<div className="mini-title">
@@ -8346,6 +8434,7 @@ const Overview = ({
 											?.name;
 									const dueToday = isPlanDueToday(plan.due_date);
 									const overdue = isPlanOverdue(plan.due_date);
+									const planMoney = planDisplayMoney(plan, currency);
 									return (
 										<div
 											className={
@@ -8360,11 +8449,11 @@ const Overview = ({
 											<button type="button" onClick={() => onEditPlan(plan)}>
 												<span className="mini-home-plan-title">
 													<b>{plan.title}</b>
-													{plan.expected_amount != null && (
+													{planMoney.amount > 0 && (
 														<strong>
 															{formatMoney(
-																plan.expected_amount,
-																plan.currency || currency,
+																planMoney.amount,
+																planMoney.currency,
 															)}
 														</strong>
 													)}
@@ -9210,7 +9299,7 @@ const SplitsView = ({
 	const splitExpenses = expenses.filter((expense) =>
 		rowsByExpense.has(expense.id),
 	);
-	const balances = splitBalanceRows(expenses, splits, participants);
+	const balances = splitBalanceRows(expenses, splits, participants, currency);
 	return (
 		<div className="mini-splits-view">
 			<div className="mini-splits-intro">
@@ -9260,7 +9349,7 @@ const SplitsView = ({
 				</div>
 				{splitExpenses.length > 0 ? (
 					splitExpenses.map((expense) => {
-						const money = expenseSplitTotal(expense);
+						const money = expenseDisplayMoney(expense, currency);
 						const expenseRows = rowsByExpense.get(expense.id) || [];
 						return (
 							<button
@@ -9287,7 +9376,12 @@ const SplitsView = ({
 												{split.participant?.display_name ||
 													uiText(language, "participant")}
 											</small>
-											<b>{formatMoney(split.amount, money.currency)}</b>
+											<b>
+												{formatMoney(
+													splitDisplayMoney(split, currency).amount,
+													money.currency,
+												)}
+											</b>
 										</span>
 									))}
 								</span>
@@ -9375,7 +9469,7 @@ const PlansView = ({
 	const activeFilterCount =
 		Number(Boolean(categoryID)) + Number(Boolean(vendorID));
 	const visibleTotal = visibleItems.reduce(
-		(sum, row) => sum + (row.item.expected_amount || 0),
+		(sum, row) => sum + planDisplayMoney(row.plan, currency, row.item).amount,
 		0,
 	);
 	const sourceButton = (plan: PurchasePlan) =>
@@ -9409,6 +9503,7 @@ const PlansView = ({
 			vendors.find((item) => item.id === plan.vendor_id)?.name;
 		const dueToday = isPlanDueToday(plan.due_date);
 		const overdue = isPlanOverdue(plan.due_date);
+		const money = planDisplayMoney(plan, currency);
 		return (
 			<div
 				className={`mini-plan-row${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
@@ -9457,8 +9552,8 @@ const PlansView = ({
 					)}
 				</button>
 				<div className="mini-plan-actions">
-					{plan.expected_amount ? (
-						<strong>{formatMoney(plan.expected_amount, plan.currency)}</strong>
+					{money.amount > 0 ? (
+						<strong>{formatMoney(money.amount, money.currency)}</strong>
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
 					)}
@@ -9494,6 +9589,7 @@ const PlansView = ({
 			vendors.find((vendor) => vendor.id === plan.vendor_id)?.name;
 		const dueToday = isPlanDueToday(plan.due_date);
 		const overdue = isPlanOverdue(plan.due_date);
+		const money = planDisplayMoney(plan, currency, item);
 		return (
 			<div
 				className={`mini-plan-row${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
@@ -9540,8 +9636,8 @@ const PlansView = ({
 					)}
 				</button>
 				<div className="mini-plan-actions">
-					{item.expected_amount ? (
-						<strong>{formatMoney(item.expected_amount, plan.currency)}</strong>
+					{money.amount > 0 ? (
+						<strong>{formatMoney(money.amount, money.currency)}</strong>
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
 					)}
@@ -10158,11 +10254,14 @@ const CategoriesView = ({
 	const categoryBudgetCount = categories.filter(
 		(category) => (category.budget_amount || 0) > 0,
 	).length;
-	const orderedCategories = [...categories].sort(
-		(left, right) =>
+	const orderedCategories = [...categories].sort((left, right) => {
+		const leftAmounts = categoryDisplayAmounts(left, currency);
+		const rightAmounts = categoryDisplayAmounts(right, currency);
+		return (
 			Number(Boolean(right.pinned)) - Number(Boolean(left.pinned)) ||
-			(right.month_spent ?? right.total) - (left.month_spent ?? left.total),
-	);
+			rightAmounts.monthSpent - leftAmounts.monthSpent
+		);
+	});
 	return (
 		<section className="mini-view mini-categories-view">
 			<div className="mini-title-row">
@@ -10194,15 +10293,13 @@ const CategoriesView = ({
 			)}
 			<div className="mini-categories">
 				{orderedCategories.map((category) => {
-					const hasLimit = (category.budget_amount || 0) > 0;
-					const budgetSpent = category.budget_spent || 0;
-					const monthSpent =
-						category.month_spent ??
-						(category.budget_period === "month" ? budgetSpent : category.total);
+					const display = categoryDisplayAmounts(category, currency);
+					const hasLimit = display.budgetAmount > 0;
+					const monthSpent = display.monthSpent;
 					const overLimit =
-						hasLimit && budgetSpent > (category.budget_amount || 0);
+						hasLimit && display.budgetSpent > display.budgetAmount;
 					const difference = Math.abs(
-						(category.budget_amount || 0) - budgetSpent,
+						display.budgetAmount - display.budgetSpent,
 					);
 					const limitPeriodKey =
 						category.budget_period === "week" ? "forWeek" : "forMonth";
@@ -10234,7 +10331,7 @@ const CategoriesView = ({
 										</span>
 										<span>
 											<small>{uiText(language, "spentTotal")}</small>
-											<strong>{formatMoney(category.total, currency)}</strong>
+											<strong>{formatMoney(display.total, currency)}</strong>
 										</span>
 									</span>
 									{hasLimit ? (
@@ -10245,7 +10342,7 @@ const CategoriesView = ({
 													{uiText(language, limitPeriodKey)}
 												</small>
 												<strong>
-													{formatMoney(category.budget_amount || 0, currency)}
+													{formatMoney(display.budgetAmount, currency)}
 												</strong>
 											</span>
 											<small className="mini-category-limit-copy">
@@ -13122,6 +13219,7 @@ const MoveRecordControl = ({
 const ExpenseDetail = ({
 	expense,
 	itemIndex,
+	currency,
 	language,
 	categories,
 	members,
@@ -13143,6 +13241,7 @@ const ExpenseDetail = ({
 }: {
 	expense: Expense;
 	itemIndex?: number;
+	currency: string;
 	language: UILanguage;
 	categories: Category[];
 	members: SpaceMember[];
@@ -13164,12 +13263,8 @@ const ExpenseDetail = ({
 }) => {
 	const item = itemIndex === undefined ? undefined : expense.items[itemIndex];
 	const money = item
-		? itemDisplayMoney(
-				item,
-				expense,
-				expense.space_currency || expense.currency,
-			)
-		: expenseDisplayMoney(expense, expense.space_currency || expense.currency);
+		? itemDisplayMoney(item, expense, currency)
+		: expenseDisplayMoney(expense, currency);
 	const seller = item
 		? expenseItemSellerName(item, expense)
 		: expenseSellerName(expense);
@@ -13323,7 +13418,12 @@ const ExpenseDetail = ({
 										{participantInitials(split.participant?.display_name || "")}
 									</i>
 									<span>{split.participant?.display_name || "Участник"}</span>
-									<b>{formatMoney(split.amount, money.currency)}</b>
+									<b>
+										{formatMoney(
+											splitDisplayMoney(split, currency).amount,
+											money.currency,
+										)}
+									</b>
 								</div>
 							))}
 						</div>
@@ -13548,6 +13648,7 @@ const ExpenseSplitEditor = ({
 const PlanDetail = ({
 	plan,
 	itemIndex,
+	currency,
 	language,
 	categories,
 	vendors,
@@ -13567,6 +13668,7 @@ const PlanDetail = ({
 }: {
 	plan: PurchasePlan;
 	itemIndex?: number;
+	currency: string;
 	language: UILanguage;
 	categories: Category[];
 	vendors: Vendor[];
@@ -13586,7 +13688,7 @@ const PlanDetail = ({
 }) => {
 	const items = purchasePlanItems(plan);
 	const item = itemIndex === undefined ? undefined : items[itemIndex];
-	const amount = item?.expected_amount ?? plan.expected_amount;
+	const money = planDisplayMoney(plan, currency, item);
 	const categoryID = item?.category_id ?? plan.category_id;
 	const category = categories.find((current) => current.id === categoryID);
 	const notes = item?.notes || (items.length === 1 ? items[0].notes : "");
@@ -13613,8 +13715,8 @@ const PlanDetail = ({
 					<h3>{item?.name || plan.title}</h3>
 				</div>
 				<strong>
-					{amount
-						? formatMoney(amount, plan.currency)
+					{money.amount
+						? formatMoney(money.amount, money.currency)
 						: uiText(language, "amountNotSet")}
 				</strong>
 			</div>
@@ -13684,22 +13786,25 @@ const PlanDetail = ({
 				</button>
 			) : (
 				<div className="mini-record-lines">
-					{items.map((current, index) => (
-						<button
-							key={current.id || index}
-							type="button"
-							onClick={() => onOpenItem(index)}
-						>
-							<span>{index + 1}</span>
-							<b>{current.name}</b>
-							<strong>
-								{current.expected_amount
-									? formatMoney(current.expected_amount, plan.currency)
-									: "—"}
-							</strong>
-							<ArrowRight size={15} />
-						</button>
-					))}
+					{items.map((current, index) => {
+						const itemMoney = planDisplayMoney(plan, currency, current);
+						return (
+							<button
+								key={current.id || index}
+								type="button"
+								onClick={() => onOpenItem(index)}
+							>
+								<span>{index + 1}</span>
+								<b>{current.name}</b>
+								<strong>
+									{itemMoney.amount
+										? formatMoney(itemMoney.amount, itemMoney.currency)
+										: "—"}
+								</strong>
+								<ArrowRight size={15} />
+							</button>
+						);
+					})}
 				</div>
 			)}
 			<MoveRecordControl
