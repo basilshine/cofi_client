@@ -6070,6 +6070,161 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quota/developer-users/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a user card for developer tools
+         * @description Available only to the configured system administrator. Returns product activity and linked identities without authentication secrets.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    user_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description User profile, spaces, subscription, and product activity. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeveloperUserDetail"];
+                    };
+                };
+                /** @description User not found or system administrator access is unavailable. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quota/developer-users/{user_id}/message": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a service message to a user
+         * @description Creates an in-app notification for one user. External delivery follows that user's notification preferences.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    user_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        message: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Message created. */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Message is empty or too long. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description User not found or system administrator access is unavailable. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quota/developer-users/{user_id}/bonus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant a fixed developer bonus to a user
+         * @description Adds 100 non-expiring parsing units to the user's personal entitlement and notifies the user.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    user_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Bonus granted. Returns the refreshed user card. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeveloperUserDetail"];
+                    };
+                };
+                /** @description User not found or system administrator access is unavailable. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quota/test-plan": {
         parameters: {
             query?: never;
@@ -9956,6 +10111,69 @@ export interface components {
             }[];
             recent_failures: {
                 [key: string]: unknown;
+            }[];
+        };
+        DeveloperUserDetail: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            auth_type: string;
+            country?: string;
+            language?: string;
+            timezone?: string;
+            currency?: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            consent_granted: boolean;
+            contacts: {
+                email?: string;
+                email_verified: boolean;
+                phone?: string;
+                /** Format: int64 */
+                telegram_id?: number;
+                telegram_username?: string;
+            };
+            subscription: {
+                plan: string;
+                /** Format: date-time */
+                plan_expires_at?: string | null;
+                remaining: number;
+                recurring_remaining: number;
+                welcome_remaining: number;
+                additional_units: number;
+            };
+            stats: {
+                /** Format: int64 */
+                expenses_total: number;
+                /** Format: int64 */
+                plans_total: number;
+                /** Format: int64 */
+                inputs_total: number;
+                /** Format: int64 */
+                inputs_30_days: number;
+                /** Format: int64 */
+                quota_units_total: number;
+                /** Format: int64 */
+                quota_units_30_days: number;
+                /** Format: int64 */
+                confirmed_results: number;
+                /** Format: int64 */
+                active_sessions: number;
+                /** Format: date-time */
+                last_input_at?: string | null;
+                /** Format: date-time */
+                last_session_at?: string | null;
+            };
+            spaces: {
+                /** Format: int64 */
+                id: number;
+                name: string;
+                role: string;
+                is_personal: boolean;
+                /** Format: int64 */
+                member_count: number;
             }[];
         };
         IncompleteRegistrationAttempt: {

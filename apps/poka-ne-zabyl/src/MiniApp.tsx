@@ -679,6 +679,53 @@ type DeveloperDashboard = {
 	}[];
 };
 
+type DeveloperUserDetail = {
+	id: number;
+	name: string;
+	auth_type: string;
+	country?: string;
+	language?: string;
+	timezone?: string;
+	currency?: string;
+	created_at: string;
+	updated_at: string;
+	consent_granted: boolean;
+	contacts: {
+		email?: string;
+		email_verified: boolean;
+		phone?: string;
+		telegram_id?: number;
+		telegram_username?: string;
+	};
+	subscription: {
+		plan: string;
+		plan_expires_at?: string | null;
+		remaining: number;
+		recurring_remaining: number;
+		welcome_remaining: number;
+		additional_units: number;
+	};
+	stats: {
+		expenses_total: number;
+		plans_total: number;
+		inputs_total: number;
+		inputs_30_days: number;
+		quota_units_total: number;
+		quota_units_30_days: number;
+		confirmed_results: number;
+		active_sessions: number;
+		last_input_at?: string | null;
+		last_session_at?: string | null;
+	};
+	spaces: {
+		id: number;
+		name: string;
+		role: string;
+		is_personal: boolean;
+		member_count: number;
+	}[];
+};
+
 type FeedbackCategory = "problem" | "idea" | "thanks" | "other";
 
 type FeedbackAttachment = {
@@ -6593,6 +6640,7 @@ export const MiniApp = () => {
 						{view === "profile" && (
 							<ProfileView
 								user={user}
+								token={token}
 								avatarURL={profileAvatarURL}
 								avatarSaving={profileAvatarSaving}
 								language={language}
@@ -11246,6 +11294,7 @@ const SubscriptionView = ({
 
 const ProfileView = ({
 	user,
+	token,
 	avatarURL,
 	avatarSaving,
 	language,
@@ -11283,6 +11332,7 @@ const ProfileView = ({
 	onGenerateActivationCode,
 }: {
 	user: User | null;
+	token: string;
 	avatarURL: string;
 	avatarSaving: boolean;
 	language: UILanguage;
@@ -11357,6 +11407,7 @@ const ProfileView = ({
 			{quota?.dev_tools_enabled && (
 				<BillingDeveloperTools
 					quota={quota}
+					token={token}
 					dashboard={developerDashboard}
 					dashboardLoading={developerDashboardLoading}
 					loading={billingLoading}
@@ -11688,8 +11739,461 @@ const developerInputLabel = (input: string) =>
 				? "Текст"
 				: input;
 
+const previewDeveloperUser = (
+	recentUser: DeveloperDashboard["product"]["recent_users"][number],
+): DeveloperUserDetail => ({
+	id: recentUser.id,
+	name: recentUser.name,
+	auth_type: recentUser.auth_type,
+	country: "RU",
+	language: "ru",
+	timezone: "Asia/Tomsk",
+	currency: "RUB",
+	created_at: recentUser.created_at,
+	updated_at: recentUser.last_input_at || recentUser.created_at,
+	consent_granted: true,
+	contacts: {
+		email: "user@example.com",
+		email_verified: true,
+		phone: "+79130000000",
+		telegram_id: 123456789,
+		telegram_username: "user",
+	},
+	subscription: {
+		plan: "plus",
+		remaining: 393,
+		recurring_remaining: 393,
+		welcome_remaining: 0,
+		additional_units: 100,
+	},
+	stats: {
+		expenses_total: 48,
+		plans_total: 7,
+		inputs_total: 31,
+		inputs_30_days: recentUser.inputs_30_days,
+		quota_units_total: 67,
+		quota_units_30_days: recentUser.quota_units_30_days,
+		confirmed_results: 27,
+		active_sessions: 2,
+		last_input_at: recentUser.last_input_at,
+		last_session_at: recentUser.last_input_at,
+	},
+	spaces: [
+		{
+			id: 1,
+			name: "Личные расходы",
+			role: "owner",
+			is_personal: true,
+			member_count: 1,
+		},
+		{
+			id: 2,
+			name: "Семья",
+			role: "member",
+			is_personal: false,
+			member_count: 3,
+		},
+	],
+});
+
+const DeveloperUserRow = ({
+	recentUser,
+	token,
+	onRefresh,
+}: {
+	recentUser: DeveloperDashboard["product"]["recent_users"][number];
+	token: string;
+	onRefresh: () => void;
+}) => {
+	const [open, setOpen] = useState(false);
+	const [detail, setDetail] = useState<DeveloperUserDetail | null>(null);
+	const [loading, setLoading] = useState(false);
+	const [message, setMessage] = useState("");
+	const [actionLoading, setActionLoading] = useState(false);
+	const [actionStatus, setActionStatus] = useState("");
+	const [bonusConfirm, setBonusConfirm] = useState(false);
+
+	const loadDetail = async () => {
+		setOpen(true);
+		setActionStatus("");
+		if (token === "preview") {
+			setDetail(previewDeveloperUser(recentUser));
+			return;
+		}
+		setLoading(true);
+		try {
+			setDetail(
+				await apiRequest<DeveloperUserDetail>(
+					`/quota/developer-users/${recentUser.id}`,
+					token,
+				),
+			);
+		} catch (error) {
+			setActionStatus(
+				error instanceof Error
+					? error.message
+					: "Не удалось загрузить пользователя",
+			);
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const sendMessage = async () => {
+		const value = message.trim();
+		if (!value) return;
+		setActionLoading(true);
+		setActionStatus("");
+		try {
+			if (token !== "preview") {
+				await apiRequest<{ message: string }>(
+					`/quota/developer-users/${recentUser.id}/message`,
+					token,
+					{ method: "POST", body: JSON.stringify({ message: value }) },
+				);
+			}
+			setMessage("");
+			setActionStatus("Сообщение отправлено в уведомления пользователя.");
+		} catch (error) {
+			setActionStatus(
+				error instanceof Error
+					? error.message
+					: "Не удалось отправить сообщение",
+			);
+		} finally {
+			setActionLoading(false);
+		}
+	};
+
+	const grantBonus = async () => {
+		if (!bonusConfirm) {
+			setBonusConfirm(true);
+			setActionStatus("");
+			return;
+		}
+		setActionLoading(true);
+		setActionStatus("");
+		try {
+			const updated =
+				token === "preview"
+					? {
+							...(detail || previewDeveloperUser(recentUser)),
+							subscription: {
+								...(detail || previewDeveloperUser(recentUser)).subscription,
+								remaining:
+									(detail || previewDeveloperUser(recentUser)).subscription
+										.remaining + 100,
+								additional_units:
+									(detail || previewDeveloperUser(recentUser)).subscription
+										.additional_units + 100,
+							},
+						}
+					: await apiRequest<DeveloperUserDetail>(
+							`/quota/developer-users/${recentUser.id}/bonus`,
+							token,
+							{ method: "POST" },
+						);
+			setDetail(updated);
+			setBonusConfirm(false);
+			setActionStatus("Начислено 100 дополнительных разборов.");
+			onRefresh();
+		} catch (error) {
+			setActionStatus(
+				error instanceof Error ? error.message : "Не удалось начислить бонус",
+			);
+		} finally {
+			setActionLoading(false);
+		}
+	};
+
+	const contactRows = detail
+		? [
+				detail.contacts.email && {
+					label: "Почта",
+					value: detail.contacts.email,
+					href: `mailto:${detail.contacts.email}`,
+				},
+				detail.contacts.phone && {
+					label: "Телефон",
+					value: formatRussianPhone(detail.contacts.phone),
+					href: `tel:${detail.contacts.phone}`,
+				},
+				detail.contacts.telegram_id && {
+					label: "Telegram",
+					value: detail.contacts.telegram_username
+						? `@${detail.contacts.telegram_username}`
+						: `ID ${detail.contacts.telegram_id}`,
+					href: detail.contacts.telegram_username
+						? `https://t.me/${detail.contacts.telegram_username}`
+						: undefined,
+				},
+			].filter(
+				(
+					row,
+				): row is {
+					label: string;
+					value: string;
+					href: string | undefined;
+				} => Boolean(row),
+			)
+		: [];
+
+	return (
+		<>
+			<button className="mini-dev-user-row" type="button" onClick={loadDetail}>
+				<span>
+					<b>{recentUser.name || `Пользователь #${recentUser.id}`}</b>
+					<small>
+						#{recentUser.id} · {recentUser.auth_type || "unknown"} ·{" "}
+						{formatDateTime(recentUser.created_at, "ru")}
+					</small>
+					{recentUser.last_input_at && (
+						<small>
+							Последний ввод: {formatDateTime(recentUser.last_input_at, "ru")}
+						</small>
+					)}
+				</span>
+				<strong>
+					{recentUser.inputs_30_days}
+					<small>{recentUser.quota_units_30_days} разборов</small>
+				</strong>
+				<ArrowRight size={16} />
+			</button>
+			{open && (
+				<Modal
+					title={detail?.name || `Пользователь #${recentUser.id}`}
+					onClose={() => {
+						setOpen(false);
+						setBonusConfirm(false);
+					}}
+				>
+					{loading ? (
+						<p className="mini-dev-user-loading">Загружаю данные…</p>
+					) : detail ? (
+						<div className="mini-dev-user-card">
+							<div className="mini-dev-user-identity">
+								<span>
+									{(detail.name || "?").trim().charAt(0).toUpperCase()}
+								</span>
+								<div>
+									<strong>{detail.name || `Пользователь #${detail.id}`}</strong>
+									<small>
+										#{detail.id} · {detail.auth_type || "способ не указан"}
+									</small>
+									<small>
+										Регистрация: {formatDateTime(detail.created_at, "ru")}
+									</small>
+								</div>
+								<b
+									className={
+										detail.subscription.plan === "plus" ? "is-plus" : ""
+									}
+								>
+									{detail.subscription.plan === "plus" ? "Плюс" : "Базовый"}
+								</b>
+							</div>
+
+							<section>
+								<div className="mini-dev-user-section-head">
+									<strong>Контакты и профиль</strong>
+									<small>
+										{detail.consent_granted
+											? "Согласие получено"
+											: "Согласие не зафиксировано"}
+									</small>
+								</div>
+								{contactRows.length > 0 ? (
+									<div className="mini-dev-user-lines">
+										{contactRows.map((row) => (
+											<p key={row.label}>
+												<span>{row.label}</span>
+												{row.href ? (
+													<a href={row.href} target="_blank" rel="noreferrer">
+														{row.value}
+													</a>
+												) : (
+													<b>{row.value}</b>
+												)}
+											</p>
+										))}
+									</div>
+								) : (
+									<p className="mini-dev-user-empty">Контакты не привязаны.</p>
+								)}
+								<p className="mini-dev-user-locale">
+									{[
+										detail.country,
+										detail.language,
+										detail.timezone,
+										detail.currency,
+									]
+										.filter(Boolean)
+										.join(" · ") || "Региональные настройки не заполнены"}
+								</p>
+							</section>
+
+							<section>
+								<div className="mini-dev-user-section-head">
+									<strong>Активность</strong>
+									<small>Всего и за последние 30 дней</small>
+								</div>
+								<div className="mini-dev-user-metrics">
+									<p>
+										<b>{detail.stats.expenses_total}</b>
+										<span>расходов</span>
+									</p>
+									<p>
+										<b>{detail.stats.plans_total}</b>
+										<span>планов</span>
+									</p>
+									<p>
+										<b>{detail.stats.inputs_total}</b>
+										<span>{detail.stats.inputs_30_days} вводов за 30 дней</span>
+									</p>
+									<p>
+										<b>{detail.stats.quota_units_total}</b>
+										<span>
+											{detail.stats.quota_units_30_days} разборов за 30 дней
+										</span>
+									</p>
+								</div>
+								<div className="mini-dev-user-lines">
+									<p>
+										<span>Подтверждено результатов</span>
+										<b>{detail.stats.confirmed_results}</b>
+									</p>
+									<p>
+										<span>Активные сессии</span>
+										<b>{detail.stats.active_sessions}</b>
+									</p>
+									{detail.stats.last_session_at && (
+										<p>
+											<span>Последний вход</span>
+											<b>
+												{formatDateTime(detail.stats.last_session_at, "ru")}
+											</b>
+										</p>
+									)}
+								</div>
+							</section>
+
+							<section>
+								<div className="mini-dev-user-section-head">
+									<strong>Подписка и разборы</strong>
+									<small>
+										{detail.subscription.plan_expires_at
+											? `До ${formatDateTime(detail.subscription.plan_expires_at, "ru")}`
+											: "Без даты окончания"}
+									</small>
+								</div>
+								<div className="mini-dev-user-metrics">
+									<p>
+										<b>{detail.subscription.remaining}</b>
+										<span>доступно всего</span>
+									</p>
+									<p>
+										<b>{detail.subscription.recurring_remaining}</b>
+										<span>в текущем периоде</span>
+									</p>
+									<p>
+										<b>{detail.subscription.welcome_remaining}</b>
+										<span>приветственных</span>
+									</p>
+									<p>
+										<b>{detail.subscription.additional_units}</b>
+										<span>докуплено и начислено</span>
+									</p>
+								</div>
+							</section>
+
+							<section>
+								<div className="mini-dev-user-section-head">
+									<strong>Пространства</strong>
+									<small>{detail.spaces.length}</small>
+								</div>
+								<div className="mini-dev-user-spaces">
+									{detail.spaces.map((space) => (
+										<p key={space.id}>
+											<span>
+												<b>{space.name}</b>
+												<small>
+													{space.is_personal
+														? "Личное"
+														: `${space.member_count} участников`}
+												</small>
+											</span>
+											<small>
+												{space.role === "owner" ? "Владелец" : "Участник"}
+											</small>
+										</p>
+									))}
+								</div>
+							</section>
+
+							<section className="mini-dev-user-actions">
+								<div className="mini-dev-user-section-head">
+									<strong>Действия</strong>
+									<small>Только для этого пользователя</small>
+								</div>
+								<label>
+									Сервисное сообщение
+									<textarea
+										value={message}
+										maxLength={500}
+										placeholder="Например, пригласите подключить Telegram или сообщите о бонусе"
+										onChange={(event) => setMessage(event.target.value)}
+									/>
+								</label>
+								<div>
+									<button
+										type="button"
+										disabled={actionLoading || !message.trim()}
+										onClick={() => void sendMessage()}
+									>
+										<PaperPlaneTilt size={17} />
+										Отправить
+									</button>
+									<button
+										type="button"
+										className={bonusConfirm ? "is-confirming" : ""}
+										disabled={actionLoading}
+										onClick={() => void grantBonus()}
+									>
+										<Star size={17} />
+										{bonusConfirm ? "Подтвердить +100" : "Бонус +100"}
+									</button>
+									{bonusConfirm && (
+										<button
+											type="button"
+											className="is-quiet"
+											disabled={actionLoading}
+											onClick={() => setBonusConfirm(false)}
+										>
+											Отмена
+										</button>
+									)}
+								</div>
+								{actionStatus && <p role="status">{actionStatus}</p>}
+								<small>
+									Сообщение появится в приложении. Другие каналы используются
+									только по настройкам самого пользователя.
+								</small>
+							</section>
+						</div>
+					) : (
+						<p className="mini-dev-user-loading" role="alert">
+							{actionStatus || "Не удалось загрузить пользователя."}
+						</p>
+					)}
+				</Modal>
+			)}
+		</>
+	);
+};
+
 const BillingDeveloperTools = ({
 	quota,
+	token,
 	dashboard,
 	dashboardLoading,
 	loading,
@@ -11702,6 +12206,7 @@ const BillingDeveloperTools = ({
 	onGenerateActivationCode,
 }: {
 	quota: Quota;
+	token: string;
 	dashboard: DeveloperDashboard | null;
 	dashboardLoading: boolean;
 	loading: boolean;
@@ -11804,27 +12309,12 @@ const BillingDeveloperTools = ({
 								<div className="mini-dev-users">
 									<strong>Последние регистрации</strong>
 									{dashboard.product.recent_users.map((recentUser) => (
-										<p key={recentUser.id}>
-											<span>
-												<b>
-													{recentUser.name || `Пользователь #${recentUser.id}`}
-												</b>
-												<small>
-													#{recentUser.id} · {recentUser.auth_type || "unknown"}{" "}
-													· {formatDateTime(recentUser.created_at, "ru")}
-												</small>
-												{recentUser.last_input_at && (
-													<small>
-														Последний ввод:{" "}
-														{formatDateTime(recentUser.last_input_at, "ru")}
-													</small>
-												)}
-											</span>
-											<strong>
-												{recentUser.inputs_30_days}
-												<small>{recentUser.quota_units_30_days} разборов</small>
-											</strong>
-										</p>
+										<DeveloperUserRow
+											key={recentUser.id}
+											recentUser={recentUser}
+											token={token}
+											onRefresh={onRefresh}
+										/>
 									))}
 								</div>
 							)}
