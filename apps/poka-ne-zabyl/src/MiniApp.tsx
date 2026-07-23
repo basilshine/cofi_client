@@ -4396,6 +4396,7 @@ export const MiniApp = () => {
 							vendor_id_clear: !vendorID,
 							expense_date: editingExpense.expense_date,
 							items: editingExpense.items.map((item, index) => ({
+								id: item.id,
 								name: item.name,
 								amount: Number(item.amount),
 								category_id: item.category_id,
@@ -5156,7 +5157,7 @@ export const MiniApp = () => {
 			!creating &&
 			previousSpace?.currency !== editingSpace.currency &&
 			!window.confirm(
-				"Пересчитать расходы и лимиты в новой валюте? Исходные суммы покупок сохранятся.",
+				"Новые записи будут сохраняться в новой валюте. Валюта старых расходов и планов сохранится, а итоги и лимиты будут пересчитаны.",
 			)
 		)
 			return;
@@ -5816,6 +5817,7 @@ export const MiniApp = () => {
 		const category =
 			categories.find((item) => item.key === "other") || categories[0];
 		setEditingItemIndex(null);
+		const storageCurrency = activeSpace?.currency || currency;
 		setEditingExpense({
 			id: 0,
 			user_id: user?.id || 0,
@@ -5823,8 +5825,8 @@ export const MiniApp = () => {
 			payee_text: "",
 			vendor_id: undefined,
 			expense_date: localISODate(),
-			currency,
-			space_currency: currency,
+			currency: storageCurrency,
+			space_currency: storageCurrency,
 			items: [{ name: "", amount: 0, category_id: category?.id }],
 		});
 	};
@@ -7253,6 +7255,7 @@ export const MiniApp = () => {
 				<CategoryEditor
 					category={editingCategory}
 					categories={categories}
+					currency={activeSpace?.currency || currency}
 					language={language}
 					saving={saving}
 					onChange={setEditingCategory}
@@ -7535,18 +7538,20 @@ const focusNextFieldOnEnter = (event: React.KeyboardEvent<HTMLElement>) => {
 const AmountInput = ({
 	amount,
 	ariaLabel,
+	currency,
 	id,
 	onChange,
 }: {
 	amount: number;
 	ariaLabel: string;
+	currency?: string;
 	id?: string;
 	onChange: (amount: number) => void;
 }) => {
 	const [value, setValue] = useState(() => (amount > 0 ? String(amount) : ""));
-	return (
+	const input = (
 		<input
-			aria-label={ariaLabel}
+			aria-label={currency ? `${ariaLabel}, ${currency}` : ariaLabel}
 			id={id}
 			inputMode="decimal"
 			value={value}
@@ -7557,6 +7562,26 @@ const AmountInput = ({
 				onChange(next === "" || next === "." ? 0 : Number(next));
 			}}
 		/>
+	);
+	if (!currency) return input;
+	let currencyMark = currency.toUpperCase();
+	try {
+		currencyMark =
+			new Intl.NumberFormat("ru-RU", {
+				style: "currency",
+				currency,
+				currencyDisplay: "narrowSymbol",
+			})
+				.formatToParts(0)
+				.find((part) => part.type === "currency")?.value || currencyMark;
+	} catch {
+		// Keep the ISO code when the browser does not know the currency symbol.
+	}
+	return (
+		<span className="mini-amount-input">
+			{input}
+			<span aria-hidden="true">{currencyMark}</span>
+		</span>
 	);
 };
 
@@ -14073,6 +14098,7 @@ const PlanEditor = ({
 								<AmountInput
 									ariaLabel={uiText(language, "expectedAmount")}
 									amount={item.expected_amount || 0}
+									currency={plan.currency}
 									onChange={(amount) =>
 										updateItems(
 											items.map((current, itemIndex) =>
@@ -14381,6 +14407,7 @@ const ExpenseEditor = ({
 									String(index + 1),
 								)}
 								amount={item.amount}
+								currency={expense.currency}
 								onChange={(amount) =>
 									onChange({
 										...expense,
@@ -14399,6 +14426,7 @@ const ExpenseEditor = ({
 								<AmountInput
 									ariaLabel={uiText(language, "amount")}
 									amount={item.amount}
+									currency={expense.currency}
 									id="new-expense-amount"
 									onChange={(amount) =>
 										onChange({
@@ -14625,6 +14653,7 @@ const ExpenseItemEditor = ({
 				<AmountInput
 					ariaLabel={uiText(language, "amount")}
 					amount={item.amount}
+					currency={expense.currency}
 					id="expense-item-amount"
 					onChange={(amount) => onChange({ ...item, amount })}
 				/>
@@ -14872,6 +14901,7 @@ const VendorEditor = ({
 const CategoryEditor = ({
 	category,
 	categories,
+	currency,
 	language,
 	saving,
 	onChange,
@@ -14882,6 +14912,7 @@ const CategoryEditor = ({
 }: {
 	category: Category;
 	categories: Category[];
+	currency: string;
 	language: UILanguage;
 	saving: boolean;
 	onChange: (category: Category) => void;
@@ -14945,19 +14976,15 @@ const CategoryEditor = ({
 				</select>
 			</label>
 			{category.budget_period && (
-				<label>
+				<label htmlFor="category-budget-amount">
 					{uiText(language, "budgetAmount")}
-					<input
-						type="number"
-						min="1"
-						step="1"
-						placeholder={uiText(language, "budgetPlaceholder")}
-						value={category.budget_amount || ""}
-						onChange={(event) =>
-							onChange({
-								...category,
-								budget_amount: Number(event.target.value) || null,
-							})
+					<AmountInput
+						ariaLabel={uiText(language, "budgetAmount")}
+						amount={category.budget_amount || 0}
+						currency={currency}
+						id="category-budget-amount"
+						onChange={(amount) =>
+							onChange({ ...category, budget_amount: amount || null })
 						}
 					/>
 				</label>

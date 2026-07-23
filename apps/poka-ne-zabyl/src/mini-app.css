@@ -3952,6 +3952,31 @@
 	transition-property: border-color, box-shadow, background-color;
 	transition-duration: 150ms;
 }
+.mini-amount-input {
+	position: relative;
+	display: block;
+	min-width: 0;
+}
+.mini-amount-input > input {
+	width: 100%;
+	padding-right: 48px;
+	font-variant-numeric: tabular-nums;
+}
+.mini-amount-input > span {
+	position: absolute;
+	top: 50%;
+	right: 13px;
+	max-width: 38px;
+	overflow: hidden;
+	transform: translateY(-50%);
+	color: var(--mini-muted);
+	font-size: 13px;
+	font-weight: 750;
+	line-height: 1;
+	pointer-events: none;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
 .mini-modal.is-editor input:hover,
 .mini-modal.is-editor select:hover,
 .mini-modal.is-editor textarea:hover {
