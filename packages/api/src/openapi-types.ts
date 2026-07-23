@@ -2101,6 +2101,8 @@ export interface paths {
                     limit?: number;
                     /** @description Zero-based split decision offset for server-backed list pagination. */
                     offset?: number;
+                    /** @description Optional reporting currency for expenses and split amounts. */
+                    currency?: components["schemas"]["CurrencyCode"];
                 };
                 header?: never;
                 path: {
@@ -2627,6 +2629,8 @@ export interface paths {
                 query?: {
                     /** @description Returns planned rows by default; use all to include completed history. */
                     status?: "planned" | "all";
+                    /** @description Optional reporting currency. Canonical plan amounts remain in the Space currency. */
+                    currency?: components["schemas"]["CurrencyCode"];
                 };
                 header?: never;
                 path: {
@@ -2645,6 +2649,9 @@ export interface paths {
                     content: {
                         "application/json": {
                             plans: components["schemas"]["PurchasePlan"][];
+                            month_total?: number;
+                            reporting_month_total?: number | null;
+                            reporting_currency?: components["schemas"]["CurrencyCode"];
                         };
                     };
                 };
@@ -2751,7 +2758,7 @@ export interface paths {
             };
         };
         post?: never;
-        /** Delete a planned purchase */
+        /** Delete a one-time plan or cancel one recurring occurrence */
         delete: {
             parameters: {
                 query?: never;
@@ -2765,7 +2772,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Planned purchase deleted */
+                /** @description One-time plan deleted or recurring occurrence cancelled */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -2876,7 +2883,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete one item from a planned purchase */
+        /** Delete one item or cancel a single-item recurring occurrence */
         delete: {
             parameters: {
                 query?: never;
@@ -2891,7 +2898,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Plan item deleted */
+                /** @description Plan item deleted or recurring occurrence cancelled */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -3350,7 +3357,10 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Optional reporting currency for category totals and budgets. */
+                    currency?: components["schemas"]["CurrencyCode"];
+                };
                 header?: never;
                 path: {
                     spaceId: number;
@@ -3446,6 +3456,8 @@ export interface paths {
             parameters: {
                 query?: {
                     period?: "today" | "week" | "month" | "all";
+                    /** @description Optional reporting currency for category totals and recent items. */
+                    currency?: components["schemas"]["CurrencyCode"];
                 };
                 header?: never;
                 path: {
@@ -3945,7 +3957,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete auth data */
+        /**
+         * Permanently delete the current account and personal data
+         * @description Revokes all sessions, removes login identities and user-authored records, and releases the phone, email, and Telegram identifiers. Billing rows are retained without the user identifier. Owners must remove members from spaces they own first.
+         */
         delete: {
             parameters: {
                 query?: never;
@@ -3957,6 +3972,13 @@ export interface paths {
             responses: {
                 /** @description No content */
                 204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The user still owns a space with other members */
+                409: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4516,6 +4538,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/phone/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink the phone from the current account
+         * @description Requires another verified sign-in method so the user cannot lock themselves out.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Updated user */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["User"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The phone is the account's only sign-in method */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/phone/link/status": {
         parameters: {
             query?: never;
@@ -4989,7 +5064,10 @@ export interface paths {
         /** Get dashboard */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Optional reporting currency for dashboard aggregates. */
+                    currency?: components["schemas"]["CurrencyCode"];
+                };
                 header?: never;
                 path?: never;
                 cookie?: never;
@@ -5924,6 +6002,68 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quota/developer-registration-recovery/email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend an incomplete email registration code
+         * @description Available only to the configured system administrator. The destination is resolved from the opaque challenge identifier and is never accepted from the client.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** Format: int64 */
+                        challenge_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description A new registration code was sent */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            message: string;
+                        };
+                    };
+                };
+                /** @description The registration is complete, stale, or rate-limited */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description System administrator access is unavailable to the current user */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -8782,6 +8922,11 @@ export interface components {
             vendor_id?: number | null;
             /** Format: date */
             due_date?: string | null;
+            /**
+             * @description Optional recurrence for separately confirmable weekly or monthly plan occurrences. Requires due_date.
+             * @enum {string}
+             */
+            recurrence_interval?: "weekly" | "monthly";
             items?: components["schemas"]["PurchasePlanItemInput"][];
         };
         PurchasePlanItemInput: {
@@ -8798,6 +8943,7 @@ export interface components {
             /** Format: int64 */
             purchase_plan_id: number;
             position: number;
+            reporting_expected_amount?: number | null;
         };
         PurchasePlan: components["schemas"]["PurchasePlanInput"] & {
             /** Format: int64 */
@@ -8809,8 +8955,13 @@ export interface components {
             /** Format: int64 */
             created_by_user_id: number;
             currency: components["schemas"]["CurrencyCode"];
+            reporting_expected_amount?: number | null;
+            reporting_currency?: components["schemas"]["CurrencyCode"];
             /** @enum {string} */
-            status: "planned" | "completed";
+            status: "planned" | "completed" | "cancelled";
+            /** Format: int64 */
+            recurrence_series_id?: number | null;
+            recurrence_day?: number;
             /** Format: int64 */
             expense_id?: number | null;
             /** Format: date-time */
@@ -9375,6 +9526,12 @@ export interface components {
             budget_spent?: number;
             budget_remaining?: number | null;
             budget_percent?: number;
+            reporting_total?: number | null;
+            reporting_month_spent?: number | null;
+            reporting_budget_amount?: number | null;
+            reporting_budget_spent?: number | null;
+            reporting_budget_remaining?: number | null;
+            reporting_currency?: components["schemas"]["CurrencyCode"];
             pinned?: boolean;
             is_system?: boolean;
             /** Format: int64 */
@@ -9391,12 +9548,15 @@ export interface components {
             vendor?: components["schemas"]["ExpenseVendorBrief"];
             name?: string;
             amount?: number;
+            reporting_amount?: number | null;
+            reporting_currency?: components["schemas"]["CurrencyCode"];
             merchant?: string;
             /** Format: date-time */
             used_at?: string;
         };
         CategoryListResponse: {
             currency?: components["schemas"]["CurrencyCode"];
+            reporting_currency?: components["schemas"]["CurrencyCode"];
             categories?: components["schemas"]["CategorySummary"][];
         };
         CategoryDetail: {
@@ -9404,6 +9564,7 @@ export interface components {
             /** @enum {string} */
             period?: "today" | "week" | "month" | "all";
             currency?: components["schemas"]["CurrencyCode"];
+            reporting_currency?: components["schemas"]["CurrencyCode"];
             items?: components["schemas"]["CategoryItem"][];
         };
         SpaceSplitDecisionRow: {
@@ -9415,6 +9576,8 @@ export interface components {
             /** Format: int64 */
             source_document_id?: number | null;
             amount?: number;
+            reporting_amount?: number | null;
+            reporting_currency?: components["schemas"]["CurrencyCode"];
         };
         SpaceSplitDecision: {
             expense?: components["schemas"]["ExpenseRecord"];
@@ -9787,12 +9950,26 @@ export interface components {
                     quota_units_30_days: number;
                 }[];
             };
+            incomplete_registrations: components["schemas"]["IncompleteRegistrationAttempt"][];
             breakdown: {
                 [key: string]: unknown;
             }[];
             recent_failures: {
                 [key: string]: unknown;
             }[];
+        };
+        IncompleteRegistrationAttempt: {
+            /** Format: int64 */
+            id: number;
+            /** @description Registration delivery channel (`email` or `phone`). */
+            channel: string;
+            masked_contact: string;
+            attempts: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+            can_resend: boolean;
         };
         BillingCheckout: {
             /** Format: uri */

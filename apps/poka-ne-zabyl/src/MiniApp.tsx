@@ -653,6 +653,15 @@ type DeveloperDashboard = {
 			quota_units_30_days: number;
 		}[];
 	};
+	incomplete_registrations: {
+		id: number;
+		channel: "email" | "phone";
+		masked_contact: string;
+		attempts: number;
+		created_at: string;
+		expires_at: string;
+		can_resend: boolean;
+	}[];
 	breakdown: {
 		module: string;
 		input_kind: string;
@@ -1543,6 +1552,8 @@ export const MiniApp = () => {
 		useState<DeveloperDashboard | null>(null);
 	const [developerDashboardLoading, setDeveloperDashboardLoading] =
 		useState(false);
+	const [registrationRecoverySendingID, setRegistrationRecoverySendingID] =
+		useState(0);
 	const [generatedActivationCode, setGeneratedActivationCode] =
 		useState<ActivationCodeResponse | null>(null);
 	const [developerFeedback, setDeveloperFeedback] = useState<
@@ -2145,6 +2156,26 @@ export const MiniApp = () => {
 						},
 					],
 				},
+				incomplete_registrations: [
+					{
+						id: 8,
+						channel: "email",
+						masked_contact: "an***@example.com",
+						attempts: 0,
+						created_at: isoDay(0),
+						expires_at: isoDay(0),
+						can_resend: true,
+					},
+					{
+						id: 5,
+						channel: "phone",
+						masked_contact: "+7********60",
+						attempts: 0,
+						created_at: isoDay(-1),
+						expires_at: isoDay(-1),
+						can_resend: false,
+					},
+				],
 				breakdown: [
 					{
 						module: "expense",
@@ -2493,6 +2524,39 @@ export const MiniApp = () => {
 			setDeveloperDashboard(null);
 		} finally {
 			setDeveloperDashboardLoading(false);
+		}
+	};
+
+	const resendIncompleteRegistrationEmail = async (challengeID: number) => {
+		if (!token || previewMode || registrationRecoverySendingID) return;
+		if (
+			!window.confirm(
+				"Отправить новый код для завершения регистрации на эту почту?",
+			)
+		) {
+			return;
+		}
+		setRegistrationRecoverySendingID(challengeID);
+		setError("");
+		try {
+			await apiRequest<{ message: string }>(
+				"/quota/developer-registration-recovery/email",
+				token,
+				{
+					method: "POST",
+					body: JSON.stringify({ challenge_id: challengeID }),
+				},
+			);
+			setNotice("Письмо для завершения регистрации отправлено");
+			await refreshDeveloperDashboard();
+		} catch (err) {
+			setError(
+				err instanceof Error
+					? err.message
+					: "Не удалось повторно отправить письмо",
+			);
+		} finally {
+			setRegistrationRecoverySendingID(0);
 		}
 	};
 
@@ -6564,6 +6628,10 @@ export const MiniApp = () => {
 								onRefreshDeveloperDashboard={() =>
 									void refreshDeveloperDashboard()
 								}
+								onResendIncompleteRegistration={(challengeID) =>
+									void resendIncompleteRegistrationEmail(challengeID)
+								}
+								registrationRecoverySendingID={registrationRecoverySendingID}
 								onRefreshDeveloperFeedback={() =>
 									void refreshDeveloperFeedback()
 								}
@@ -11205,6 +11273,8 @@ const ProfileView = ({
 	onInstall,
 	onDevUpdate,
 	onRefreshDeveloperDashboard,
+	onResendIncompleteRegistration,
+	registrationRecoverySendingID,
 	onRefreshDeveloperFeedback,
 	onOpenFeedbackMedia,
 	feedbackMediaLoading,
@@ -11240,6 +11310,8 @@ const ProfileView = ({
 	onInstall: () => void;
 	onDevUpdate: (patch: DeveloperQuotaPatch) => void;
 	onRefreshDeveloperDashboard: () => void;
+	onResendIncompleteRegistration: (challengeID: number) => void;
+	registrationRecoverySendingID: number;
 	onRefreshDeveloperFeedback: () => void;
 	onOpenFeedbackMedia: (
 		feedback: DeveloperFeedback,
@@ -11291,6 +11363,8 @@ const ProfileView = ({
 					testModeEnabled={Boolean(quota.maintenance_enabled)}
 					onApply={onDevUpdate}
 					onRefresh={onRefreshDeveloperDashboard}
+					onResendIncompleteRegistration={onResendIncompleteRegistration}
+					registrationRecoverySendingID={registrationRecoverySendingID}
 					generatedActivationCode={generatedActivationCode}
 					onGenerateActivationCode={onGenerateActivationCode}
 				/>
@@ -11622,6 +11696,8 @@ const BillingDeveloperTools = ({
 	testModeEnabled,
 	onApply,
 	onRefresh,
+	onResendIncompleteRegistration,
+	registrationRecoverySendingID,
 	generatedActivationCode,
 	onGenerateActivationCode,
 }: {
@@ -11632,6 +11708,8 @@ const BillingDeveloperTools = ({
 	testModeEnabled: boolean;
 	onApply: (patch: DeveloperQuotaPatch) => void;
 	onRefresh: () => void;
+	onResendIncompleteRegistration: (challengeID: number) => void;
+	registrationRecoverySendingID: number;
 	generatedActivationCode: ActivationCodeResponse | null;
 	onGenerateActivationCode: (
 		rewardType: ActivationCodeResponse["reward_type"],
@@ -11748,6 +11826,83 @@ const BillingDeveloperTools = ({
 											</strong>
 										</p>
 									))}
+								</div>
+							)}
+						</div>
+					</details>
+					<details className="mini-dev-panel">
+						<summary>
+							<span>
+								<b>Незавершённые регистрации</b>
+								<small>
+									{dashboard.incomplete_registrations.length > 0
+										? `${dashboard.incomplete_registrations.length} за последние 7 дней`
+										: "Нет ожидающих попыток за 7 дней"}
+								</small>
+							</span>
+							<CaretDown size={17} weight="bold" />
+						</summary>
+						<div className="mini-dev-panel-body">
+							<p className="mini-dev-recovery-note">
+								Здесь видны только люди, которым уже был выдан код или
+								проверочный звонок, но регистрация не завершилась.
+							</p>
+							{dashboard.incomplete_registrations.length === 0 ? (
+								<p className="mini-dev-empty">
+									Незавершённых регистраций сейчас нет.
+								</p>
+							) : (
+								<div className="mini-dev-recovery-list">
+									{dashboard.incomplete_registrations.map((attempt) => {
+										const expired =
+											new Date(attempt.expires_at).getTime() <= Date.now();
+										const sending =
+											registrationRecoverySendingID === attempt.id;
+										return (
+											<div
+												className="mini-dev-recovery-item"
+												key={`${attempt.channel}-${attempt.id}`}
+											>
+												<div className="mini-dev-recovery-icon">
+													{attempt.channel === "email" ? (
+														<EnvelopeSimple size={17} />
+													) : (
+														<PhoneCall size={17} />
+													)}
+												</div>
+												<div>
+													<strong>{attempt.masked_contact}</strong>
+													<small>
+														{attempt.channel === "email" ? "Почта" : "Телефон"}{" "}
+														· {formatDateTime(attempt.created_at, "ru")}
+													</small>
+													<small className={expired ? "is-expired" : ""}>
+														{expired
+															? "Проверка истекла"
+															: "Ожидает подтверждения"}
+														{attempt.attempts > 0
+															? ` · ошибок кода: ${attempt.attempts}`
+															: ""}
+													</small>
+												</div>
+												{attempt.can_resend ? (
+													<button
+														type="button"
+														disabled={Boolean(registrationRecoverySendingID)}
+														onClick={() =>
+															onResendIncompleteRegistration(attempt.id)
+														}
+													>
+														{sending ? "Отправляю…" : "Повторить письмо"}
+													</button>
+												) : (
+													<small className="mini-dev-recovery-manual">
+														Новый звонок запускает пользователь
+													</small>
+												)}
+											</div>
+										);
+									})}
 								</div>
 							)}
 						</div>

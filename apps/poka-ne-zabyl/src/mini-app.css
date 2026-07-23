@@ -2916,6 +2916,66 @@
 	font-size: 9px;
 	font-weight: 500;
 }
+.mini-dev-recovery-note {
+	margin: 0;
+	color: var(--mini-muted);
+	font-size: 10px;
+	line-height: 1.45;
+}
+.mini-dev-recovery-list {
+	display: grid;
+	border-top: 1px solid var(--mini-line);
+}
+.mini-dev-recovery-item {
+	display: grid;
+	grid-template-columns: 32px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 9px;
+	padding: 10px 0;
+}
+.mini-dev-recovery-item + .mini-dev-recovery-item {
+	border-top: 1px solid var(--mini-line);
+}
+.mini-dev-recovery-icon {
+	display: grid;
+	width: 32px;
+	height: 32px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+}
+.mini-dev-recovery-item > div:nth-child(2) {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-dev-recovery-item strong {
+	font-size: 11px;
+	line-height: 1.3;
+	overflow-wrap: anywhere;
+}
+.mini-dev-recovery-item small {
+	color: var(--mini-muted);
+	font-size: 9px;
+	line-height: 1.35;
+}
+.mini-dev-recovery-item small.is-expired {
+	color: var(--mini-red);
+}
+.mini-dev-recovery-item > button {
+	width: auto;
+	min-height: 32px;
+	padding: 0 10px;
+	border-color: var(--mini-green);
+	color: var(--mini-green);
+	font-size: 9px;
+	white-space: nowrap;
+}
+.mini-dev-recovery-manual {
+	max-width: 88px;
+	text-align: right;
+}
 .mini-dev-failures {
 	display: grid;
 	gap: 8px;
