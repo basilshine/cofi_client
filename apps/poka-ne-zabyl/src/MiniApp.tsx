@@ -1548,6 +1548,7 @@ export const MiniApp = () => {
 			available: { email: false, telegram: false },
 		});
 	const [emailLinkOpen, setEmailLinkOpen] = useState(false);
+	const [phoneLinkOpen, setPhoneLinkOpen] = useState(false);
 	const [telegramLinkOpen, setTelegramLinkOpen] = useState(false);
 	const [packPickerOpen, setPackPickerOpen] = useState(false);
 	const [billingLoading, setBillingLoading] = useState(false);
@@ -6054,12 +6055,17 @@ export const MiniApp = () => {
 								<div className="mini-account-summary">
 									<strong>{user?.name || uiText(language, "user")}</strong>
 									{(user?.telegramUsername ||
-										(user?.email &&
-											!user.email.endsWith("@telegram.local"))) && (
+										(user?.emailVerified &&
+											user?.email &&
+											!user.email.endsWith("@telegram.local")) ||
+										user?.phone) && (
 										<small>
 											{user?.telegramUsername
 												? `@${user.telegramUsername}`
-												: user?.email}
+												: user?.emailVerified &&
+														!user.email.endsWith("@telegram.local")
+													? user.email
+													: formatRussianPhone(user?.phone || "")}
 										</small>
 									)}
 								</div>
@@ -6363,6 +6369,7 @@ export const MiniApp = () => {
 								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
 								onManageSpaces={() => setView("spaces")}
+								onLinkPhone={() => setPhoneLinkOpen(true)}
 								onLinkEmail={() => setEmailLinkOpen(true)}
 								onLinkTelegram={() => setTelegramLinkOpen(true)}
 								onAvatarUpload={selectProfileAvatar}
@@ -7145,7 +7152,9 @@ export const MiniApp = () => {
 				<EmailLinkDialog
 					token={token}
 					initialEmail={
-						user?.email && !user.email.endsWith("@telegram.local")
+						user?.emailVerified &&
+						user?.email &&
+						!user.email.endsWith("@telegram.local")
 							? user.email
 							: ""
 					}
@@ -7154,6 +7163,18 @@ export const MiniApp = () => {
 						setUser(nextUser);
 						setEmailLinkOpen(false);
 						setNotice("Почта привязана. Теперь по ней можно входить");
+					}}
+				/>
+			)}
+			{phoneLinkOpen && (
+				<PhoneLinkDialog
+					token={token}
+					language={language}
+					onClose={() => setPhoneLinkOpen(false)}
+					onLinked={(nextUser) => {
+						setUser(nextUser);
+						setPhoneLinkOpen(false);
+						setNotice(uiText(language, "phoneLinkedNotice"));
 					}}
 				/>
 			)}
@@ -10820,6 +10841,7 @@ const ProfileView = ({
 	onLargeText,
 	onManageVendors,
 	onManageSpaces,
+	onLinkPhone,
 	onLinkEmail,
 	onLinkTelegram,
 	onAvatarUpload,
@@ -10853,6 +10875,7 @@ const ProfileView = ({
 	onLargeText: (enabled: boolean) => void;
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
+	onLinkPhone: () => void;
 	onLinkEmail: () => void;
 	onLinkTelegram: () => void;
 	onAvatarUpload: (file: File) => void;
@@ -10887,6 +10910,16 @@ const ProfileView = ({
 		user?.emailVerified && !user.email.endsWith("@telegram.local")
 			? user.email
 			: "";
+	const linkedPhone = user?.phone ? formatRussianPhone(user.phone) : "";
+	const authCopy = browserAuthCopy(language);
+	const registrationMethod =
+		user?.authType === "phone"
+			? authCopy.phone
+			: user?.authType === "email"
+				? authCopy.email
+				: user?.authType === "telegram"
+					? "Telegram"
+					: "";
 	return (
 		<section className="mini-view mini-profile-view">
 			<div className="mini-title">
@@ -10925,7 +10958,24 @@ const ProfileView = ({
 			<div className="mini-profile-groups">
 				<section className="mini-profile-group">
 					<h2>{uiText(language, "accountAndLogin")}</h2>
+					{registrationMethod && (
+						<p className="mini-profile-auth-origin">
+							{uiText(language, "registeredVia")}:{" "}
+							<strong>{registrationMethod}</strong>
+						</p>
+					)}
 					<div className="mini-profile-list">
+						<button
+							type="button"
+							onClick={onLinkPhone}
+							disabled={Boolean(linkedPhone)}
+						>
+							<span>
+								<PhoneCall size={18} />
+								{uiText(language, "loginPhone")}
+							</span>
+							<b>{linkedPhone || uiText(language, "link")}</b>
+						</button>
 						<button
 							type="button"
 							onClick={onLinkTelegram}
@@ -16335,9 +16385,7 @@ const BrowserEntry = ({
 						name: name.trim(),
 						...(isPhone ? { phone: phone.trim() } : { email: email.trim() }),
 						code: confirmationCode,
-						...(isPhone
-							? { challenge_token: phoneChallengeToken }
-							: {}),
+						...(isPhone ? { challenge_token: phoneChallengeToken } : {}),
 						country: isPhone
 							? "RU"
 							: browserRegistrationCountry(navigator.language),
@@ -16534,10 +16582,7 @@ const BrowserEntry = ({
 									</div>
 								</div>
 								{isPhone ? (
-									<a
-										className="browser-call-number"
-										href={`tel:${callPhone}`}
-									>
+									<a className="browser-call-number" href={`tel:${callPhone}`}>
 										<PhoneCall size={23} weight="fill" />
 										<span>
 											<strong>{callPhonePretty}</strong>
@@ -16799,6 +16844,241 @@ const BrowserEntry = ({
 				<InstallGuide language={language} onClose={onCloseInstallGuide} />
 			)}
 		</main>
+	);
+};
+
+const PhoneLinkDialog = ({
+	token,
+	language,
+	onClose,
+	onLinked,
+}: {
+	token: string;
+	language: UILanguage;
+	onClose: () => void;
+	onLinked: (user: User) => void;
+}) => {
+	const copy = browserAuthCopy(language);
+	const [phone, setPhone] = useState("");
+	const [callPhone, setCallPhone] = useState("");
+	const [callPhonePretty, setCallPhonePretty] = useState("");
+	const [challengeToken, setChallengeToken] = useState("");
+	const [started, setStarted] = useState(false);
+	const [clockTime, setClockTime] = useState(0);
+	const [expiresAt, setExpiresAt] = useState(0);
+	const [resendAvailableAt, setResendAvailableAt] = useState(0);
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState("");
+	const phoneDigits = phone.replace(/\D/g, "");
+	const validPhone =
+		phoneDigits.length === 10 ||
+		(phoneDigits.length === 11 && /^[78]/.test(phoneDigits));
+
+	useEffect(() => {
+		if (!started) return;
+		setClockTime(Date.now());
+		const timer = window.setInterval(() => setClockTime(Date.now()), 1000);
+		return () => window.clearInterval(timer);
+	}, [started]);
+
+	const secondsLeft = Math.max(0, Math.ceil((expiresAt - clockTime) / 1000));
+	const resendSeconds = Math.max(
+		0,
+		Math.ceil((resendAvailableAt - clockTime) / 1000),
+	);
+	const expired = started && secondsLeft === 0;
+
+	const callError = (requestError: unknown) => {
+		const message =
+			requestError instanceof Error ? requestError.message : copy.failedCall;
+		return message.includes("phone already linked")
+			? uiText(language, "phoneAlreadyLinked")
+			: message.includes("Verification call could not be started")
+				? copy.callFailed
+				: message;
+	};
+
+	const requestCall = async () => {
+		setSaving(true);
+		setError("");
+		try {
+			const response = await apiRequest<PhoneCallChallenge>(
+				"/auth/phone/link/request",
+				token,
+				{
+					method: "POST",
+					body: JSON.stringify({ phone: phone.trim() }),
+				},
+			);
+			if (!response.call_phone || !response.challenge_token) {
+				throw new Error(copy.failedCall);
+			}
+			const now = Date.now();
+			setCallPhone(response.call_phone);
+			setCallPhonePretty(response.call_phone_pretty || response.call_phone);
+			setChallengeToken(response.challenge_token);
+			setStarted(true);
+			setClockTime(now);
+			setExpiresAt(now + PHONE_CALL_TTL_MS);
+			setResendAvailableAt(now + AUTH_CODE_RESEND_MS);
+		} catch (requestError) {
+			setError(callError(requestError));
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const confirmLink = async () => {
+		setSaving(true);
+		setError("");
+		try {
+			const nextUser = await apiRequest<User>(
+				"/auth/phone/link/confirm",
+				token,
+				{
+					method: "POST",
+					body: JSON.stringify({
+						phone: phone.trim(),
+						challenge_token: challengeToken,
+					}),
+				},
+			);
+			onLinked(nextUser);
+		} catch (requestError) {
+			setError(callError(requestError));
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	useEffect(() => {
+		if (!started || !callPhone || !challengeToken) return;
+		let cancelled = false;
+		let finishing = false;
+		const checkStatus = async () => {
+			if (cancelled || finishing || Date.now() >= expiresAt) return;
+			try {
+				const status = await apiRequest<{ confirmed: boolean }>(
+					"/auth/phone/link/status",
+					token,
+					{
+						method: "POST",
+						body: JSON.stringify({
+							phone: phone.trim(),
+							challenge_token: challengeToken,
+						}),
+					},
+				);
+				if (!status.confirmed || cancelled) return;
+				finishing = true;
+				await confirmLink();
+			} catch (statusError) {
+				if (!cancelled) setError(callError(statusError));
+			}
+		};
+		void checkStatus();
+		const timer = window.setInterval(() => void checkStatus(), 2500);
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, [callPhone, challengeToken, expiresAt, phone, started, token]);
+
+	const reset = () => {
+		setStarted(false);
+		setCallPhone("");
+		setCallPhonePretty("");
+		setChallengeToken("");
+		setError("");
+	};
+
+	return (
+		<Modal title={uiText(language, "phoneLinkTitle")} onClose={onClose}>
+			{started ? (
+				<div className="browser-code-step">
+					<div className="browser-code-heading">
+						<span className="browser-code-icon" aria-hidden="true">
+							<PhoneCall size={22} weight="fill" />
+						</span>
+						<div>
+							<strong>{copy.phoneCodeTitle}</strong>
+							<small>
+								{copy.calling}
+								<span className="browser-code-email">{phone}</span>
+							</small>
+						</div>
+					</div>
+					<a className="browser-call-number" href={`tel:${callPhone}`}>
+						<PhoneCall size={23} weight="fill" />
+						<span>
+							<strong>{callPhonePretty}</strong>
+							<small>{copy.callAction}</small>
+						</span>
+					</a>
+					<div
+						className={`browser-code-timer${expired ? " expired" : ""}`}
+						aria-live="polite"
+					>
+						{expired
+							? copy.phoneExpired
+							: copy.callValid(formatCountdown(secondsLeft))}
+					</div>
+					{!expired && (
+						<div className="browser-call-waiting" role="status">
+							<KnotLoader />
+							<span>{saving ? copy.checking : copy.waitingForCall}</span>
+						</div>
+					)}
+					{error && <p className="mini-form-error">{error}</p>}
+					<div className="browser-code-actions phone">
+						<button
+							className="browser-auth-link browser-resend-code"
+							type="button"
+							disabled={saving || resendSeconds > 0}
+							onClick={() => void requestCall()}
+						>
+							{resendSeconds > 0
+								? copy.retryAfter(formatCountdown(resendSeconds))
+								: copy.callAgain}
+						</button>
+					</div>
+					<button
+						className="browser-auth-link browser-change-email"
+						type="button"
+						onClick={reset}
+					>
+						{copy.changePhone}
+					</button>
+					<small className="browser-code-help">{copy.phoneHelp}</small>
+				</div>
+			) : (
+				<>
+					<p className="mini-modal-note">{uiText(language, "phoneLinkHint")}</p>
+					<label>
+						{copy.phone}
+						<input
+							type="tel"
+							autoComplete="tel"
+							inputMode="tel"
+							value={phone}
+							onChange={(event) =>
+								setPhone(formatRussianPhone(event.target.value))
+							}
+							placeholder="+7 999 123-45-67"
+						/>
+					</label>
+					{error && <p className="mini-form-error">{error}</p>}
+					<button
+						className="mini-save"
+						type="button"
+						disabled={saving || !validPhone}
+						onClick={() => void requestCall()}
+					>
+						{saving ? copy.requestingCall : copy.callMe}
+					</button>
+				</>
+			)}
+		</Modal>
 	);
 };
 

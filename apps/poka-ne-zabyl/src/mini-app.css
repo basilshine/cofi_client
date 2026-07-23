@@ -3150,6 +3150,14 @@
 	font-size: 12px;
 	font-weight: 700;
 }
+.mini-profile-auth-origin {
+	margin: -2px 2px 1px;
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.mini-profile-auth-origin strong {
+	color: var(--mini-ink);
+}
 .mini-profile-list div {
 	display: flex;
 	justify-content: space-between;
@@ -5999,10 +6007,8 @@
 	box-shadow: 0 8px 22px rgb(41 69 199 / 20%);
 	color: #fff;
 	text-decoration: none;
-	transition:
-		border-color 160ms ease,
-		background 160ms ease,
-		transform 160ms ease;
+	transition: border-color 160ms ease, background 160ms ease, transform 160ms
+		ease;
 }
 .browser-call-number > svg {
 	justify-self: center;
