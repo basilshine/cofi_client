@@ -13553,7 +13553,7 @@ const ExpenseSplitEditor = ({
 		distributeEqually(nextIDs);
 	};
 	return (
-		<Modal title="Разделить расход" onClose={onClose}>
+		<Modal title="Разделить расход" variant="editor" onClose={onClose}>
 			<div className="mini-split-editor-summary">
 				<span>
 					<ArrowsLeftRight size={21} weight="bold" />
@@ -13932,6 +13932,7 @@ const PlanEditor = ({
 						? uiText(language, "editPlan")
 						: uiText(language, "newPlan")
 			}
+			variant="editor"
 			onClose={onClose}
 		>
 			{fromCandidate && (
@@ -14263,6 +14264,7 @@ const ExpenseEditor = ({
 	return (
 		<Modal
 			title={uiText(language, creating ? "newExpense" : "editExpense")}
+			variant="editor"
 			onClose={onClose}
 		>
 			{expense.source_document_id && (
@@ -14588,7 +14590,11 @@ const ExpenseItemEditor = ({
 	);
 
 	return (
-		<Modal title={uiText(language, "editPurchase")} onClose={onClose}>
+		<Modal
+			title={uiText(language, "editPurchase")}
+			variant="editor"
+			onClose={onClose}
+		>
 			<p className="mini-field-note">
 				{expense.title || uiText(language, "viewExpense")} ·{" "}
 				{formatDate(expense.expense_date, language)}
@@ -14761,6 +14767,7 @@ const VendorEditor = ({
 				language,
 				vendor.id === 0 ? "newVendor" : "configureVendor",
 			)}
+			variant="editor"
 			onClose={onClose}
 		>
 			<label>
@@ -14893,6 +14900,7 @@ const CategoryEditor = ({
 				category.id === 0 ? "newCategory" : "editCategory",
 			)}
 			closeLabel={uiText(language, "close")}
+			variant="editor"
 			onClose={onClose}
 		>
 			<label>
@@ -15117,6 +15125,7 @@ const ProfileEditor = ({
 				mode === "notifications" ? "notificationSettings" : "profileSettings",
 			)}
 			closeLabel={uiText(language, "close")}
+			variant="editor"
 			onClose={onClose}
 		>
 			{mode === "profile" && (
@@ -15733,6 +15742,7 @@ const SpaceEditor = ({
 }) => (
 	<Modal
 		title={uiText(language, space.id ? "spaceSettings" : "newSpace")}
+		variant="editor"
 		onClose={onClose}
 	>
 		<label>
@@ -16249,11 +16259,13 @@ const AvatarCropDialog = ({
 const Modal = ({
 	title,
 	closeLabel = "Закрыть",
+	variant = "default",
 	children,
 	onClose,
 }: {
 	title: string;
 	closeLabel?: string;
+	variant?: "default" | "editor";
 	children: React.ReactNode;
 	onClose: () => void;
 }) => {
@@ -16349,7 +16361,7 @@ const Modal = ({
 		>
 			<section
 				ref={modalRef}
-				className={`mini-modal${sheetState === "peek" ? " is-peek" : ""}${dragY ? " is-dragging" : ""}`}
+				className={`mini-modal${variant === "editor" ? " is-editor" : ""}${sheetState === "peek" ? " is-peek" : ""}${dragY ? " is-dragging" : ""}`}
 				role="dialog"
 				aria-modal="true"
 				aria-label={title}
