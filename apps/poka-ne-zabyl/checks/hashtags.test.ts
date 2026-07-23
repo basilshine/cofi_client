@@ -35,4 +35,5 @@ test("extracts, suggests and completes unicode hashtags", () => {
 		notesWithTags("Для поездки #семья", ["семья", "кредитная карта"]),
 		"Для поездки #семья #кредитная_карта",
 	);
+	assert.equal(notesWithTags("<nil>", []), "");
 });

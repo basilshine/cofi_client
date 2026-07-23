@@ -6,7 +6,8 @@ export const hashtagsFromText = (value: string) =>
 	).filter((tag, index, tags) => tags.indexOf(tag) === index);
 
 export const notesWithTags = (notes: string, tags: string[]) => {
-	const result = notes.trim();
+	const trimmed = notes.trim();
+	const result = /^(?:<nil>|nil|null|undefined)$/i.test(trimmed) ? "" : trimmed;
 	const existing = new Set(hashtagsFromText(result));
 	const missing = tags
 		.map((tag) =>

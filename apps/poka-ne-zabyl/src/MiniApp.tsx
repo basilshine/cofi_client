@@ -5680,15 +5680,18 @@ export const MiniApp = () => {
 			expense_date: localISODate(),
 			currency: plan.currency,
 			space_currency: plan.currency,
-			items: (planItem ? [planItem] : purchasePlanItems(plan)).map((item) => ({
-				name: item.name,
-				amount: item.expected_amount || 0,
-				category_id: item.category_id || fallbackCategory?.id,
-				vendor_id: plan.vendor_id || undefined,
-				vendor_name: vendorName,
-				notes: item.notes || "",
-				tags: hashtagsFromText(item.notes || ""),
-			})),
+			items: (planItem ? [planItem] : purchasePlanItems(plan)).map((item) => {
+				const notes = notesWithTags(item.notes || "", []);
+				return {
+					name: item.name,
+					amount: item.expected_amount || 0,
+					category_id: item.category_id || fallbackCategory?.id,
+					vendor_id: plan.vendor_id || undefined,
+					vendor_name: vendorName,
+					notes,
+					tags: hashtagsFromText(notes),
+				};
+			}),
 		});
 	};
 
@@ -5766,9 +5769,14 @@ export const MiniApp = () => {
 		loadMorePlans,
 	]);
 
-	const planAgain = () => {
-		if (!editingExpense || editingItemIndex === null) return;
-		const item = editingExpense.items[editingItemIndex];
+	const planAgain = (
+		expense: Expense | null = editingExpense,
+		itemIndex: number | null = editingItemIndex,
+	) => {
+		if (!expense || itemIndex === null) return;
+		const item = expense.items[itemIndex];
+		const notes = notesWithTags(item.notes || "", []);
+		setRecordDetail(null);
 		setEditingExpense(null);
 		setEditingItemIndex(null);
 		setEditingPlan({
@@ -5780,14 +5788,13 @@ export const MiniApp = () => {
 			expected_amount: item.space_amount ?? item.amount,
 			currency: activeSpace?.currency || currency,
 			category_id: item.category_id || null,
-			vendor_id: item.vendor_id || editingExpense.vendor_id || null,
+			vendor_id: item.vendor_id || expense.vendor_id || null,
 			vendor_name:
 				item.vendor_name ||
 				vendors.find(
-					(vendor) =>
-						vendor.id === (item.vendor_id || editingExpense.vendor_id),
+					(vendor) => vendor.id === (item.vendor_id || expense.vendor_id),
 				)?.name ||
-				editingExpense.payee_text ||
+				expense.payee_text ||
 				"",
 			due_date: null,
 			recurrence_interval: "",
@@ -5797,6 +5804,7 @@ export const MiniApp = () => {
 					name: item.name,
 					expected_amount: item.space_amount ?? item.amount,
 					category_id: item.category_id || null,
+					notes,
 				},
 			],
 		});
@@ -7003,6 +7011,9 @@ export const MiniApp = () => {
 						)
 					}
 					onSource={() => openExpenseSource(recordDetail.expense)}
+					onPlanAgain={() =>
+						planAgain(recordDetail.expense, recordDetail.itemIndex)
+					}
 					onOpenExpense={() =>
 						setRecordDetail({ kind: "expense", expense: recordDetail.expense })
 					}
@@ -7210,7 +7221,6 @@ export const MiniApp = () => {
 							operation,
 						)
 					}
-					onPlanAgain={planAgain}
 					onDelete={
 						editingExpense.id > 0 && editingExpense.items[editingItemIndex]?.id
 							? deleteExpenseItem
@@ -13236,6 +13246,7 @@ const ExpenseDetail = ({
 	onMove,
 	onSource,
 	onSplit,
+	onPlanAgain,
 	onOpenExpense,
 	onOpenItem,
 }: {
@@ -13258,6 +13269,7 @@ const ExpenseDetail = ({
 	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onSource: () => void;
 	onSplit?: () => void;
+	onPlanAgain?: () => void;
 	onOpenExpense: () => void;
 	onOpenItem: (itemIndex: number) => void;
 }) => {
@@ -13271,6 +13283,7 @@ const ExpenseDetail = ({
 	const category = item
 		? categories.find((current) => current.id === item.category_id)
 		: undefined;
+	const notes = notesWithTags(item?.notes || "", []);
 	const author = sharedRecordAuthor(members, expense.user_id);
 	const canSplit =
 		itemIndex === undefined &&
@@ -13361,7 +13374,7 @@ const ExpenseDetail = ({
 						</span>
 						<ArrowRight size={17} />
 					</button>
-					{item.notes && <p className="mini-record-note">{item.notes}</p>}
+					{notes && <p className="mini-record-note">{notes}</p>}
 				</>
 			) : (
 				<div className="mini-record-lines">
@@ -13454,6 +13467,17 @@ const ExpenseDetail = ({
 					<PencilSimple size={18} />
 					{uiText(language, "edit")}
 				</button>
+				{item && onPlanAgain && (
+					<button
+						className="mini-secondary-action"
+						type="button"
+						disabled={saving}
+						onClick={onPlanAgain}
+					>
+						<CalendarBlank size={18} />
+						{uiText(language, "planAgain")}
+					</button>
+				)}
 				<button
 					className="mini-delete"
 					type="button"
@@ -14537,7 +14561,6 @@ const ExpenseItemEditor = ({
 	onSave,
 	onSource,
 	onMove,
-	onPlanAgain,
 	onDelete,
 }: {
 	expense: Expense;
@@ -14555,7 +14578,6 @@ const ExpenseItemEditor = ({
 	onSave: () => void;
 	onSource: () => void;
 	onMove: (spaceID: number, operation: TransferOperation) => void;
-	onPlanAgain: () => void;
 	onDelete?: () => void;
 }) => {
 	const vendorName = vendorFieldValue(
@@ -14671,15 +14693,6 @@ const ExpenseItemEditor = ({
 					onClick={onSave}
 				>
 					{uiText(language, saving ? "saving" : "save")}
-				</button>
-				<button
-					className="mini-secondary-action"
-					type="button"
-					disabled={saving}
-					onClick={onPlanAgain}
-				>
-					<CalendarBlank size={18} />
-					{uiText(language, "planAgain")}
 				</button>
 				{onDelete && (
 					<button
