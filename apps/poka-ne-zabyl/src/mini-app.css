@@ -5986,6 +5986,49 @@
 	font-weight: 700;
 	overflow-wrap: anywhere;
 }
+.browser-call-number {
+	display: grid;
+	grid-template-columns: 38px minmax(0, 1fr);
+	align-items: center;
+	gap: 11px;
+	min-height: 62px;
+	padding: 10px 12px;
+	border: 1px solid rgb(41 69 199 / 24%);
+	border-radius: 7px;
+	background: #eef1fa;
+	color: var(--mini-green);
+	text-decoration: none;
+}
+.browser-call-number > svg {
+	justify-self: center;
+}
+.browser-call-number > span {
+	display: grid;
+	gap: 2px;
+	min-width: 0;
+}
+.browser-call-number strong {
+	color: var(--mini-ink);
+	font-size: 19px;
+	font-variant-numeric: tabular-nums;
+}
+.browser-call-number small {
+	text-align: left;
+}
+.browser-call-waiting {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 9px;
+	min-height: 48px;
+	color: var(--mini-muted);
+	font-size: 14px;
+	font-weight: 700;
+}
+.browser-call-waiting .knot-loader {
+	width: 24px;
+	height: 24px;
+}
 .browser-otp-field {
 	position: relative;
 }
@@ -6075,6 +6118,9 @@
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 8px;
+}
+.browser-code-actions.phone {
+	grid-template-columns: 1fr;
 }
 .browser-code-actions .browser-auth-link {
 	min-width: 0;

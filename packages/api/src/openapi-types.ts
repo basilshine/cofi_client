@@ -4226,8 +4226,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Request a Russian phone login code
-         * @description Accepts Russian mobile numbers and returns a generic response when no account exists.
+         * Start Russian phone login by call
+         * @description Returns a number that the user must call from the submitted phone.
          */
         post: {
             parameters: {
@@ -4242,12 +4242,54 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Generic SMS delivery response */
+                /** @description Number to call */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["PhoneCallChallenge"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/phone/login/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check phone login call status */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PhoneCallStatusRequest"];
+                };
+            };
+            responses: {
+                /** @description Current call confirmation status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PhoneCallStatus"];
+                    };
                 };
             };
         };
@@ -4266,7 +4308,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in with a Russian phone and one-time SMS code */
+        /** Sign in after a confirmed phone call */
         post: {
             parameters: {
                 query?: never;
@@ -4306,7 +4348,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Request a Russian phone registration code */
+        /** Start Russian phone registration by call */
         post: {
             parameters: {
                 query?: never;
@@ -4320,12 +4362,54 @@ export interface paths {
                 };
             };
             responses: {
-                /** @description Generic registration or existing-account login code response */
+                /** @description Number to call */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["PhoneCallChallenge"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/phone/register/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check phone registration call status */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PhoneCallStatusRequest"];
+                };
+            };
+            responses: {
+                /** @description Current call confirmation status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PhoneCallStatus"];
+                    };
                 };
             };
         };
@@ -4344,7 +4428,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create an account after confirming the SMS code */
+        /** Create an account after a confirmed phone call */
         post: {
             parameters: {
                 query?: never;
@@ -5821,6 +5905,111 @@ export interface paths {
                 };
                 /** @description Payments are not configured */
                 503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/activation-codes/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem a single-use activation code
+         * @description Applies the code reward to the authenticated user's personal subscription account. A code can be redeemed only once globally.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        code: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Reward applied */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivationCodeResponse"];
+                    };
+                };
+                /** @description Code is invalid or was already redeemed */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/billing/activation-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate a single-use activation code
+         * @description Available only to the configured developer user. The plaintext code is returned once and is stored only as a hash.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        reward_type: "plus_30d" | "pack_100";
+                    };
+                };
+            };
+            responses: {
+                /** @description Activation code generated */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivationCodeResponse"];
+                    };
+                };
+                /** @description Developer tools are unavailable to the current user */
+                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7802,7 +7991,10 @@ export interface components {
         };
         ConfirmPhoneLoginRequest: {
             phone: string;
-            code: string;
+            /** @description Legacy incoming-call code; omitted for the current call-check flow. */
+            code?: string;
+            /** @description Opaque token returned when the call check was started. */
+            challenge_token?: string;
         };
         RequestPhoneRegistrationRequest: {
             name: string;
@@ -7813,11 +8005,28 @@ export interface components {
         ConfirmPhoneRegistrationRequest: {
             name: string;
             phone: string;
-            code: string;
+            /** @description Legacy incoming-call code; omitted for the current call-check flow. */
+            code?: string;
+            /** @description Opaque token returned when the call check was started. */
+            challenge_token?: string;
             language?: string;
             timezone?: string;
             /** @description Separate consent to personal data processing for account creation. */
             personal_data_consent: boolean;
+        };
+        PhoneCallChallenge: {
+            challenge_token: string;
+            /** @example 78005008275 */
+            call_phone: string;
+            /** @example +7 (800) 500-82-75 */
+            call_phone_pretty: string;
+        };
+        PhoneCallStatusRequest: {
+            phone: string;
+            challenge_token: string;
+        };
+        PhoneCallStatus: {
+            confirmed: boolean;
         };
         RequestEmailLinkRequest: {
             /** Format: email */
@@ -8422,6 +8631,8 @@ export interface components {
             expected_amount?: number | null;
             /** Format: int64 */
             category_id?: number | null;
+            /** @description Optional note for the planned item, including user hashtags. */
+            notes?: string;
         };
         PurchasePlanItem: components["schemas"]["PurchasePlanItemInput"] & {
             /** Format: int64 */
@@ -9277,6 +9488,14 @@ export interface components {
             auto_renew_available?: boolean;
             /** @description Whether the personal Plus subscription will renew automatically. */
             auto_renew_enabled?: boolean;
+        };
+        ActivationCodeResponse: {
+            /** @description Plaintext activation code, returned only by the developer generation endpoint. */
+            code?: string;
+            /** @enum {string} */
+            reward_type: "plus_30d" | "pack_100";
+            units: number;
+            plus_days: number;
         };
         /** @description At least one of message, photo, or audio is required. */
         FeedbackCreateRequest: {

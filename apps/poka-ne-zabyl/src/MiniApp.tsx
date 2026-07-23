@@ -16134,9 +16134,14 @@ const TelegramEntry = ({ error }: { error: string }) => {
 };
 
 const EMAIL_OTP_POSITIONS = [0, 1, 2, 3, 4, 5] as const;
-const PHONE_OTP_POSITIONS = [0, 1, 2, 3] as const;
 const AUTH_CODE_TTL_MS = 10 * 60 * 1000;
+const PHONE_CALL_TTL_MS = 5 * 60 * 1000;
 const AUTH_CODE_RESEND_MS = 60 * 1000;
+type PhoneCallChallenge = {
+	challenge_token: string;
+	call_phone: string;
+	call_phone_pretty: string;
+};
 const formatCountdown = (seconds: number) =>
 	`${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 const formatRussianPhone = (value: string) => {
@@ -16186,6 +16191,9 @@ const BrowserEntry = ({
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [phone, setPhone] = useState("");
+	const [callPhone, setCallPhone] = useState("");
+	const [callPhonePretty, setCallPhonePretty] = useState("");
+	const [phoneChallengeToken, setPhoneChallengeToken] = useState("");
 	const [code, setCode] = useState("");
 	const [codeSent, setCodeSent] = useState(false);
 	const [clockTime, setClockTime] = useState(0);
@@ -16219,6 +16227,9 @@ const BrowserEntry = ({
 		setCode("");
 		setCodeExpiresAt(0);
 		setResendAvailableAt(0);
+		setCallPhone("");
+		setCallPhonePretty("");
+		setPhoneChallengeToken("");
 		setClipboardHint("");
 		setLocalError("");
 	};
@@ -16237,7 +16248,7 @@ const BrowserEntry = ({
 		resetCodeStep();
 	};
 	const isPhone = method === "phone";
-	const otpPositions = isPhone ? PHONE_OTP_POSITIONS : EMAIL_OTP_POSITIONS;
+	const otpPositions = EMAIL_OTP_POSITIONS;
 	const codeLength = otpPositions.length;
 	const contact = isPhone ? phone.trim() : email.trim();
 	const phoneDigits = phone.replace(/\D/g, "");
@@ -16249,7 +16260,7 @@ const BrowserEntry = ({
 		setLoading(true);
 		setLocalError("");
 		try {
-			await apiRequest(
+			const response = await apiRequest<PhoneCallChallenge>(
 				`/auth/${isPhone ? "phone" : "email"}/${authMode}/request`,
 				"",
 				{
@@ -16261,10 +16272,18 @@ const BrowserEntry = ({
 					}),
 				},
 			);
+			if (isPhone) {
+				if (!response.call_phone || !response.challenge_token) {
+					throw new Error(copy.failedCall);
+				}
+				setCallPhone(response.call_phone);
+				setCallPhonePretty(response.call_phone_pretty || response.call_phone);
+				setPhoneChallengeToken(response.challenge_token);
+			}
 			const now = Date.now();
 			setCodeSent(true);
 			setClockTime(now);
-			setCodeExpiresAt(now + AUTH_CODE_TTL_MS);
+			setCodeExpiresAt(now + (isPhone ? PHONE_CALL_TTL_MS : AUTH_CODE_TTL_MS));
 			setResendAvailableAt(now + AUTH_CODE_RESEND_MS);
 			setCode("");
 			setClipboardHint("");
@@ -16301,7 +16320,7 @@ const BrowserEntry = ({
 		}
 	};
 
-	const confirmCode = async () => {
+	const completeAuth = async (confirmationCode: string) => {
 		setLoading(true);
 		setLocalError("");
 		try {
@@ -16315,7 +16334,10 @@ const BrowserEntry = ({
 					body: JSON.stringify({
 						name: name.trim(),
 						...(isPhone ? { phone: phone.trim() } : { email: email.trim() }),
-						code: code.trim(),
+						code: confirmationCode,
+						...(isPhone
+							? { challenge_token: phoneChallengeToken }
+							: {}),
 						country: isPhone
 							? "RU"
 							: browserRegistrationCountry(navigator.language),
@@ -16340,6 +16362,57 @@ const BrowserEntry = ({
 			setLoading(false);
 		}
 	};
+
+	const confirmCode = () => completeAuth(code.trim());
+
+	useEffect(() => {
+		if (!codeSent || !isPhone || !callPhone || !phoneChallengeToken) return;
+		let cancelled = false;
+		let finishing = false;
+		const checkStatus = async () => {
+			if (cancelled || finishing || Date.now() >= codeExpiresAt) return;
+			try {
+				const status = await apiRequest<{ confirmed: boolean }>(
+					`/auth/phone/${authMode}/status`,
+					"",
+					{
+						method: "POST",
+						body: JSON.stringify({
+							phone: phone.trim(),
+							challenge_token: phoneChallengeToken,
+						}),
+					},
+				);
+				if (!status.confirmed || cancelled) return;
+				finishing = true;
+				await completeAuth("");
+			} catch (statusError) {
+				if (!cancelled) {
+					const message =
+						statusError instanceof Error
+							? statusError.message
+							: copy.callFailed;
+					if (message.includes("verification call expired")) {
+						setLocalError(copy.phoneExpired);
+					}
+				}
+			}
+		};
+		void checkStatus();
+		const timer = window.setInterval(() => void checkStatus(), 2500);
+		return () => {
+			cancelled = true;
+			window.clearInterval(timer);
+		};
+	}, [
+		authMode,
+		callPhone,
+		codeExpiresAt,
+		codeSent,
+		isPhone,
+		phone,
+		phoneChallengeToken,
+	]);
 
 	const pasteCode = async () => {
 		setClipboardHint("");
@@ -16460,42 +16533,50 @@ const BrowserEntry = ({
 										</small>
 									</div>
 								</div>
-								<label className="browser-code-field">
-									<span>
-										{isPhone ? copy.phoneCodeLabel : copy.emailCodeLabel}
-									</span>
-									<div className="browser-otp-field">
-										<input
-											className="browser-code-input"
-											type="text"
-											inputMode="numeric"
-											autoComplete="one-time-code"
-											maxLength={codeLength}
-											value={code}
-											onChange={(event) => {
-												setCode(
-													event.target.value
-														.replace(/\D/g, "")
-														.slice(0, codeLength),
-												);
-												setClipboardHint("");
-											}}
-										/>
-										<div
-											className={`browser-otp-cells${isPhone ? " phone" : ""}`}
-											aria-hidden="true"
-										>
-											{otpPositions.map((index) => (
-												<span
-													key={`otp-${index}`}
-													className={`browser-otp-cell${code[index] ? " filled" : ""}${index === code.length && code.length < codeLength ? " active" : ""}`}
-												>
-													{code[index] || ""}
-												</span>
-											))}
+								{isPhone ? (
+									<a
+										className="browser-call-number"
+										href={`tel:${callPhone}`}
+									>
+										<PhoneCall size={23} weight="fill" />
+										<span>
+											<strong>{callPhonePretty}</strong>
+											<small>{copy.callAction}</small>
+										</span>
+									</a>
+								) : (
+									<label className="browser-code-field">
+										<span>{copy.emailCodeLabel}</span>
+										<div className="browser-otp-field">
+											<input
+												className="browser-code-input"
+												type="text"
+												inputMode="numeric"
+												autoComplete="one-time-code"
+												maxLength={codeLength}
+												value={code}
+												onChange={(event) => {
+													setCode(
+														event.target.value
+															.replace(/\D/g, "")
+															.slice(0, codeLength),
+													);
+													setClipboardHint("");
+												}}
+											/>
+											<div className="browser-otp-cells" aria-hidden="true">
+												{otpPositions.map((index) => (
+													<span
+														key={`otp-${index}`}
+														className={`browser-otp-cell${code[index] ? " filled" : ""}${index === code.length && code.length < codeLength ? " active" : ""}`}
+													>
+														{code[index] || ""}
+													</span>
+												))}
+											</div>
 										</div>
-									</div>
-								</label>
+									</label>
+								)}
 								<div
 									className={`browser-code-timer${codeExpired ? " expired" : ""}`}
 									aria-live="polite"
@@ -16504,28 +16585,39 @@ const BrowserEntry = ({
 										? isPhone
 											? copy.phoneExpired
 											: copy.emailExpired
-										: copy.codeValid(codeTimeLeft)}
+										: isPhone
+											? copy.callValid(codeTimeLeft)
+											: copy.codeValid(codeTimeLeft)}
 								</div>
 								{clipboardHint && (
 									<small className="browser-clipboard-hint">
 										{clipboardHint}
 									</small>
 								)}
-								<button
-									className="browser-primary-action"
-									type="button"
-									disabled={
-										loading || code.length !== codeLength || codeExpired
-									}
-									onClick={confirmCode}
+								{isPhone ? (
+									<div className="browser-call-waiting" role="status">
+										<KnotLoader />
+										<span>{loading ? copy.checking : copy.waitingForCall}</span>
+									</div>
+								) : (
+									<button
+										className="browser-primary-action"
+										type="button"
+										disabled={
+											loading || code.length !== codeLength || codeExpired
+										}
+										onClick={confirmCode}
+									>
+										{loading
+											? copy.checking
+											: authMode === "register"
+												? copy.registerTitle
+												: copy.loginTitle}
+									</button>
+								)}
+								<div
+									className={`browser-code-actions${isPhone ? " phone" : ""}`}
 								>
-									{loading
-										? copy.checking
-										: authMode === "register"
-											? copy.registerTitle
-											: copy.loginTitle}
-								</button>
-								<div className="browser-code-actions">
 									{!isPhone &&
 										typeof navigator !== "undefined" &&
 										navigator.clipboard && (
