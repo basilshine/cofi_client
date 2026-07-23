@@ -8206,14 +8206,12 @@ const Overview = ({
 										plan.vendor_name ||
 										vendors.find((vendor) => vendor.id === plan.vendor_id)
 											?.name;
-									const details = [
-										plan.due_date
-											? formatPlanDate(plan.due_date, language)
-											: null,
-										vendorName,
-									].filter(Boolean);
+									const dueToday = isPlanDueToday(plan.due_date);
 									return (
-										<div key={plan.id}>
+										<div
+											className={dueToday ? "is-today" : undefined}
+											key={plan.id}
+										>
 											<button type="button" onClick={() => onEditPlan(plan)}>
 												<span className="mini-home-plan-title">
 													<b>{plan.title}</b>
@@ -8226,8 +8224,20 @@ const Overview = ({
 														</strong>
 													)}
 												</span>
-												{details.length > 0 && (
-													<small>{details.join(" · ")}</small>
+												{(plan.due_date || vendorName) && (
+													<small>
+														{plan.due_date && (
+															<span
+																className={
+																	dueToday ? "mini-plan-due-today" : undefined
+																}
+															>
+																{formatPlanDueDate(plan.due_date, language)}
+															</span>
+														)}
+														{plan.due_date && vendorName ? " · " : ""}
+														{vendorName}
+													</small>
 												)}
 												{sharedRecordAuthor(
 													members,
@@ -9227,8 +9237,12 @@ const PlansView = ({
 		const vendorName =
 			plan.vendor_name ||
 			vendors.find((item) => item.id === plan.vendor_id)?.name;
+		const dueToday = isPlanDueToday(plan.due_date);
 		return (
-			<div className="mini-plan-row" key={plan.id}>
+			<div
+				className={`mini-plan-row${dueToday ? " is-today" : ""}`}
+				key={plan.id}
+			>
 				{sourceButton(plan)}
 				<button
 					className="mini-plan-copy"
@@ -9242,9 +9256,14 @@ const PlansView = ({
 					<small>
 						{categoryLabel(planItems.map((item) => item.category_id))}
 						{vendorName ? ` · ${vendorName}` : ""}
-						{plan.due_date
-							? ` · ${formatPlanDate(plan.due_date, language)}`
-							: ""}
+						{plan.due_date && (
+							<>
+								{" · "}
+								<span className={dueToday ? "mini-plan-due-today" : undefined}>
+									{formatPlanDueDate(plan.due_date, language)}
+								</span>
+							</>
+						)}
 					</small>
 					{authorLine(plan) && (
 						<small className="mini-record-author">
@@ -9278,8 +9297,12 @@ const PlansView = ({
 		const vendorName =
 			plan.vendor_name ||
 			vendors.find((vendor) => vendor.id === plan.vendor_id)?.name;
+		const dueToday = isPlanDueToday(plan.due_date);
 		return (
-			<div className="mini-plan-row" key={`${plan.id}-${item.id || index}`}>
+			<div
+				className={`mini-plan-row${dueToday ? " is-today" : ""}`}
+				key={`${plan.id}-${item.id || index}`}
+			>
 				{sourceButton(plan)}
 				<button
 					className="mini-plan-copy"
@@ -9291,9 +9314,14 @@ const PlansView = ({
 					<small>
 						{categoryLabel([item.category_id])}
 						{vendorName ? ` · ${vendorName}` : ""}
-						{plan.due_date
-							? ` · ${formatPlanDate(plan.due_date, language)}`
-							: ""}
+						{plan.due_date && (
+							<>
+								{" · "}
+								<span className={dueToday ? "mini-plan-due-today" : undefined}>
+									{formatPlanDueDate(plan.due_date, language)}
+								</span>
+							</>
+						)}
 					</small>
 					{authorLine(plan) && (
 						<small className="mini-record-author">
@@ -16827,6 +16855,12 @@ const formatPlanDate = (value: string, language: UILanguage) =>
 	new Intl.DateTimeFormat(language, { day: "numeric", month: "short" }).format(
 		new Date(`${value.slice(0, 10)}T12:00:00`),
 	);
+const isPlanDueToday = (value?: string | null) =>
+	Boolean(value && value.slice(0, 10) === localISODate());
+const formatPlanDueDate = (value: string, language: UILanguage) =>
+	isPlanDueToday(value)
+		? uiText(language, "periodToday")
+		: formatPlanDate(value, language);
 const formatDateTime = (value: string, language: UILanguage) =>
 	new Intl.DateTimeFormat(language, {
 		dateStyle: "medium",

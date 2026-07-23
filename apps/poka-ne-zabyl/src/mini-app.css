@@ -791,6 +791,11 @@
 	padding: 7px 9px 7px 13px;
 	background: var(--mini-paper);
 }
+.mini-home-plan-list > div.is-today {
+	padding-left: 10px;
+	border-left: 3px solid var(--mini-green);
+	background: color-mix(in srgb, var(--mini-green) 7%, var(--mini-paper));
+}
 .mini-home-plan-list > div > button:first-child {
 	display: grid;
 	min-width: 0;
@@ -827,6 +832,10 @@
 .mini-home-plan-list small {
 	color: var(--mini-muted);
 	font-size: 11px;
+}
+.mini-plan-due-today {
+	color: var(--mini-green);
+	font-weight: 750;
 }
 .mini-home-plan-buy {
 	display: grid;
@@ -1749,6 +1758,14 @@
 	min-height: 78px;
 	padding: 12px 13px;
 	background: var(--mini-paper);
+}
+.mini-plan-row.is-today {
+	padding-left: 10px;
+	border-left: 3px solid var(--mini-green);
+	background: color-mix(in srgb, var(--mini-green) 7%, var(--mini-paper));
+}
+.mini-plan-row.is-today .mini-plan-icon {
+	background: color-mix(in srgb, var(--mini-green) 13%, var(--mini-soft));
 }
 .mini-plan-icon {
 	display: grid;
