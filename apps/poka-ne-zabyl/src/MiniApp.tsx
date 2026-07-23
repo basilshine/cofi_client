@@ -7203,8 +7203,22 @@ export const MiniApp = () => {
 				<PhoneManagementDialog
 					phone={formatRussianPhone(user.phone)}
 					language={language}
+					canUnlink={Boolean(
+						(user.emailVerified &&
+							user.email &&
+							!user.email.endsWith("@telegram.local")) ||
+							user.telegramId,
+					)}
 					onClose={() => setPhoneManageOpen(false)}
 					onUnlink={unlinkPhone}
+					onLinkEmail={() => {
+						setPhoneManageOpen(false);
+						setEmailLinkOpen(true);
+					}}
+					onLinkTelegram={() => {
+						setPhoneManageOpen(false);
+						setTelegramLinkOpen(true);
+					}}
 				/>
 			)}
 			{accountDeletionOpen && (
@@ -11003,10 +11017,7 @@ const ProfileView = ({
 						</p>
 					)}
 					<div className="mini-profile-list">
-						<button
-							type="button"
-							onClick={onLinkPhone}
-						>
+						<button type="button" onClick={onLinkPhone}>
 							<span>
 								<PhoneCall size={18} />
 								{uiText(language, "loginPhone")}
@@ -17145,13 +17156,19 @@ const PhoneLinkDialog = ({
 const PhoneManagementDialog = ({
 	phone,
 	language,
+	canUnlink,
 	onClose,
 	onUnlink,
+	onLinkEmail,
+	onLinkTelegram,
 }: {
 	phone: string;
 	language: UILanguage;
+	canUnlink: boolean;
 	onClose: () => void;
 	onUnlink: () => Promise<void>;
+	onLinkEmail: () => void;
+	onLinkTelegram: () => void;
 }) => {
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
@@ -17161,8 +17178,7 @@ const PhoneManagementDialog = ({
 		try {
 			await onUnlink();
 		} catch (requestError) {
-			const message =
-				requestError instanceof Error ? requestError.message : "";
+			const message = requestError instanceof Error ? requestError.message : "";
 			setError(
 				message.includes("only sign-in method")
 					? uiText(language, "phoneUnlinkNeedsLogin")
@@ -17182,19 +17198,45 @@ const PhoneManagementDialog = ({
 				</span>
 			</div>
 			<p className="mini-modal-note">{uiText(language, "phoneUnlinkHint")}</p>
+			{!canUnlink && (
+				<p className="mini-form-error">
+					{uiText(language, "phoneUnlinkNeedsLogin")}
+				</p>
+			)}
 			{error && <p className="mini-form-error">{error}</p>}
 			<div className="mini-modal-actions">
-				<button
-					className="mini-delete"
-					type="button"
-					disabled={saving}
-					onClick={() => void unlink()}
-				>
-					<Trash size={18} />
-					{saving
-						? uiText(language, "saving")
-						: uiText(language, "phoneUnlink")}
-				</button>
+				{canUnlink ? (
+					<button
+						className="mini-delete"
+						type="button"
+						disabled={saving}
+						onClick={() => void unlink()}
+					>
+						<Trash size={18} />
+						{saving
+							? uiText(language, "saving")
+							: uiText(language, "phoneUnlink")}
+					</button>
+				) : (
+					<>
+						<button
+							className="mini-secondary-action"
+							type="button"
+							onClick={onLinkEmail}
+						>
+							<EnvelopeSimple size={18} />
+							{uiText(language, "loginEmail")}
+						</button>
+						<button
+							className="mini-secondary-action"
+							type="button"
+							onClick={onLinkTelegram}
+						>
+							<PaperPlaneTilt size={18} />
+							Telegram
+						</button>
+					</>
+				)}
 			</div>
 		</Modal>
 	);
@@ -17219,8 +17261,7 @@ const AccountDeletionDialog = ({
 		try {
 			await onDelete();
 		} catch (requestError) {
-			const message =
-				requestError instanceof Error ? requestError.message : "";
+			const message = requestError instanceof Error ? requestError.message : "";
 			setError(
 				message.includes("remove participants")
 					? uiText(language, "deleteAccountSharedSpaces")
@@ -17239,10 +17280,7 @@ const AccountDeletionDialog = ({
 				</div>
 			</div>
 			<label>
-				{uiText(language, "deleteAccountType").replace(
-					"{value}",
-					confirmation,
-				)}
+				{uiText(language, "deleteAccountType").replace("{value}", confirmation)}
 				<input
 					autoCapitalize="characters"
 					autoComplete="off"
