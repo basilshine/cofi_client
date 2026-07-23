@@ -1549,7 +1549,9 @@ export const MiniApp = () => {
 		});
 	const [emailLinkOpen, setEmailLinkOpen] = useState(false);
 	const [phoneLinkOpen, setPhoneLinkOpen] = useState(false);
+	const [phoneManageOpen, setPhoneManageOpen] = useState(false);
 	const [telegramLinkOpen, setTelegramLinkOpen] = useState(false);
+	const [accountDeletionOpen, setAccountDeletionOpen] = useState(false);
 	const [packPickerOpen, setPackPickerOpen] = useState(false);
 	const [billingLoading, setBillingLoading] = useState(false);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
@@ -4147,6 +4149,20 @@ export const MiniApp = () => {
 		}
 	};
 
+	const unlinkPhone = async () => {
+		const nextUser = await apiRequest<User>("/auth/phone/link", token, {
+			method: "DELETE",
+		});
+		setUser(nextUser);
+		setPhoneManageOpen(false);
+		setNotice(uiText(language, "phoneUnlinkedNotice"));
+	};
+
+	const deleteAccount = async () => {
+		await apiRequest("/auth/data", token, { method: "DELETE" });
+		window.location.replace("/app");
+	};
+
 	const saveExpense = async () => {
 		if (!editingExpense) return;
 		const creating = editingExpense.id === 0;
@@ -6369,9 +6385,14 @@ export const MiniApp = () => {
 								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
 								onManageSpaces={() => setView("spaces")}
-								onLinkPhone={() => setPhoneLinkOpen(true)}
+								onLinkPhone={() =>
+									user?.phone
+										? setPhoneManageOpen(true)
+										: setPhoneLinkOpen(true)
+								}
 								onLinkEmail={() => setEmailLinkOpen(true)}
 								onLinkTelegram={() => setTelegramLinkOpen(true)}
+								onDeleteAccount={() => setAccountDeletionOpen(true)}
 								onAvatarUpload={selectProfileAvatar}
 								onAvatarRemove={() => void removeProfileAvatar()}
 								onEdit={openProfileEditor}
@@ -7176,6 +7197,21 @@ export const MiniApp = () => {
 						setPhoneLinkOpen(false);
 						setNotice(uiText(language, "phoneLinkedNotice"));
 					}}
+				/>
+			)}
+			{phoneManageOpen && user?.phone && (
+				<PhoneManagementDialog
+					phone={formatRussianPhone(user.phone)}
+					language={language}
+					onClose={() => setPhoneManageOpen(false)}
+					onUnlink={unlinkPhone}
+				/>
+			)}
+			{accountDeletionOpen && (
+				<AccountDeletionDialog
+					language={language}
+					onClose={() => setAccountDeletionOpen(false)}
+					onDelete={deleteAccount}
 				/>
 			)}
 			{telegramLinkOpen && (
@@ -10844,6 +10880,7 @@ const ProfileView = ({
 	onLinkPhone,
 	onLinkEmail,
 	onLinkTelegram,
+	onDeleteAccount,
 	onAvatarUpload,
 	onAvatarRemove,
 	onInstall,
@@ -10878,6 +10915,7 @@ const ProfileView = ({
 	onLinkPhone: () => void;
 	onLinkEmail: () => void;
 	onLinkTelegram: () => void;
+	onDeleteAccount: () => void;
 	onAvatarUpload: (file: File) => void;
 	onAvatarRemove: () => void;
 	onInstall: () => void;
@@ -10968,13 +11006,15 @@ const ProfileView = ({
 						<button
 							type="button"
 							onClick={onLinkPhone}
-							disabled={Boolean(linkedPhone)}
 						>
 							<span>
 								<PhoneCall size={18} />
 								{uiText(language, "loginPhone")}
 							</span>
-							<b>{linkedPhone || uiText(language, "link")}</b>
+							<b>
+								{linkedPhone || uiText(language, "link")}
+								{linkedPhone && <ArrowRight size={15} />}
+							</b>
 						</button>
 						<button
 							type="button"
@@ -11196,6 +11236,26 @@ const ProfileView = ({
 								</button>
 							</div>
 						</div>
+					</div>
+				</section>
+
+				<section className="mini-profile-group mini-profile-danger-group">
+					<h2>{uiText(language, "dataAndAccount")}</h2>
+					<div className="mini-profile-list">
+						<button
+							className="mini-profile-delete-account"
+							type="button"
+							onClick={onDeleteAccount}
+						>
+							<span>
+								<Trash size={18} />
+								<span>
+									<strong>{uiText(language, "deleteAccount")}</strong>
+									<small>{uiText(language, "deleteAccountHint")}</small>
+								</span>
+							</span>
+							<ArrowRight size={17} />
+						</button>
 					</div>
 				</section>
 			</div>
@@ -17078,6 +17138,132 @@ const PhoneLinkDialog = ({
 					</button>
 				</>
 			)}
+		</Modal>
+	);
+};
+
+const PhoneManagementDialog = ({
+	phone,
+	language,
+	onClose,
+	onUnlink,
+}: {
+	phone: string;
+	language: UILanguage;
+	onClose: () => void;
+	onUnlink: () => Promise<void>;
+}) => {
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState("");
+	const unlink = async () => {
+		setSaving(true);
+		setError("");
+		try {
+			await onUnlink();
+		} catch (requestError) {
+			const message =
+				requestError instanceof Error ? requestError.message : "";
+			setError(
+				message.includes("only sign-in method")
+					? uiText(language, "phoneUnlinkNeedsLogin")
+					: message || uiText(language, "phoneUnlinkFailed"),
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+	return (
+		<Modal title={uiText(language, "loginPhone")} onClose={onClose}>
+			<div className="mini-linked-phone">
+				<PhoneCall size={22} weight="fill" />
+				<span>
+					<strong>{phone}</strong>
+					<small>{uiText(language, "phoneLinkedHint")}</small>
+				</span>
+			</div>
+			<p className="mini-modal-note">{uiText(language, "phoneUnlinkHint")}</p>
+			{error && <p className="mini-form-error">{error}</p>}
+			<div className="mini-modal-actions">
+				<button
+					className="mini-delete"
+					type="button"
+					disabled={saving}
+					onClick={() => void unlink()}
+				>
+					<Trash size={18} />
+					{saving
+						? uiText(language, "saving")
+						: uiText(language, "phoneUnlink")}
+				</button>
+			</div>
+		</Modal>
+	);
+};
+
+const AccountDeletionDialog = ({
+	language,
+	onClose,
+	onDelete,
+}: {
+	language: UILanguage;
+	onClose: () => void;
+	onDelete: () => Promise<void>;
+}) => {
+	const confirmation = uiText(language, "deleteAccountConfirmation");
+	const [value, setValue] = useState("");
+	const [saving, setSaving] = useState(false);
+	const [error, setError] = useState("");
+	const remove = async () => {
+		setSaving(true);
+		setError("");
+		try {
+			await onDelete();
+		} catch (requestError) {
+			const message =
+				requestError instanceof Error ? requestError.message : "";
+			setError(
+				message.includes("remove participants")
+					? uiText(language, "deleteAccountSharedSpaces")
+					: message || uiText(language, "deleteAccountFailed"),
+			);
+			setSaving(false);
+		}
+	};
+	return (
+		<Modal title={uiText(language, "deleteAccount")} onClose={onClose}>
+			<div className="mini-account-deletion-warning">
+				<WarningCircle size={25} weight="fill" />
+				<div>
+					<strong>{uiText(language, "deleteAccountWarning")}</strong>
+					<p>{uiText(language, "deleteAccountConsequences")}</p>
+				</div>
+			</div>
+			<label>
+				{uiText(language, "deleteAccountType").replace(
+					"{value}",
+					confirmation,
+				)}
+				<input
+					autoCapitalize="characters"
+					autoComplete="off"
+					value={value}
+					onChange={(event) => setValue(event.target.value)}
+				/>
+			</label>
+			{error && <p className="mini-form-error">{error}</p>}
+			<div className="mini-modal-actions">
+				<button
+					className="mini-delete mini-delete-account-confirm"
+					type="button"
+					disabled={saving || value.trim() !== confirmation}
+					onClick={() => void remove()}
+				>
+					<Trash size={18} />
+					{saving
+						? uiText(language, "saving")
+						: uiText(language, "deleteAccountForever")}
+				</button>
+			</div>
 		</Modal>
 	);
 };
