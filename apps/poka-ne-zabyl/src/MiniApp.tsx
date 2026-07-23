@@ -2098,6 +2098,7 @@ export const MiniApp = () => {
 					],
 				});
 			}
+			setHomeScreenStatus(isStandaloneApp() ? "added" : "unknown");
 			setLoading(false);
 			return;
 		}
@@ -11329,15 +11330,24 @@ const ProfileView = ({
 							<b>{user?.notificationTime || "09:00"}</b>
 						</button>
 						<button
+							className="mini-profile-install"
 							type="button"
 							onClick={onInstall}
 							disabled={installDisabled}
 						>
 							<span>
-								<House size={18} />
-								{uiText(language, "homeShortcut")}
+								<i>
+									<House size={19} weight="fill" />
+								</i>
+								<span>
+									<strong>{uiText(language, "homeShortcut")}</strong>
+									<small>{authCopy.installBody}</small>
+								</span>
 							</span>
-							<b>{installStatus}</b>
+							<b>
+								{installStatus}
+								{!installDisabled && <ArrowRight size={15} />}
+							</b>
 						</button>
 					</div>
 				</section>
@@ -16261,11 +16271,21 @@ const InstallGuide = ({
 	return (
 		<Modal title={copy.installGuideTitle} onClose={onClose}>
 			<div className="install-guide">
-				<House size={34} weight="fill" />
-				<p>{copy.installGuideBody}</p>
+				<div className="install-guide-intro">
+					<span>
+						<img src={BRAND_LOGO_URL} alt="" />
+					</span>
+					<div>
+						<strong>{copy.installTitle}</strong>
+						<p>{copy.installGuideBody}</p>
+					</div>
+				</div>
 				<ol>
-					{steps.map((step) => (
-						<li key={step}>{step}</li>
+					{steps.map((step, index) => (
+						<li key={step}>
+							<span>{index + 1}</span>
+							<p>{step}</p>
+						</li>
 					))}
 				</ol>
 			</div>
@@ -16274,6 +16294,7 @@ const InstallGuide = ({
 				type="button"
 				onClick={onClose}
 			>
+				<Check size={18} weight="bold" />
 				{copy.installGuideDone}
 			</button>
 		</Modal>

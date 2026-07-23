@@ -3366,6 +3366,46 @@
 .mini-profile-list > button svg {
 	color: var(--mini-green);
 }
+.mini-profile-list > button.mini-profile-install {
+	min-height: 72px;
+	padding: 11px 13px;
+}
+.mini-profile-install > span {
+	min-width: 0;
+}
+.mini-profile-install > span > i {
+	display: grid;
+	width: 36px;
+	height: 36px;
+	flex: none;
+	place-items: center;
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--mini-green) 10%, var(--mini-paper));
+	color: var(--mini-green);
+	font-style: normal;
+}
+.mini-profile-install > span > span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-profile-install strong {
+	color: var(--mini-ink);
+	font-size: 14px;
+}
+.mini-profile-install small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	line-height: 1.35;
+}
+.mini-profile-list > button.mini-profile-install > b {
+	flex: none;
+	padding: 6px 8px;
+	border-radius: 6px;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+	font-size: 11px;
+}
 .mini-profile-list > button.mini-profile-setting:active {
 	background: var(--mini-soft);
 }
@@ -3857,25 +3897,84 @@
 }
 .install-guide {
 	display: grid;
-	gap: 14px;
+	gap: 18px;
 }
-.install-guide > svg {
-	color: var(--mini-green);
+.install-guide-intro {
+	display: grid;
+	grid-template-columns: 58px minmax(0, 1fr);
+	align-items: center;
+	gap: 13px;
+	padding: 14px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-soft);
+}
+.install-guide-intro > span {
+	display: grid;
+	width: 58px;
+	height: 58px;
+	place-items: center;
+	border-radius: 14px;
+	background: var(--mini-paper);
+	box-shadow: 0 6px 18px color-mix(in srgb, var(--mini-ink) 9%, transparent);
+}
+.install-guide-intro img {
+	width: 38px;
+	height: 38px;
+}
+.install-guide-intro > div {
+	display: grid;
+	gap: 4px;
+}
+.install-guide-intro strong {
+	font-size: 15px;
 }
 .install-guide p {
 	margin: 0;
 	color: var(--mini-muted);
+	font-size: 12px;
 	line-height: 1.5;
 }
 .install-guide ol {
 	display: grid;
-	gap: 10px;
+	gap: 0;
 	margin: 0;
-	padding-left: 24px;
-	line-height: 1.45;
+	padding: 0;
+	list-style: none;
+}
+.install-guide li {
+	display: grid;
+	grid-template-columns: 30px minmax(0, 1fr);
+	min-height: 58px;
+	align-items: center;
+	gap: 11px;
+	padding: 11px 0;
+}
+.install-guide li + li {
+	border-top: 1px solid var(--mini-line);
+}
+.install-guide li > span {
+	display: grid;
+	width: 28px;
+	height: 28px;
+	place-items: center;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--mini-green) 10%, var(--mini-paper));
+	color: var(--mini-green);
+	font-size: 12px;
+	font-weight: 800;
+}
+.install-guide li p {
+	color: var(--mini-ink);
+	font-size: 13px;
 }
 .install-guide-done {
+	display: inline-flex;
 	width: 100%;
+	min-height: 46px;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
 }
 .add-choice-hint {
 	margin: 0;
