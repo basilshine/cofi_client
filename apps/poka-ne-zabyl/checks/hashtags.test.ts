@@ -4,6 +4,7 @@ import {
 	hashtagAtCursor,
 	hashtagSuggestions,
 	hashtagsFromText,
+	notesWithTags,
 	replaceHashtagAtCursor,
 	tagsAfterNotesEdit,
 } from "../src/hashtags.ts";
@@ -30,4 +31,8 @@ test("extracts, suggests and completes unicode hashtags", () => {
 	assert.deepEqual(tagsAfterNotesEdit(["магазин"], "#карта", "#наличные"), [
 		"наличные",
 	]);
+	assert.equal(
+		notesWithTags("Для поездки #семья", ["семья", "кредитная карта"]),
+		"Для поездки #семья #кредитная_карта",
+	);
 });

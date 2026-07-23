@@ -63,6 +63,7 @@ import {
 	hashtagAtCursor,
 	hashtagSuggestions,
 	hashtagsFromText,
+	notesWithTags,
 	replaceHashtagAtCursor,
 	tagsAfterNotesEdit,
 } from "./hashtags";
@@ -345,6 +346,7 @@ type PurchasePlanItem = {
 	name: string;
 	expected_amount?: number | null;
 	category_id?: number | null;
+	notes?: string;
 	position?: number;
 };
 
@@ -3120,6 +3122,10 @@ export const MiniApp = () => {
 										"price",
 									) || null,
 								category_id: itemCategory?.id || null,
+								notes: notesWithTags(
+									readString(item, "notes"),
+									readStrings(item.tags),
+								),
 							};
 						})
 						.filter((item) => item.name)
@@ -3160,6 +3166,10 @@ export const MiniApp = () => {
 										readNumber(data, "expected_amount", "total", "amount") ||
 										null,
 									category_id: category?.id || null,
+									notes: notesWithTags(
+										readString(data, "notes"),
+										readStrings(data.tags),
+									),
 								},
 							],
 			});
@@ -3884,16 +3894,21 @@ export const MiniApp = () => {
 	const knownTags = useMemo(
 		() =>
 			Array.from(
-				new Set(
-					expenses.flatMap((expense) =>
+				new Set([
+					...expenses.flatMap((expense) =>
 						expense.items.flatMap((item) => [
 							...(item.tags || []),
 							...hashtagsFromText(item.notes || ""),
 						]),
 					),
-				),
+					...plans.flatMap((plan) =>
+						purchasePlanItems(plan).flatMap((item) =>
+							hashtagsFromText(item.notes || ""),
+						),
+					),
+				]),
 			).sort((left, right) => left.localeCompare(right, "ru")),
-		[expenses],
+		[expenses, plans],
 	);
 
 	const changePeriod = (nextPeriod: Period) => {
@@ -5209,7 +5224,9 @@ export const MiniApp = () => {
 			vendor_name: "",
 			due_date: null,
 			status: "planned",
-			items: [{ name: "", expected_amount: null, category_id: null }],
+			items: [
+				{ name: "", expected_amount: null, category_id: null, notes: "" },
+			],
 		});
 	};
 
@@ -5233,6 +5250,7 @@ export const MiniApp = () => {
 				name: item.name.trim(),
 				expected_amount: item.expected_amount || null,
 				category_id: item.category_id || null,
+				notes: item.notes || "",
 			})),
 		};
 		if (previewMode) {
@@ -5547,6 +5565,8 @@ export const MiniApp = () => {
 				category_id: item.category_id || fallbackCategory?.id,
 				vendor_id: plan.vendor_id || undefined,
 				vendor_name: vendorName,
+				notes: item.notes || "",
+				tags: hashtagsFromText(item.notes || ""),
 			})),
 		});
 	};
@@ -6971,6 +6991,7 @@ export const MiniApp = () => {
 					language={language}
 					categories={categories}
 					vendors={vendors}
+					tagSuggestions={knownTags}
 					saving={saving}
 					fromCandidate={Boolean(editingPlanCandidate)}
 					capture={captureForPlan(editingPlan, captures)}
@@ -7237,7 +7258,7 @@ const reviewDraftFromCandidate = (
 				vendor_name:
 					readString(item, "vendor_name", "merchant_name", "merchant") ||
 					readString(data, "payee_text", "merchant_name", "merchant"),
-				notes: readString(item, "notes"),
+				notes: notesWithTags(readString(item, "notes"), readStrings(item.tags)),
 				tags: readStrings(item.tags),
 			};
 		}),
@@ -13306,6 +13327,7 @@ const PlanDetail = ({
 	const amount = item?.expected_amount ?? plan.expected_amount;
 	const categoryID = item?.category_id ?? plan.category_id;
 	const category = categories.find((current) => current.id === categoryID);
+	const notes = item?.notes || (items.length === 1 ? items[0].notes : "");
 	const seller =
 		plan.vendor_name ||
 		vendors.find((vendor) => vendor.id === plan.vendor_id)?.name ||
@@ -13362,6 +13384,7 @@ const PlanDetail = ({
 					</div>
 				)}
 			</div>
+			{notes && <p className="mini-record-note">{notes}</p>}
 			{plan.source_document_id && (
 				<div className="mini-source-access">
 					<button
@@ -13453,6 +13476,7 @@ const PlanEditor = ({
 	language,
 	categories,
 	vendors,
+	tagSuggestions,
 	saving,
 	fromCandidate,
 	capture,
@@ -13469,6 +13493,7 @@ const PlanEditor = ({
 	language: UILanguage;
 	categories: Category[];
 	vendors: Vendor[];
+	tagSuggestions: string[];
 	saving: boolean;
 	fromCandidate?: boolean;
 	capture?: CapturePacket;
@@ -13643,6 +13668,18 @@ const PlanEditor = ({
 								</select>
 							</label>
 						</div>
+						<HashtagNotesInput
+							language={language}
+							value={item.notes || ""}
+							suggestions={tagSuggestions}
+							onChange={(notes) =>
+								updateItems(
+									items.map((current, itemIndex) =>
+										itemIndex === index ? { ...current, notes } : current,
+									),
+								)
+							}
+						/>
 					</div>
 				))}
 				<button
@@ -13652,7 +13689,7 @@ const PlanEditor = ({
 					onClick={() =>
 						updateItems([
 							...items,
-							{ name: "", expected_amount: null, category_id: null },
+							{ name: "", expected_amount: null, category_id: null, notes: "" },
 						])
 					}
 				>

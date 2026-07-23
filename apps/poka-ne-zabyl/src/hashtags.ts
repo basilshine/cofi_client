@@ -5,6 +5,19 @@ export const hashtagsFromText = (value: string) =>
 		match[1].toLowerCase(),
 	).filter((tag, index, tags) => tags.indexOf(tag) === index);
 
+export const notesWithTags = (notes: string, tags: string[]) => {
+	const result = notes.trim();
+	const existing = new Set(hashtagsFromText(result));
+	const missing = tags
+		.map((tag) =>
+			tag.trim().replace(/^#/, "").replace(/\s+/g, "_").toLowerCase(),
+		)
+		.filter((tag) => tag && !existing.has(tag))
+		.filter((tag, index, values) => values.indexOf(tag) === index)
+		.map((tag) => `#${tag}`);
+	return [result, ...missing].filter(Boolean).join(" ");
+};
+
 export const hashtagAtCursor = (value: string, cursor: number) => {
 	const match = value.slice(0, cursor).match(/(?:^|\s)#([\p{L}\p{N}_-]*)$/u);
 	if (!match) return null;
