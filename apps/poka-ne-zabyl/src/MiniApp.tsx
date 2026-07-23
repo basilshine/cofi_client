@@ -40,6 +40,7 @@ import {
 } from "@phosphor-icons/react";
 import WebApp from "@twa-dev/sdk";
 import {
+	type PointerEvent as ReactPointerEvent,
 	type TouchEvent,
 	useCallback,
 	useEffect,
@@ -81,6 +82,7 @@ import {
 	spaceMemberCountText,
 	uiText,
 } from "./mini-i18n";
+import { type ModalSheetState, modalSwipeAction } from "./modal-swipe";
 import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
@@ -15945,6 +15947,16 @@ const Modal = ({
 	children: React.ReactNode;
 	onClose: () => void;
 }) => {
+	const modalRef = useRef<HTMLElement>(null);
+	const dragRef = useRef<{
+		pointerID: number;
+		x: number;
+		y: number;
+		deltaY: number;
+	} | null>(null);
+	const [sheetState, setSheetState] = useState<ModalSheetState>("expanded");
+	const [dragY, setDragY] = useState(0);
+
 	useEffect(() => {
 		document.body.classList.add("mini-modal-open");
 		const keepActiveControlVisible = () => {
@@ -15965,6 +15977,58 @@ const Modal = ({
 		};
 	}, []);
 
+	const beginDrag = (event: ReactPointerEvent<HTMLElement>) => {
+		const target = event.target;
+		if (!(target instanceof Element)) return;
+		if (
+			!target.closest("header") ||
+			target.closest("button, input, textarea, select")
+		)
+			return;
+		event.currentTarget.setPointerCapture(event.pointerId);
+		dragRef.current = {
+			pointerID: event.pointerId,
+			x: event.clientX,
+			y: event.clientY,
+			deltaY: 0,
+		};
+	};
+
+	const moveDrag = (event: ReactPointerEvent<HTMLElement>) => {
+		const drag = dragRef.current;
+		if (!drag || drag.pointerID !== event.pointerId) return;
+		const deltaX = event.clientX - drag.x;
+		const deltaY = event.clientY - drag.y;
+		if (Math.abs(deltaX) > Math.abs(deltaY)) {
+			dragRef.current = null;
+			setDragY(0);
+			return;
+		}
+		if (sheetState === "expanded" && deltaY <= 0) return;
+		event.preventDefault();
+		drag.deltaY = deltaY;
+		setDragY(
+			sheetState === "expanded" ? Math.max(0, deltaY * 0.7) : deltaY * 0.45,
+		);
+	};
+
+	const endDrag = (event: ReactPointerEvent<HTMLElement>) => {
+		if (dragRef.current?.pointerID !== event.pointerId) return;
+		const action = modalSwipeAction(sheetState, dragRef.current?.deltaY || 0);
+		dragRef.current = null;
+		setDragY(0);
+		if (action === "close") {
+			onClose();
+			return;
+		}
+		if (action === "peek") {
+			modalRef.current?.scrollTo({ top: 0 });
+			setSheetState("peek");
+		} else if (action === "expand") {
+			setSheetState("expanded");
+		}
+	};
+
 	return (
 		<div
 			className="mini-modal-backdrop"
@@ -15974,10 +16038,16 @@ const Modal = ({
 			}}
 		>
 			<section
-				className="mini-modal"
+				ref={modalRef}
+				className={`mini-modal${sheetState === "peek" ? " is-peek" : ""}${dragY ? " is-dragging" : ""}`}
 				role="dialog"
 				aria-modal="true"
 				aria-label={title}
+				style={{ transform: `translateY(${dragY}px)` }}
+				onPointerDown={beginDrag}
+				onPointerMove={moveDrag}
+				onPointerUp={endDrag}
+				onPointerCancel={endDrag}
 			>
 				<header>
 					<h2>{title}</h2>

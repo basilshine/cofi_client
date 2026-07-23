@@ -3699,6 +3699,14 @@
 	border-radius: 8px 8px 0 0;
 	background: var(--mini-paper);
 	box-shadow: 0 -12px 36px rgba(23, 27, 45, 0.16);
+	transition: max-height 220ms ease, transform 180ms ease;
+	will-change: transform;
+}
+.mini-modal.is-peek {
+	max-height: min(52dvh, 460px);
+}
+.mini-modal.is-dragging {
+	transition: none;
 }
 .mini-modal header {
 	position: sticky;
@@ -3707,8 +3715,21 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding-bottom: 6px;
+	padding: 16px 0 6px;
+	touch-action: none;
 	background: var(--mini-paper);
+	cursor: grab;
+}
+.mini-modal header::before {
+	position: absolute;
+	top: 2px;
+	left: 50%;
+	width: 38px;
+	height: 4px;
+	border-radius: 4px;
+	background: #c7cbd6;
+	content: "";
+	transform: translateX(-50%);
 }
 .mini-modal h2 {
 	margin: 0;
@@ -3722,6 +3743,8 @@
 	border: 0;
 	border-radius: 50%;
 	background: var(--mini-soft);
+	cursor: pointer;
+	touch-action: manipulation;
 }
 .mini-modal > label,
 .mini-modal > .mini-field {
