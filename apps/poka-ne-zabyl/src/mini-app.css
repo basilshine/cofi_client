@@ -784,7 +784,7 @@
 }
 .mini-home-plan-list > div {
 	display: grid;
-	grid-template-columns: minmax(0, 1fr) 38px;
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
 	gap: 8px;
 	min-height: 58px;
@@ -795,6 +795,11 @@
 	padding-left: 10px;
 	border-left: 3px solid var(--mini-green);
 	background: color-mix(in srgb, var(--mini-green) 7%, var(--mini-paper));
+}
+.mini-home-plan-list > div.is-overdue {
+	padding-left: 10px;
+	border-left: 3px solid var(--mini-red);
+	background: color-mix(in srgb, var(--mini-red) 6%, var(--mini-paper));
 }
 .mini-home-plan-list > div > button:first-child {
 	display: grid;
@@ -837,6 +842,22 @@
 	color: var(--mini-green);
 	font-weight: 750;
 }
+.mini-plan-due-overdue {
+	color: var(--mini-red);
+	font-weight: 750;
+}
+.mini-field-hint.is-error {
+	color: var(--mini-red);
+}
+.mini-plan-recurrence {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+.mini-home-plan-actions {
+	display: flex;
+	gap: 4px;
+}
 .mini-home-plan-buy {
 	display: grid;
 	width: 34px;
@@ -846,6 +867,16 @@
 	border-radius: 50%;
 	background: var(--mini-soft);
 	color: var(--mini-green);
+}
+.mini-home-plan-cancel {
+	display: grid;
+	width: 34px;
+	height: 34px;
+	place-items: center;
+	border: 1px solid color-mix(in srgb, var(--mini-red) 25%, var(--mini-line));
+	border-radius: 50%;
+	background: var(--mini-paper);
+	color: var(--mini-red);
 }
 .mini-home-splits {
 	display: grid;
@@ -1767,6 +1798,15 @@
 .mini-plan-row.is-today .mini-plan-icon {
 	background: color-mix(in srgb, var(--mini-green) 13%, var(--mini-soft));
 }
+.mini-plan-row.is-overdue {
+	padding-left: 10px;
+	border-left: 3px solid var(--mini-red);
+	background: color-mix(in srgb, var(--mini-red) 6%, var(--mini-paper));
+}
+.mini-plan-row.is-overdue .mini-plan-icon {
+	background: color-mix(in srgb, var(--mini-red) 10%, var(--mini-soft));
+	color: var(--mini-red);
+}
 .mini-plan-icon {
 	display: grid;
 	width: 38px;
@@ -1813,6 +1853,11 @@
 	font-size: 13px;
 	font-variant-numeric: tabular-nums;
 }
+.mini-plan-action-buttons {
+	display: flex;
+	justify-content: flex-end;
+	gap: 5px;
+}
 .mini-plan-actions button,
 .mini-plans-empty > button {
 	display: inline-flex;
@@ -1827,6 +1872,12 @@
 	color: var(--mini-green);
 	font-size: 12px;
 	font-weight: 750;
+}
+.mini-plan-actions .mini-plan-cancel {
+	width: 32px;
+	padding: 0;
+	border-color: color-mix(in srgb, var(--mini-red) 35%, var(--mini-line));
+	color: var(--mini-red);
 }
 .mini-plans-empty {
 	display: grid;

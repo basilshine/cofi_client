@@ -336,7 +336,10 @@ type PurchasePlan = {
 	vendor_id?: number | null;
 	vendor_name?: string;
 	due_date?: string | null;
-	status: "planned" | "completed";
+	recurrence_interval?: "" | "weekly" | "monthly";
+	recurrence_series_id?: number | null;
+	recurrence_day?: number;
+	status: "planned" | "completed" | "cancelled";
 	expense_id?: number | null;
 	source_document_id?: number;
 	reminder_sent_at?: string | null;
@@ -3160,6 +3163,7 @@ export const MiniApp = () => {
 				),
 				due_date:
 					readString(data, "due_date", "planned_date", "expense_date") || null,
+				recurrence_interval: "",
 				status: "planned",
 				source_document_id: candidate.source_document_id,
 				items:
@@ -5243,6 +5247,7 @@ export const MiniApp = () => {
 			vendor_id: null,
 			vendor_name: "",
 			due_date: null,
+			recurrence_interval: "",
 			status: "planned",
 			items: [
 				{ name: "", expected_amount: null, category_id: null, notes: "" },
@@ -5266,6 +5271,7 @@ export const MiniApp = () => {
 			category_id: editingPlan.category_id || null,
 			vendor_id: vendorID || null,
 			due_date: editingPlan.due_date?.slice(0, 10) || "",
+			recurrence_interval: editingPlan.recurrence_interval || "",
 			items: purchasePlanItems(editingPlan).map((item) => ({
 				name: item.name.trim(),
 				expected_amount: item.expected_amount || null,
@@ -5327,7 +5333,14 @@ export const MiniApp = () => {
 							body: JSON.stringify(payload),
 						},
 					);
-			const saved = "plan" in response ? response.plan : response;
+			let saved = "plan" in response ? response.plan : response;
+			if (editingPlanCandidate && payload.recurrence_interval) {
+				saved = await apiRequest<PurchasePlan>(
+					`/spaces/${planSpaceID}/plans/${saved.id}`,
+					token,
+					{ method: "PUT", body: JSON.stringify(payload) },
+				);
+			}
 			setPlans((current) =>
 				editingPlan.id
 					? current.map((plan) => (plan.id === saved.id ? saved : plan))
@@ -5360,12 +5373,18 @@ export const MiniApp = () => {
 
 	const deletePlan = async (plan: PurchasePlan | null = editingPlan) => {
 		if (!plan?.id) return;
-		if (!window.confirm(uiText(language, "deletePlanConfirm"))) return;
+		const recurring = isRecurringPlan(plan);
+		if (
+			!window.confirm(
+				uiText(language, recurring ? "cancelPlanConfirm" : "deletePlanConfirm"),
+			)
+		)
+			return;
 		if (previewMode) {
 			setPlans((current) => current.filter((item) => item.id !== plan.id));
 			setEditingPlan(null);
 			setRecordDetail(null);
-			setNotice(uiText(language, "planDeleted"));
+			setNotice(uiText(language, recurring ? "planCancelled" : "planDeleted"));
 			return;
 		}
 		setSaving(true);
@@ -5380,7 +5399,7 @@ export const MiniApp = () => {
 			setPlans((current) => current.filter((item) => item.id !== plan.id));
 			setEditingPlan(null);
 			setRecordDetail(null);
-			setNotice(uiText(language, "planDeleted"));
+			setNotice(uiText(language, recurring ? "planCancelled" : "planDeleted"));
 			await loadSpace(true);
 		} catch (err) {
 			setNotice(
@@ -5397,11 +5416,14 @@ export const MiniApp = () => {
 		const item = purchasePlanItems(plan)[itemIndex];
 		if (!item?.id || saving) return;
 		const deletesPlan = purchasePlanItems(plan).length === 1;
+		const cancelsRecurringPlan = deletesPlan && isRecurringPlan(plan);
 		if (
 			!window.confirm(
-				deletesPlan
-					? uiText(language, "deletePlanConfirm")
-					: uiText(language, "deletePlanItemConfirm"),
+				cancelsRecurringPlan
+					? uiText(language, "cancelPlanConfirm")
+					: deletesPlan
+						? uiText(language, "deletePlanConfirm")
+						: uiText(language, "deletePlanItemConfirm"),
 			)
 		)
 			return;
@@ -5440,9 +5462,11 @@ export const MiniApp = () => {
 		);
 		setRecordDetail(null);
 		setNotice(
-			deletesPlan
-				? uiText(language, "planDeleted")
-				: uiText(language, "planItemDeleted"),
+			cancelsRecurringPlan
+				? uiText(language, "planCancelled")
+				: deletesPlan
+					? uiText(language, "planDeleted")
+					: uiText(language, "planItemDeleted"),
 		);
 		if (!previewMode) await loadSpace(true);
 	};
@@ -5689,6 +5713,7 @@ export const MiniApp = () => {
 				editingExpense.payee_text ||
 				"",
 			due_date: null,
+			recurrence_interval: "",
 			status: "planned",
 			items: [
 				{
@@ -6220,6 +6245,7 @@ export const MiniApp = () => {
 								}}
 								onEditPlan={(plan) => setRecordDetail({ kind: "plan", plan })}
 								onBuyPlan={buyPlan}
+								onCancelPlan={(plan) => void deletePlan(plan)}
 								onReviewCandidate={(candidate) =>
 									void openReviewCandidate(candidate)
 								}
@@ -6287,6 +6313,7 @@ export const MiniApp = () => {
 									setRecordDetail({ kind: "plan-item", plan, itemIndex })
 								}
 								onBuyPlan={buyPlan}
+								onCancelPlan={(plan) => void deletePlan(plan)}
 								onUpgrade={() => setView("subscription")}
 								coachmark={activeCoachmark}
 								onDismissCoachmark={dismissCoachmark}
@@ -6930,6 +6957,10 @@ export const MiniApp = () => {
 					)}
 					saving={saving}
 					onClose={() => setRecordDetail(null)}
+					onBuy={() => {
+						setRecordDetail(null);
+						buyPlan(recordDetail.plan);
+					}}
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() => void deletePlan(recordDetail.plan)}
 					onMove={(targetSpaceID, operation) =>
@@ -6964,6 +6995,13 @@ export const MiniApp = () => {
 					)}
 					saving={saving}
 					onClose={() => setRecordDetail(null)}
+					onBuy={() => {
+						setRecordDetail(null);
+						buyPlan(
+							recordDetail.plan,
+							purchasePlanItems(recordDetail.plan)[recordDetail.itemIndex],
+						);
+					}}
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() =>
 						void deletePlanItem(recordDetail.plan, recordDetail.itemIndex)
@@ -8132,6 +8170,7 @@ const Overview = ({
 	onPlans,
 	onEditPlan,
 	onBuyPlan,
+	onCancelPlan,
 	onReviewCandidate,
 	onCapture,
 	onManual,
@@ -8162,6 +8201,7 @@ const Overview = ({
 	onPlans: (initialPeriod?: Period) => void;
 	onEditPlan: (plan: PurchasePlan) => void;
 	onBuyPlan: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
+	onCancelPlan: (plan: PurchasePlan) => void;
 	onReviewCandidate: (candidate: ReviewCandidate) => void;
 	onCapture: (mode?: CaptureMode) => void;
 	onManual: () => void;
@@ -8304,9 +8344,16 @@ const Overview = ({
 										vendors.find((vendor) => vendor.id === plan.vendor_id)
 											?.name;
 									const dueToday = isPlanDueToday(plan.due_date);
+									const overdue = isPlanOverdue(plan.due_date);
 									return (
 										<div
-											className={dueToday ? "is-today" : undefined}
+											className={
+												dueToday
+													? "is-today"
+													: overdue
+														? "is-overdue"
+														: undefined
+											}
 											key={plan.id}
 										>
 											<button type="button" onClick={() => onEditPlan(plan)}>
@@ -8326,7 +8373,11 @@ const Overview = ({
 														{plan.due_date && (
 															<span
 																className={
-																	dueToday ? "mini-plan-due-today" : undefined
+																	dueToday
+																		? "mini-plan-due-today"
+																		: overdue
+																			? "mini-plan-due-overdue"
+																			: undefined
 																}
 															>
 																{formatPlanDueDate(plan.due_date, language)}
@@ -8348,15 +8399,31 @@ const Overview = ({
 														)}
 													</small>
 												)}
+												{plan.recurrence_interval && (
+													<small className="mini-plan-recurrence">
+														<ArrowClockwise size={12} />
+														{planRecurrenceText(plan, language)}
+													</small>
+												)}
 											</button>
-											<button
-												className="mini-home-plan-buy"
-												type="button"
-												onClick={() => onBuyPlan(plan)}
-												aria-label={uiText(language, "bought")}
-											>
-												<Check size={17} weight="bold" />
-											</button>
+											<div className="mini-home-plan-actions">
+												<button
+													className="mini-home-plan-buy"
+													type="button"
+													onClick={() => onBuyPlan(plan)}
+													aria-label={uiText(language, "bought")}
+												>
+													<Check size={17} weight="bold" />
+												</button>
+												<button
+													className="mini-home-plan-cancel"
+													type="button"
+													onClick={() => onCancelPlan(plan)}
+													aria-label={uiText(language, "cancelPlan")}
+												>
+													<X size={16} weight="bold" />
+												</button>
+											</div>
 										</div>
 									);
 								})}
@@ -8609,6 +8676,7 @@ const ExpensesView = ({
 	onOpenPlan,
 	onOpenPlanItem,
 	onBuyPlan,
+	onCancelPlan,
 	onUpgrade,
 	coachmark,
 	onDismissCoachmark,
@@ -8662,6 +8730,7 @@ const ExpensesView = ({
 	onOpenPlan: (plan: PurchasePlan) => void;
 	onOpenPlanItem: (plan: PurchasePlan, itemIndex: number) => void;
 	onBuyPlan: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
+	onCancelPlan: (plan: PurchasePlan) => void;
 	onUpgrade: () => void;
 	coachmark: CoachmarkID | null;
 	onDismissCoachmark: (id: CoachmarkID) => void;
@@ -8854,6 +8923,7 @@ const ExpensesView = ({
 					onOpenPlan={onOpenPlan}
 					onOpenPlanItem={onOpenPlanItem}
 					onBuy={onBuyPlan}
+					onCancel={onCancelPlan}
 					onUpgrade={onUpgrade}
 					onSource={onPlanSource}
 					hasMore={plansHasMore}
@@ -9251,6 +9321,7 @@ const PlansView = ({
 	onOpenPlan,
 	onOpenPlanItem,
 	onBuy,
+	onCancel,
 	onUpgrade,
 	onSource,
 	hasMore,
@@ -9272,6 +9343,7 @@ const PlansView = ({
 	onOpenPlan: (plan: PurchasePlan) => void;
 	onOpenPlanItem: (plan: PurchasePlan, itemIndex: number) => void;
 	onBuy: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
+	onCancel: (plan: PurchasePlan) => void;
 	onUpgrade: () => void;
 	onSource: (plan: PurchasePlan) => void;
 	hasMore: boolean;
@@ -9335,9 +9407,10 @@ const PlansView = ({
 			plan.vendor_name ||
 			vendors.find((item) => item.id === plan.vendor_id)?.name;
 		const dueToday = isPlanDueToday(plan.due_date);
+		const overdue = isPlanOverdue(plan.due_date);
 		return (
 			<div
-				className={`mini-plan-row${dueToday ? " is-today" : ""}`}
+				className={`mini-plan-row${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
 				key={plan.id}
 			>
 				{sourceButton(plan)}
@@ -9356,12 +9429,26 @@ const PlansView = ({
 						{plan.due_date && (
 							<>
 								{" · "}
-								<span className={dueToday ? "mini-plan-due-today" : undefined}>
+								<span
+									className={
+										dueToday
+											? "mini-plan-due-today"
+											: overdue
+												? "mini-plan-due-overdue"
+												: undefined
+									}
+								>
 									{formatPlanDueDate(plan.due_date, language)}
 								</span>
 							</>
 						)}
 					</small>
+					{plan.recurrence_interval && (
+						<small className="mini-plan-recurrence">
+							<ArrowClockwise size={12} />
+							{planRecurrenceText(plan, language)}
+						</small>
+					)}
 					{authorLine(plan) && (
 						<small className="mini-record-author">
 							{uiText(language, "addedBy")} {authorLine(plan)}
@@ -9374,10 +9461,20 @@ const PlansView = ({
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
 					)}
-					<button type="button" onClick={() => onBuy(plan)}>
-						<Check size={15} weight="bold" />
-						{uiText(language, "bought")}
-					</button>
+					<div className="mini-plan-action-buttons">
+						<button type="button" onClick={() => onBuy(plan)}>
+							<Check size={15} weight="bold" />
+							{uiText(language, "bought")}
+						</button>
+						<button
+							className="mini-plan-cancel"
+							type="button"
+							aria-label={uiText(language, "cancelPlan")}
+							onClick={() => onCancel(plan)}
+						>
+							<X size={15} weight="bold" />
+						</button>
+					</div>
 				</div>
 			</div>
 		);
@@ -9395,9 +9492,10 @@ const PlansView = ({
 			plan.vendor_name ||
 			vendors.find((vendor) => vendor.id === plan.vendor_id)?.name;
 		const dueToday = isPlanDueToday(plan.due_date);
+		const overdue = isPlanOverdue(plan.due_date);
 		return (
 			<div
-				className={`mini-plan-row${dueToday ? " is-today" : ""}`}
+				className={`mini-plan-row${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
 				key={`${plan.id}-${item.id || index}`}
 			>
 				{sourceButton(plan)}
@@ -9414,12 +9512,26 @@ const PlansView = ({
 						{plan.due_date && (
 							<>
 								{" · "}
-								<span className={dueToday ? "mini-plan-due-today" : undefined}>
+								<span
+									className={
+										dueToday
+											? "mini-plan-due-today"
+											: overdue
+												? "mini-plan-due-overdue"
+												: undefined
+									}
+								>
 									{formatPlanDueDate(plan.due_date, language)}
 								</span>
 							</>
 						)}
 					</small>
+					{plan.recurrence_interval && (
+						<small className="mini-plan-recurrence">
+							<ArrowClockwise size={12} />
+							{planRecurrenceText(plan, language)}
+						</small>
+					)}
 					{authorLine(plan) && (
 						<small className="mini-record-author">
 							{uiText(language, "addedBy")} {authorLine(plan)}
@@ -9432,10 +9544,22 @@ const PlansView = ({
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
 					)}
-					<button type="button" onClick={() => onBuy(plan, item)}>
-						<Check size={15} weight="bold" />
-						{uiText(language, "bought")}
-					</button>
+					<div className="mini-plan-action-buttons">
+						<button type="button" onClick={() => onBuy(plan, item)}>
+							<Check size={15} weight="bold" />
+							{uiText(language, "bought")}
+						</button>
+						{purchasePlanItems(plan).length === 1 && (
+							<button
+								className="mini-plan-cancel"
+								type="button"
+								aria-label={uiText(language, "cancelPlan")}
+								onClick={() => onCancel(plan)}
+							>
+								<X size={15} weight="bold" />
+							</button>
+						)}
+					</div>
 				</div>
 			</div>
 		);
@@ -13423,6 +13547,7 @@ const PlanDetail = ({
 	moveTargets,
 	saving,
 	onClose,
+	onBuy,
 	onEdit,
 	onDelete,
 	onMove,
@@ -13441,6 +13566,7 @@ const PlanDetail = ({
 	moveTargets: Space[];
 	saving: boolean;
 	onClose: () => void;
+	onBuy: () => void;
 	onEdit: () => void;
 	onDelete: () => void;
 	onMove: (spaceID: number, operation: TransferOperation) => void;
@@ -13487,10 +13613,16 @@ const PlanDetail = ({
 					<small>{uiText(language, "plannedDate")}</small>
 					<b>
 						{plan.due_date
-							? formatPlanDate(plan.due_date, language)
+							? formatPlanDueDate(plan.due_date, language)
 							: uiText(language, "someday")}
 					</b>
 				</div>
+				{plan.recurrence_interval && (
+					<div>
+						<small>{uiText(language, "planRecurrence")}</small>
+						<b>{planRecurrenceText(plan, language)}</b>
+					</div>
+				)}
 				<div>
 					<small>{uiText(language, "category")}</small>
 					<b>
@@ -13576,6 +13708,15 @@ const PlanDetail = ({
 					className="mini-save"
 					type="button"
 					disabled={saving}
+					onClick={onBuy}
+				>
+					<Check size={18} weight="bold" />
+					{uiText(language, "bought")}
+				</button>
+				<button
+					className="mini-secondary-action"
+					type="button"
+					disabled={saving}
 					onClick={onEdit}
 				>
 					<PencilSimple size={18} />
@@ -13589,8 +13730,16 @@ const PlanDetail = ({
 				>
 					<Trash size={18} />
 					{item
-						? uiText(language, "deletePlanItem")
-						: uiText(language, "deletePlan")}
+						? uiText(
+								language,
+								items.length === 1 && isRecurringPlan(plan)
+									? "cancelPlan"
+									: "deletePlanItem",
+							)
+						: uiText(
+								language,
+								isRecurringPlan(plan) ? "cancelPlan" : "deletePlan",
+							)}
 				</button>
 			</div>
 		</Modal>
@@ -13710,6 +13859,35 @@ const PlanEditor = ({
 				<small className="mini-field-hint">
 					{uiText(language, "plannedDateHint")}
 				</small>
+			</label>
+			<label>
+				{uiText(language, "planRecurrence")}
+				<select
+					disabled={plan.id > 0 && isRecurringPlan(plan)}
+					value={plan.recurrence_interval || ""}
+					onChange={(event) =>
+						onChange({
+							...plan,
+							recurrence_interval: event.target.value as
+								| ""
+								| "weekly"
+								| "monthly",
+						})
+					}
+				>
+					<option value="">{uiText(language, "planDoesNotRepeat")}</option>
+					<option value="weekly">
+						{uiText(language, "planRepeatsWeekly")}
+					</option>
+					<option value="monthly">
+						{uiText(language, "planRepeatsMonthly")}
+					</option>
+				</select>
+				{plan.recurrence_interval && !plan.due_date && (
+					<small className="mini-field-hint is-error">
+						{uiText(language, "planRecurrenceNeedsDate")}
+					</small>
+				)}
 			</label>
 			<div className="mini-plan-editor-items">
 				<div className="mini-plan-editor-head">
@@ -13840,6 +14018,7 @@ const PlanEditor = ({
 					disabled={
 						saving ||
 						!plan.title.trim() ||
+						Boolean(plan.recurrence_interval && !plan.due_date) ||
 						items.some((item) => !item.name.trim())
 					}
 					onClick={onSave}
@@ -13854,7 +14033,10 @@ const PlanEditor = ({
 						onClick={onDelete}
 					>
 						<Trash size={18} />
-						{uiText(language, "deletePlan")}
+						{uiText(
+							language,
+							isRecurringPlan(plan) ? "cancelPlan" : "deletePlan",
+						)}
 					</button>
 				)}
 			</div>
@@ -17574,10 +17756,23 @@ const formatPlanDate = (value: string, language: UILanguage) =>
 	);
 const isPlanDueToday = (value?: string | null) =>
 	Boolean(value && value.slice(0, 10) === localISODate());
+const isPlanOverdue = (value?: string | null) =>
+	Boolean(value && value.slice(0, 10) < localISODate());
+const isRecurringPlan = (plan: PurchasePlan) =>
+	Boolean(plan.recurrence_interval || plan.recurrence_series_id);
+const planRecurrenceText = (plan: PurchasePlan, language: UILanguage) =>
+	uiText(
+		language,
+		plan.recurrence_interval === "weekly"
+			? "planRepeatsWeekly"
+			: "planRepeatsMonthly",
+	);
 const formatPlanDueDate = (value: string, language: UILanguage) =>
 	isPlanDueToday(value)
 		? uiText(language, "periodToday")
-		: formatPlanDate(value, language);
+		: isPlanOverdue(value)
+			? `${uiText(language, "planOverdue")} · ${formatPlanDate(value, language)}`
+			: formatPlanDate(value, language);
 const formatDateTime = (value: string, language: UILanguage) =>
 	new Intl.DateTimeFormat(language, {
 		dateStyle: "medium",
