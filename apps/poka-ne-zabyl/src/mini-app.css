@@ -774,6 +774,10 @@
 	color: var(--mini-muted);
 	font-size: 11px;
 }
+.mini-home-plans .mini-section-head small.is-overdue {
+	color: var(--mini-red);
+	font-weight: 750;
+}
 .mini-home-plan-list {
 	display: grid;
 	gap: 1px;
@@ -1772,6 +1776,19 @@
 	color: var(--mini-muted);
 	font-size: 12px;
 	font-weight: 700;
+}
+.mini-overdue-plans {
+	display: grid;
+	gap: 8px;
+}
+.mini-overdue-plans .mini-section-head {
+	padding: 0 2px;
+}
+.mini-overdue-plans .mini-section-head h2,
+.mini-overdue-plans .mini-section-head small {
+	color: var(--mini-red);
+	font-size: 12px;
+	font-weight: 750;
 }
 .mini-plan-list {
 	display: grid;

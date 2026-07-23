@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
 	filterPurchasePlans,
+	partitionOverduePurchasePlans,
 	planPeriodBounds,
 } from "../src/purchase-plan-filter.ts";
 
@@ -34,5 +35,11 @@ test("filters multi-item plans and builds future date ranges", () => {
 			to: "2026-07-21",
 		}).length,
 		1,
+	);
+	assert.deepEqual(
+		partitionOverduePurchasePlans(plans, "2026-07-18").overdue.map(
+			(plan) => plan.title,
+		),
+		["Покупки на неделю"],
 	);
 });

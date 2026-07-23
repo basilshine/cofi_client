@@ -97,7 +97,11 @@ import {
 	homeCategoryRows,
 } from "./overview";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
-import { filterPurchasePlans, planPeriodBounds } from "./purchase-plan-filter";
+import {
+	filterPurchasePlans,
+	partitionOverduePurchasePlans,
+	planPeriodBounds,
+} from "./purchase-plan-filter";
 import { browserRegistrationCountry } from "./registration-locale";
 import {
 	ApiError,
@@ -1205,7 +1209,7 @@ const previewPlans: PurchasePlan[] = [
 		category_id: 3,
 		vendor_id: 5,
 		vendor_name: "Спортмастер",
-		due_date: isoDay(5),
+		due_date: isoDay(-2),
 		status: "planned",
 		source_document_id: 103,
 		items: [
@@ -8506,6 +8510,8 @@ const Overview = ({
 			return left.due_date.localeCompare(right.due_date);
 		})
 		.slice(0, 3);
+	const overduePlanCount = partitionOverduePurchasePlans(plans, localISODate())
+		.overdue.length;
 	const monthPlanBounds = planPeriodBounds("month");
 	const monthPlans = filterPurchasePlans(plans, {
 		query: "",
@@ -8615,7 +8621,14 @@ const Overview = ({
 					{upcomingPlans.length > 0 && (
 						<section className="mini-home-plans">
 							<div className="mini-section-head">
-								<h2>{uiText(language, "upcomingPlans")}</h2>
+								<span>
+									<h2>{uiText(language, "upcomingPlans")}</h2>
+									{overduePlanCount > 0 && (
+										<small className="is-overdue">
+											{uiText(language, "planOverdue")}: {overduePlanCount}
+										</small>
+									)}
+								</span>
 								<button type="button" onClick={() => onPlans()}>
 									{uiText(language, "all")}
 								</button>
@@ -9648,21 +9661,38 @@ const PlansView = ({
 	const [filtersOpen, setFiltersOpen] = useState(false);
 	const [groupByPlan, setGroupByPlan] = useState(false);
 	const bounds = planPeriodBounds(period, dateFrom, dateTo);
-	const filteredPlans = filterPurchasePlans(plans, {
+	const matchingPlans = filterPurchasePlans(plans, {
 		query,
 		categoryID,
 		vendorID,
-		from: bounds.from,
-		to: bounds.to,
+		from: "",
+		to: "",
 	});
+	const overduePlans = partitionOverduePurchasePlans(
+		matchingPlans,
+		localISODate(),
+	).overdue;
+	const filteredPlans = partitionOverduePurchasePlans(
+		filterPurchasePlans(plans, {
+			query,
+			categoryID,
+			vendorID,
+			from: bounds.from,
+			to: bounds.to,
+		}),
+		localISODate(),
+	).current;
 	const dated = filteredPlans.filter((plan) => plan.due_date);
 	const withoutDate = filteredPlans.filter((plan) => !plan.due_date);
 	const visibleItems = filteredPlans.flatMap((plan) =>
 		purchasePlanItems(plan).map((item, index) => ({ plan, item, index })),
 	);
+	const overdueItems = overduePlans.flatMap((plan) =>
+		purchasePlanItems(plan).map((item, index) => ({ plan, item, index })),
+	);
 	const activeFilterCount =
 		Number(Boolean(categoryID)) + Number(Boolean(vendorID));
-	const visibleTotal = visibleItems.reduce(
+	const visibleTotal = [...overdueItems, ...visibleItems].reduce(
 		(sum, row) => sum + planDisplayMoney(row.plan, currency, row.item).amount,
 		0,
 	);
@@ -9903,7 +9933,10 @@ const PlansView = ({
 					<div>
 						<small>{uiText(language, "found")}</small>
 						<span>
-							{groupByPlan ? filteredPlans.length : visibleItems.length} ·{" "}
+							{groupByPlan
+								? overduePlans.length + filteredPlans.length
+								: overdueItems.length + visibleItems.length}{" "}
+							·{" "}
 							{uiText(
 								language,
 								groupByPlan ? "planListsView" : "planItemsView",
@@ -10034,6 +10067,15 @@ const PlansView = ({
 					</div>
 				)}
 			</div>
+			{overduePlans.length > 0 && (
+				<section className="mini-overdue-plans">
+					<div className="mini-section-head">
+						<h2>{uiText(language, "planOverdue")}</h2>
+						<small>{overduePlans.length}</small>
+					</div>
+					<div className="mini-plan-list">{overduePlans.map(renderPlan)}</div>
+				</section>
+			)}
 			{groupByPlan ? (
 				<div className="mini-plan-groups">
 					{dated.length > 0 && (
@@ -10054,7 +10096,7 @@ const PlansView = ({
 			) : visibleItems.length > 0 ? (
 				<div className="mini-plan-list">{visibleItems.map(renderPlanItem)}</div>
 			) : null}
-			{filteredPlans.length === 0 && (
+			{filteredPlans.length === 0 && overduePlans.length === 0 && (
 				<Empty text={uiText(language, "nothingFound")} />
 			)}
 			<LoadMorePage

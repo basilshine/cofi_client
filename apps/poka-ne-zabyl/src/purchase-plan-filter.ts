@@ -72,3 +72,16 @@ export const filterPurchasePlans = <T extends FilterablePurchasePlan>(
 			.includes(query);
 	});
 };
+
+export const partitionOverduePurchasePlans = <T extends FilterablePurchasePlan>(
+	plans: T[],
+	today: string,
+) => ({
+	overdue: plans.filter((plan) => {
+		const date = plan.due_date?.slice(0, 10);
+		return Boolean(date && date < today);
+	}),
+	current: plans.filter(
+		(plan) => !plan.due_date || plan.due_date.slice(0, 10) >= today,
+	),
+});
