@@ -326,15 +326,27 @@ const messages = {
 		deleteNotification: "Удалить уведомление",
 		backToNotifications: "К уведомлениям",
 		notificationSettings: "Настройки уведомлений",
-		notificationMethod: "Куда присылать",
-		notificationsOff: "Не присылать",
+		notificationMethod: "Дополнительная доставка",
+		notificationsOff: "Только приложение",
 		notificationMethodHint:
-			"В приложении уведомления сохраняются всегда. Проверочные звонки используются только для входа и регистрации.",
+			"В колокольчике уведомления сохраняются всегда. При желании продублируем их по почте или в Telegram.",
 		emailChannel: "Почта",
 		telegramChannel: "Telegram",
 		notificationTime: "Время уведомлений",
 		notificationTimeHint:
 			"Планы на выбранный день придут не раньше этого времени по вашему часовому поясу.",
+		deviceNotifications: "Уведомления на устройстве",
+		deviceNotificationsOn: "Включены",
+		deviceNotificationsOff: "Включить",
+		deviceNotificationsHint:
+			"Покажем новое уведомление на телефоне, даже когда приложение закрыто.",
+		deviceNotificationsUnavailable:
+			"Установите приложение на главный экран или откройте его в поддерживаемом браузере.",
+		deviceNotificationsDenied:
+			"Уведомления запрещены в настройках устройства. Разрешите их для приложения.",
+		deviceNotificationsFailed:
+			"Не удалось настроить уведомления на устройстве.",
+		deviceNotificationsEnabled: "Уведомления на этом устройстве включены",
 		plan: "Ваш тариф",
 		basic: "Базовый",
 		plus: "Плюс",
@@ -832,15 +844,27 @@ const messages = {
 		deleteNotification: "Delete notification",
 		backToNotifications: "Back to notifications",
 		notificationSettings: "Notification settings",
-		notificationMethod: "Send notifications to",
-		notificationsOff: "Do not send",
+		notificationMethod: "Additional delivery",
+		notificationsOff: "App only",
 		notificationMethodHint:
-			"Notifications always remain in the app. Phone verification calls are used only for sign-in and registration.",
+			"Notifications always remain in the inbox. We can also send a copy by email or Telegram.",
 		emailChannel: "Email",
 		telegramChannel: "Telegram",
 		notificationTime: "Notification time",
 		notificationTimeHint:
 			"Plans due that day will arrive no earlier than this time in your time zone.",
+		deviceNotifications: "Device notifications",
+		deviceNotificationsOn: "Enabled",
+		deviceNotificationsOff: "Enable",
+		deviceNotificationsHint:
+			"We will notify this device even when the app is closed.",
+		deviceNotificationsUnavailable:
+			"Add the app to your Home Screen or open it in a supported browser.",
+		deviceNotificationsDenied:
+			"Notifications are blocked in device settings. Allow them for this app.",
+		deviceNotificationsFailed:
+			"Could not configure notifications on this device.",
+		deviceNotificationsEnabled: "Notifications are enabled on this device",
 		plan: "Your plan",
 		basic: "Basic",
 		plus: "Plus",
@@ -1340,15 +1364,28 @@ const messages = {
 		deleteNotification: "Eliminar notificación",
 		backToNotifications: "Volver a notificaciones",
 		notificationSettings: "Ajustes de notificaciones",
-		notificationMethod: "Enviar notificaciones a",
-		notificationsOff: "No enviar",
+		notificationMethod: "Entrega adicional",
+		notificationsOff: "Solo la aplicación",
 		notificationMethodHint:
-			"Las notificaciones siempre quedan en la aplicación. Las llamadas de verificación solo se usan para iniciar sesión y registrarse.",
+			"Las notificaciones siempre quedan en la bandeja. También podemos enviar una copia por correo o Telegram.",
 		emailChannel: "Correo",
 		telegramChannel: "Telegram",
 		notificationTime: "Hora de las notificaciones",
 		notificationTimeHint:
 			"Los planes del día llegarán a partir de esta hora en tu zona horaria.",
+		deviceNotifications: "Notificaciones del dispositivo",
+		deviceNotificationsOn: "Activadas",
+		deviceNotificationsOff: "Activar",
+		deviceNotificationsHint:
+			"Te avisaremos en este dispositivo aunque la aplicación esté cerrada.",
+		deviceNotificationsUnavailable:
+			"Añade la aplicación a la pantalla de inicio o ábrela en un navegador compatible.",
+		deviceNotificationsDenied:
+			"Las notificaciones están bloqueadas en los ajustes del dispositivo.",
+		deviceNotificationsFailed:
+			"No se pudieron configurar las notificaciones en este dispositivo.",
+		deviceNotificationsEnabled:
+			"Las notificaciones están activadas en este dispositivo",
 		plan: "Tu plan",
 		basic: "Básico",
 		plus: "Plus",

@@ -120,6 +120,12 @@ import {
 	vendorFieldValue,
 	vendorSuggestions,
 } from "./vendor";
+import {
+	currentWebPushSubscription,
+	subscribeToWebPush,
+	syncAppBadge,
+	webPushSupported,
+} from "./web-push";
 
 type View =
 	| "overview"
@@ -552,6 +558,9 @@ type NotificationChannel = "email" | "telegram";
 type NotificationChannelSettings = {
 	preferred: NotificationChannel | "";
 	available: Record<NotificationChannel, boolean>;
+	pushAvailable: boolean;
+	pushEnabled: boolean;
+	pushOnThisDevice: boolean;
 };
 
 type Quota = {
@@ -1723,7 +1732,11 @@ export const MiniApp = () => {
 		useState<NotificationChannelSettings>({
 			preferred: "",
 			available: { email: false, telegram: false },
+			pushAvailable: false,
+			pushEnabled: false,
+			pushOnThisDevice: false,
 		});
+	const [pushSubscriptionSaving, setPushSubscriptionSaving] = useState(false);
 	const [emailLinkOpen, setEmailLinkOpen] = useState(false);
 	const [phoneLinkOpen, setPhoneLinkOpen] = useState(false);
 	const [phoneManageOpen, setPhoneManageOpen] = useState(false);
@@ -2633,6 +2646,7 @@ export const MiniApp = () => {
 			}>("/me/notifications?limit=50", token);
 			setNotifications(response.notifications || []);
 			setUnreadNotificationCount(response.unread_count || 0);
+			void syncAppBadge(response.unread_count || 0);
 		} catch {
 			// The inbox is supporting UI; regular expense work must remain available.
 		} finally {
@@ -2675,7 +2689,11 @@ export const MiniApp = () => {
 			),
 		);
 		setSelectedNotification({ ...notification, read_at: readAt });
-		setUnreadNotificationCount((current) => Math.max(0, current - 1));
+		setUnreadNotificationCount((current) => {
+			const next = Math.max(0, current - 1);
+			void syncAppBadge(next);
+			return next;
+		});
 		if (!previewMode)
 			void apiRequest(`/me/notifications/${notification.id}/read`, token, {
 				method: "PATCH",
@@ -2688,6 +2706,7 @@ export const MiniApp = () => {
 			current.map((notification) => ({ ...notification, read_at: readAt })),
 		);
 		setUnreadNotificationCount(0);
+		void syncAppBadge(0);
 		if (!previewMode)
 			void apiRequest("/me/notifications/read-all", token, {
 				method: "PATCH",
@@ -2699,7 +2718,11 @@ export const MiniApp = () => {
 			current.filter(({ id }) => id !== notification.id),
 		);
 		if (!notification.read_at)
-			setUnreadNotificationCount((current) => Math.max(0, current - 1));
+			setUnreadNotificationCount((current) => {
+				const next = Math.max(0, current - 1);
+				void syncAppBadge(next);
+				return next;
+			});
 		if (selectedNotification?.id === notification.id)
 			setSelectedNotification(null);
 		if (!previewMode)
@@ -5228,7 +5251,7 @@ export const MiniApp = () => {
 							in_app: true,
 							email: notificationChannelSettings.preferred === "email",
 							telegram: notificationChannelSettings.preferred === "telegram",
-							push: false,
+							push: notificationChannelSettings.pushEnabled,
 						},
 						delivery_time: profileToSave.notificationTime || "09:00",
 					}),
@@ -5277,18 +5300,31 @@ export const MiniApp = () => {
 					: available.email
 						? "email"
 						: "";
-		setNotificationChannelSettings({ preferred: fallback, available });
+		setNotificationChannelSettings({
+			preferred: fallback,
+			available,
+			pushAvailable: webPushSupported(),
+			pushEnabled: false,
+			pushOnThisDevice: false,
+		});
 		if (previewMode || !token) return;
 		try {
-			const response = await apiRequest<{
-				channels: {
-					channel: string;
-					enabled: boolean;
-					available?: boolean;
-				}[];
-				delivery_time: string;
-				preferred_channel?: string;
-			}>("/me/notification-channels", token);
+			const [response, pushConfig, browserSubscription] = await Promise.all([
+				apiRequest<{
+					channels: {
+						channel: string;
+						enabled: boolean;
+						available?: boolean;
+					}[];
+					delivery_time: string;
+					preferred_channel?: string;
+				}>("/me/notification-channels", token),
+				apiRequest<{ available: boolean; public_key: string }>(
+					"/me/push/config",
+					token,
+				),
+				currentWebPushSubscription(),
+			]);
 			const nextAvailable = {
 				email:
 					response.channels.find(({ channel }) => channel === "email")
@@ -5302,9 +5338,25 @@ export const MiniApp = () => {
 				response.preferred_channel === "telegram"
 					? response.preferred_channel
 					: fallback;
+			const pushChannel = response.channels.find(
+				({ channel }) => channel === "push",
+			);
+			if (browserSubscription && pushConfig.available) {
+				await apiRequest("/me/push-subscriptions", token, {
+					method: "POST",
+					body: JSON.stringify(browserSubscription.toJSON()),
+				});
+			}
 			setNotificationChannelSettings({
 				preferred,
 				available: nextAvailable,
+				pushAvailable:
+					webPushSupported() &&
+					pushConfig.available &&
+					(pushChannel?.available ?? true),
+				pushEnabled:
+					Boolean(browserSubscription) || Boolean(pushChannel?.enabled),
+				pushOnThisDevice: Boolean(browserSubscription),
 			});
 			setEditingProfile((current) =>
 				current
@@ -5317,6 +5369,83 @@ export const MiniApp = () => {
 			);
 		} catch {
 			// Profile defaults remain usable if notification preferences are unavailable.
+		}
+	};
+
+	const enablePushOnThisDevice = async () => {
+		if (!token || previewMode || pushSubscriptionSaving) return;
+		setPushSubscriptionSaving(true);
+		try {
+			if (
+				webPushSupported() &&
+				Notification.permission === "default" &&
+				(await Notification.requestPermission()) !== "granted"
+			) {
+				throw new Error("notification-permission-denied");
+			}
+			const config = await apiRequest<{
+				available: boolean;
+				public_key: string;
+			}>("/me/push/config", token);
+			if (!config.available || !config.public_key) {
+				throw new Error(uiText(language, "deviceNotificationsUnavailable"));
+			}
+			const subscription = await subscribeToWebPush(config.public_key);
+			await apiRequest("/me/push-subscriptions", token, {
+				method: "POST",
+				body: JSON.stringify(subscription.toJSON()),
+			});
+			setNotificationChannelSettings((current) => ({
+				...current,
+				pushAvailable: true,
+				pushEnabled: true,
+				pushOnThisDevice: true,
+			}));
+			setNotice(uiText(language, "deviceNotificationsEnabled"));
+		} catch (err) {
+			setNotice(
+				err instanceof Error && err.message === "notification-permission-denied"
+					? uiText(language, "deviceNotificationsDenied")
+					: err instanceof Error
+						? err.message
+						: uiText(language, "deviceNotificationsFailed"),
+			);
+		} finally {
+			setPushSubscriptionSaving(false);
+		}
+	};
+
+	const disablePushOnThisDevice = async () => {
+		if (!token || previewMode || pushSubscriptionSaving) return;
+		setPushSubscriptionSaving(true);
+		try {
+			const subscription = await currentWebPushSubscription();
+			let pushEnabled = notificationChannelSettings.pushEnabled;
+			if (subscription) {
+				const response = await apiRequest<{ push_enabled: boolean }>(
+					"/me/push-subscriptions",
+					token,
+					{
+						method: "DELETE",
+						body: JSON.stringify({ endpoint: subscription.endpoint }),
+					},
+				);
+				pushEnabled = response.push_enabled;
+				await subscription.unsubscribe();
+			}
+			setNotificationChannelSettings((current) => ({
+				...current,
+				pushEnabled,
+				pushOnThisDevice: false,
+			}));
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: uiText(language, "deviceNotificationsFailed"),
+			);
+		} finally {
+			setPushSubscriptionSaving(false);
 		}
 	};
 
@@ -7458,6 +7587,9 @@ export const MiniApp = () => {
 					mode={profileEditorMode}
 					notificationChannel={notificationChannelSettings.preferred}
 					notificationChannelsAvailable={notificationChannelSettings.available}
+					pushAvailable={notificationChannelSettings.pushAvailable}
+					pushOnThisDevice={notificationChannelSettings.pushOnThisDevice}
+					pushSaving={pushSubscriptionSaving}
 					saving={saving}
 					onChange={setEditingProfile}
 					onNotificationChannelChange={(preferred) =>
@@ -7465,6 +7597,11 @@ export const MiniApp = () => {
 							...current,
 							preferred,
 						}))
+					}
+					onPushToggle={() =>
+						void (notificationChannelSettings.pushOnThisDevice
+							? disablePushOnThisDevice()
+							: enablePushOnThisDevice())
 					}
 					onClose={() => setEditingProfile(null)}
 					onSave={() => void saveProfile()}
@@ -15870,9 +16007,13 @@ const ProfileEditor = ({
 	mode,
 	notificationChannel,
 	notificationChannelsAvailable,
+	pushAvailable,
+	pushOnThisDevice,
+	pushSaving,
 	saving,
 	onChange,
 	onNotificationChannelChange,
+	onPushToggle,
 	onClose,
 	onSave,
 }: {
@@ -15880,9 +16021,13 @@ const ProfileEditor = ({
 	mode: "profile" | "notifications";
 	notificationChannel: NotificationChannel | "";
 	notificationChannelsAvailable: Record<NotificationChannel, boolean>;
+	pushAvailable: boolean;
+	pushOnThisDevice: boolean;
+	pushSaving: boolean;
 	saving: boolean;
 	onChange: (user: User) => void;
 	onNotificationChannelChange: (channel: NotificationChannel | "") => void;
+	onPushToggle: () => void;
 	onClose: () => void;
 	onSave: () => void;
 }) => {
@@ -16048,33 +16193,67 @@ const ProfileEditor = ({
 					</small>
 				</div>
 			)}
-			{mode === "notifications" && notificationChannel && (
-				<label>
-					{uiText(language, "notificationTime")}
-					<select
-						value={user.notificationTime || "09:00"}
-						onChange={(event) =>
-							onChange({ ...user, notificationTime: event.target.value })
-						}
+			{mode === "notifications" && (
+				<div className="mini-field mini-device-notifications">
+					<span>{uiText(language, "deviceNotifications")}</span>
+					<button
+						type="button"
+						className={pushOnThisDevice ? "active" : ""}
+						disabled={!pushAvailable || pushSaving}
+						aria-pressed={pushOnThisDevice}
+						onClick={onPushToggle}
 					>
-						{!notificationTimeOptions.includes(
-							user.notificationTime || "09:00",
-						) && (
-							<option value={user.notificationTime}>
-								{user.notificationTime}
-							</option>
-						)}
-						{notificationTimeOptions.map((time) => (
-							<option key={time} value={time}>
-								{time}
-							</option>
-						))}
-					</select>
-					<small className="mini-modal-note">
-						{uiText(language, "notificationTimeHint")}
-					</small>
-				</label>
+						<BellRinging size={21} />
+						<span>
+							<b>
+								{uiText(
+									language,
+									pushOnThisDevice
+										? "deviceNotificationsOn"
+										: "deviceNotificationsOff",
+								)}
+							</b>
+							<small>
+								{uiText(
+									language,
+									pushAvailable
+										? "deviceNotificationsHint"
+										: "deviceNotificationsUnavailable",
+								)}
+							</small>
+						</span>
+						<i />
+					</button>
+				</div>
 			)}
+			{mode === "notifications" &&
+				(notificationChannel || pushOnThisDevice) && (
+					<label>
+						{uiText(language, "notificationTime")}
+						<select
+							value={user.notificationTime || "09:00"}
+							onChange={(event) =>
+								onChange({ ...user, notificationTime: event.target.value })
+							}
+						>
+							{!notificationTimeOptions.includes(
+								user.notificationTime || "09:00",
+							) && (
+								<option value={user.notificationTime}>
+									{user.notificationTime}
+								</option>
+							)}
+							{notificationTimeOptions.map((time) => (
+								<option key={time} value={time}>
+									{time}
+								</option>
+							))}
+						</select>
+						<small className="mini-modal-note">
+							{uiText(language, "notificationTimeHint")}
+						</small>
+					</label>
+				)}
 			<button
 				className="mini-save"
 				type="button"
@@ -16086,7 +16265,7 @@ const ProfileEditor = ({
 					!user.language.trim() ||
 					!user.timezone.trim() ||
 					(mode === "notifications" &&
-						Boolean(notificationChannel) &&
+						Boolean(notificationChannel || pushOnThisDevice) &&
 						!user.notificationTime)
 				}
 				onClick={onSave}
@@ -17207,7 +17386,9 @@ const BrowserEntry = ({
 	onEmailAuth: (auth: AuthResponse) => Promise<void>;
 }) => {
 	const copy = browserAuthCopy(language);
-	const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
+	const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(
+		null,
+	);
 	const [region, setRegion] = useState<"ru" | "outside">(
 		language === "ru" ? "ru" : "outside",
 	);
