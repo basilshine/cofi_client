@@ -11,9 +11,20 @@ const urlBase64ToUint8Array = (value: string) => {
 	return Uint8Array.from(raw, (character) => character.charCodeAt(0));
 };
 
+const serviceWorkerReady = () =>
+	Promise.race([
+		navigator.serviceWorker.ready,
+		new Promise<never>((_, reject) =>
+			window.setTimeout(
+				() => reject(new Error("service-worker-timeout")),
+				10_000,
+			),
+		),
+	]);
+
 export const currentWebPushSubscription = async () => {
 	if (!webPushSupported()) return null;
-	const registration = await navigator.serviceWorker.ready;
+	const registration = await serviceWorkerReady();
 	return registration.pushManager.getSubscription();
 };
 
@@ -26,7 +37,7 @@ export const subscribeToWebPush = async (publicKey: string) => {
 	if (permission !== "granted")
 		throw new Error("notification-permission-denied");
 
-	const registration = await navigator.serviceWorker.ready;
+	const registration = await serviceWorkerReady();
 	const existing = await registration.pushManager.getSubscription();
 	if (existing) return existing;
 	return registration.pushManager.subscribe({

@@ -5437,10 +5437,17 @@ export const MiniApp = () => {
 
 	const enablePushOnThisDevice = async () => {
 		if (!token || previewMode || pushSubscriptionSaving) return;
+		if (!webPushSupported()) {
+			setNotice(uiText(language, "deviceNotificationsUnavailable"));
+			return;
+		}
+		if (Notification.permission === "denied") {
+			setNotice(uiText(language, "deviceNotificationsDenied"));
+			return;
+		}
 		setPushSubscriptionSaving(true);
 		try {
 			if (
-				webPushSupported() &&
 				Notification.permission === "default" &&
 				(await Notification.requestPermission()) !== "granted"
 			) {
@@ -16301,7 +16308,7 @@ const ProfileEditor = ({
 					<button
 						type="button"
 						className={pushOnThisDevice ? "active" : ""}
-						disabled={!pushAvailable || pushSaving}
+						disabled={pushSaving}
 						aria-pressed={pushOnThisDevice}
 						onClick={onPushToggle}
 					>
