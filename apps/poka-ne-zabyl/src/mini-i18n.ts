@@ -309,6 +309,9 @@ const messages = {
 		editProfile: "Изменить профиль",
 		user: "Пользователь",
 		currency: "Валюта",
+		profileCurrency: "Валюта новых пространств",
+		profileCurrencyHint:
+			"Внутри существующего пространства используется его собственная валюта.",
 		country: "Страна",
 		language: "Язык",
 		timezone: "Часовой пояс",
@@ -812,6 +815,9 @@ const messages = {
 		editProfile: "Edit profile",
 		user: "User",
 		currency: "Currency",
+		profileCurrency: "Currency for new spaces",
+		profileCurrencyHint:
+			"Existing spaces use their own currency for amounts and summaries.",
 		country: "Country",
 		language: "Language",
 		timezone: "Time zone",
@@ -1316,6 +1322,9 @@ const messages = {
 		editProfile: "Editar perfil",
 		user: "Usuario",
 		currency: "Moneda",
+		profileCurrency: "Moneda para espacios nuevos",
+		profileCurrencyHint:
+			"Los espacios existentes usan su propia moneda para importes y resúmenes.",
 		country: "País",
 		language: "Idioma",
 		timezone: "Zona horaria",

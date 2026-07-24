@@ -90,6 +90,7 @@ import {
 	itemAmountInCurrency,
 	itemDisplayMoney,
 	moneyAmountsMatch,
+	spaceReportingCurrency,
 } from "./money";
 import {
 	type HomeCategoryRow,
@@ -2958,10 +2959,15 @@ export const MiniApp = () => {
 		}
 	};
 
+	const reportingCurrency = spaceReportingCurrency(
+		spaces.find((space) => space.id === spaceID)?.currency,
+		user?.currency,
+	);
+
 	useEffect(() => {
 		if (!token || !spaceID) return;
 		void loadSpace();
-	}, [token, spaceID, user?.currency]);
+	}, [token, spaceID, reportingCurrency]);
 
 	const loadSpace = async (background = false) => {
 		if (previewMode) return;
@@ -2987,15 +2993,15 @@ export const MiniApp = () => {
 				feedbackStatusData,
 			] = await Promise.all([
 				apiRequest<{ expenses: Expense[] } & PageInfo>(
-					`/spaces/${spaceID}/expenses?limit=20&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+					`/spaces/${spaceID}/expenses?limit=20&currency=${encodeURIComponent(reportingCurrency)}`,
 					token,
 				),
 				apiRequest<DashboardSummary>(
-					`/dashboard?period=month&space_id=${spaceID}&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+					`/dashboard?period=month&space_id=${spaceID}&currency=${encodeURIComponent(reportingCurrency)}`,
 					token,
 				).catch(() => null),
 				apiRequest<{ categories: Category[] }>(
-					`/spaces/${spaceID}/categories?currency=${encodeURIComponent(user?.currency || "RUB")}`,
+					`/spaces/${spaceID}/categories?currency=${encodeURIComponent(reportingCurrency)}`,
 					token,
 				),
 				apiRequest<Quota>(`/quota?space_id=${spaceID}`, token),
@@ -3009,7 +3015,7 @@ export const MiniApp = () => {
 					token,
 				),
 				apiRequest<{ decisions: ExpenseSplitDecision[] }>(
-					`/spaces/${spaceID}/split-decisions?limit=200&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+					`/spaces/${spaceID}/split-decisions?limit=200&currency=${encodeURIComponent(reportingCurrency)}`,
 					token,
 				),
 				apiRequest<Vendor[]>(`/spaces/${spaceID}/vendors`, token),
@@ -3018,7 +3024,7 @@ export const MiniApp = () => {
 					token,
 				),
 				apiRequest<{ plans: PurchasePlan[] } & PageInfo>(
-					`/spaces/${spaceID}/plans?limit=20&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+					`/spaces/${spaceID}/plans?limit=20&currency=${encodeURIComponent(reportingCurrency)}`,
 					token,
 				),
 				apiRequest<{ candidates: ReviewCandidate[] }>(
@@ -3120,7 +3126,7 @@ export const MiniApp = () => {
 		const requestID = loadSequence.current;
 		try {
 			const data = await apiRequest<{ expenses: Expense[] } & PageInfo>(
-				`/spaces/${spaceID}/expenses?limit=20&offset=${expensePage.nextOffset}&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+				`/spaces/${spaceID}/expenses?limit=20&offset=${expensePage.nextOffset}&currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
 			);
 			if (requestID !== loadSequence.current) return;
@@ -3150,7 +3156,7 @@ export const MiniApp = () => {
 		loading,
 		spaceID,
 		token,
-		user?.currency,
+		reportingCurrency,
 	]);
 
 	const loadMorePlans = useCallback(async () => {
@@ -3168,7 +3174,7 @@ export const MiniApp = () => {
 		const requestID = loadSequence.current;
 		try {
 			const data = await apiRequest<{ plans: PurchasePlan[] } & PageInfo>(
-				`/spaces/${spaceID}/plans?limit=20&offset=${planPage.nextOffset}&currency=${encodeURIComponent(user?.currency || "RUB")}`,
+				`/spaces/${spaceID}/plans?limit=20&offset=${planPage.nextOffset}&currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
 			);
 			if (requestID !== loadSequence.current) return;
@@ -3204,6 +3210,7 @@ export const MiniApp = () => {
 		planPage.nextOffset,
 		spaceID,
 		token,
+		reportingCurrency,
 	]);
 
 	const refreshCurrentView = async () => {
@@ -4027,7 +4034,7 @@ export const MiniApp = () => {
 				current.filter((candidate) => candidate.id !== reviewDraft.candidateID),
 			);
 			void apiRequest<{ categories: Category[] }>(
-				`/spaces/${spaceID}/categories?currency=${encodeURIComponent(user?.currency || "RUB")}`,
+				`/spaces/${spaceID}/categories?currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
 			)
 				.then((data) => {
@@ -4243,7 +4250,7 @@ export const MiniApp = () => {
 			),
 			language,
 		)}`;
-	const currency = user?.currency || activeSpace?.currency || "RUB";
+	const currency = reportingCurrency;
 	const overviewExpenses = expensesForMonth(expenses);
 	const overviewTotal =
 		overviewExpenseTotal ??
@@ -5365,7 +5372,6 @@ export const MiniApp = () => {
 			setSpaceID(saved.id);
 			setEditingSpace(null);
 			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
-			if (!creating) await loadSpace();
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "";
 			setNotice(
@@ -15913,7 +15919,7 @@ const ProfileEditor = ({
 			)}
 			{mode === "profile" && (
 				<label>
-					{uiText(language, "currency")}
+					{uiText(language, "profileCurrency")}
 					<select
 						value={user.currency}
 						onChange={(event) =>
@@ -15929,6 +15935,9 @@ const ProfileEditor = ({
 							</option>
 						))}
 					</select>
+					<small className="mini-modal-note">
+						{uiText(language, "profileCurrencyHint")}
+					</small>
 				</label>
 			)}
 			{mode === "profile" && (
