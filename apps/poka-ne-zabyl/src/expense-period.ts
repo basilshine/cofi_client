@@ -40,10 +40,13 @@ export const periodBounds = (
 
 export const expenseSummaryTotal = (
 	loadedTotal: number,
+	allTimeTotal: number | null,
 	monthTotal: number | null,
 	period: Period,
 	hasFilters: boolean,
-) =>
-	period === "month" && !hasFilters && monthTotal !== null
-		? monthTotal
-		: loadedTotal;
+) => {
+	if (hasFilters) return loadedTotal;
+	if (period === "all" && allTimeTotal !== null) return allTimeTotal;
+	if (period === "month" && monthTotal !== null) return monthTotal;
+	return loadedTotal;
+};

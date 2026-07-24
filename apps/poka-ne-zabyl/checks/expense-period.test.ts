@@ -18,6 +18,16 @@ test("builds quick and custom expense periods", () => {
 });
 
 test("uses the complete server month total before paginated rows finish loading", () => {
-	assert.equal(expenseSummaryTotal(456.52, 3409.89, "month", false), 3409.89);
-	assert.equal(expenseSummaryTotal(456.52, 3409.89, "month", true), 456.52);
+	assert.equal(
+		expenseSummaryTotal(456.52, 4200.1, 3409.89, "month", false),
+		3409.89,
+	);
+	assert.equal(
+		expenseSummaryTotal(456.52, 4200.1, 3409.89, "all", false),
+		4200.1,
+	);
+	assert.equal(
+		expenseSummaryTotal(456.52, 4200.1, 3409.89, "all", true),
+		456.52,
+	);
 });

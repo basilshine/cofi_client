@@ -221,6 +221,7 @@ type PageInfo = {
 	has_more?: boolean;
 	next_offset?: number;
 	total_count?: number;
+	total_amount?: number;
 	month_total?: number;
 	reporting_month_total?: number;
 	reporting_currency?: string;
@@ -1586,6 +1587,9 @@ export const MiniApp = () => {
 	const [overviewExpenseTotal, setOverviewExpenseTotal] = useState<
 		number | null
 	>(null);
+	const [allTimeExpenseTotal, setAllTimeExpenseTotal] = useState<number | null>(
+		null,
+	);
 	const [monthPlanTotal, setMonthPlanTotal] = useState<number | null>(null);
 	const [planTotalCount, setPlanTotalCount] = useState(0);
 	const [captures, setCaptures] = useState<CapturePacket[]>([]);
@@ -3134,6 +3138,7 @@ export const MiniApp = () => {
 				hasMore: Boolean(expenseData.has_more),
 				nextOffset: expenseData.next_offset || 20,
 			});
+			setAllTimeExpenseTotal(expenseData.total_amount ?? null);
 			setOverviewExpenseTotal(
 				dashboardData?.monthly_snapshot?.total_spent ?? null,
 			);
@@ -5671,6 +5676,7 @@ export const MiniApp = () => {
 			setExpensePage({ hasMore: false, nextOffset: 20 });
 			setPlanPage({ hasMore: false, nextOffset: 20 });
 			setOverviewExpenseTotal(null);
+			setAllTimeExpenseTotal(null);
 			setMonthPlanTotal(null);
 			setPlanTotalCount(0);
 		}
@@ -6788,6 +6794,7 @@ export const MiniApp = () => {
 							<ExpensesView
 								items={filteredItems}
 								expenses={expensesWithSplitContext}
+								allTimeTotal={allTimeExpenseTotal}
 								monthTotal={overviewExpenseTotal}
 								section={expenseSection}
 								plans={plans}
@@ -9244,6 +9251,7 @@ const FirstExpenseEmpty = ({
 const ExpensesView = ({
 	items,
 	expenses,
+	allTimeTotal,
 	monthTotal,
 	section,
 	plans,
@@ -9299,6 +9307,7 @@ const ExpensesView = ({
 }: {
 	items: ExpenseItemRow[];
 	expenses: Expense[];
+	allTimeTotal: number | null;
 	monthTotal: number | null;
 	section: ExpenseSection;
 	plans: PurchasePlan[];
@@ -9372,6 +9381,7 @@ const ExpensesView = ({
 	);
 	const summaryTotal = expenseSummaryTotal(
 		loadedTotal,
+		allTimeTotal,
 		monthTotal,
 		period,
 		hasSummaryFilters,
