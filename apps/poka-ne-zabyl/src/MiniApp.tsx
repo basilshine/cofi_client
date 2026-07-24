@@ -60,7 +60,11 @@ import { browserAuthCopy } from "./browser-auth-copy";
 import { captureSourceKind } from "./capture-source";
 import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
 import { groupRowsByExpense } from "./expense-groups";
-import { type Period, periodBounds } from "./expense-period";
+import {
+	type Period,
+	expenseSummaryTotal,
+	periodBounds,
+} from "./expense-period";
 import {
 	hashtagAtCursor,
 	hashtagSuggestions,
@@ -6784,6 +6788,7 @@ export const MiniApp = () => {
 							<ExpensesView
 								items={filteredItems}
 								expenses={expensesWithSplitContext}
+								monthTotal={overviewExpenseTotal}
 								section={expenseSection}
 								plans={plans}
 								planTotalCount={planTotalCount}
@@ -9239,6 +9244,7 @@ const FirstExpenseEmpty = ({
 const ExpensesView = ({
 	items,
 	expenses,
+	monthTotal,
 	section,
 	plans,
 	planTotalCount,
@@ -9293,6 +9299,7 @@ const ExpensesView = ({
 }: {
 	items: ExpenseItemRow[];
 	expenses: Expense[];
+	monthTotal: number | null;
 	section: ExpenseSection;
 	plans: PurchasePlan[];
 	planTotalCount: number;
@@ -9352,6 +9359,23 @@ const ExpensesView = ({
 	const activeVendor = vendors.find(({ id }) => id === vendorID);
 	const activeFilterCount =
 		Number(Boolean(activeCategory)) + Number(Boolean(activeVendor));
+	const hasSummaryFilters =
+		Boolean(expense) ||
+		Boolean(activeCategory) ||
+		Boolean(activeVendor) ||
+		Boolean(query.trim());
+	const loadedTotal = items.reduce(
+		(sum, row) =>
+			sum +
+			(itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
+		0,
+	);
+	const summaryTotal = expenseSummaryTotal(
+		loadedTotal,
+		monthTotal,
+		period,
+		hasSummaryFilters,
+	);
 	const formatRangeDate = (value: string) =>
 		new Intl.DateTimeFormat(language, {
 			day: "numeric",
@@ -9616,19 +9640,7 @@ const ExpensesView = ({
 							<div>
 								<small>{uiText(language, "total")}</small>
 								<strong>
-									{formatMoney(
-										items.reduce(
-											(sum, row) =>
-												sum +
-												(itemAmountInCurrency(
-													row.item,
-													row.expense,
-													currency,
-												) ?? 0),
-											0,
-										),
-										currency,
-									)}
+									{formatMoney(summaryTotal, currency)}
 								</strong>
 							</div>
 						</div>

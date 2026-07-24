@@ -37,3 +37,13 @@ export const periodBounds = (
 	if (period === "year") start = new Date(now.getFullYear(), 0, 1);
 	return { from: localDate(start), to: localDate(now) };
 };
+
+export const expenseSummaryTotal = (
+	loadedTotal: number,
+	monthTotal: number | null,
+	period: Period,
+	hasFilters: boolean,
+) =>
+	period === "month" && !hasFilters && monthTotal !== null
+		? monthTotal
+		: loadedTotal;
