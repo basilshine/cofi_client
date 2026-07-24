@@ -6,7 +6,7 @@ import {
 	formatMoney,
 	itemDisplayMoney,
 	moneyAmountsMatch,
-	spaceReportingCurrency,
+	profileReportingCurrency,
 } from "../src/money.ts";
 
 test("keeps kopecks without padding whole ruble amounts", () => {
@@ -19,9 +19,9 @@ test("compares receipt totals to the kopeck", () => {
 	assert.equal(moneyAmountsMatch(7173.33, 7173.34), false);
 });
 
-test("uses the active Space currency before the profile default", () => {
-	assert.equal(spaceReportingCurrency("usd", "RUB"), "USD");
-	assert.equal(spaceReportingCurrency("", "eur"), "EUR");
+test("uses the profile currency for reporting without changing stored money", () => {
+	assert.equal(profileReportingCurrency("usd", "RUB"), "USD");
+	assert.equal(profileReportingCurrency("", "eur"), "EUR");
 });
 
 const expense = {

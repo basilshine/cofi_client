@@ -21,10 +21,10 @@ export type MoneyExpense = {
 
 const code = (value?: string) => value?.trim().toUpperCase() || "";
 
-export const spaceReportingCurrency = (
-	spaceCurrency?: string,
+export const profileReportingCurrency = (
 	profileCurrency?: string,
-) => code(spaceCurrency) || code(profileCurrency) || "RUB";
+	spaceCurrency?: string,
+) => code(profileCurrency) || code(spaceCurrency) || "RUB";
 
 export const formatMoney = (amount: number, currency: string) =>
 	new Intl.NumberFormat("ru-RU", {

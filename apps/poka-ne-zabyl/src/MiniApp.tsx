@@ -91,7 +91,7 @@ import {
 	itemAmountInCurrency,
 	itemDisplayMoney,
 	moneyAmountsMatch,
-	spaceReportingCurrency,
+	profileReportingCurrency,
 } from "./money";
 import {
 	isNotificationPushMessage,
@@ -3048,9 +3048,9 @@ export const MiniApp = () => {
 		}
 	};
 
-	const reportingCurrency = spaceReportingCurrency(
-		spaces.find((space) => space.id === spaceID)?.currency,
+	const reportingCurrency = profileReportingCurrency(
 		user?.currency,
+		spaces.find((space) => space.id === spaceID)?.currency,
 	);
 
 	useEffect(() => {
