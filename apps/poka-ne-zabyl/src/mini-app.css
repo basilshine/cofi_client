@@ -6478,6 +6478,51 @@
 	background: var(--mini-paper);
 	box-shadow: 0 20px 50px rgb(23 27 45 / 12%), 0 2px 8px rgb(23 27 45 / 6%);
 }
+.browser-invite-context {
+	display: grid;
+	grid-template-columns: 34px minmax(0, 1fr);
+	gap: 10px;
+	padding: 12px;
+	border: 1px solid rgb(41 69 199 / 18%);
+	border-radius: 8px;
+	background: #eef1fa;
+}
+.browser-invite-context > span {
+	display: grid;
+	width: 34px;
+	height: 34px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-green);
+	color: var(--mini-paper);
+}
+.browser-invite-context > div {
+	display: grid;
+	gap: 3px;
+	min-width: 0;
+}
+.browser-invite-context small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	font-weight: 700;
+}
+.browser-invite-context strong {
+	overflow: hidden;
+	color: var(--mini-ink);
+	font-size: 16px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.browser-invite-context p {
+	margin: 0;
+	color: var(--mini-muted);
+	font-size: 12px;
+	line-height: 1.4;
+}
+.browser-invite-context p:first-of-type {
+	color: var(--mini-ink);
+	font-weight: 650;
+}
 .browser-telegram-auth,
 .browser-email-auth {
 	display: grid;

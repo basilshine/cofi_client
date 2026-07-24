@@ -10,6 +10,10 @@ const copy = {
 		telegramTitle: "Войти через Telegram",
 		registerTitle: "Создать аккаунт",
 		loginTitle: "Войти",
+		inviteEyebrow: "Приглашение в пространство",
+		inviteFrom: (name: string) => `${name} приглашает вас`,
+		inviteAfterAuth:
+			"После входа вы присоединитесь к пространству и увидите общие расходы и планы.",
 		methodLabel: "Способ входа",
 		phone: "Телефон",
 		email: "Почта",
@@ -107,6 +111,10 @@ const copy = {
 		telegramTitle: "Continue with Telegram",
 		registerTitle: "Create an account",
 		loginTitle: "Sign in",
+		inviteEyebrow: "Space invitation",
+		inviteFrom: (name: string) => `${name} invited you`,
+		inviteAfterAuth:
+			"After signing in, you will join the space and see its shared expenses and plans.",
 		methodLabel: "Sign-in method",
 		phone: "Phone",
 		email: "Email",
@@ -208,6 +216,10 @@ const copy = {
 		telegramTitle: "Continuar con Telegram",
 		registerTitle: "Crear una cuenta",
 		loginTitle: "Iniciar sesión",
+		inviteEyebrow: "Invitación a un espacio",
+		inviteFrom: (name: string) => `${name} te ha invitado`,
+		inviteAfterAuth:
+			"Después de iniciar sesión, entrarás al espacio y verás sus gastos y planes compartidos.",
 		methodLabel: "Método de acceso",
 		phone: "Teléfono",
 		email: "Correo",

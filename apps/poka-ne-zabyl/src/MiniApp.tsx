@@ -802,6 +802,11 @@ type ActivationCodeResponse = {
 };
 
 type AuthResponse = { token: string; user: User };
+type InvitePreview = {
+	status: "ready" | "expired" | "used" | "not_found";
+	space_name?: string;
+	inviter_name?: string;
+};
 type CaptureResponse = {
 	source_document_id?: number;
 	processing_status?: "pending" | "processing" | "succeeded" | "failed";
@@ -17193,6 +17198,7 @@ const BrowserEntry = ({
 	onEmailAuth: (auth: AuthResponse) => Promise<void>;
 }) => {
 	const copy = browserAuthCopy(language);
+	const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
 	const [region, setRegion] = useState<"ru" | "outside">(
 		language === "ru" ? "ru" : "outside",
 	);
@@ -17215,6 +17221,18 @@ const BrowserEntry = ({
 	const [localError, setLocalError] = useState("");
 	const [personalDataConsent, setPersonalDataConsent] = useState(false);
 	const [clipboardHint, setClipboardHint] = useState("");
+
+	useEffect(() => {
+		if (!requestedInviteToken) return;
+		void apiRequest<InvitePreview>(
+			`/invites/preview?token=${encodeURIComponent(requestedInviteToken)}`,
+		)
+			.then((preview) => {
+				if (preview.status === "ready" && preview.space_name)
+					setInvitePreview(preview);
+			})
+			.catch(() => {});
+	}, []);
 
 	useEffect(() => {
 		if (!codeSent) return;
@@ -17458,6 +17476,19 @@ const BrowserEntry = ({
 				</div>
 			</section>
 			<section className="browser-auth-panel">
+				{invitePreview && (
+					<aside className="browser-invite-context" role="status">
+						<span aria-hidden="true">
+							<UsersThree size={20} weight="fill" />
+						</span>
+						<div>
+							<small>{copy.inviteEyebrow}</small>
+							<strong>«{invitePreview.space_name}»</strong>
+							<p>{copy.inviteFrom(invitePreview.inviter_name || "")}</p>
+							<p>{copy.inviteAfterAuth}</p>
+						</div>
+					</aside>
+				)}
 				{!codeSent && (
 					<>
 						<div className="browser-auth-heading">
