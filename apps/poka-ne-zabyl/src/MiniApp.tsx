@@ -6643,6 +6643,7 @@ export const MiniApp = () => {
 							<Overview
 								user={user}
 								language={language}
+								spaceName={activeSpace?.name || ""}
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
@@ -8615,6 +8616,7 @@ const ReviewSaved = ({
 const Overview = ({
 	user,
 	language,
+	spaceName,
 	total,
 	currency,
 	categories,
@@ -8646,6 +8648,7 @@ const Overview = ({
 }: {
 	user: User | null;
 	language: UILanguage;
+	spaceName: string;
 	total: number;
 	currency: string;
 	categories: HomeCategoryRow<Category & { filteredTotal: number }>[];
@@ -8733,7 +8736,11 @@ const Overview = ({
 			<div className="mini-overview-grid">
 				<div className="mini-overview-summary">
 					<div className="mini-total">
-						<span>{uiText(language, "thisMonth")}</span>
+						<span className="mini-total-context" title={spaceName}>
+							{spaceName
+								? `${spaceName} · ${monthName}`
+								: uiText(language, "thisMonth")}
+						</span>
 						<strong>{formatMoney(total, currency)}</strong>
 						<small>{expenseCountText(expenses.length, language)}</small>
 						<button
