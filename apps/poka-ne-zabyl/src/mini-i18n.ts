@@ -147,9 +147,14 @@ const messages = {
 		planRepeatsMonthly: "Каждый месяц",
 		planRecurrenceNeedsDate: "Для повторения укажите дату первого плана.",
 		planOverdue: "Просрочено",
-		cancelPlan: "Отменить план",
-		cancelPlanConfirm: "Отменить этот период повторяющегося плана?",
-		planCancelled: "План отменён",
+		skipPlan: "Пропустить",
+		skipPlanConfirm:
+			"Пропустить только этот план? Следующий останется по расписанию.",
+		planSkipped: "План пропущен, следующий сохранён",
+		deleteRecurringPlan: "Удалить повторение",
+		deleteRecurringPlanConfirm:
+			"Удалить весь повторяющийся план? Все его даты исчезнут.",
+		recurringPlanDeleted: "Повторяющийся план удалён",
 		deletePlan: "Удалить план",
 		planAgain: "Запланировать снова",
 		deletePlanConfirm: "Удалить эту запланированную покупку?",
@@ -668,9 +673,14 @@ const messages = {
 		planRepeatsMonthly: "Every month",
 		planRecurrenceNeedsDate: "Choose the first plan date to enable repeats.",
 		planOverdue: "Overdue",
-		cancelPlan: "Cancel plan",
-		cancelPlanConfirm: "Cancel this occurrence of the recurring plan?",
-		planCancelled: "Plan cancelled",
+		skipPlan: "Skip",
+		skipPlanConfirm:
+			"Skip only this plan? The next one will stay on schedule.",
+		planSkipped: "Plan skipped, next occurrence kept",
+		deleteRecurringPlan: "Delete recurrence",
+		deleteRecurringPlanConfirm:
+			"Delete the entire recurring plan? All its dates will disappear.",
+		recurringPlanDeleted: "Recurring plan deleted",
 		deletePlan: "Delete plan",
 		planAgain: "Plan again",
 		deletePlanConfirm: "Delete this planned purchase?",
@@ -1188,9 +1198,14 @@ const messages = {
 		planRecurrenceNeedsDate:
 			"Elige la fecha del primer plan para activar la repetición.",
 		planOverdue: "Vencido",
-		cancelPlan: "Cancelar plan",
-		cancelPlanConfirm: "¿Cancelar este periodo del plan recurrente?",
-		planCancelled: "Plan cancelado",
+		skipPlan: "Omitir",
+		skipPlanConfirm:
+			"¿Omitir solo este plan? El siguiente seguirá programado.",
+		planSkipped: "Plan omitido; se mantiene el siguiente",
+		deleteRecurringPlan: "Eliminar repetición",
+		deleteRecurringPlanConfirm:
+			"¿Eliminar todo el plan recurrente? Desaparecerán todas sus fechas.",
+		recurringPlanDeleted: "Plan recurrente eliminado",
 		deletePlan: "Eliminar plan",
 		planAgain: "Planificar de nuevo",
 		deletePlanConfirm: "¿Eliminar esta compra planificada?",

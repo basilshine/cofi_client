@@ -5846,35 +5846,60 @@ export const MiniApp = () => {
 		}
 	};
 
-	const deletePlan = async (plan: PurchasePlan | null = editingPlan) => {
+	const deletePlan = async (
+		plan: PurchasePlan | null = editingPlan,
+		scope: "occurrence" | "series" = "occurrence",
+	) => {
 		if (!plan?.id) return;
 		const recurring = isRecurringPlan(plan);
+		const deleteSeries = recurring && scope === "series";
 		if (
 			!window.confirm(
-				uiText(language, recurring ? "cancelPlanConfirm" : "deletePlanConfirm"),
+				uiText(
+					language,
+					deleteSeries
+						? "deleteRecurringPlanConfirm"
+						: recurring
+							? "skipPlanConfirm"
+							: "deletePlanConfirm",
+				),
 			)
 		)
 			return;
+		const removeDeletedPlans = (current: PurchasePlan[]) =>
+			current.filter((item) =>
+				deleteSeries && plan.recurrence_series_id
+					? item.recurrence_series_id !== plan.recurrence_series_id
+					: item.id !== plan.id,
+			);
+		const successNotice = uiText(
+			language,
+			deleteSeries
+				? "recurringPlanDeleted"
+				: recurring
+					? "planSkipped"
+					: "planDeleted",
+		);
 		if (previewMode) {
-			setPlans((current) => current.filter((item) => item.id !== plan.id));
+			setPlans(removeDeletedPlans);
 			setEditingPlan(null);
 			setRecordDetail(null);
-			setNotice(uiText(language, recurring ? "planCancelled" : "planDeleted"));
+			setNotice(successNotice);
 			return;
 		}
 		setSaving(true);
 		try {
 			await apiRequest(
-				`/spaces/${plan.space_id || spaceID}/plans/${plan.id}`,
+				`/spaces/${plan.space_id || spaceID}/plans/${plan.id}${deleteSeries ? "?series=true" : ""}`,
 				token,
 				{
 					method: "DELETE",
 				},
 			);
-			setPlans((current) => current.filter((item) => item.id !== plan.id));
+			setPlans(removeDeletedPlans);
 			setEditingPlan(null);
 			setRecordDetail(null);
-			setNotice(uiText(language, recurring ? "planCancelled" : "planDeleted"));
+			setNotice(successNotice);
 			await loadSpace(true);
 		} catch (err) {
 			setNotice(
@@ -5895,7 +5920,7 @@ export const MiniApp = () => {
 		if (
 			!window.confirm(
 				cancelsRecurringPlan
-					? uiText(language, "cancelPlanConfirm")
+					? uiText(language, "skipPlanConfirm")
 					: deletesPlan
 						? uiText(language, "deletePlanConfirm")
 						: uiText(language, "deletePlanItemConfirm"),
@@ -5938,7 +5963,7 @@ export const MiniApp = () => {
 		setRecordDetail(null);
 		setNotice(
 			cancelsRecurringPlan
-				? uiText(language, "planCancelled")
+				? uiText(language, "planSkipped")
 				: deletesPlan
 					? uiText(language, "planDeleted")
 					: uiText(language, "planItemDeleted"),
@@ -7470,6 +7495,9 @@ export const MiniApp = () => {
 					}}
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() => void deletePlan(recordDetail.plan)}
+					onDeleteSeries={() =>
+						void deletePlan(recordDetail.plan, "series")
+					}
 					onMove={(targetSpaceID, operation) =>
 						void movePlan(targetSpaceID, recordDetail.plan, null, operation)
 					}
@@ -7513,6 +7541,9 @@ export const MiniApp = () => {
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() =>
 						void deletePlanItem(recordDetail.plan, recordDetail.itemIndex)
+					}
+					onDeleteSeries={() =>
+						void deletePlan(recordDetail.plan, "series")
 					}
 					onMove={(targetSpaceID, operation) =>
 						void movePlan(
@@ -7593,8 +7624,13 @@ export const MiniApp = () => {
 						editingPlanCandidate
 							? deletePlanCandidate
 							: editingPlan.id
-								? deletePlan
+								? () => void deletePlan(editingPlan)
 								: undefined
+					}
+					onDeleteSeries={
+						editingPlan.id && isRecurringPlan(editingPlan)
+							? () => void deletePlan(editingPlan, "series")
+							: undefined
 					}
 				/>
 			)}
@@ -8981,7 +9017,7 @@ const Overview = ({
 													className="mini-home-plan-cancel"
 													type="button"
 													onClick={() => onCancelPlan(plan)}
-													aria-label={uiText(language, "cancelPlan")}
+													aria-label={uiText(language, "skipPlan")}
 												>
 													<X size={16} weight="bold" />
 												</button>
@@ -10054,7 +10090,7 @@ const PlansView = ({
 						<button
 							className="mini-plan-cancel"
 							type="button"
-							aria-label={uiText(language, "cancelPlan")}
+							aria-label={uiText(language, "skipPlan")}
 							onClick={() => onCancel(plan)}
 						>
 							<X size={15} weight="bold" />
@@ -10139,7 +10175,7 @@ const PlansView = ({
 							<button
 								className="mini-plan-cancel"
 								type="button"
-								aria-label={uiText(language, "cancelPlan")}
+								aria-label={uiText(language, "skipPlan")}
 								onClick={() => onCancel(plan)}
 							>
 								<X size={15} weight="bold" />
@@ -14705,6 +14741,7 @@ const PlanDetail = ({
 	onBuy,
 	onEdit,
 	onDelete,
+	onDeleteSeries,
 	onMove,
 	onSource,
 	onOpenPlan,
@@ -14725,6 +14762,7 @@ const PlanDetail = ({
 	onBuy: () => void;
 	onEdit: () => void;
 	onDelete: () => void;
+	onDeleteSeries: () => void;
 	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onSource: () => void;
 	onOpenPlan: () => void;
@@ -14881,25 +14919,38 @@ const PlanDetail = ({
 					<PencilSimple size={18} />
 					{uiText(language, "edit")}
 				</button>
-				<button
-					className="mini-delete"
-					type="button"
-					disabled={saving}
-					onClick={onDelete}
-				>
-					<Trash size={18} />
-					{item
-						? uiText(
-								language,
-								items.length === 1 && isRecurringPlan(plan)
-									? "cancelPlan"
-									: "deletePlanItem",
-							)
-						: uiText(
-								language,
-								isRecurringPlan(plan) ? "cancelPlan" : "deletePlan",
-							)}
-				</button>
+				{isRecurringPlan(plan) && (!item || items.length === 1) ? (
+					<>
+						<button
+							className="mini-secondary-action"
+							type="button"
+							disabled={saving}
+							onClick={onDelete}
+						>
+							<X size={18} />
+							{uiText(language, "skipPlan")}
+						</button>
+						<button
+							className="mini-delete"
+							type="button"
+							disabled={saving}
+							onClick={onDeleteSeries}
+						>
+							<Trash size={18} />
+							{uiText(language, "deleteRecurringPlan")}
+						</button>
+					</>
+				) : (
+					<button
+						className="mini-delete"
+						type="button"
+						disabled={saving}
+						onClick={onDelete}
+					>
+						<Trash size={18} />
+						{uiText(language, item ? "deletePlanItem" : "deletePlan")}
+					</button>
+				)}
 			</div>
 		</Modal>
 	);
@@ -14922,6 +14973,7 @@ const PlanEditor = ({
 	onSource,
 	onMove,
 	onDelete,
+	onDeleteSeries,
 }: {
 	plan: PurchasePlan;
 	language: UILanguage;
@@ -14939,6 +14991,7 @@ const PlanEditor = ({
 	onSource: () => void;
 	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onDelete?: () => void;
+	onDeleteSeries?: () => void;
 }) => {
 	const items = purchasePlanItems(plan);
 	const updateItems = (nextItems: PurchasePlanItem[]) =>
@@ -15186,7 +15239,28 @@ const PlanEditor = ({
 				>
 					{saving ? uiText(language, "saving") : uiText(language, "save")}
 				</button>
-				{onDelete && (
+				{onDelete && isRecurringPlan(plan) ? (
+					<>
+						<button
+							className="mini-secondary-action"
+							type="button"
+							disabled={saving}
+							onClick={onDelete}
+						>
+							<X size={18} />
+							{uiText(language, "skipPlan")}
+						</button>
+						<button
+							className="mini-delete"
+							type="button"
+							disabled={saving}
+							onClick={onDeleteSeries}
+						>
+							<Trash size={18} />
+							{uiText(language, "deleteRecurringPlan")}
+						</button>
+					</>
+				) : onDelete ? (
 					<button
 						className="mini-delete"
 						type="button"
@@ -15194,12 +15268,9 @@ const PlanEditor = ({
 						onClick={onDelete}
 					>
 						<Trash size={18} />
-						{uiText(
-							language,
-							isRecurringPlan(plan) ? "cancelPlan" : "deletePlan",
-						)}
+						{uiText(language, "deletePlan")}
 					</button>
-				)}
+				) : null}
 			</div>
 		</Modal>
 	);
