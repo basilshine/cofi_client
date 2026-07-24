@@ -50,5 +50,5 @@ jobs:
         run: |
           curl --fail-with-body --silent --show-error \
             -H "Content-Type: application/json" \
-            -d '{"host":"poka-ne-zabyl.ru","key":"ebe337c9485b49f59bdd0be15c612624","keyLocation":"https://poka-ne-zabyl.ru/ebe337c9485b49f59bdd0be15c612624.txt","urlList":["https://poka-ne-zabyl.ru/","https://poka-ne-zabyl.ru/en/","https://poka-ne-zabyl.ru/es/"]}' \
+            -d '{"host":"poka-ne-zabyl.ru","key":"ebe337c9485b49f59bdd0be15c612624","keyLocation":"https://poka-ne-zabyl.ru/ebe337c9485b49f59bdd0be15c612624.txt","urlList":["https://poka-ne-zabyl.ru/","https://poka-ne-zabyl.ru/en/","https://poka-ne-zabyl.ru/es/","https://poka-ne-zabyl.ru/family","https://poka-ne-zabyl.ru/repair","https://poka-ne-zabyl.ru/crew","https://poka-ne-zabyl.ru/events"]}' \
             https://api.indexnow.org/indexnow
