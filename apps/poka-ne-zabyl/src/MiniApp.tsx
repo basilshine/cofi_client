@@ -5511,6 +5511,19 @@ export const MiniApp = () => {
 		}
 	};
 
+	const testPushOnThisDevice = async () => {
+		if (!token || previewMode || pushSubscriptionSaving) return;
+		setPushSubscriptionSaving(true);
+		try {
+			await apiRequest("/me/push/test", token, { method: "POST" });
+			setNotice(uiText(language, "testDeviceNotificationsSent"));
+		} catch {
+			setNotice(uiText(language, "deviceNotificationsFailed"));
+		} finally {
+			setPushSubscriptionSaving(false);
+		}
+	};
+
 	const saveSpace = async () => {
 		if (!editingSpace) return;
 		const creating = editingSpace.id === 0;
@@ -7296,6 +7309,7 @@ export const MiniApp = () => {
 					pushOnThisDevice={notificationChannelSettings.pushOnThisDevice}
 					pushSaving={pushSubscriptionSaving}
 					onEnablePush={() => void enablePushOnThisDevice()}
+					onTestPush={() => void testPushOnThisDevice()}
 					onClose={() => {
 						setNotificationsOpen(false);
 						setSelectedNotification(null);
@@ -16700,6 +16714,7 @@ const NotificationCenter = ({
 	pushOnThisDevice,
 	pushSaving,
 	onEnablePush,
+	onTestPush,
 	onClose,
 }: {
 	notifications: AppNotification[];
@@ -16717,6 +16732,7 @@ const NotificationCenter = ({
 	pushOnThisDevice: boolean;
 	pushSaving: boolean;
 	onEnablePush: () => void;
+	onTestPush: () => void;
 	onClose: () => void;
 }) => (
 	<Modal
@@ -16788,6 +16804,22 @@ const NotificationCenter = ({
 							{pushSaving
 								? uiText(language, "saving")
 								: uiText(language, "deviceNotificationsOff")}
+						</button>
+					</div>
+				)}
+				{pushAvailable && pushOnThisDevice && (
+					<div className="notification-device-prompt is-enabled">
+						<span>
+							<BellRinging size={20} weight="fill" />
+						</span>
+						<div>
+							<strong>{uiText(language, "deviceNotificationsOn")}</strong>
+							<small>{uiText(language, "testDeviceNotificationsHint")}</small>
+						</div>
+						<button type="button" disabled={pushSaving} onClick={onTestPush}>
+							{pushSaving
+								? uiText(language, "saving")
+								: uiText(language, "testDeviceNotifications")}
 						</button>
 					</div>
 				)}

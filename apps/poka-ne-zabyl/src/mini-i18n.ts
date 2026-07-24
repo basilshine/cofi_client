@@ -347,6 +347,10 @@ const messages = {
 		deviceNotificationsFailed:
 			"Не удалось настроить уведомления на устройстве.",
 		deviceNotificationsEnabled: "Уведомления на этом устройстве включены",
+		testDeviceNotifications: "Проверить",
+		testDeviceNotificationsHint:
+			"Отправим настоящее системное уведомление на это устройство.",
+		testDeviceNotificationsSent: "Проверочное уведомление отправлено",
 		plan: "Ваш тариф",
 		basic: "Базовый",
 		plus: "Плюс",
@@ -865,6 +869,10 @@ const messages = {
 		deviceNotificationsFailed:
 			"Could not configure notifications on this device.",
 		deviceNotificationsEnabled: "Notifications are enabled on this device",
+		testDeviceNotifications: "Test",
+		testDeviceNotificationsHint:
+			"We will send a real system notification to this device.",
+		testDeviceNotificationsSent: "Test notification sent",
 		plan: "Your plan",
 		basic: "Basic",
 		plus: "Plus",
@@ -1386,6 +1394,10 @@ const messages = {
 			"No se pudieron configurar las notificaciones en este dispositivo.",
 		deviceNotificationsEnabled:
 			"Las notificaciones están activadas en este dispositivo",
+		testDeviceNotifications: "Probar",
+		testDeviceNotificationsHint:
+			"Enviaremos una notificación real del sistema a este dispositivo.",
+		testDeviceNotificationsSent: "Notificación de prueba enviada",
 		plan: "Tu plan",
 		basic: "Básico",
 		plus: "Plus",

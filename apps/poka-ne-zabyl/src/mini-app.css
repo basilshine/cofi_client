@@ -4765,6 +4765,10 @@
 	border-radius: 7px;
 	background: #f1f3ff;
 }
+.notification-device-prompt.is-enabled {
+	border-color: #c6dfd3;
+	background: #f1f8f4;
+}
 .notification-device-prompt > span {
 	display: grid;
 	width: 34px;
