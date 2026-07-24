@@ -149,10 +149,48 @@ const localizedStructuredData = ({ path, description, language }) => {
 	}).replaceAll("<", "\\u003c")}</script>`;
 };
 
+const acquisitionPaths = new Set(["/family", "/repair", "/crew", "/events"]);
+
+const acquisitionStructuredData = ({ path, description, language }) => {
+	if (!acquisitionPaths.has(path)) return "";
+	return `<script type="application/ld+json">${JSON.stringify({
+		"@context": "https://schema.org",
+		"@type": "SoftwareApplication",
+		"@id": `${origin}/#application`,
+		name: "Пока не забыл",
+		url: `${origin}/app`,
+		installUrl: `${origin}/app`,
+		description,
+		applicationCategory: "FinanceApplication",
+		operatingSystem: "Web, Android, iOS, Telegram",
+		inLanguage: language,
+		offers: [
+			{
+				"@type": "Offer",
+				name: "Базовый",
+				price: "0",
+				priceCurrency: "RUB",
+			},
+			{
+				"@type": "Offer",
+				name: "Плюс",
+				price: "249",
+				priceCurrency: "RUB",
+			},
+		],
+		provider: { "@id": `${origin}/#organization` },
+	}).replaceAll("<", "\\u003c")}</script>`;
+};
+
 const pageHead = ({ path, title, description, language }) => {
 	const canonical = `${origin}${path}`;
 	const structuredData =
 		localizedStructuredData({
+			path,
+			description,
+			language,
+		}) ||
+		acquisitionStructuredData({
 			path,
 			description,
 			language,

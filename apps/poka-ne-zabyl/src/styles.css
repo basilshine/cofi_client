@@ -1397,6 +1397,10 @@ button:focus-visible {
 	grid-template-columns: 1.2fr .9fr .9fr;
 	gap: 60px;
 }
+.footer__top--scenarios {
+	grid-template-columns: 1.15fr .8fr .8fr .9fr;
+	gap: 40px;
+}
 .footer__top p {
 	max-width: 360px;
 	color: #969baa;
@@ -1407,6 +1411,14 @@ button:focus-visible {
 	display: grid;
 	align-content: start;
 	gap: 13px;
+}
+.footer__scenarios span {
+	margin-bottom: 2px;
+	color: #777d8e;
+	font-size: .68rem;
+	font-weight: 700;
+	letter-spacing: .12em;
+	text-transform: uppercase;
 }
 .footer nav a,
 .footer__contacts a {

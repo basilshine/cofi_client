@@ -1934,11 +1934,25 @@ const OperatorDetails = ({
 const SiteFooter = ({ locale = "ru" }: { locale?: LandingLocale }) =>
 	localizeLandingTree(
 		<footer className="footer">
-			<div className="shell footer__top">
+			<div
+				className={`shell footer__top ${locale === "ru" ? "footer__top--scenarios" : ""}`}
+			>
 				<div>
 					<Brand inverse locale={locale} />
 					<p>Приложение для учёта расходов с быстрым помощником в Telegram.</p>
 				</div>
+				{locale === "ru" && (
+					<nav
+						className="footer__scenarios"
+						aria-label="Сценарии использования"
+					>
+						<span>Сценарии</span>
+						<a href="/family">Семейный бюджет</a>
+						<a href="/repair">Расходы на ремонт</a>
+						<a href="/crew">Расходы бригады</a>
+						<a href="/events">Бюджет мероприятия</a>
+					</nav>
+				)}
 				<nav aria-label="Юридические документы">
 					<a href="/offer">Оферта</a>
 					<a href={legalPagePath(locale, "privacy")}>Конфиденциальность</a>
