@@ -35,6 +35,12 @@ export const subscribeToWebPush = async (publicKey: string) => {
 	});
 };
 
+export const renewWebPushSubscription = async (publicKey: string) => {
+	const existing = await currentWebPushSubscription();
+	await existing?.unsubscribe();
+	return subscribeToWebPush(publicKey);
+};
+
 export const syncAppBadge = async (unreadCount: number) => {
 	const badgeNavigator = navigator as Navigator & {
 		setAppBadge?: (contents?: number) => Promise<void>;

@@ -126,6 +126,7 @@ import {
 } from "./vendor";
 import {
 	currentWebPushSubscription,
+	renewWebPushSubscription,
 	subscribeToWebPush,
 	syncAppBadge,
 	webPushSupported,
@@ -5515,7 +5516,21 @@ export const MiniApp = () => {
 		if (!token || previewMode || pushSubscriptionSaving) return;
 		setPushSubscriptionSaving(true);
 		try {
-			await apiRequest("/me/push/test", token, { method: "POST" });
+			try {
+				await apiRequest("/me/push/test", token, { method: "POST" });
+			} catch {
+				const config = await apiRequest<{
+					available: boolean;
+					public_key: string;
+				}>("/me/push/config", token);
+				if (!config.available || !config.public_key) throw new Error();
+				const subscription = await renewWebPushSubscription(config.public_key);
+				await apiRequest("/me/push-subscriptions", token, {
+					method: "POST",
+					body: JSON.stringify(subscription.toJSON()),
+				});
+				await apiRequest("/me/push/test", token, { method: "POST" });
+			}
 			setNotice(uiText(language, "testDeviceNotificationsSent"));
 		} catch {
 			setNotice(uiText(language, "deviceNotificationsFailed"));
