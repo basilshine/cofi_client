@@ -3140,7 +3140,9 @@ export const MiniApp = () => {
 			});
 			setAllTimeExpenseTotal(expenseData.total_amount ?? null);
 			setOverviewExpenseTotal(
-				dashboardData?.monthly_snapshot?.total_spent ?? null,
+				expenseData.month_total ??
+					dashboardData?.monthly_snapshot?.total_spent ??
+					null,
 			);
 			setCaptures(captureData.captures || []);
 			setCategories(categoryData.categories || []);
