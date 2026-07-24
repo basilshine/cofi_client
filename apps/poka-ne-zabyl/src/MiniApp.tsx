@@ -2677,6 +2677,18 @@ export const MiniApp = () => {
 		setSelectedNotification(null);
 		setNotificationsOpen(true);
 		void refreshNotifications();
+		if (webPushSupported()) {
+			void currentWebPushSubscription()
+				.then((subscription) =>
+					setNotificationChannelSettings((current) => ({
+						...current,
+						pushAvailable: true,
+						pushEnabled: current.pushEnabled || Boolean(subscription),
+						pushOnThisDevice: Boolean(subscription),
+					})),
+				)
+				.catch(() => undefined);
+		}
 	};
 
 	const openNotification = (notification: AppNotification) => {
@@ -7229,6 +7241,10 @@ export const MiniApp = () => {
 					onReadAll={readAllNotifications}
 					onDelete={deleteNotification}
 					onAction={followNotification}
+					pushAvailable={notificationChannelSettings.pushAvailable}
+					pushOnThisDevice={notificationChannelSettings.pushOnThisDevice}
+					pushSaving={pushSubscriptionSaving}
+					onEnablePush={() => void enablePushOnThisDevice()}
 					onClose={() => {
 						setNotificationsOpen(false);
 						setSelectedNotification(null);
@@ -16623,6 +16639,10 @@ const NotificationCenter = ({
 	onReadAll,
 	onDelete,
 	onAction,
+	pushAvailable,
+	pushOnThisDevice,
+	pushSaving,
+	onEnablePush,
 	onClose,
 }: {
 	notifications: AppNotification[];
@@ -16636,6 +16656,10 @@ const NotificationCenter = ({
 	onReadAll: () => void;
 	onDelete: (notification: AppNotification) => void;
 	onAction: (notification: AppNotification) => void;
+	pushAvailable: boolean;
+	pushOnThisDevice: boolean;
+	pushSaving: boolean;
+	onEnablePush: () => void;
 	onClose: () => void;
 }) => (
 	<Modal
@@ -16694,6 +16718,22 @@ const NotificationCenter = ({
 			</div>
 		) : (
 			<div className="notification-inbox">
+				{pushAvailable && !pushOnThisDevice && (
+					<div className="notification-device-prompt">
+						<span>
+							<BellRinging size={20} weight="fill" />
+						</span>
+						<div>
+							<strong>{uiText(language, "deviceNotifications")}</strong>
+							<small>{uiText(language, "deviceNotificationsHint")}</small>
+						</div>
+						<button type="button" disabled={pushSaving} onClick={onEnablePush}>
+							{pushSaving
+								? uiText(language, "saving")
+								: uiText(language, "deviceNotificationsOff")}
+						</button>
+					</div>
+				)}
 				{unreadCount > 0 && (
 					<div className="notification-toolbar">
 						<span>
