@@ -365,6 +365,29 @@
 .mini-space-menu-actions button > svg:last-child {
 	justify-self: end;
 }
+.mini-space-menu-actions button > span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-space-menu-actions button strong {
+	font-size: 12px;
+	line-height: 1.2;
+}
+.mini-space-menu-actions button small {
+	color: var(--mini-muted);
+	font-size: 10px;
+	font-weight: 500;
+	line-height: 1.25;
+}
+.mini-space-menu-actions .mini-space-menu-add {
+	margin-bottom: 4px;
+	background: rgba(41, 69, 199, 0.07);
+	color: var(--mini-blue);
+}
+.mini-space-menu-actions .mini-space-menu-add > svg {
+	color: var(--mini-blue);
+}
 .mini-basic-limit-nudge {
 	display: grid;
 	grid-template-columns: 32px minmax(0, 1fr) auto;

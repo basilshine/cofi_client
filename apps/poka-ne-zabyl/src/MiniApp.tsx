@@ -4180,6 +4180,17 @@ export const MiniApp = () => {
 	const ownedSpacesCount = spaces.filter(
 		(space) => space.owner_user_id === user?.id,
 	).length;
+	const openNewSpaceEditor = () => {
+		setSpaceMenuOpen(false);
+		setEditingSpace({
+			id: 0,
+			tenant_id: activeSpace?.tenant_id || 0,
+			owner_user_id: user?.id || 0,
+			is_personal: false,
+			name: "",
+			currency: user?.currency || "RUB",
+		});
+	};
 	const eligibleParticipants = useMemo(
 		() =>
 			participants.filter(
@@ -6260,6 +6271,21 @@ export const MiniApp = () => {
 									/>
 								)}
 								<div className="mini-space-menu-actions">
+									<button
+										className="mini-space-menu-add"
+										type="button"
+										role="menuitem"
+										onClick={openNewSpaceEditor}
+									>
+										<Plus size={18} weight="bold" />
+										<span>
+											<strong>{uiText(language, "addSpace")}</strong>
+											{!accountHasPlus && (
+												<small>{uiText(language, "plusMoreSpaces")}</small>
+											)}
+										</span>
+										<ArrowRight size={16} />
+									</button>
 									{activeSpace && (
 										<button
 											type="button"
@@ -6629,16 +6655,7 @@ export const MiniApp = () => {
 										: undefined
 								}
 								inviting={Boolean(invitingSpace)}
-								onAdd={() =>
-									setEditingSpace({
-										id: 0,
-										tenant_id: activeSpace?.tenant_id || 0,
-										owner_user_id: user?.id || 0,
-										is_personal: false,
-										name: "",
-										currency: user?.currency || "RUB",
-									})
-								}
+								onAdd={openNewSpaceEditor}
 							/>
 						)}
 						{view === "profile" && (
