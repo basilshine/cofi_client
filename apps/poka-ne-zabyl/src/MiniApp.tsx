@@ -110,11 +110,6 @@ import {
 	isServiceUnavailableError,
 	requestError,
 } from "./request";
-import {
-	type PendingSpaceInvite,
-	type SpaceInviteSuggestion,
-	availableInviteSuggestions,
-} from "./space-invite";
 import { spaceScopedItems } from "./space-scoped-data";
 import { isSubscriptionExpired } from "./subscription";
 import { homeScreenPlatform, shouldUseFullscreen } from "./telegram-platform";
@@ -214,11 +209,6 @@ type PageInfo = {
 
 type DashboardSummary = {
 	monthly_snapshot?: { total_spent: number };
-};
-
-type SpaceInviteSuggestions = {
-	suggestions: SpaceInviteSuggestion[];
-	pending_invites_for_space: PendingSpaceInvite[];
 };
 
 type Category = {
@@ -16106,116 +16096,9 @@ const SpaceInviteDialog = ({
 	onClose: () => void;
 	onNotice: (message: string) => void;
 }) => {
-	const [email, setEmail] = useState("");
-	const [data, setData] = useState<SpaceInviteSuggestions>({
-		suggestions: [],
-		pending_invites_for_space: [],
-	});
-	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
-	const [busyInviteID, setBusyInviteID] = useState(0);
 	const [createdLinkToken, setCreatedLinkToken] = useState("");
 	const [error, setError] = useState("");
-
-	const loadSuggestions = async () => {
-		if (previewMode) {
-			setData({
-				suggestions: [
-					{
-						user_id: 2,
-						name: "Анна",
-						relationship_label: "Другое пространство",
-					},
-				],
-				pending_invites_for_space: [],
-			});
-			setLoading(false);
-			return;
-		}
-		setLoading(true);
-		try {
-			setData(
-				await apiRequest<SpaceInviteSuggestions>(
-					`/spaces/${space.id}/invite-suggestions`,
-					token,
-				),
-			);
-		} catch (err) {
-			setError(
-				err instanceof Error
-					? err.message
-					: "Не удалось загрузить варианты приглашения",
-			);
-		} finally {
-			setLoading(false);
-		}
-	};
-
-	useEffect(() => {
-		void loadSuggestions();
-	}, [space.id, token, previewMode]);
-
-	const suggestions = availableInviteSuggestions(
-		data.suggestions,
-		data.pending_invites_for_space,
-		email,
-	);
-
-	const sendInvite = async (
-		rawEmail: string,
-		inviteeUserID?: number,
-		inviteeName?: string,
-	) => {
-		const inviteeEmail = rawEmail.trim().toLocaleLowerCase();
-		if ((!inviteeEmail && !inviteeUserID) || submitting) return;
-		setSubmitting(true);
-		setError("");
-		try {
-			if (previewMode) {
-				setData((current) => ({
-					...current,
-					pending_invites_for_space: [
-						{
-							id: Date.now(),
-							invitee_user_id: inviteeUserID,
-							invitee_name: inviteeName,
-							invitee_email: inviteeEmail,
-							token: `preview-email-${Date.now()}`,
-							expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
-						},
-						...current.pending_invites_for_space,
-					],
-				}));
-			} else {
-				await apiRequest(`/spaces/${space.id}/invites`, token, {
-					method: "POST",
-					body: JSON.stringify(
-						inviteeUserID
-							? { user_id: inviteeUserID }
-							: { email: inviteeEmail },
-					),
-				});
-				await loadSuggestions();
-			}
-			setEmail("");
-			onNotice(
-				inviteeName
-					? `Приглашение для ${inviteeName} отправлено`
-					: `Приглашение отправлено на ${inviteeEmail}`,
-			);
-		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Не удалось отправить приглашение",
-			);
-		} finally {
-			setSubmitting(false);
-		}
-	};
-
-	const submitInvite = async (event: React.FormEvent) => {
-		event.preventDefault();
-		await sendInvite(email);
-	};
 
 	const inviteURL = (inviteToken: string) =>
 		`${window.location.origin}/join?token=${encodeURIComponent(inviteToken)}`;
@@ -16242,12 +16125,16 @@ const SpaceInviteDialog = ({
 			});
 		} catch (err) {
 			if (err instanceof DOMException && err.name === "AbortError") return;
-			setError("Не удалось открыть меню отправки");
+			await copyInvite(inviteToken);
 		}
 	};
 
-	const createLinkInvite = async () => {
+	const shareOrCreateInvite = async () => {
 		if (submitting) return;
+		if (createdLinkToken) {
+			await shareInvite(createdLinkToken);
+			return;
+		}
 		setSubmitting(true);
 		setError("");
 		try {
@@ -16265,230 +16152,54 @@ const SpaceInviteDialog = ({
 						},
 					);
 			setCreatedLinkToken(invite.token);
-			if (previewMode) {
-				setData((current) => ({
-					...current,
-					pending_invites_for_space: [
-						{
-							id: Date.now(),
-							invitee_email: "",
-							token: invite.token,
-							expires_at: invite.expires_at,
-						},
-						...current.pending_invites_for_space,
-					],
-				}));
-			} else {
-				await loadSuggestions();
-			}
-			onNotice("Ссылка приглашения готова");
-		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Не удалось создать ссылку",
-			);
+			await shareInvite(invite.token);
+		} catch {
+			setError("Не удалось создать ссылку. Попробуйте ещё раз");
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
-	const updatePendingInvite = async (
-		invite: PendingSpaceInvite,
-		action: "resend" | "cancel",
-	) => {
-		if (previewMode) {
-			if (action === "cancel") {
-				setData((current) => ({
-					...current,
-					pending_invites_for_space: current.pending_invites_for_space.filter(
-						({ id }) => id !== invite.id,
-					),
-				}));
-			}
-			onNotice(
-				action === "resend"
-					? "Приглашение отправлено снова"
-					: "Приглашение отменено",
-			);
-			return;
-		}
-		setBusyInviteID(invite.id);
-		setError("");
-		try {
-			await apiRequest(
-				`/spaces/${space.id}/invites/${invite.id}${action === "resend" ? "/resend" : ""}`,
-				token,
-				{ method: action === "resend" ? "POST" : "DELETE" },
-			);
-			await loadSuggestions();
-			onNotice(
-				action === "resend"
-					? "Приглашение отправлено снова"
-					: "Приглашение отменено",
-			);
-		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Не удалось обновить приглашение",
-			);
-		} finally {
-			setBusyInviteID(0);
-		}
-	};
-
 	return (
 		<Modal title={`Пригласить в «${space.name}»`} onClose={onClose}>
-			<form className="mini-invite-form" onSubmit={submitInvite}>
+			<div className="mini-invite-form">
 				<p className="mini-invite-copy">
-					Поделитесь ссылкой в любом приложении или отправьте приглашение на
-					почту. После входа человек автоматически попадёт в пространство.
+					Отправьте приглашение через мессенджер, почту или любое другое
+					приложение. После входа человек автоматически попадёт в пространство.
 				</p>
 				<div className="mini-invite-link">
 					<span>
-						<b>Пригласить по ссылке</b>
-						<small>
-							Ссылка действует 7 дней. Первый вошедший по ней получит доступ.
-						</small>
+						<b>Ссылка для приглашения</b>
+						<small>Действует 7 дней и сработает для одного человека.</small>
 					</span>
 					<button
 						type="button"
 						disabled={submitting}
-						onClick={createLinkInvite}
+						onClick={shareOrCreateInvite}
 					>
 						<ShareNetwork size={18} weight="bold" />
-						Создать ссылку
+						{submitting ? "Создаём ссылку…" : "Поделиться приглашением"}
 					</button>
 					{createdLinkToken && (
 						<div className="mini-invite-share">
-							<input readOnly value={inviteURL(createdLinkToken)} />
+							<input
+								aria-label="Ссылка приглашения"
+								readOnly
+								value={inviteURL(createdLinkToken)}
+							/>
 							<button
 								type="button"
-								onClick={() => shareInvite(createdLinkToken)}
-							>
-								<ShareNetwork size={17} />
-								Поделиться
-							</button>
-							<button
-								type="button"
+								aria-label="Копировать ссылку"
+								title="Копировать ссылку"
 								onClick={() => copyInvite(createdLinkToken)}
 							>
 								<Copy size={17} />
-								Копировать
 							</button>
 						</div>
 					)}
 				</div>
-				{!loading && suggestions.length > 0 && (
-					<div className="mini-invite-people">
-						<b>Люди из других пространств</b>
-						<div>
-							{suggestions.map((suggestion) => (
-								<article key={suggestion.user_id}>
-									<span>
-										{(suggestion.name || "У").slice(0, 1).toUpperCase()}
-									</span>
-									<p>
-										<b>{suggestion.name || "Пользователь"}</b>
-										<small>
-											{suggestion.relationship_label ||
-												suggestion.email ||
-												"Почта не привязана"}
-										</small>
-									</p>
-									<button
-										type="button"
-										disabled={submitting}
-										onClick={() =>
-											void sendInvite(
-												suggestion.email || "",
-												suggestion.user_id,
-												suggestion.name || "Пользователя",
-											)
-										}
-									>
-										<PaperPlaneTilt size={15} weight="bold" />
-										Пригласить
-									</button>
-								</article>
-							))}
-						</div>
-					</div>
-				)}
-				<label>
-					Электронная почта
-					<input
-						type="email"
-						inputMode="email"
-						autoComplete="email"
-						required
-						value={email}
-						placeholder="name@example.com"
-						onChange={(event) => setEmail(event.target.value)}
-					/>
-				</label>
-				{loading && <small className="mini-modal-note">Загружаем…</small>}
 				{error && <p className="mini-error">{error}</p>}
-				{data.pending_invites_for_space.length > 0 && (
-					<div className="mini-invite-pending">
-						<b>Ожидают ответа</b>
-						{data.pending_invites_for_space.map((invite) => (
-							<article key={invite.id}>
-								<span>
-									<b>
-										{invite.invitee_name ||
-											invite.invitee_email ||
-											"Приглашение по ссылке"}
-									</b>
-									<small>
-										Действует до{" "}
-										{new Date(invite.expires_at).toLocaleDateString("ru-RU")}
-									</small>
-								</span>
-								<div>
-									{invite.invitee_email || invite.invitee_user_id ? (
-										<button
-											type="button"
-											disabled={busyInviteID === invite.id}
-											onClick={() => updatePendingInvite(invite, "resend")}
-										>
-											<ArrowClockwise size={16} />
-											Ещё раз
-										</button>
-									) : (
-										<button
-											type="button"
-											onClick={() => shareInvite(invite.token)}
-										>
-											<ShareNetwork size={16} />
-											Поделиться
-										</button>
-									)}
-									<button
-										type="button"
-										aria-label="Отменить приглашение"
-										disabled={busyInviteID === invite.id}
-										onClick={() => updatePendingInvite(invite, "cancel")}
-									>
-										<Trash size={16} />
-									</button>
-								</div>
-							</article>
-						))}
-					</div>
-				)}
-				<div className="mini-modal-actions">
-					<button
-						className="mini-save"
-						type="submit"
-						disabled={loading || submitting || !email.trim()}
-					>
-						<PaperPlaneTilt size={18} weight="bold" />
-						{submitting ? "Отправляем…" : "Отправить приглашение"}
-					</button>
-					<button className="mini-delete" type="button" onClick={onClose}>
-						<ArrowLeft size={18} />
-						Назад
-					</button>
-				</div>
-			</form>
+			</div>
 		</Modal>
 	);
 };

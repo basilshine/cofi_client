@@ -5520,9 +5520,7 @@
 	color: var(--mini-paper);
 	font-weight: 750;
 }
-.mini-invite-form,
-.mini-invite-people,
-.mini-invite-pending {
+.mini-invite-form {
 	display: grid;
 	gap: 10px;
 }
@@ -5544,15 +5542,13 @@
 	display: grid;
 	gap: 3px;
 }
-.mini-invite-link small,
-.mini-invite-pending small {
+.mini-invite-link small {
 	color: var(--mini-muted);
 	font-size: 11px;
 	line-height: 1.35;
 }
 .mini-invite-link > button,
-.mini-invite-share button,
-.mini-invite-pending button {
+.mini-invite-share button {
 	display: inline-flex;
 	min-height: 40px;
 	align-items: center;
@@ -5572,110 +5568,16 @@
 }
 .mini-invite-share {
 	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 7px;
-}
-.mini-invite-share input {
-	grid-column: 1 / -1;
-	min-width: 0;
-	font-size: 12px;
-}
-.mini-invite-people > b,
-.mini-invite-pending > b {
-	font-size: 13px;
-}
-.mini-invite-people > div {
-	display: grid;
-	overflow: hidden;
-	border: 1px solid var(--mini-line);
-	border-radius: 8px;
-	background: var(--mini-paper);
-}
-.mini-invite-people article {
-	display: grid;
-	grid-template-columns: 36px minmax(0, 1fr) auto;
-	min-height: 58px;
-	align-items: center;
-	gap: 10px;
-	padding: 9px 12px;
-	border-bottom: 1px solid var(--mini-line);
-	color: var(--mini-ink);
-	text-align: left;
-}
-.mini-invite-people article:last-child {
-	border-bottom: 0;
-}
-.mini-invite-people article > span {
-	display: grid;
-	width: 36px;
-	height: 36px;
-	place-items: center;
-	border-radius: 50%;
-	background: var(--mini-soft);
-	color: var(--mini-green);
-	font-weight: 750;
-}
-.mini-invite-people p {
-	display: grid;
-	min-width: 0;
-	gap: 2px;
-	margin: 0;
-}
-.mini-invite-people small {
-	overflow: hidden;
-	color: var(--mini-muted);
-	font-size: 11px;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.mini-invite-people svg {
-	color: var(--mini-green);
-}
-.mini-invite-people article > button {
-	display: inline-flex;
-	min-height: 36px;
-	align-items: center;
-	justify-content: center;
-	gap: 5px;
-	padding: 7px 9px;
-	border: 1px solid var(--mini-line-strong);
-	border-radius: 6px;
-	background: var(--mini-paper);
-	color: var(--mini-green);
-	font-size: 11px;
-	font-weight: 750;
-	white-space: nowrap;
-}
-.mini-invite-people article > button:disabled {
-	opacity: 0.45;
-}
-.mini-invite-pending article {
-	display: grid;
-	gap: 9px;
-	padding: 10px 11px;
-	border: 1px solid var(--mini-line);
-	border-radius: 6px;
-}
-.mini-invite-pending article > span {
-	display: grid;
-	min-width: 0;
-	gap: 3px;
-}
-.mini-invite-pending article > span b {
-	overflow: hidden;
-	font-size: 12px;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.mini-invite-pending article > div {
-	display: grid;
 	grid-template-columns: minmax(0, 1fr) 42px;
 	gap: 7px;
 }
-.mini-invite-pending article > div > button:last-child {
+.mini-invite-share input {
+	min-width: 0;
+	font-size: 12px;
+}
+.mini-invite-share button {
 	width: 42px;
 	padding: 0;
-	color: var(--mini-red);
 }
 .mini-editor-items {
 	display: grid;
