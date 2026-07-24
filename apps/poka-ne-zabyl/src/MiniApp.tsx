@@ -50,6 +50,7 @@ import {
 	useState,
 } from "react";
 import "./mini-app.css";
+import { rememberAcquisitionFunnel } from "./acquisition-funnel";
 import {
 	AVATAR_IMAGE_SIZE,
 	avatarCropLayout,
@@ -17540,6 +17541,9 @@ const BrowserEntry = ({
 	const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(
 		null,
 	);
+	const [acquisitionFunnel] = useState(() =>
+		rememberAcquisitionFunnel(window.location.search, window.localStorage),
+	);
 	const [region, setRegion] = useState<"ru" | "outside">(
 		language === "ru" ? "ru" : "outside",
 	);
@@ -17713,12 +17717,15 @@ const BrowserEntry = ({
 						language,
 						timezone,
 						currency: isPhone ? "RUB" : "",
+						...(authMode === "register"
+							? { acquisition_funnel: acquisitionFunnel }
+							: {}),
 						personal_data_consent: personalDataConsent,
 					}),
 				},
 			);
-			await onEmailAuth(auth);
 			if (authMode === "register") reachMetrikaGoal("registration");
+			await onEmailAuth(auth);
 		} catch (requestError) {
 			const message =
 				requestError instanceof Error ? requestError.message : copy.invalidCode;

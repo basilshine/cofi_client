@@ -1,6 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { trackFirstExpenseGoal } from "../src/metrika.ts";
+import { initializeMetrika, trackFirstExpenseGoal } from "../src/metrika.ts";
+
+test("initializes the counter on application-only pages", () => {
+	const scripts: Array<{ async?: boolean; src: string }> = [];
+	Object.defineProperty(globalThis, "window", {
+		configurable: true,
+		value: {},
+	});
+	Object.defineProperty(globalThis, "document", {
+		configurable: true,
+		value: {
+			scripts,
+			createElement: () => ({ src: "" }),
+			head: {
+				appendChild: (script: { async?: boolean; src: string }) =>
+					scripts.push(script),
+			},
+		},
+	});
+
+	assert.equal(initializeMetrika(), true);
+	assert.equal(scripts[0]?.src, "https://mc.yandex.ru/metrika/tag.js");
+	assert.equal(initializeMetrika(), false);
+
+	Reflect.deleteProperty(globalThis, "document");
+	Reflect.deleteProperty(globalThis, "window");
+});
 
 test("tracks the first expense once per user", () => {
 	const stored = new Map<string, string>();

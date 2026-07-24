@@ -735,6 +735,10 @@ button:focus-visible {
 	pointer-events: none;
 	animation: story-cycle 36s var(--scene-offset) infinite;
 }
+.capture-story--focused .story-scene {
+	animation-name: focused-story-cycle;
+	animation-duration: 12s;
+}
 .capture-fragment {
 	display: grid;
 	grid-template-rows: auto 1fr auto;
@@ -812,6 +816,25 @@ button:focus-visible {
 	}
 	99% {
 		transform: translateY(12px);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0);
+		filter: blur(0);
+	}
+}
+@keyframes focused-story-cycle {
+	0%,
+	30% {
+		opacity: 1;
+		transform: translateY(0);
+		filter: blur(0);
+	}
+	33%,
+	98% {
+		opacity: 0;
+		transform: translateY(-12px);
+		filter: blur(4px);
 	}
 	100% {
 		opacity: 1;

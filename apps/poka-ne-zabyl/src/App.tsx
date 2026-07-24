@@ -10,6 +10,11 @@ import {
 import type { CSSProperties } from "react";
 import { Suspense, lazy, useEffect, useState } from "react";
 import {
+	type AcquisitionFunnel,
+	acquisitionFunnelFromPath,
+	landingQueryWithFunnel,
+} from "./acquisition-funnel";
+import {
 	type LandingLocale,
 	landingHomePath,
 	landingLocaleFromPath,
@@ -55,7 +60,9 @@ export const App = ({ pathname }: { pathname?: string }) => {
 			window.localStorage.getItem(LANDING_LANGUAGE_KEY),
 		);
 		if (locale !== "ru")
-			window.location.replace(`${landingHomePath(locale)}${window.location.search}`);
+			window.location.replace(
+				`${landingHomePath(locale)}${window.location.search}`,
+			);
 	}, [path, pathname]);
 
 	useEffect(() => {
@@ -97,7 +104,12 @@ export const App = ({ pathname }: { pathname?: string }) => {
 		case "/payment/failed":
 			return <PaymentStatus success={false} />;
 		default:
-			return <LandingPage locale={landingLocaleFromPath(path)} />;
+			return (
+				<LandingPage
+					funnel={acquisitionFunnelFromPath(path)}
+					locale={landingLocaleFromPath(path)}
+				/>
+			);
 	}
 };
 
@@ -163,10 +175,10 @@ const AppButton = ({
 		onClick={trackLandingAppClick}
 	>
 		{locale === "en"
-			? "Open the app"
+			? "Start for free"
 			: locale === "es"
-				? "Abrir la aplicación"
-				: "Открыть приложение"}
+				? "Empezar gratis"
+				: "Начать бесплатно"}
 		<ArrowRight size={18} weight="bold" />
 	</a>
 );
@@ -246,48 +258,194 @@ const captureStories = [
 	},
 ] as const;
 
-const CaptureStory = ({ locale = "ru" }: { locale?: LandingLocale }) => (
-	<div
-		className="capture-story"
-		data-label={landingText(locale, "ЖИВОЙ ПРИМЕР")}
-		aria-label={landingText(
-			locale,
-			"Как расход проходит от ввода до сохранения",
-		)}
-	>
-		{captureStories.map((story) => (
-			<figure
-				aria-hidden="true"
-				className={`story-scene capture-fragment capture-fragment--${story.mode} capture-fragment--${story.stage}`}
-				key={`${story.mode}-${story.phase}`}
-				style={{ "--scene-offset": story.offset } as CSSProperties}
-			>
-				<div className="capture-fragment__heading">
-					<span className="capture-fragment__mode">
-						{story.mode === "voice" && <Microphone size={18} weight="fill" />}
-						{story.mode === "text" && (
-							<ChatCircleText size={18} weight="fill" />
-						)}
-						{story.mode === "photo" && <Receipt size={18} weight="fill" />}
-						{landingText(
-							locale,
-							story.mode === "voice"
-								? "Голос"
-								: story.mode === "text"
-									? "Текст"
-									: "Фото чека",
-						)}
-					</span>
-					<strong>{landingText(locale, story.phase)}</strong>
-				</div>
-				<div className="capture-fragment__canvas">
-					<img src={localizedLandingImage(locale, story.image)} alt="" />
-				</div>
-				<figcaption>{landingText(locale, story.caption)}</figcaption>
-			</figure>
-		))}
-	</div>
-);
+const funnelCaptureStories = {
+	family: [
+		{
+			mode: "photo",
+			stage: "input",
+			phase: "Сфотографируйте чек",
+			caption: "Покупка для дома начинается с обычного фото",
+			image: "/pwa-flow-photo-input.png",
+			offset: "0s",
+		},
+		{
+			mode: "photo",
+			stage: "review",
+			phase: "Проверьте покупку",
+			caption: "Сумма, магазин и категория остаются под вашим контролем",
+			image: "/pwa-scenario-family-review.webp",
+			offset: "-8s",
+		},
+		{
+			mode: "photo",
+			stage: "saved",
+			phase: "Увидьте результат",
+			caption: "Расход появился в пространстве «Дом и семья» и общей сводке",
+			image: "/pwa-scenario-family-saved.webp",
+			offset: "-4s",
+		},
+	],
+	repair: [
+		{
+			mode: "photo",
+			stage: "input",
+			phase: "Сфотографируйте чек",
+			caption: "Чек со строймаркета не потеряется после поездки",
+			image: "/pwa-flow-photo-input.png",
+			offset: "0s",
+		},
+		{
+			mode: "photo",
+			stage: "review",
+			phase: "Сверьте материалы",
+			caption: "Проверьте сумму, продавца и категорию до сохранения",
+			image: "/pwa-scenario-repair-review.webp",
+			offset: "-8s",
+		},
+		{
+			mode: "photo",
+			stage: "saved",
+			phase: "Обновите смету",
+			caption: "Расход попал в «Квартиру на Ленина» и категорию «Материалы»",
+			image: "/pwa-scenario-repair-saved.webp",
+			offset: "-4s",
+		},
+	],
+	crew: [
+		{
+			mode: "voice",
+			stage: "input",
+			phase: "Скажите на объекте",
+			caption: "«Крепёж и расходники, 8 700 ₽, платил Василий»",
+			image: "/pwa-flow-voice-input.png",
+			offset: "0s",
+		},
+		{
+			mode: "voice",
+			stage: "review",
+			phase: "Проверьте закупку",
+			caption: "Исправьте сумму, поставщика или категорию, если нужно",
+			image: "/pwa-scenario-crew-review.webp",
+			offset: "-8s",
+		},
+		{
+			mode: "voice",
+			stage: "saved",
+			phase: "Покажите команде",
+			caption: "Закупка появилась в «Объекте на Ленина» и взаиморасчётах",
+			image: "/pwa-scenario-crew-saved.webp",
+			offset: "-4s",
+		},
+	],
+	events: [
+		{
+			mode: "text",
+			stage: "input",
+			phase: "Напишите коротко",
+			caption: "«Свет и звук, аванс подрядчику 86 000 ₽»",
+			image: "/pwa-scenario-events-input.webp",
+			offset: "0s",
+		},
+		{
+			mode: "text",
+			stage: "review",
+			phase: "Сверьте оплату",
+			caption: "Подрядчик, сумма и категория видны до подтверждения",
+			image: "/pwa-scenario-events-review.webp",
+			offset: "-8s",
+		},
+		{
+			mode: "text",
+			stage: "saved",
+			phase: "Обновите бюджет",
+			caption: "Оплата появилась в бюджете «Фестиваля в парке»",
+			image: "/pwa-scenario-events-saved.webp",
+			offset: "-4s",
+		},
+	],
+} as const;
+
+const scenarioCopy = {
+	general: {
+		title: "Сервис не решает за вас",
+		lead: "Он предлагает готовую запись. Вы подтверждаете её, исправляете или отменяете.",
+		result: "Сохраняет только после подтверждения",
+	},
+	family: {
+		title: "От чека до семейной сводки",
+		lead: "Одна покупка проходит понятный путь и появляется в общем бюджете только после вашей проверки.",
+		result: "Обновляет историю и семейную сводку",
+	},
+	repair: {
+		title: "От чека до сметы объекта",
+		lead: "Материалы попадают в расходы по ремонту только после того, как вы сверили распознанные данные.",
+		result: "Учитывает покупку в смете и категории",
+	},
+	crew: {
+		title: "От закупки до расчётов команды",
+		lead: "Расход с объекта сохраняется после проверки и становится виден участникам общего пространства.",
+		result: "Обновляет историю и взаиморасчёты",
+	},
+	events: {
+		title: "От оплаты до бюджета события",
+		lead: "Оплата подрядчику становится фактом бюджета только после подтверждения организатором.",
+		result: "Обновляет бюджет и историю команды",
+	},
+} as const;
+
+const CaptureStory = ({
+	funnel,
+	locale = "ru",
+}: {
+	funnel: AcquisitionFunnel;
+	locale?: LandingLocale;
+}) => {
+	const focusedStories =
+		funnel === "general" ? captureStories : funnelCaptureStories[funnel];
+
+	return (
+		<div
+			className={`capture-story ${funnel === "general" ? "" : "capture-story--focused"}`}
+			data-label={landingText(locale, "ЖИВОЙ ПРИМЕР")}
+			aria-label={landingText(
+				locale,
+				"Как расход проходит от ввода до сохранения",
+			)}
+		>
+			{focusedStories.map((story) => (
+				<figure
+					aria-hidden="true"
+					className={`story-scene capture-fragment capture-fragment--${story.mode} capture-fragment--${story.stage}`}
+					key={`${story.mode}-${story.phase}`}
+					style={{ "--scene-offset": story.offset } as CSSProperties}
+				>
+					<div className="capture-fragment__heading">
+						<span className="capture-fragment__mode">
+							{story.mode === "voice" && <Microphone size={18} weight="fill" />}
+							{story.mode === "text" && (
+								<ChatCircleText size={18} weight="fill" />
+							)}
+							{story.mode === "photo" && <Receipt size={18} weight="fill" />}
+							{landingText(
+								locale,
+								story.mode === "voice"
+									? "Голос"
+									: story.mode === "text"
+										? "Текст"
+										: "Фото чека",
+							)}
+						</span>
+						<strong>{landingText(locale, story.phase)}</strong>
+					</div>
+					<div className="capture-fragment__canvas">
+						<img src={localizedLandingImage(locale, story.image)} alt="" />
+					</div>
+					<figcaption>{landingText(locale, story.caption)}</figcaption>
+				</figure>
+			))}
+		</div>
+	);
+};
 
 const LanguageSwitcher = ({
 	locale,
@@ -319,10 +477,123 @@ const LanguageSwitcher = ({
 	</nav>
 );
 
-const LandingPage = ({ locale }: { locale: LandingLocale }) => {
+const funnelCopy: Record<
+	AcquisitionFunnel,
+	{
+		pageTitle: string;
+		kicker: string;
+		title: string;
+		lead: string;
+		demo: string;
+		amount: string;
+		merchant: string;
+		stepsLead: string;
+		sharedTitle: string;
+		sharedLead: string;
+		finalLead: string;
+		finalTitle: string;
+		screenAlt: string;
+	}
+> = {
+	general: {
+		pageTitle: landingSeo.ru.title,
+		kicker: "Приложение для телефона",
+		title: "Расходы, пока не забылись",
+		lead: "Добавьте на экран телефона и записывайте расходы голосом, текстом или по чеку. Бесплатно, без привязки карты.",
+		demo: "Кофе и круассан 550 ₽",
+		amount: "550 ₽",
+		merchant: "Кофейня · сегодня",
+		stepsLead:
+			"Личный учёт расходов без таблиц, обязательных форм и попыток вспомнить всё вечером.",
+		sharedTitle: "Разделите общий расход",
+		sharedLead:
+			"Выберите расход и участников. Приложение посчитает доли и покажет, кто кому должен.",
+		finalLead: "Покупка уже случилась.",
+		finalTitle: "Запишите, пока не забыли.",
+		screenAlt: "Главный экран приложения с расходами, планами и лимитами",
+	},
+	family: {
+		pageTitle: "Семейный бюджет без таблиц - Пока не забыл",
+		kicker: "Семейный бюджет без таблиц",
+		title: "Общие расходы, пока не забылись",
+		lead: "Записывайте покупки для дома голосом, текстом или по чеку. Каждый видит общую историю, планы и долги.",
+		demo: "Продукты и бытовое 4 850 ₽",
+		amount: "4 850 ₽",
+		merchant: "Супермаркет · сегодня",
+		stepsLead:
+			"Семейные покупки, планы и общие расходы в одном месте, без вечерней сверки по памяти.",
+		sharedTitle: "Понятно, кто платил и кто должен",
+		sharedLead:
+			"Добавьте участников к расходу. Приложение посчитает доли и сохранит результат рядом с покупкой.",
+		finalLead: "Покупка для дома уже случилась.",
+		finalTitle: "Добавьте её в семейный бюджет.",
+		screenAlt: "Пример семейного бюджета с расходами и планами",
+	},
+	repair: {
+		pageTitle: "Учёт расходов на ремонт - Пока не забыл",
+		kicker: "Учёт расходов на ремонт",
+		title: "Смета растёт. Расходы не теряются",
+		lead: "Сохраняйте материалы, доставку и работу по объекту сразу после оплаты. Чек, голос или короткая фраза превращаются в запись.",
+		demo: "Краска и доставка 12 400 ₽",
+		amount: "12 400 ₽",
+		merchant: "Строймаркет · сегодня",
+		stepsLead:
+			"Расходы по ремонту без пачки чеков, заметок в телефоне и попыток восстановить смету задним числом.",
+		sharedTitle: "Соберите расходы по объекту",
+		sharedLead:
+			"Заведите отдельное пространство для ремонта, приглашайте участников и разделяйте совместные оплаты.",
+		finalLead: "Материалы уже куплены.",
+		finalTitle: "Сохраните расход в смете.",
+		screenAlt: "Пример учёта расходов и закупок для ремонта",
+	},
+	crew: {
+		pageTitle: "Расходы строительной бригады - Пока не забыл",
+		kicker: "Расходы строительной бригады",
+		title: "Закупки и расчёты в одном месте",
+		lead: "Фиксируйте материалы, расходники и авансы прямо на объекте. Команда видит общую историю и взаиморасчёты.",
+		demo: "Крепёж и расходники 8 700 ₽",
+		amount: "8 700 ₽",
+		merchant: "Поставщик · сегодня",
+		stepsLead:
+			"Оперативный учёт закупок без общей таблицы, чеков в чате и вопросов о том, кто платил.",
+		sharedTitle: "Разберите, кто за что заплатил",
+		sharedLead:
+			"Добавьте участников к закупке. Приложение посчитает доли и покажет взаиморасчёты команды.",
+		finalLead: "Закупка для объекта уже оплачена.",
+		finalTitle: "Зафиксируйте её сразу.",
+		screenAlt: "Пример расходов и планов строительной бригады",
+	},
+	events: {
+		pageTitle: "Бюджет мероприятия - Пока не забыл",
+		kicker: "Бюджет мероприятия без таблиц",
+		title: "Расходы события под контролем",
+		lead: "Планируйте закупки, фиксируйте оплаты подрядчикам и собирайте расходы команды в одном пространстве.",
+		demo: "Свет и звук 86 000 ₽",
+		amount: "86 000 ₽",
+		merchant: "Подрядчик · сегодня",
+		stepsLead:
+			"Планы, оплаты и чеки по мероприятию в одной истории, без сверки таблиц и рабочих чатов.",
+		sharedTitle: "Команда видит одну картину",
+		sharedLead:
+			"Пригласите организаторов, добавьте участников к оплатам и сохраните взаиморасчёты рядом с расходами.",
+		finalLead: "Подрядчик уже получил оплату.",
+		finalTitle: "Добавьте её в бюджет события.",
+		screenAlt: "Пример бюджета фестиваля с подрядчиками и планами",
+	},
+};
+
+const LandingPage = ({
+	funnel,
+	locale,
+}: {
+	funnel: AcquisitionFunnel;
+	locale: LandingLocale;
+}) => {
 	const [landingQuery, setLandingQuery] = useState("");
 	useEffect(() => setLandingQuery(window.location.search), []);
-	usePageTitle(landingSeo[locale].title);
+	const trackedLandingQuery = landingQueryWithFunnel(landingQuery, funnel);
+	const copy = funnelCopy[funnel];
+	usePageTitle(locale === "ru" ? copy.pageTitle : landingSeo[locale].title);
 	useEffect(() => {
 		document.documentElement.lang = locale;
 		const elements = document.querySelectorAll<HTMLElement>("[data-reveal]");
@@ -349,25 +620,25 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 			<section className="hero">
 				<header className="hero__nav shell">
 					<Brand locale={locale} />
-					<LanguageSwitcher locale={locale} landingQuery={landingQuery} />
+					<LanguageSwitcher
+						locale={locale}
+						landingQuery={trackedLandingQuery}
+					/>
 					<nav aria-label="Основная навигация">
 						<a href="#how">Как это работает</a>
 						<a href="#mini-app">Приложение</a>
 						<a href="#pricing">Тарифы</a>
 						<a href="#shared">Для компании</a>
-						<AppButton locale={locale} landingQuery={landingQuery} />
+						<AppButton locale={locale} landingQuery={trackedLandingQuery} />
 					</nav>
 				</header>
 				<div className="hero__stage shell">
 					<div className="hero__copy">
-						<p className="hero__kicker">Приложение для телефона</p>
-						<h1>Расходы, пока не забылись</h1>
-						<p className="hero__lead">
-							Откройте по ссылке, добавьте на экран телефона и пользуйтесь как
-							обычным приложением. Telegram остаётся быстрым помощником.
-						</p>
+						<p className="hero__kicker">{copy.kicker}</p>
+						<h1>{copy.title}</h1>
+						<p className="hero__lead">{copy.lead}</p>
 						<div className="hero__actions">
-							<AppButton locale={locale} landingQuery={landingQuery} />
+							<AppButton locale={locale} landingQuery={trackedLandingQuery} />
 							<a
 								className="text-link"
 								href={TELEGRAM_URL}
@@ -383,7 +654,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 						<div className="hero-demo__blue" aria-hidden="true" />
 						<div className="demo-message demo-message--text">
 							<ChatCircleText size={22} />
-							<span>Кофе и круассан 550 ₽</span>
+							<span>{copy.demo}</span>
 						</div>
 						<div className="demo-message demo-message--voice">
 							<Microphone size={22} />
@@ -460,8 +731,8 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 						<span className="demo-note demo-note--saved">запомнил</span>
 						<div className="expense-slip">
 							<p>Расход</p>
-							<strong>550 ₽</strong>
-							<span>Кофейня · сегодня</span>
+							<strong>{copy.amount}</strong>
+							<span>{copy.merchant}</span>
 							<b>
 								<Check size={20} weight="bold" />
 							</b>
@@ -493,14 +764,18 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 								<span>Открывайте по иконке без App Store и Google Play.</span>
 							</li>
 						</ol>
-						<AppButton locale={locale} landingQuery={landingQuery} />
+						<AppButton locale={locale} landingQuery={trackedLandingQuery} />
 					</div>
 					<figure className="pwa-device">
 						<img
-							alt="Главный экран приложения с расходами, планами и лимитами"
+							alt={copy.screenAlt}
 							decoding="async"
 							height="1040"
-							src="/pwa-home.png"
+							src={
+								funnel === "general"
+									? "/pwa-home.png"
+									: `/pwa-home-${funnel}.webp`
+							}
 							width="520"
 						/>
 						<figcaption>Так приложение выглядит после установки</figcaption>
@@ -512,10 +787,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 				<div className="shell" data-reveal>
 					<div className="section-heading">
 						<h2>Сказали. Проверили. Запомнили.</h2>
-						<p>
-							Личный учёт расходов без таблиц, обязательных форм и попыток
-							вспомнить всё вечером.
-						</p>
+						<p>{copy.stepsLead}</p>
 					</div>
 					<div className="steps-list">
 						<article>
@@ -548,11 +820,8 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 			<section className="review-section" id="review">
 				<div className="shell review-layout" data-reveal>
 					<div className="review-copy">
-						<h2>Сервис не решает за вас</h2>
-						<p>
-							Он предлагает готовую запись. Вы подтверждаете её, исправляете или
-							отменяете.
-						</p>
+						<h2>{scenarioCopy[funnel].title}</h2>
+						<p>{scenarioCopy[funnel].lead}</p>
 						<ul>
 							<li>
 								<Check size={18} /> Принимает голос, текст и фото чека
@@ -561,11 +830,11 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 								<Check size={18} /> Показывает сумму, позиции и категорию
 							</li>
 							<li>
-								<Check size={18} /> Сохраняет только после подтверждения
+								<Check size={18} /> {scenarioCopy[funnel].result}
 							</li>
 						</ul>
 					</div>
-					<CaptureStory locale={locale} />
+					<CaptureStory funnel={funnel} locale={locale} />
 				</div>
 			</section>
 
@@ -690,7 +959,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 							</ul>
 							<a
 								className="pricing-plan__action"
-								href={landingAppPath(locale, "", landingQuery)}
+								href={landingAppPath(locale, "", trackedLandingQuery)}
 								onClick={trackLandingAppClick}
 							>
 								Начать с Базового <ArrowRight size={18} />
@@ -740,7 +1009,7 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 								href={landingAppPath(
 									locale,
 									"view=subscription",
-									landingQuery,
+									trackedLandingQuery,
 								)}
 								onClick={trackLandingAppClick}
 							>
@@ -789,11 +1058,8 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 				<div className="shell shared-layout">
 					<div data-reveal>
 						<UsersThree size={42} weight="light" />
-						<h2>Разделите общий расход</h2>
-						<p>
-							Выберите расход и участников. Приложение посчитает доли и покажет,
-							кто кому должен.
-						</p>
+						<h2>{copy.sharedTitle}</h2>
+						<p>{copy.sharedLead}</p>
 					</div>
 					<div
 						className="split-showcase"
@@ -899,9 +1165,9 @@ const LandingPage = ({ locale }: { locale: LandingLocale }) => {
 					<span className="final-cta__mark">
 						<BrandMark />
 					</span>
-					<p>Покупка уже случилась.</p>
-					<h2>Запишите, пока не забыли.</h2>
-					<AppButton light locale={locale} landingQuery={landingQuery} />
+					<p>{copy.finalLead}</p>
+					<h2>{copy.finalTitle}</h2>
+					<AppButton light locale={locale} landingQuery={trackedLandingQuery} />
 					<a
 						className="text-link text-link--inverse"
 						href={TELEGRAM_URL}

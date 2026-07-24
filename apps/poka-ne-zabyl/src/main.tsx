@@ -1,7 +1,10 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { App } from "./App";
+import { initializeMetrika } from "./metrika";
 import "./styles.css";
+
+initializeMetrika();
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element not found");

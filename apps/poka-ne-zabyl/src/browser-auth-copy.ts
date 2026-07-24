@@ -2,8 +2,9 @@ import type { UILanguage } from "./mini-i18n";
 
 const copy = {
 	ru: {
-		taglineTitle: "Ваши расходы рядом",
-		taglineBody: "Откройте те же пространства, покупки и планы.",
+		taglineTitle: "Первый расход за минуту",
+		taglineBody:
+			"Создайте бесплатный аккаунт. Пароль и банковская карта не нужны.",
 		telegramEyebrow: "Без нового пароля",
 		registerEyebrow: "Первый шаг",
 		loginEyebrow: "С возвращением",
@@ -103,8 +104,8 @@ const copy = {
 		pasteManually: "Зажмите поле и выберите «Вставить»",
 	},
 	en: {
-		taglineTitle: "Your spending, close at hand",
-		taglineBody: "Open the same spaces, purchases, and plans.",
+		taglineTitle: "Your first expense in a minute",
+		taglineBody: "Create a free account. No password or bank card required.",
 		telegramEyebrow: "No new password",
 		registerEyebrow: "First step",
 		loginEyebrow: "Welcome back",
@@ -208,8 +209,8 @@ const copy = {
 		pasteManually: "Press and hold the field, then choose Paste",
 	},
 	es: {
-		taglineTitle: "Tus gastos, siempre a mano",
-		taglineBody: "Abre los mismos espacios, compras y planes.",
+		taglineTitle: "Tu primer gasto en un minuto",
+		taglineBody: "Crea una cuenta gratis. Sin contraseña ni tarjeta bancaria.",
 		telegramEyebrow: "Sin contraseña nueva",
 		registerEyebrow: "Primer paso",
 		loginEyebrow: "Te damos la bienvenida",

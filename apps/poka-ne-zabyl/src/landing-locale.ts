@@ -15,6 +15,7 @@ export const preferredLandingLocale = (
 };
 
 const ATTRIBUTION_PARAMS = [
+	"funnel",
 	"yclid",
 	"utm_source",
 	"utm_medium",
