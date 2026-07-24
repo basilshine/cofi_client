@@ -29,6 +29,7 @@ import {
 	preferredLandingLocale,
 } from "./landing-locale";
 import { reachMetrikaGoal } from "./metrika";
+import { ACQUISITION_FAQ, GENERAL_FAQ } from "./seo";
 
 const MiniApp = lazy(async () => {
 	const module = await import("./MiniApp");
@@ -593,6 +594,7 @@ const LandingPage = ({
 	useEffect(() => setLandingQuery(window.location.search), []);
 	const trackedLandingQuery = landingQueryWithFunnel(landingQuery, funnel);
 	const copy = funnelCopy[funnel];
+	const faqItems = funnel === "general" ? GENERAL_FAQ : ACQUISITION_FAQ[funnel];
 	usePageTitle(locale === "ru" ? copy.pageTitle : landingSeo[locale].title);
 	useEffect(() => {
 		document.documentElement.lang = locale;
@@ -1110,52 +1112,12 @@ const LandingPage = ({
 						<h2>До первого расхода</h2>
 					</div>
 					<div>
-						<details>
-							<summary>Что такое PWA и нужно ли что-то скачивать?</summary>
-							<p>
-								PWA означает устанавливаемое веб-приложение. Откройте его по
-								ссылке и добавьте на главный экран. Оно запускается отдельно и
-								не требует App Store или Google Play.
-							</p>
-						</details>
-						<details>
-							<summary>Бот сам сохраняет всё без проверки?</summary>
-							<p>
-								Нет. Он предлагает разобранный расход, а вы подтверждаете или
-								исправляете результат.
-							</p>
-						</details>
-						<details>
-							<summary>Что останется доступно без Плюс?</summary>
-							<p>
-								История расходов, ручное добавление, редактирование и доступ к
-								данным не блокируются. Ограничения действуют на новые умные
-								разборы и создание новых категорий, лимитов, планов и
-								пространств.
-							</p>
-						</details>
-						<details>
-							<summary>Купленные пакеты пропадут после окончания Плюс?</summary>
-							<p>
-								Нет. Купленный остаток хранится отдельно. Пакет не продлевает
-								подписку и остаётся доступным после её окончания.
-							</p>
-						</details>
-						<details>
-							<summary>Можно пользоваться только лично?</summary>
-							<p>
-								Да. Общие пространства и разделение расходов подключаются только
-								когда нужны. Приложение посчитает доли и покажет, кто кому
-								должен.
-							</p>
-						</details>
-						<details>
-							<summary>Где хранятся данные и чеки?</summary>
-							<p>
-								Основные данные и исходные файлы российского запуска размещаются
-								на инфраструктуре в России.
-							</p>
-						</details>
+						{faqItems.map(([question, answer]) => (
+							<details key={question}>
+								<summary>{question}</summary>
+								<p>{answer}</p>
+							</details>
+						))}
 					</div>
 				</div>
 			</section>

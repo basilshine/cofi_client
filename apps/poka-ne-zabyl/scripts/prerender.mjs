@@ -12,7 +12,7 @@ const serverFile = (await readdir(serverDir)).find((file) =>
 
 assert(serverFile, "SSR entry was not built");
 
-const { PUBLIC_PAGE_SEO, render } = await import(
+const { ACQUISITION_FAQ, GENERAL_FAQ, PUBLIC_PAGE_SEO, render } = await import(
 	pathToFileURL(join(serverDir, serverFile)).href
 );
 const template = await readFile(join(distDir, "index.html"), "utf8");
@@ -153,32 +153,46 @@ const acquisitionPaths = new Set(["/family", "/repair", "/crew", "/events"]);
 
 const acquisitionStructuredData = ({ path, description, language }) => {
 	if (!acquisitionPaths.has(path)) return "";
+	const faq = ACQUISITION_FAQ[path.slice(1)];
 	return `<script type="application/ld+json">${JSON.stringify({
 		"@context": "https://schema.org",
-		"@type": "SoftwareApplication",
-		"@id": `${origin}/#application`,
-		name: "Пока не забыл",
-		url: `${origin}/app`,
-		installUrl: `${origin}/app`,
-		description,
-		applicationCategory: "FinanceApplication",
-		operatingSystem: "Web, Android, iOS, Telegram",
-		inLanguage: language,
-		offers: [
+		"@graph": [
 			{
-				"@type": "Offer",
-				name: "Базовый",
-				price: "0",
-				priceCurrency: "RUB",
+				"@type": "SoftwareApplication",
+				"@id": `${origin}/#application`,
+				name: "Пока не забыл",
+				url: `${origin}/app`,
+				installUrl: `${origin}/app`,
+				description,
+				applicationCategory: "FinanceApplication",
+				operatingSystem: "Web, Android, iOS, Telegram",
+				inLanguage: language,
+				offers: [
+					{
+						"@type": "Offer",
+						name: "Базовый",
+						price: "0",
+						priceCurrency: "RUB",
+					},
+					{
+						"@type": "Offer",
+						name: "Плюс",
+						price: "249",
+						priceCurrency: "RUB",
+					},
+				],
+				provider: { "@id": `${origin}/#organization` },
 			},
 			{
-				"@type": "Offer",
-				name: "Плюс",
-				price: "249",
-				priceCurrency: "RUB",
+				"@type": "FAQPage",
+				"@id": `${origin}${path}#faq`,
+				mainEntity: faq.map(([name, text]) => ({
+					"@type": "Question",
+					name,
+					acceptedAnswer: { "@type": "Answer", text },
+				})),
 			},
 		],
-		provider: { "@id": `${origin}/#organization` },
 	}).replaceAll("<", "\\u003c")}</script>`;
 };
 
@@ -254,56 +268,11 @@ const pageHead = ({ path, title, description, language }) => {
 						{
 							"@type": "FAQPage",
 							"@id": `${origin}/#faq`,
-							mainEntity: [
-								{
-									"@type": "Question",
-									name: "Что такое PWA и нужно ли что-то скачивать?",
-									acceptedAnswer: {
-										"@type": "Answer",
-										text: "PWA означает устанавливаемое веб-приложение. Откройте его по ссылке и добавьте на главный экран. Оно запускается отдельно и не требует App Store или Google Play.",
-									},
-								},
-								{
-									"@type": "Question",
-									name: "Бот сам сохраняет всё без проверки?",
-									acceptedAnswer: {
-										"@type": "Answer",
-										text: "Нет. Он предлагает разобранный расход, а вы подтверждаете или исправляете результат.",
-									},
-								},
-								{
-									"@type": "Question",
-									name: "Что останется доступно без Плюс?",
-									acceptedAnswer: {
-										"@type": "Answer",
-										text: "История расходов, ручное добавление, редактирование и доступ к данным не блокируются. Ограничения действуют на новые умные разборы и создание новых категорий, лимитов, планов и пространств.",
-									},
-								},
-								{
-									"@type": "Question",
-									name: "Купленные пакеты пропадут после окончания Плюс?",
-									acceptedAnswer: {
-										"@type": "Answer",
-										text: "Нет. Купленный остаток хранится отдельно. Пакет не продлевает подписку и остаётся доступным после её окончания.",
-									},
-								},
-								{
-									"@type": "Question",
-									name: "Можно пользоваться только лично?",
-									acceptedAnswer: {
-										"@type": "Answer",
-										text: "Да. Общие пространства и разделение расходов между участниками подключаются только когда нужны. Приложение посчитает доли и покажет, кто кому должен.",
-									},
-								},
-								{
-									"@type": "Question",
-									name: "Где хранятся данные и чеки?",
-									acceptedAnswer: {
-										"@type": "Answer",
-										text: "Основные данные и исходные файлы российского запуска размещаются на инфраструктуре в России.",
-									},
-								},
-							],
+							mainEntity: GENERAL_FAQ.map(([name, text]) => ({
+								"@type": "Question",
+								name,
+								acceptedAnswer: { "@type": "Answer", text },
+							})),
 						},
 					],
 				}).replaceAll("<", "\\u003c")}</script>`
@@ -357,6 +326,10 @@ for (const seo of PUBLIC_PAGE_SEO) {
 		assert(html.includes("/assets/poka-ne-zabyl-og.png"));
 		assert(html.includes('"name":"Базовый","price":"0"'));
 		assert(html.includes('"name":"Плюс","price":"249"'));
+	}
+	if (acquisitionPaths.has(seo.path)) {
+		assert(html.includes('"@type":"FAQPage"'));
+		assert(html.includes(ACQUISITION_FAQ[seo.path.slice(1)][0][0]));
 	}
 	if (["/en/", "/es/"].includes(seo.path)) {
 		assert(html.includes(`hreflang="${seo.language}"`));
