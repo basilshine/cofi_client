@@ -92,6 +92,7 @@ import {
 	moneyAmountsMatch,
 	spaceReportingCurrency,
 } from "./money";
+import { newestUnseenNotification } from "./notification-inbox";
 import {
 	type HomeCategoryRow,
 	expensesForMonth,
@@ -1594,6 +1595,7 @@ export const MiniApp = () => {
 	const [feedbackStatus, setFeedbackStatus] =
 		useState<FeedbackDailyStatus | null>(null);
 	const [notifications, setNotifications] = useState<AppNotification[]>([]);
+	const knownNotificationIDs = useRef<Set<number> | null>(null);
 	const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 	const [notificationsOpen, setNotificationsOpen] = useState(false);
 	const [spaceMenuOpen, setSpaceMenuOpen] = useState(false);
@@ -2644,7 +2646,19 @@ export const MiniApp = () => {
 				notifications: AppNotification[];
 				unread_count: number;
 			}>("/me/notifications?limit=50", token);
-			setNotifications(response.notifications || []);
+			const nextNotifications = response.notifications || [];
+			const newest = newestUnseenNotification(
+				nextNotifications,
+				knownNotificationIDs.current,
+			);
+			if (newest)
+				setNotice(
+					`${notificationTitle(newest.type, language)}: ${newest.message}`,
+				);
+			knownNotificationIDs.current = new Set(
+				nextNotifications.map(({ id }) => id),
+			);
+			setNotifications(nextNotifications);
 			setUnreadNotificationCount(response.unread_count || 0);
 			void syncAppBadge(response.unread_count || 0);
 		} catch {
@@ -2653,6 +2667,10 @@ export const MiniApp = () => {
 			setNotificationsLoading(false);
 		}
 	};
+
+	useEffect(() => {
+		knownNotificationIDs.current = null;
+	}, [token]);
 
 	useEffect(() => {
 		if (!token || previewMode) return;
@@ -2669,7 +2687,7 @@ export const MiniApp = () => {
 			window.clearInterval(timer);
 			document.removeEventListener("visibilitychange", refreshWhenVisible);
 		};
-	}, [token, pendingCaptures.length]);
+	}, [token, pendingCaptures.length, language]);
 
 	const openNotifications = () => {
 		setSpaceMenuOpen(false);
