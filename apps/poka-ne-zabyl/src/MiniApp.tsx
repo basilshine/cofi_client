@@ -104,9 +104,11 @@ import {
 } from "./overview";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
 import {
+	collapsePurchasePlanSeries,
 	filterPurchasePlans,
 	partitionOverduePurchasePlans,
 	planPeriodBounds,
+	purchasePlanOccurrenceCount,
 } from "./purchase-plan-filter";
 import { browserRegistrationCountry } from "./registration-locale";
 import {
@@ -8800,17 +8802,20 @@ const Overview = ({
 		new Date(),
 	);
 	const monthName = month.slice(0, 1).toUpperCase() + month.slice(1);
-	const upcomingPlans = [...plans]
+	const planSeries = collapsePurchasePlanSeries(plans);
+	const upcomingPlans = [...planSeries]
 		.sort((left, right) => {
 			if (!left.due_date) return 1;
 			if (!right.due_date) return -1;
 			return left.due_date.localeCompare(right.due_date);
 		})
 		.slice(0, 3);
-	const overduePlanCount = partitionOverduePurchasePlans(plans, localISODate())
-		.overdue.length;
+	const overduePlanCount = partitionOverduePurchasePlans(
+		planSeries,
+		localISODate(),
+	).overdue.length;
 	const monthPlanBounds = planPeriodBounds("month");
-	const monthPlans = filterPurchasePlans(plans, {
+	const monthPlans = filterPurchasePlans(planSeries, {
 		query: "",
 		categoryID: 0,
 		vendorID: 0,
@@ -8820,7 +8825,14 @@ const Overview = ({
 	const monthPlannedTotal =
 		monthPlanTotal ??
 		monthPlans.reduce(
-			(sum, plan) => sum + planDisplayMoney(plan, currency).amount,
+			(sum, plan) =>
+				sum +
+				planDisplayMoney(plan, currency).amount *
+					purchasePlanOccurrenceCount(
+						plan,
+						monthPlanBounds.from,
+						monthPlanBounds.to,
+					),
 			0,
 		);
 	const splitBalances = splitBalanceRows(
@@ -9962,7 +9974,8 @@ const PlansView = ({
 	const [filtersOpen, setFiltersOpen] = useState(false);
 	const [groupByPlan, setGroupByPlan] = useState(false);
 	const bounds = planPeriodBounds(period, dateFrom, dateTo);
-	const matchingPlans = filterPurchasePlans(plans, {
+	const planSeries = collapsePurchasePlanSeries(plans);
+	const matchingPlans = filterPurchasePlans(planSeries, {
 		query,
 		categoryID,
 		vendorID,
@@ -9973,14 +9986,15 @@ const PlansView = ({
 		matchingPlans,
 		localISODate(),
 	).overdue;
+	const periodPlans = filterPurchasePlans(planSeries, {
+		query,
+		categoryID,
+		vendorID,
+		from: bounds.from,
+		to: bounds.to,
+	});
 	const filteredPlans = partitionOverduePurchasePlans(
-		filterPurchasePlans(plans, {
-			query,
-			categoryID,
-			vendorID,
-			from: bounds.from,
-			to: bounds.to,
-		}),
+		periodPlans,
 		localISODate(),
 	).current;
 	const dated = filteredPlans.filter((plan) => plan.due_date);
@@ -9988,13 +10002,24 @@ const PlansView = ({
 	const visibleItems = filteredPlans.flatMap((plan) =>
 		purchasePlanItems(plan).map((item, index) => ({ plan, item, index })),
 	);
-	const overdueItems = overduePlans.flatMap((plan) =>
-		purchasePlanItems(plan).map((item, index) => ({ plan, item, index })),
-	);
 	const activeFilterCount =
 		Number(Boolean(categoryID)) + Number(Boolean(vendorID));
-	const visibleTotal = [...overdueItems, ...visibleItems].reduce(
-		(sum, row) => sum + planDisplayMoney(row.plan, currency, row.item).amount,
+	const visibleTotal = periodPlans.reduce(
+		(sum, plan) =>
+			sum +
+			purchasePlanItems(plan).reduce(
+				(planSum, item) =>
+					planSum + planDisplayMoney(plan, currency, item).amount,
+				0,
+			) *
+				purchasePlanOccurrenceCount(plan, bounds.from, bounds.to),
+		0,
+	);
+	const visibleCount = periodPlans.reduce(
+		(sum, plan) =>
+			sum +
+			purchasePlanOccurrenceCount(plan, bounds.from, bounds.to) *
+				(groupByPlan ? 1 : purchasePlanItems(plan).length),
 		0,
 	);
 	const sourceButton = (plan: PurchasePlan) =>
@@ -10029,6 +10054,11 @@ const PlansView = ({
 		const dueToday = isPlanDueToday(plan.due_date);
 		const overdue = isPlanOverdue(plan.due_date);
 		const money = planDisplayMoney(plan, currency);
+		const occurrenceCount = Math.max(
+			1,
+			purchasePlanOccurrenceCount(plan, bounds.from, bounds.to),
+		);
+		const forecastAmount = money.amount * occurrenceCount;
 		return (
 			<div
 				className={`mini-plan-row${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
@@ -10068,6 +10098,7 @@ const PlansView = ({
 						<small className="mini-plan-recurrence">
 							<ArrowClockwise size={12} />
 							{planRecurrenceText(plan, language)}
+							{occurrenceCount > 1 ? ` · × ${occurrenceCount}` : ""}
 						</small>
 					)}
 					{authorLine(plan) && (
@@ -10078,7 +10109,17 @@ const PlansView = ({
 				</button>
 				<div className="mini-plan-actions">
 					{money.amount > 0 ? (
-						<strong>{formatMoney(money.amount, money.currency)}</strong>
+						<>
+							{occurrenceCount > 1 && (
+								<small>
+									{formatMoney(money.amount, money.currency)} ×{" "}
+									{occurrenceCount}
+								</small>
+							)}
+							<strong>
+								{formatMoney(forecastAmount, money.currency)}
+							</strong>
+						</>
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
 					)}
@@ -10115,6 +10156,11 @@ const PlansView = ({
 		const dueToday = isPlanDueToday(plan.due_date);
 		const overdue = isPlanOverdue(plan.due_date);
 		const money = planDisplayMoney(plan, currency, item);
+		const occurrenceCount = Math.max(
+			1,
+			purchasePlanOccurrenceCount(plan, bounds.from, bounds.to),
+		);
+		const forecastAmount = money.amount * occurrenceCount;
 		return (
 			<div
 				className={`mini-plan-row${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
@@ -10152,6 +10198,7 @@ const PlansView = ({
 						<small className="mini-plan-recurrence">
 							<ArrowClockwise size={12} />
 							{planRecurrenceText(plan, language)}
+							{occurrenceCount > 1 ? ` · × ${occurrenceCount}` : ""}
 						</small>
 					)}
 					{authorLine(plan) && (
@@ -10162,7 +10209,17 @@ const PlansView = ({
 				</button>
 				<div className="mini-plan-actions">
 					{money.amount > 0 ? (
-						<strong>{formatMoney(money.amount, money.currency)}</strong>
+						<>
+							{occurrenceCount > 1 && (
+								<small>
+									{formatMoney(money.amount, money.currency)} ×{" "}
+									{occurrenceCount}
+								</small>
+							)}
+							<strong>
+								{formatMoney(forecastAmount, money.currency)}
+							</strong>
+						</>
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
 					)}
@@ -10234,9 +10291,7 @@ const PlansView = ({
 					<div>
 						<small>{uiText(language, "found")}</small>
 						<span>
-							{groupByPlan
-								? overduePlans.length + filteredPlans.length
-								: overdueItems.length + visibleItems.length}{" "}
+							{visibleCount}{" "}
 							·{" "}
 							{uiText(
 								language,
