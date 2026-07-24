@@ -92,7 +92,10 @@ import {
 	moneyAmountsMatch,
 	spaceReportingCurrency,
 } from "./money";
-import { newestUnseenNotification } from "./notification-inbox";
+import {
+	isNotificationPushMessage,
+	newestUnseenNotification,
+} from "./notification-inbox";
 import {
 	type HomeCategoryRow,
 	expensesForMonth,
@@ -2673,19 +2676,48 @@ export const MiniApp = () => {
 	}, [token]);
 
 	useEffect(() => {
+		if (!token || previewMode || !webPushSupported()) return;
+		let cancelled = false;
+		void currentWebPushSubscription()
+			.then(async (subscription) => {
+				if (!subscription) return;
+				await apiRequest("/me/push-subscriptions", token, {
+					method: "POST",
+					body: JSON.stringify(subscription.toJSON()),
+				});
+				if (cancelled) return;
+				setNotificationChannelSettings((current) => ({
+					...current,
+					pushAvailable: true,
+					pushEnabled: true,
+					pushOnThisDevice: true,
+				}));
+			})
+			.catch(() => undefined);
+		return () => {
+			cancelled = true;
+		};
+	}, [token]);
+
+	useEffect(() => {
 		if (!token || previewMode) return;
 		void refreshNotifications();
 		const refreshWhenVisible = () => {
 			if (document.visibilityState === "visible") void refreshNotifications();
+		};
+		const refreshFromPush = (event: MessageEvent) => {
+			if (isNotificationPushMessage(event.data)) void refreshNotifications();
 		};
 		const timer = window.setInterval(
 			() => void refreshNotifications(),
 			pendingCaptures.length ? 3_000 : 60_000,
 		);
 		document.addEventListener("visibilitychange", refreshWhenVisible);
+		navigator.serviceWorker?.addEventListener("message", refreshFromPush);
 		return () => {
 			window.clearInterval(timer);
 			document.removeEventListener("visibilitychange", refreshWhenVisible);
+			navigator.serviceWorker?.removeEventListener("message", refreshFromPush);
 		};
 	}, [token, pendingCaptures.length, language]);
 

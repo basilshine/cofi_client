@@ -59,6 +59,7 @@ self.addEventListener("push", (event) => {
 				data: { url },
 			}),
 			setBadge(Number(payload.unread_count || 0)),
+			notifyOpenClients(notificationID),
 		]),
 	);
 });
@@ -99,5 +100,18 @@ const setBadge = async (count) => {
 		}
 	} catch {
 		// App badges are optional.
+	}
+};
+
+const notifyOpenClients = async (notificationID) => {
+	const clients = await self.clients.matchAll({
+		type: "window",
+		includeUncontrolled: true,
+	});
+	for (const client of clients) {
+		client.postMessage({
+			type: "pnz:notification",
+			notification_id: notificationID,
+		});
 	}
 };
