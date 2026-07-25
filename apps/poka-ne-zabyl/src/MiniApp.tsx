@@ -57,7 +57,11 @@ import {
 	avatarFileFromCanvas,
 } from "./avatar-crop";
 import { browserAuthCopy } from "./browser-auth-copy";
-import { captureSourceKind } from "./capture-source";
+import {
+	captureSourceKind,
+	shouldAutoOpenFirstReview,
+	shouldGuideFirstCapture,
+} from "./capture-source";
 import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
 import { groupRowsByExpense } from "./expense-groups";
 import {
@@ -74,7 +78,11 @@ import {
 	tagsAfterNotesEdit,
 } from "./hashtags";
 import { legalPagePath, preferredLandingLocale } from "./landing-locale";
-import { reachMetrikaGoal, trackFirstExpenseGoal } from "./metrika";
+import {
+	reachMetrikaGoal,
+	trackFirstCaptureGoal,
+	trackFirstExpenseGoal,
+} from "./metrika";
 import {
 	type UILanguage,
 	languageOptions,
@@ -94,8 +102,8 @@ import {
 	formatMoney,
 	itemAmountInCurrency,
 	itemDisplayMoney,
-	moneyAmountsMatch,
 	profileReportingCurrency,
+	reviewReadySummary,
 } from "./money";
 import {
 	isNotificationPushMessage,
@@ -172,6 +180,8 @@ declare global {
 type CaptureMode = "choose" | "text" | "voice" | "photo";
 type ExpenseSection = "history" | "plans" | "splits";
 type TransferOperation = "move" | "clone";
+type ReviewPresentation = "ready" | "editor";
+type ReviewCompletionBehavior = "open" | "background";
 type Space = {
 	id: number;
 	tenant_id: number;
@@ -1618,6 +1628,10 @@ export const MiniApp = () => {
 	const [seenCoachmarks, setSeenCoachmarks] = useState<CoachmarkID[]>([]);
 	const [coachmarksReady, setCoachmarksReady] = useState(false);
 	const [largeText, setLargeText] = useState(false);
+	const [reviewPresentation, setReviewPresentation] =
+		useState<ReviewPresentation>("ready");
+	const [reviewCompletionBehavior, setReviewCompletionBehavior] =
+		useState<ReviewCompletionBehavior>("open");
 	const [selectedNotification, setSelectedNotification] =
 		useState<AppNotification | null>(null);
 	const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -1679,10 +1693,36 @@ export const MiniApp = () => {
 			setLargeText(false);
 		}
 	}, []);
+	useEffect(() => {
+		try {
+			if (window.localStorage.getItem("pnz:review-presentation") === "editor")
+				setReviewPresentation("editor");
+			if (window.localStorage.getItem("pnz:review-completion") === "background")
+				setReviewCompletionBehavior("background");
+		} catch {
+			// Defaults keep the current production flow.
+		}
+	}, []);
 	const updateLargeText = (enabled: boolean) => {
 		setLargeText(enabled);
 		try {
 			window.localStorage.setItem("pnz:large-text", String(enabled));
+		} catch {
+			// The setting still applies until the page closes.
+		}
+	};
+	const updateReviewPresentation = (value: ReviewPresentation) => {
+		setReviewPresentation(value);
+		try {
+			window.localStorage.setItem("pnz:review-presentation", value);
+		} catch {
+			// The setting still applies until the page closes.
+		}
+	};
+	const updateReviewCompletionBehavior = (value: ReviewCompletionBehavior) => {
+		setReviewCompletionBehavior(value);
+		try {
+			window.localStorage.setItem("pnz:review-completion", value);
 		} catch {
 			// The setting still applies until the page closes.
 		}
@@ -1772,13 +1812,22 @@ export const MiniApp = () => {
 	const [captureSubmitting, setCaptureSubmitting] = useState(false);
 	const [pendingCaptures, setPendingCaptures] = useState<PendingCapture[]>([]);
 	const pendingCapture = pendingCaptures[0] || null;
+	const [guidedCaptureSourceID, setGuidedCaptureSourceID] = useState(0);
+	const [guidedCaptureExpanded, setGuidedCaptureExpanded] = useState(false);
+	const [guidedReviewCandidateID, setGuidedReviewCandidateID] = useState(0);
 	const [dismissedCaptureSourceID, setDismissedCaptureSourceID] = useState(0);
 	const [captureFailure, setCaptureFailure] = useState("");
 	const [captureFailurePurpose, setCaptureFailurePurpose] =
 		useState<CapturePurpose>("expense");
 	const [reviewDraft, setReviewDraft] = useState<ReviewDraft | null>(null);
+	const [reviewSpaceID, setReviewSpaceID] = useState(0);
+	const [reviewEditing, setReviewEditing] = useState(false);
+	const [reviewDirty, setReviewDirty] = useState(false);
+	const [reviewLeavePromptOpen, setReviewLeavePromptOpen] = useState(false);
+	const reviewSaving = useRef(false);
 	const [openingReview, setOpeningReview] = useState(false);
 	const [reviewMediaURL, setReviewMediaURL] = useState("");
+	const reviewMediaSourceID = useRef(0);
 	const [savedReviewExpense, setSavedReviewExpense] = useState<Expense | null>(
 		null,
 	);
@@ -1837,10 +1886,7 @@ export const MiniApp = () => {
 				? "low"
 				: null;
 	const hasCaptureStatus = Boolean(
-		captureSubmitting ||
-			pendingCapture ||
-			captureFailure ||
-			(showReadyCandidate && view !== "overview"),
+		captureSubmitting || pendingCapture || captureFailure || showReadyCandidate,
 	);
 	const subscriptionExpired = isSubscriptionExpired(
 		accountQuota?.plan_expires_at,
@@ -3406,26 +3452,37 @@ export const MiniApp = () => {
 		)
 			throw new Error("Этот расход уже сохранён или больше недоступен");
 		setReviewDraft(reviewDraftFromCandidate(candidate, response.candidates));
-		const packets = await apiRequest<{ captures: CapturePacket[] }>(
-			`/spaces/${reviewSpaceID}/captures?limit=1&source_document_id=${candidate.source_document_id}`,
-			authToken,
-			{ signal },
-		);
-		const mediaID = packets.captures[0]?.media_object_id;
-		if (!mediaID) return;
-		const media = await fetch(`/api/v1/media/${mediaID}`, {
-			signal,
-			headers: { Authorization: `Bearer ${authToken}` },
-		});
-		if (!media.ok) return;
-		const blob = await media.blob();
-		if (blob.type.startsWith("image/"))
-			setReviewMediaURL(URL.createObjectURL(blob));
+		reviewMediaSourceID.current = candidate.source_document_id;
+		void (async () => {
+			try {
+				const packets = await apiRequest<{ captures: CapturePacket[] }>(
+					`/spaces/${reviewSpaceID}/captures?limit=1&source_document_id=${candidate.source_document_id}`,
+					authToken,
+					{ signal },
+				);
+				const mediaID = packets.captures[0]?.media_object_id;
+				if (!mediaID) return;
+				const media = await fetch(`/api/v1/media/${mediaID}`, {
+					signal,
+					headers: { Authorization: `Bearer ${authToken}` },
+				});
+				if (!media.ok) return;
+				const blob = await media.blob();
+				if (
+					!signal?.aborted &&
+					reviewMediaSourceID.current === candidate.source_document_id &&
+					blob.type.startsWith("image/")
+				)
+					setReviewMediaURL(URL.createObjectURL(blob));
+			} catch {
+				// The recognized result remains usable when its optional source fails.
+			}
+		})();
 	};
 
 	const openReviewCandidate = async (
 		candidate: ReviewCandidate,
-		reviewSpaceID = spaceID,
+		targetSpaceID = spaceID,
 	) => {
 		if (!token) return;
 		if (candidate.status !== "pending_review") {
@@ -3439,7 +3496,7 @@ export const MiniApp = () => {
 		if (candidate.candidate_type === "purchase_plan_candidate") {
 			const data = candidate.structured_data || {};
 			const reviewSpace =
-				spaces.find((item) => item.id === reviewSpaceID) || activeSpace;
+				spaces.find((item) => item.id === targetSpaceID) || activeSpace;
 			const categoryKey = readString(data, "category_key", "category");
 			const category = categories.find((item) => item.key === categoryKey);
 			const recognizedItems = Array.isArray(data.items)
@@ -3481,7 +3538,7 @@ export const MiniApp = () => {
 			setEditingPlan({
 				id: 0,
 				tenant_id: reviewSpace?.tenant_id || 0,
-				space_id: reviewSpaceID,
+				space_id: targetSpaceID,
 				created_by_user_id: user?.id || 0,
 				title: fallbackTitle,
 				expected_amount:
@@ -3525,6 +3582,11 @@ export const MiniApp = () => {
 		blockingRequest.current?.abort();
 		blockingRequest.current = controller;
 		reviewReturnView.current = previousView;
+		setReviewSpaceID(targetSpaceID);
+		setReviewEditing(false);
+		setReviewDirty(false);
+		setReviewLeavePromptOpen(false);
+		reviewMediaSourceID.current = candidate.source_document_id;
 		setDismissedCaptureSourceID(candidate.source_document_id);
 		setOpeningReview(true);
 		setSaving(true);
@@ -3539,7 +3601,7 @@ export const MiniApp = () => {
 			} else {
 				await loadReview(
 					token,
-					reviewSpaceID,
+					targetSpaceID,
 					candidate.id,
 					candidate.source_document_id,
 					controller.signal,
@@ -3562,7 +3624,14 @@ export const MiniApp = () => {
 	};
 
 	const openReadyCandidate = () => {
-		if (readyCandidate) void openReviewCandidate(readyCandidate);
+		if (!readyCandidate) return;
+		if (readyCandidate.id === guidedReviewCandidateID)
+			trackFirstCaptureGoal(
+				"first_review_opened",
+				user?.id,
+				readyCandidate.source_document_id,
+			);
+		void openReviewCandidate(readyCandidate);
 	};
 
 	const deleteReadyCandidate = async () => {
@@ -3614,6 +3683,12 @@ export const MiniApp = () => {
 
 	const submitCapture = async (submission: CaptureSubmission) => {
 		const purpose = capturePurpose;
+		const guideFirstCapture = shouldGuideFirstCapture(
+			purpose,
+			captures.length,
+			reviewCandidates.length,
+			pendingCaptures.length,
+		);
 		setCaptureSubmitting(true);
 		setCaptureError("");
 		setCaptureFailure("");
@@ -3672,6 +3747,15 @@ export const MiniApp = () => {
 			if (!captured.source_document_id)
 				throw new Error("Сервер не подтвердил загрузку расхода");
 			const sourceDocumentID = captured.source_document_id;
+			if (guideFirstCapture) {
+				setGuidedCaptureSourceID(sourceDocumentID);
+				setGuidedCaptureExpanded(true);
+				trackFirstCaptureGoal(
+					"first_capture_submitted",
+					user?.id,
+					sourceDocumentID,
+				);
+			}
 			setPendingCaptures((current) => [
 				...current,
 				{
@@ -3742,6 +3826,10 @@ export const MiniApp = () => {
 				if (cancelled) return;
 				const packet = packets.captures[0];
 				if (packet?.processing_status === "failed") {
+					if (pending.sourceDocumentID === guidedCaptureSourceID) {
+						setGuidedCaptureSourceID(0);
+						setGuidedCaptureExpanded(false);
+					}
 					setCaptureFailurePurpose(pending.purpose);
 					setPendingCaptures((current) =>
 						current.filter(
@@ -3784,6 +3872,10 @@ export const MiniApp = () => {
 						(item) => item.candidate_type === candidateType,
 					);
 					if (!candidate) {
+						if (pending.sourceDocumentID === guidedCaptureSourceID) {
+							setGuidedCaptureSourceID(0);
+							setGuidedCaptureExpanded(false);
+						}
 						setCaptureFailurePurpose(pending.purpose);
 						setPendingCaptures((current) =>
 							current.filter(
@@ -3821,6 +3913,30 @@ export const MiniApp = () => {
 							(item) => item.sourceDocumentID !== pending.sourceDocumentID,
 						),
 					);
+					if (pending.sourceDocumentID === guidedCaptureSourceID) {
+						setGuidedReviewCandidateID(candidate.id);
+						setGuidedCaptureSourceID(0);
+						trackFirstCaptureGoal(
+							"first_capture_ready",
+							user?.id,
+							pending.sourceDocumentID,
+						);
+						if (
+							shouldAutoOpenFirstReview(
+								guidedCaptureExpanded,
+								pending.spaceID === spaceID,
+								reviewCompletionBehavior,
+							)
+						) {
+							trackFirstCaptureGoal(
+								"first_review_opened",
+								user?.id,
+								pending.sourceDocumentID,
+							);
+							void openReviewCandidate(candidate, pending.spaceID);
+						}
+						setGuidedCaptureExpanded(false);
+					}
 					void refreshNotifications();
 					if (pending.spaceID === spaceID)
 						void apiRequest<Quota>(`/quota?space_id=${pending.spaceID}`, token)
@@ -3852,6 +3968,9 @@ export const MiniApp = () => {
 		token,
 		pendingCaptures.map((pending) => pending.sourceDocumentID).join(","),
 		spaceID,
+		guidedCaptureSourceID,
+		guidedCaptureExpanded,
+		reviewCompletionBehavior,
 	]);
 
 	useEffect(() => {
@@ -3965,6 +4084,12 @@ export const MiniApp = () => {
 	}, [token, captures, captureSubmitting, spaceID]);
 
 	const closeReview = () => {
+		setGuidedReviewCandidateID(0);
+		setReviewSpaceID(0);
+		setReviewEditing(false);
+		setReviewDirty(false);
+		setReviewLeavePromptOpen(false);
+		reviewMediaSourceID.current = 0;
 		setReviewDraft(null);
 		setSavedReviewExpense(null);
 		setReviewMediaURL("");
@@ -3975,6 +4100,40 @@ export const MiniApp = () => {
 		}
 		setView(reviewReturnView.current);
 		void loadSpace();
+	};
+
+	const leaveReview = () => {
+		if (
+			reviewDraft &&
+			reviewDraft.candidateID === guidedReviewCandidateID &&
+			!savedReviewExpense
+		) {
+			trackFirstCaptureGoal(
+				"first_review_closed_unsaved",
+				user?.id,
+				reviewDraft.sourceDocumentID,
+			);
+			setDismissedCaptureSourceID(0);
+		}
+		closeReview();
+	};
+
+	const requestCloseReview = () => {
+		if (reviewDirty) {
+			setReviewLeavePromptOpen(true);
+			return;
+		}
+		leaveReview();
+	};
+
+	const editReview = () => {
+		if (reviewDraft && reviewDraft.candidateID === guidedReviewCandidateID)
+			trackFirstCaptureGoal(
+				"first_review_edit_opened",
+				user?.id,
+				reviewDraft.sourceDocumentID,
+			);
+		setReviewEditing(true);
 	};
 
 	const openSourceDocument = async (
@@ -4089,7 +4248,9 @@ export const MiniApp = () => {
 	);
 
 	const saveReview = async () => {
-		if (!reviewDraft) return;
+		if (!reviewDraft || reviewSaving.current) return;
+		const targetSpaceID = reviewSpaceID || spaceID;
+		reviewSaving.current = true;
 		setSaving(true);
 		setError("");
 		try {
@@ -4120,29 +4281,32 @@ export const MiniApp = () => {
 				expense: Expense;
 				budget_warnings?: BudgetWarning[];
 			}>(
-				`/spaces/${spaceID}/review/candidates/${reviewDraft.candidateID}/create-expense`,
+				`/spaces/${targetSpaceID}/review/candidates/${reviewDraft.candidateID}/create-expense`,
 				token,
 				{ method: "POST", body: JSON.stringify(payload) },
 			);
 			setSavedReviewExpense(result.expense);
 			trackFirstExpenseGoal(user?.id, expenses.length);
-			setExpenses((current) => [
-				result.expense,
-				...current.filter((expense) => expense.id !== result.expense.id),
-			]);
+			if (targetSpaceID === spaceID)
+				setExpenses((current) => [
+					result.expense,
+					...current.filter((expense) => expense.id !== result.expense.id),
+				]);
 			setReviewCandidates((current) =>
 				current.filter((candidate) => candidate.id !== reviewDraft.candidateID),
 			);
 			void apiRequest<{ categories: Category[] }>(
-				`/spaces/${spaceID}/categories?currency=${encodeURIComponent(reportingCurrency)}`,
+				`/spaces/${targetSpaceID}/categories?currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
 			)
 				.then((data) => {
-					setCategories(data.categories || []);
-					setCategorySpaceID(spaceID);
+					if (targetSpaceID === spaceID) {
+						setCategories(data.categories || []);
+						setCategorySpaceID(targetSpaceID);
+					}
 				})
 				.catch(() => undefined);
-			void loadSpace(true);
+			if (targetSpaceID === spaceID) void loadSpace(true);
 			if (result.budget_warnings?.[0]) {
 				setNotice(budgetWarningText(result.budget_warnings[0]));
 			}
@@ -4152,6 +4316,7 @@ export const MiniApp = () => {
 				err instanceof Error ? err.message : "Не удалось сохранить расход",
 			);
 		} finally {
+			reviewSaving.current = false;
 			setSaving(false);
 		}
 	};
@@ -4160,13 +4325,14 @@ export const MiniApp = () => {
 		if (!reviewDraft || saving) return;
 		if (!window.confirm("Удалить этот распознанный расход?")) return;
 		const sourceDocumentID = reviewDraft.sourceDocumentID;
+		const targetSpaceID = reviewSpaceID || spaceID;
 		setDeletingReview(true);
 		setSaving(true);
 		setError("");
 		try {
 			if (!previewMode) {
 				await apiRequest(
-					`/spaces/${spaceID}/review/captures/${sourceDocumentID}`,
+					`/spaces/${targetSpaceID}/review/captures/${sourceDocumentID}`,
 					token,
 					{ method: "DELETE" },
 				);
@@ -6388,9 +6554,11 @@ export const MiniApp = () => {
 					<ReviewSaved
 						expense={savedReviewExpense}
 						language={language}
+						guided={reviewDraft?.candidateID === guidedReviewCandidateID}
 						onClose={closeReview}
 					/>
-				) : reviewDraft ? (
+				) : reviewDraft &&
+					(reviewEditing || reviewPresentation === "editor") ? (
 					<ReviewEditor
 						draft={reviewDraft}
 						language={language}
@@ -6401,13 +6569,46 @@ export const MiniApp = () => {
 						saving={saving}
 						deleting={deletingReview}
 						error={error}
-						onChange={setReviewDraft}
+						onChange={(draft) => {
+							setReviewDraft(draft);
+							setReviewDirty(true);
+						}}
 						onSave={saveReview}
 						onDelete={deleteReview}
-						onClose={closeReview}
+						onClose={() =>
+							reviewPresentation === "editor"
+								? requestCloseReview()
+								: setReviewEditing(false)
+						}
+					/>
+				) : reviewDraft ? (
+					<ReviewReady
+						draft={reviewDraft}
+						language={language}
+						guided={reviewDraft.candidateID === guidedReviewCandidateID}
+						spaceName={
+							spaces.find((space) => space.id === (reviewSpaceID || spaceID))
+								?.name || activeSpace?.name
+						}
+						mediaURL={reviewMediaURL}
+						categories={categories}
+						saving={saving}
+						deleting={deletingReview}
+						error={error}
+						onConfirm={saveReview}
+						onEdit={editReview}
+						onDelete={deleteReview}
+						onClose={requestCloseReview}
 					/>
 				) : (
 					<TelegramEntry error={error || "Кандидат не найден"} />
+				)}
+				{reviewLeavePromptOpen && (
+					<ReviewLeaveDialog
+						language={language}
+						onContinue={() => setReviewLeavePromptOpen(false)}
+						onLeave={leaveReview}
+					/>
 				)}
 			</div>
 		);
@@ -6936,6 +7137,8 @@ export const MiniApp = () => {
 								avatarSaving={profileAvatarSaving}
 								language={language}
 								largeText={largeText}
+								reviewPresentation={reviewPresentation}
+								reviewCompletionBehavior={reviewCompletionBehavior}
 								quota={accountQuota}
 								developerDashboard={developerDashboard}
 								developerDashboardLoading={developerDashboardLoading}
@@ -6963,6 +7166,8 @@ export const MiniApp = () => {
 									void openNotificationSettings();
 								}}
 								onLargeText={updateLargeText}
+								onReviewPresentation={updateReviewPresentation}
+								onReviewCompletionBehavior={updateReviewCompletionBehavior}
 								onDevUpdate={(patch) => void updateDeveloperQuota(patch)}
 								onRefreshDeveloperDashboard={() =>
 									void refreshDeveloperDashboard()
@@ -7003,6 +7208,13 @@ export const MiniApp = () => {
 				)}
 			</main>
 
+			{guidedCaptureSourceID > 0 && guidedCaptureExpanded && (
+				<FirstCaptureProgress
+					language={language}
+					onMinimize={() => setGuidedCaptureExpanded(false)}
+				/>
+			)}
+
 			{showCaptureStatus && (
 				<div
 					className={`capture-status${captureFailure ? " is-error" : showReadyCandidate && !captureSubmitting && !pendingCapture ? " is-success" : " is-processing"}`}
@@ -7024,8 +7236,8 @@ export const MiniApp = () => {
 									: "Расход не разобран"
 								: showReadyCandidate && !captureSubmitting && !pendingCapture
 									? readyCandidate?.candidate_type === "purchase_plan_candidate"
-										? "План готов"
-										: "Расход готов"
+										? uiText(language, "captureReadyPlan")
+										: uiText(language, "captureReadyExpense")
 									: captureSubmitting
 										? capturePurpose === "purchase_plan"
 											? "Отправляем план…"
@@ -7040,7 +7252,7 @@ export const MiniApp = () => {
 							{captureFailure
 								? captureFailure
 								: showReadyCandidate && !captureSubmitting && !pendingCapture
-									? "Проверьте распознанные данные"
+									? uiText(language, "captureReadyBody")
 									: pendingCaptures.length > 1
 										? "Можно отправлять следующие расходы и планы"
 										: "Можно продолжать пользоваться приложением"}
@@ -7511,9 +7723,7 @@ export const MiniApp = () => {
 					}}
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() => void deletePlan(recordDetail.plan)}
-					onDeleteSeries={() =>
-						void deletePlan(recordDetail.plan, "series")
-					}
+					onDeleteSeries={() => void deletePlan(recordDetail.plan, "series")}
 					onMove={(targetSpaceID, operation) =>
 						void movePlan(targetSpaceID, recordDetail.plan, null, operation)
 					}
@@ -7558,9 +7768,7 @@ export const MiniApp = () => {
 					onDelete={() =>
 						void deletePlanItem(recordDetail.plan, recordDetail.itemIndex)
 					}
-					onDeleteSeries={() =>
-						void deletePlan(recordDetail.plan, "series")
-					}
+					onDeleteSeries={() => void deletePlan(recordDetail.plan, "series")}
 					onMove={(targetSpaceID, operation) =>
 						void movePlan(
 							targetSpaceID,
@@ -8297,6 +8505,306 @@ const HashtagNotesInput = ({
 	);
 };
 
+const FirstCaptureProgress = ({
+	language,
+	onMinimize,
+}: {
+	language: UILanguage;
+	onMinimize: () => void;
+}) => (
+	<div className="first-capture-progress" role="status" aria-live="polite">
+		<div className="first-capture-progress-mark">
+			<KnotLoader />
+		</div>
+		<span>{uiText(language, "firstCaptureStep")}</span>
+		<h1>{uiText(language, "firstCaptureProcessingTitle")}</h1>
+		<p>{uiText(language, "firstCaptureProcessingBody")}</p>
+		<button type="button" onClick={onMinimize}>
+			{uiText(language, "firstCaptureMinimize")}
+		</button>
+	</div>
+);
+
+const ReviewLeaveDialog = ({
+	language,
+	onContinue,
+	onLeave,
+}: {
+	language: UILanguage;
+	onContinue: () => void;
+	onLeave: () => void;
+}) => (
+	<div className="review-leave-backdrop" role="presentation">
+		<section
+			className="review-leave-dialog"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="review-leave-title"
+		>
+			<h2 id="review-leave-title">
+				{uiText(language, "reviewUnsavedChangesTitle")}
+			</h2>
+			<p>{uiText(language, "reviewUnsavedChangesBody")}</p>
+			<button type="button" onClick={onContinue}>
+				{uiText(language, "firstReviewContinue")}
+			</button>
+			<button className="is-secondary" type="button" onClick={onLeave}>
+				{uiText(language, "firstReviewLeave")}
+			</button>
+		</section>
+	</div>
+);
+
+const ReviewReady = ({
+	draft,
+	language,
+	guided,
+	spaceName,
+	mediaURL,
+	categories,
+	saving,
+	deleting,
+	error,
+	onConfirm,
+	onEdit,
+	onDelete,
+	onClose,
+}: {
+	draft: ReviewDraft;
+	language: UILanguage;
+	guided: boolean;
+	spaceName?: string;
+	mediaURL: string;
+	categories: Category[];
+	saving: boolean;
+	deleting: boolean;
+	error: string;
+	onConfirm: () => void;
+	onEdit: () => void;
+	onDelete: () => void;
+	onClose: () => void;
+}) => {
+	const { total, incompleteItems, totalMatches } = reviewReadySummary(
+		draft.items,
+		draft.receiptTotal,
+	);
+	const estimatedItemPhoto = [
+		"item_photo",
+		"object_photo",
+		"product_photo",
+	].includes(draft.imageType.toLowerCase());
+	const invalid =
+		!draft.title.trim() || draft.items.length === 0 || incompleteItems > 0;
+	const [mismatchPromptOpen, setMismatchPromptOpen] = useState(false);
+	const seller =
+		commonVendorName(draft.items.map((item) => item.vendor_name)) ||
+		draft.payeeText;
+	const confirm = () => {
+		if (!estimatedItemPhoto && totalMatches === false) {
+			setMismatchPromptOpen(true);
+			return;
+		}
+		onConfirm();
+	};
+	return (
+		<main className="review-shell review-ready-shell">
+			<header className="review-topbar">
+				<button
+					type="button"
+					aria-label={uiText(language, "close")}
+					onClick={onClose}
+				>
+					<X size={22} />
+				</button>
+				<div>
+					<span>{uiText(language, "reviewNotSaved")}</span>
+					<b>{uiText(language, "reviewExpense")}</b>
+				</div>
+				<span className="review-currency">{draft.sourceCurrency}</span>
+			</header>
+
+			<section className="review-ready-status" aria-live="polite">
+				<span className={invalid ? "is-warning" : ""}>
+					{invalid ? "!" : <Check size={20} weight="bold" />}
+				</span>
+				<div>
+					{guided && <small>{uiText(language, "firstReviewStep")}</small>}
+					<strong>
+						{invalid
+							? uiText(language, "fillItems").replace(
+									"{count}",
+									String(incompleteItems),
+								)
+							: uiText(language, "firstReviewTitle")}
+					</strong>
+					<p>
+						{estimatedItemPhoto
+							? uiText(language, "priceEstimatedFromPhoto")
+							: totalMatches === false
+								? uiText(language, "totalMismatch")
+								: uiText(language, "reviewReadyBody")}
+					</p>
+				</div>
+			</section>
+
+			{mediaURL && (
+				<details className="review-source-details">
+					<summary>
+						<span>
+							<Receipt size={19} />
+							{uiText(
+								language,
+								estimatedItemPhoto ? "sourcePhoto" : "originalReceipt",
+							)}
+						</span>
+						<em>
+							{uiText(language, estimatedItemPhoto ? "compare" : "reconcile")}
+						</em>
+					</summary>
+					<figure className="review-source">
+						<img src={mediaURL} alt={uiText(language, "sourceReceipt")} />
+					</figure>
+				</details>
+			)}
+
+			<section className="review-ready-paper">
+				<header>
+					<div>
+						<span>{seller || uiText(language, "undetermined")}</span>
+						<h1>{draft.title}</h1>
+						<p>
+							{formatDate(draft.expenseDate, language)}
+							{spaceName ? ` · ${spaceName}` : ""}
+						</p>
+					</div>
+					<strong>{formatMoney(total, draft.sourceCurrency)}</strong>
+				</header>
+
+				<div className="review-ready-lines">
+					{draft.items.map((item, index) => {
+						const category = categories.find(
+							(current) => current.key === item.category_key,
+						);
+						return (
+							<article key={item.key}>
+								<span>{index + 1}</span>
+								<div>
+									<b>{item.name || uiText(language, "item")}</b>
+									<small>
+										{category
+											? localizedCategoryName(category, language)
+											: uiText(language, "categoryNotSet")}
+									</small>
+								</div>
+								<strong>
+									{item.amount > 0
+										? formatMoney(item.amount, draft.sourceCurrency)
+										: "—"}
+								</strong>
+							</article>
+						);
+					})}
+				</div>
+
+				<footer>
+					<span>
+						<small>{purchaseCountText(draft.items.length, language)}</small>
+						<b>{uiText(language, "total")}</b>
+					</span>
+					<strong>{formatMoney(total, draft.sourceCurrency)}</strong>
+				</footer>
+
+				<button
+					className="review-ready-delete"
+					type="button"
+					disabled={saving}
+					onClick={onDelete}
+				>
+					<Trash size={17} />
+					{uiText(language, deleting ? "deleting" : "deleteRecognizedExpense")}
+				</button>
+				{error && (
+					<div className="mini-alert" role="alert">
+						{error}
+						<small>{uiText(language, "reviewSaveErrorSafe")}</small>
+					</div>
+				)}
+			</section>
+
+			<footer className="review-ready-actions">
+				<button
+					type="button"
+					disabled={saving}
+					onClick={invalid ? onEdit : confirm}
+				>
+					{invalid ? (
+						<PencilSimple size={19} weight="bold" />
+					) : (
+						<Check size={19} weight="bold" />
+					)}
+					{uiText(
+						language,
+						saving ? "saving" : invalid ? "reviewFixData" : "reviewConfirm",
+					)}
+				</button>
+				{!invalid && (
+					<button
+						className="is-secondary"
+						type="button"
+						disabled={saving}
+						onClick={onEdit}
+					>
+						<PencilSimple size={18} />
+						{uiText(language, "edit")}
+					</button>
+				)}
+			</footer>
+
+			{mismatchPromptOpen && (
+				<div className="review-leave-backdrop" role="presentation">
+					<section
+						className="review-leave-dialog"
+						role="alertdialog"
+						aria-modal="true"
+						aria-labelledby="review-mismatch-title"
+					>
+						<h2 id="review-mismatch-title">
+							{uiText(language, "reviewMismatchTitle")}
+						</h2>
+						<p>
+							{uiText(language, "receiptItemsAmounts")
+								.replace(
+									"{receipt}",
+									formatMoney(draft.receiptTotal || 0, draft.sourceCurrency),
+								)
+								.replace("{items}", formatMoney(total, draft.sourceCurrency))}
+						</p>
+						<button
+							type="button"
+							onClick={() => {
+								setMismatchPromptOpen(false);
+								onEdit();
+							}}
+						>
+							{uiText(language, "reviewMismatchEdit")}
+						</button>
+						<button
+							className="is-secondary"
+							type="button"
+							onClick={() => {
+								setMismatchPromptOpen(false);
+								onConfirm();
+							}}
+						>
+							{uiText(language, "reviewSaveAnyway")}
+						</button>
+					</section>
+				</div>
+			)}
+		</main>
+	);
+};
+
 const ReviewEditor = ({
 	draft,
 	language,
@@ -8326,7 +8834,10 @@ const ReviewEditor = ({
 	onDelete: () => void;
 	onClose: () => void;
 }) => {
-	const total = draft.items.reduce((sum, item) => sum + Number(item.amount), 0);
+	const { total, incompleteItems, totalMatches } = reviewReadySummary(
+		draft.items,
+		draft.receiptTotal,
+	);
 	const estimatedItemPhoto = [
 		"item_photo",
 		"object_photo",
@@ -8338,13 +8849,6 @@ const ReviewEditor = ({
 	const [showItemVendors, setShowItemVendors] = useState(
 		() => sharedVendorName === null,
 	);
-	const incompleteItems = draft.items.filter(
-		(item) => !item.name.trim() || item.amount <= 0,
-	).length;
-	const totalMatches =
-		draft.receiptTotal === null
-			? null
-			: moneyAmountsMatch(total, draft.receiptTotal);
 	const checkState =
 		incompleteItems > 0 || (!estimatedItemPhoto && totalMatches === false)
 			? "warning"
@@ -8693,10 +9197,12 @@ const ReviewEditor = ({
 const ReviewSaved = ({
 	expense,
 	language,
+	guided,
 	onClose,
 }: {
 	expense: Expense;
 	language: UILanguage;
+	guided: boolean;
 	onClose: () => void;
 }) => {
 	const items = Array.isArray(expense.items) ? expense.items : [];
@@ -8711,6 +9217,11 @@ const ReviewSaved = ({
 			</div>
 			<p>{uiText(language, "done")}</p>
 			<h1>{uiText(language, "expenseSaved")}</h1>
+			{guided && (
+				<small className="review-saved-guided">
+					{uiText(language, "firstExpenseSavedBody")}
+				</small>
+			)}
 			<article>
 				<header>
 					<span>{expenseSellerName(expense)}</span>
@@ -9377,8 +9888,7 @@ const ExpensesView = ({
 		Boolean(query.trim());
 	const loadedTotal = items.reduce(
 		(sum, row) =>
-			sum +
-			(itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
+			sum + (itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
 		0,
 	);
 	const summaryTotal = expenseSummaryTotal(
@@ -9651,9 +10161,7 @@ const ExpensesView = ({
 							</div>
 							<div>
 								<small>{uiText(language, "total")}</small>
-								<strong>
-									{formatMoney(summaryTotal, currency)}
-								</strong>
+								<strong>{formatMoney(summaryTotal, currency)}</strong>
 							</div>
 						</div>
 						<div className="mini-filter-bar">
@@ -10140,9 +10648,7 @@ const PlansView = ({
 									{occurrenceCount}
 								</small>
 							)}
-							<strong>
-								{formatMoney(forecastAmount, money.currency)}
-							</strong>
+							<strong>{formatMoney(forecastAmount, money.currency)}</strong>
 						</>
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
@@ -10240,9 +10746,7 @@ const PlansView = ({
 									{occurrenceCount}
 								</small>
 							)}
-							<strong>
-								{formatMoney(forecastAmount, money.currency)}
-							</strong>
+							<strong>{formatMoney(forecastAmount, money.currency)}</strong>
 						</>
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
@@ -10315,8 +10819,7 @@ const PlansView = ({
 					<div>
 						<small>{uiText(language, "found")}</small>
 						<span>
-							{visibleCount}{" "}
-							·{" "}
+							{visibleCount} ·{" "}
 							{uiText(
 								language,
 								groupByPlan ? "planListsView" : "planItemsView",
@@ -11721,6 +12224,8 @@ const ProfileView = ({
 	avatarSaving,
 	language,
 	largeText,
+	reviewPresentation,
+	reviewCompletionBehavior,
 	quota,
 	developerDashboard,
 	developerDashboardLoading,
@@ -11733,6 +12238,8 @@ const ProfileView = ({
 	onEdit,
 	onManageNotifications,
 	onLargeText,
+	onReviewPresentation,
+	onReviewCompletionBehavior,
 	onManageVendors,
 	onManageSpaces,
 	onLinkPhone,
@@ -11759,6 +12266,8 @@ const ProfileView = ({
 	avatarSaving: boolean;
 	language: UILanguage;
 	largeText: boolean;
+	reviewPresentation: ReviewPresentation;
+	reviewCompletionBehavior: ReviewCompletionBehavior;
 	quota: Quota | null;
 	developerDashboard: DeveloperDashboard | null;
 	developerDashboardLoading: boolean;
@@ -11771,6 +12280,8 @@ const ProfileView = ({
 	onEdit: () => void;
 	onManageNotifications: () => void;
 	onLargeText: (enabled: boolean) => void;
+	onReviewPresentation: (value: ReviewPresentation) => void;
+	onReviewCompletionBehavior: (value: ReviewCompletionBehavior) => void;
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
 	onLinkPhone: () => void;
@@ -11834,7 +12345,11 @@ const ProfileView = ({
 					dashboardLoading={developerDashboardLoading}
 					loading={billingLoading}
 					testModeEnabled={Boolean(quota.maintenance_enabled)}
+					reviewPresentation={reviewPresentation}
+					reviewCompletionBehavior={reviewCompletionBehavior}
 					onApply={onDevUpdate}
+					onReviewPresentation={onReviewPresentation}
+					onReviewCompletionBehavior={onReviewCompletionBehavior}
 					onRefresh={onRefreshDeveloperDashboard}
 					onResendIncompleteRegistration={onResendIncompleteRegistration}
 					registrationRecoverySendingID={registrationRecoverySendingID}
@@ -12620,7 +13135,11 @@ const BillingDeveloperTools = ({
 	dashboardLoading,
 	loading,
 	testModeEnabled,
+	reviewPresentation,
+	reviewCompletionBehavior,
 	onApply,
+	onReviewPresentation,
+	onReviewCompletionBehavior,
 	onRefresh,
 	onResendIncompleteRegistration,
 	registrationRecoverySendingID,
@@ -12633,7 +13152,11 @@ const BillingDeveloperTools = ({
 	dashboardLoading: boolean;
 	loading: boolean;
 	testModeEnabled: boolean;
+	reviewPresentation: ReviewPresentation;
+	reviewCompletionBehavior: ReviewCompletionBehavior;
 	onApply: (patch: DeveloperQuotaPatch) => void;
+	onReviewPresentation: (value: ReviewPresentation) => void;
+	onReviewCompletionBehavior: (value: ReviewCompletionBehavior) => void;
 	onRefresh: () => void;
 	onResendIncompleteRegistration: (challengeID: number) => void;
 	registrationRecoverySendingID: number;
@@ -12655,6 +13178,69 @@ const BillingDeveloperTools = ({
 			<CaretDown size={18} weight="bold" />
 		</summary>
 		<div className="mini-dev-content">
+			<details className="mini-dev-panel" open>
+				<summary>
+					<span>
+						<b>Сценарий разбора</b>
+						<small>Локальный режим только для вашего устройства</small>
+					</span>
+					<CaretDown size={17} weight="bold" />
+				</summary>
+				<div className="mini-dev-panel-body mini-dev-review-settings">
+					<div>
+						<span>
+							<strong>Экран после разбора</strong>
+							<small>Сравните новый готовый чек с прежней формой</small>
+						</span>
+						<div className="mini-dev-mode-control" role="group">
+							<button
+								className={reviewPresentation === "ready" ? "is-active" : ""}
+								type="button"
+								aria-pressed={reviewPresentation === "ready"}
+								onClick={() => onReviewPresentation("ready")}
+							>
+								Готовый чек
+							</button>
+							<button
+								className={reviewPresentation === "editor" ? "is-active" : ""}
+								type="button"
+								aria-pressed={reviewPresentation === "editor"}
+								onClick={() => onReviewPresentation("editor")}
+							>
+								Форма сразу
+							</button>
+						</div>
+					</div>
+					<div>
+						<span>
+							<strong>Когда результат готов</strong>
+							<small>Автооткрытие действует только для первого разбора</small>
+						</span>
+						<div className="mini-dev-mode-control" role="group">
+							<button
+								className={
+									reviewCompletionBehavior === "open" ? "is-active" : ""
+								}
+								type="button"
+								aria-pressed={reviewCompletionBehavior === "open"}
+								onClick={() => onReviewCompletionBehavior("open")}
+							>
+								Открыть сразу
+							</button>
+							<button
+								className={
+									reviewCompletionBehavior === "background" ? "is-active" : ""
+								}
+								type="button"
+								aria-pressed={reviewCompletionBehavior === "background"}
+								onClick={() => onReviewCompletionBehavior("background")}
+							>
+								Оставить в фоне
+							</button>
+						</div>
+					</div>
+				</div>
+			</details>
 			<div className="mini-dev-section-head">
 				<div>
 					<strong>Сводка продукта</strong>

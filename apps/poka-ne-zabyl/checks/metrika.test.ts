@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { initializeMetrika, trackFirstExpenseGoal } from "../src/metrika.ts";
+import {
+	initializeMetrika,
+	trackFirstCaptureGoal,
+	trackFirstExpenseGoal,
+} from "../src/metrika.ts";
 
 test("initializes the counter on application-only pages", () => {
 	const scripts: Array<{ async?: boolean; src: string }> = [];
@@ -45,6 +49,8 @@ test("tracks the first expense once per user", () => {
 	assert.equal(trackFirstExpenseGoal(7, 0), true);
 	assert.equal(trackFirstExpenseGoal(7, 0), false);
 	assert.equal(trackFirstExpenseGoal(8, 1), false);
-	assert.deepEqual(goals, ["first_expense"]);
+	assert.equal(trackFirstCaptureGoal("first_capture_ready", 7, 42), true);
+	assert.equal(trackFirstCaptureGoal("first_capture_ready", 7, 42), false);
+	assert.deepEqual(goals, ["first_expense", "first_capture_ready"]);
 	Reflect.deleteProperty(globalThis, "window");
 });

@@ -18,3 +18,20 @@ export const captureSourceKind = (
 	if (/voice|audio/.test(value)) return "voice";
 	return "text";
 };
+
+export const shouldGuideFirstCapture = (
+	purpose: "expense" | "purchase_plan",
+	captureCount: number,
+	candidateCount: number,
+	pendingCount: number,
+) =>
+	purpose === "expense" &&
+	captureCount === 0 &&
+	candidateCount === 0 &&
+	pendingCount === 0;
+
+export const shouldAutoOpenFirstReview = (
+	expanded: boolean,
+	sameSpace: boolean,
+	behavior: "open" | "background",
+) => expanded && sameSpace && behavior === "open";

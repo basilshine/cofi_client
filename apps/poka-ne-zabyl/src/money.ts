@@ -37,6 +37,22 @@ export const formatMoney = (amount: number, currency: string) =>
 export const moneyAmountsMatch = (left: number, right: number) =>
 	Math.round(left * 100) === Math.round(right * 100);
 
+export const reviewReadySummary = (
+	items: { name: string; amount: number }[],
+	receiptTotal: number | null,
+) => {
+	const total = items.reduce((sum, item) => sum + Number(item.amount), 0);
+	const incompleteItems = items.filter(
+		(item) => !item.name.trim() || item.amount <= 0,
+	).length;
+	return {
+		total,
+		incompleteItems,
+		totalMatches:
+			receiptTotal === null ? null : moneyAmountsMatch(total, receiptTotal),
+	};
+};
+
 const sourceTotal = (expense: MoneyExpense) =>
 	expense.items.length > 0
 		? expense.items.reduce(

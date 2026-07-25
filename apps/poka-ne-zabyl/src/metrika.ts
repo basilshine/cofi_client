@@ -18,7 +18,12 @@ export type MetrikaGoal =
 	| "landing_app_click"
 	| "app_open"
 	| "registration"
-	| "first_expense";
+	| "first_expense"
+	| "first_capture_submitted"
+	| "first_capture_ready"
+	| "first_review_opened"
+	| "first_review_edit_opened"
+	| "first_review_closed_unsaved";
 
 export const initializeMetrika = () => {
 	const metrikaWindow = window as MetrikaWindow;
@@ -59,6 +64,19 @@ export const trackFirstExpenseGoal = (
 	const key = `pnz:metrika:first-expense:${userID}`;
 	if (window.localStorage.getItem(key)) return false;
 	if (!reachMetrikaGoal("first_expense")) return false;
+	window.localStorage.setItem(key, "1");
+	return true;
+};
+
+export const trackFirstCaptureGoal = (
+	goal: Extract<MetrikaGoal, `first_${string}`>,
+	userID: number | undefined,
+	sourceDocumentID: number,
+) => {
+	if (!userID || !sourceDocumentID) return false;
+	const key = `pnz:metrika:${goal}:${userID}:${sourceDocumentID}`;
+	if (window.localStorage.getItem(key)) return false;
+	if (!reachMetrikaGoal(goal)) return false;
 	window.localStorage.setItem(key, "1");
 	return true;
 };
