@@ -1252,6 +1252,12 @@
 	font-size: 10px !important;
 	font-weight: 500;
 }
+.mini-original-money {
+	color: var(--mini-muted) !important;
+	font-size: 10px !important;
+	font-variant-numeric: tabular-nums;
+	font-weight: 500;
+}
 .mini-expense-amount {
 	justify-items: end;
 }

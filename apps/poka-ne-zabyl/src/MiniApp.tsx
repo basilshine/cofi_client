@@ -103,9 +103,11 @@ import { type ModalSheetState, modalSwipeAction } from "./modal-swipe";
 import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
+	expenseOriginalMoney,
 	formatMoney,
 	itemAmountInCurrency,
 	itemDisplayMoney,
+	itemOriginalMoney,
 	profileReportingCurrency,
 	reviewReadySummary,
 } from "./money";
@@ -451,6 +453,18 @@ const planDisplayMoney = (
 			: currencyCode(plan.currency),
 	};
 };
+
+const planOriginalMoney = (
+	plan: PurchasePlan,
+	displayCurrency: string,
+	item?: PurchasePlanItem,
+) =>
+	currencyCode(plan.currency) !== currencyCode(displayCurrency)
+		? {
+				amount: item?.expected_amount ?? plan.expected_amount ?? 0,
+				currency: currencyCode(plan.currency),
+			}
+		: null;
 
 const splitDisplayMoney = (split: ExpenseSplit, targetCurrency: string) => {
 	const reporting =
@@ -9521,6 +9535,10 @@ const Overview = ({
 									const dueToday = isPlanDueToday(plan.due_date);
 									const overdue = isPlanOverdue(plan.due_date);
 									const planMoney = planDisplayMoney(plan, currency);
+									const originalMoney = planOriginalMoney(
+										plan,
+										planMoney.currency,
+									);
 									return (
 										<div
 											className={
@@ -9544,6 +9562,15 @@ const Overview = ({
 														</strong>
 													)}
 												</span>
+												{originalMoney && originalMoney.amount > 0 && (
+													<small className="mini-original-money">
+														{uiText(language, "originalAmount")}{" "}
+														{formatMoney(
+															originalMoney.amount,
+															originalMoney.currency,
+														)}
+													</small>
+												)}
 												{(plan.due_date || vendorName) && (
 													<small>
 														{plan.due_date && (
@@ -10627,6 +10654,7 @@ const PlansView = ({
 		const dueToday = isPlanDueToday(plan.due_date);
 		const overdue = isPlanOverdue(plan.due_date);
 		const money = planDisplayMoney(plan, currency);
+		const originalMoney = planOriginalMoney(plan, money.currency);
 		const occurrenceCount = Math.max(
 			1,
 			purchasePlanOccurrenceCount(plan, bounds.from, bounds.to),
@@ -10690,6 +10718,15 @@ const PlansView = ({
 								</small>
 							)}
 							<strong>{formatMoney(forecastAmount, money.currency)}</strong>
+							{originalMoney && originalMoney.amount > 0 && (
+								<small className="mini-original-money">
+									{uiText(language, "originalAmount")}{" "}
+									{formatMoney(
+										originalMoney.amount * occurrenceCount,
+										originalMoney.currency,
+									)}
+								</small>
+							)}
 						</>
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
@@ -10727,6 +10764,7 @@ const PlansView = ({
 		const dueToday = isPlanDueToday(plan.due_date);
 		const overdue = isPlanOverdue(plan.due_date);
 		const money = planDisplayMoney(plan, currency, item);
+		const originalMoney = planOriginalMoney(plan, money.currency, item);
 		const occurrenceCount = Math.max(
 			1,
 			purchasePlanOccurrenceCount(plan, bounds.from, bounds.to),
@@ -10788,6 +10826,15 @@ const PlansView = ({
 								</small>
 							)}
 							<strong>{formatMoney(forecastAmount, money.currency)}</strong>
+							{originalMoney && originalMoney.amount > 0 && (
+								<small className="mini-original-money">
+									{uiText(language, "originalAmount")}{" "}
+									{formatMoney(
+										originalMoney.amount * occurrenceCount,
+										originalMoney.currency,
+									)}
+								</small>
+							)}
 						</>
 					) : (
 						<small>{uiText(language, "amountNotSet")}</small>
@@ -11055,6 +11102,11 @@ const ExpenseItemList = ({
 	<div className="mini-expenses">
 		{items.map((row) => {
 			const money = itemDisplayMoney(row.item, row.expense, currency);
+			const originalMoney = itemOriginalMoney(
+				row.item,
+				row.expense,
+				money.currency,
+			);
 			const seller = expenseItemSellerName(row.item, row.expense);
 			const category =
 				row.item.category_name ||
@@ -11089,6 +11141,12 @@ const ExpenseItemList = ({
 					</span>
 					<span className="mini-expense-amount">
 						<b>{formatMoney(money.amount, money.currency)}</b>
+						{originalMoney && originalMoney.amount > 0 && (
+							<small className="mini-original-money">
+								{uiText(language, "originalAmount")}{" "}
+								{formatMoney(originalMoney.amount, originalMoney.currency)}
+							</small>
+						)}
 						<small>{formatDate(row.expense.expense_date, language)}</small>
 					</span>
 				</button>
@@ -11203,6 +11261,7 @@ const ExpenseList = ({
 	<div className="mini-expenses">
 		{expenses.map((expense) => {
 			const money = expenseDisplayMoney(expense, currency);
+			const originalMoney = expenseOriginalMoney(expense, money.currency);
 			const seller = expenseSellerName(expense);
 			const capture = captureForExpense(expense, captures);
 			const author = sharedRecordAuthor(members, expense.user_id);
@@ -11228,6 +11287,12 @@ const ExpenseList = ({
 					</span>
 					<span className="mini-expense-amount">
 						<b>{formatMoney(money.amount, money.currency)}</b>
+						{originalMoney && originalMoney.amount > 0 && (
+							<small className="mini-original-money">
+								{uiText(language, "originalAmount")}{" "}
+								{formatMoney(originalMoney.amount, originalMoney.currency)}
+							</small>
+						)}
 						<small>{formatDate(expense.expense_date, language)}</small>
 					</span>
 				</button>

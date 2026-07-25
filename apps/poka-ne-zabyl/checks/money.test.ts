@@ -3,8 +3,10 @@ import test from "node:test";
 import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
+	expenseOriginalMoney,
 	formatMoney,
 	itemDisplayMoney,
+	itemOriginalMoney,
 	moneyAmountsMatch,
 	profileReportingCurrency,
 } from "../src/money.ts";
@@ -103,4 +105,32 @@ test("shows one expense item in the requested profile currency", () => {
 		),
 		{ amount: 12, currency: "EUR" },
 	);
+});
+
+test("shows stored money only when it differs from the displayed currency", () => {
+	const convertedExpense = {
+		total: 20,
+		currency: "USD",
+		source_currency: "RUB",
+		reporting_total: 20,
+		reporting_currency: "USD",
+		items: [
+			{
+				amount: 20,
+				source_amount: 1600,
+				source_currency: "RUB",
+				reporting_amount: 20,
+			},
+		],
+	};
+
+	assert.deepEqual(expenseOriginalMoney(convertedExpense, "USD"), {
+		amount: 1600,
+		currency: "RUB",
+	});
+	assert.deepEqual(
+		itemOriginalMoney(convertedExpense.items[0], convertedExpense, "USD"),
+		{ amount: 1600, currency: "RUB" },
+	);
+	assert.equal(expenseOriginalMoney(convertedExpense, "RUB"), null);
 });

@@ -127,3 +127,26 @@ export const itemDisplayMoney = (
 				: code(targetCurrency),
 	};
 };
+
+export const expenseOriginalMoney = (
+	expense: MoneyExpense,
+	displayCurrency: string,
+) => {
+	const currency = code(expense.source_currency || expense.currency);
+	return currency && currency !== code(displayCurrency)
+		? { amount: sourceTotal(expense), currency }
+		: null;
+};
+
+export const itemOriginalMoney = (
+	item: MoneyItem,
+	expense: MoneyExpense,
+	displayCurrency: string,
+) => {
+	const currency = code(
+		item.source_currency || expense.source_currency || expense.currency,
+	);
+	return currency && currency !== code(displayCurrency)
+		? { amount: item.source_amount ?? item.amount ?? 0, currency }
+		: null;
+};
