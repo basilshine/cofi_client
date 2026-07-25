@@ -5,6 +5,51 @@ export type CaptureSource = {
 };
 
 export type CaptureSourceKind = "image" | "voice" | "text";
+export type ReviewPresentation = "ready" | "editor";
+export type ReviewCompletionBehavior = "open" | "background";
+export type CaptureReviewSettings = {
+	presentation: ReviewPresentation;
+	completion: ReviewCompletionBehavior;
+};
+
+const recordValue = (value: unknown): Record<string, unknown> =>
+	value && typeof value === "object" && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: {};
+
+export const captureReviewSettings = (
+	preferences: unknown,
+	fallback: CaptureReviewSettings,
+): CaptureReviewSettings => {
+	const root = recordValue(preferences);
+	const developer = recordValue(root.developer);
+	const review = recordValue(developer.captureReview);
+	return {
+		presentation:
+			review.presentation === "ready" || review.presentation === "editor"
+				? review.presentation
+				: fallback.presentation,
+		completion:
+			review.completion === "open" || review.completion === "background"
+				? review.completion
+				: fallback.completion,
+	};
+};
+
+export const withCaptureReviewSettings = (
+	preferences: unknown,
+	settings: CaptureReviewSettings,
+) => {
+	const root = recordValue(preferences);
+	const developer = recordValue(root.developer);
+	return {
+		...root,
+		developer: {
+			...developer,
+			captureReview: settings,
+		},
+	};
+};
 
 export const captureSourceKind = (
 	capture?: CaptureSource,
@@ -30,8 +75,7 @@ export const shouldGuideFirstCapture = (
 	candidateCount === 0 &&
 	pendingCount === 0;
 
-export const shouldAutoOpenFirstReview = (
-	expanded: boolean,
+export const shouldAutoOpenReview = (
 	sameSpace: boolean,
-	behavior: "open" | "background",
-) => expanded && sameSpace && behavior === "open";
+	behavior: ReviewCompletionBehavior,
+) => sameSpace && behavior === "open";

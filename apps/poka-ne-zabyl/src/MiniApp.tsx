@@ -58,9 +58,13 @@ import {
 } from "./avatar-crop";
 import { browserAuthCopy } from "./browser-auth-copy";
 import {
+	type ReviewCompletionBehavior,
+	type ReviewPresentation,
+	captureReviewSettings,
 	captureSourceKind,
-	shouldAutoOpenFirstReview,
+	shouldAutoOpenReview,
 	shouldGuideFirstCapture,
+	withCaptureReviewSettings,
 } from "./capture-source";
 import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
 import { groupRowsByExpense } from "./expense-groups";
@@ -180,8 +184,6 @@ declare global {
 type CaptureMode = "choose" | "text" | "voice" | "photo";
 type ExpenseSection = "history" | "plans" | "splits";
 type TransferOperation = "move" | "clone";
-type ReviewPresentation = "ready" | "editor";
-type ReviewCompletionBehavior = "open" | "background";
 type Space = {
 	id: number;
 	tenant_id: number;
@@ -575,6 +577,7 @@ type User = {
 	emailNotifications: boolean;
 	darkMode: boolean;
 	authType?: string;
+	userPreferences?: Record<string, unknown>;
 };
 
 type NotificationChannel = "email" | "telegram";
@@ -1632,6 +1635,7 @@ export const MiniApp = () => {
 		useState<ReviewPresentation>("ready");
 	const [reviewCompletionBehavior, setReviewCompletionBehavior] =
 		useState<ReviewCompletionBehavior>("open");
+	const [reviewSettingsSaving, setReviewSettingsSaving] = useState(false);
 	const [selectedNotification, setSelectedNotification] =
 		useState<AppNotification | null>(null);
 	const [notificationsLoading, setNotificationsLoading] = useState(false);
@@ -1694,15 +1698,22 @@ export const MiniApp = () => {
 		}
 	}, []);
 	useEffect(() => {
+		let fallback: {
+			presentation: ReviewPresentation;
+			completion: ReviewCompletionBehavior;
+		} = { presentation: "ready", completion: "open" };
 		try {
 			if (window.localStorage.getItem("pnz:review-presentation") === "editor")
-				setReviewPresentation("editor");
+				fallback = { ...fallback, presentation: "editor" };
 			if (window.localStorage.getItem("pnz:review-completion") === "background")
-				setReviewCompletionBehavior("background");
+				fallback = { ...fallback, completion: "background" };
 		} catch {
 			// Defaults keep the current production flow.
 		}
-	}, []);
+		const settings = captureReviewSettings(user?.userPreferences, fallback);
+		setReviewPresentation(settings.presentation);
+		setReviewCompletionBehavior(settings.completion);
+	}, [user?.id, user?.userPreferences]);
 	const updateLargeText = (enabled: boolean) => {
 		setLargeText(enabled);
 		try {
@@ -1711,21 +1722,48 @@ export const MiniApp = () => {
 			// The setting still applies until the page closes.
 		}
 	};
-	const updateReviewPresentation = (value: ReviewPresentation) => {
-		setReviewPresentation(value);
+	const saveReviewSettings = async (
+		presentation: ReviewPresentation,
+		completion: ReviewCompletionBehavior,
+	) => {
+		if (reviewSettingsSaving) return;
+		setReviewPresentation(presentation);
+		setReviewCompletionBehavior(completion);
 		try {
-			window.localStorage.setItem("pnz:review-presentation", value);
+			window.localStorage.setItem("pnz:review-presentation", presentation);
+			window.localStorage.setItem("pnz:review-completion", completion);
 		} catch {
-			// The setting still applies until the page closes.
+			// The account preference remains authoritative.
+		}
+		if (!token || !user || previewMode) return;
+		setReviewSettingsSaving(true);
+		setError("");
+		try {
+			const saved = await apiRequest<User>("/auth/profile", token, {
+				method: "PUT",
+				body: JSON.stringify({
+					...user,
+					userPreferences: withCaptureReviewSettings(user.userPreferences, {
+						presentation,
+						completion,
+					}),
+				}),
+			});
+			setUser(saved);
+			setNotice("Настройка сценария сохранена");
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Не удалось сохранить настройку",
+			);
+		} finally {
+			setReviewSettingsSaving(false);
 		}
 	};
+	const updateReviewPresentation = (value: ReviewPresentation) => {
+		void saveReviewSettings(value, reviewCompletionBehavior);
+	};
 	const updateReviewCompletionBehavior = (value: ReviewCompletionBehavior) => {
-		setReviewCompletionBehavior(value);
-		try {
-			window.localStorage.setItem("pnz:review-completion", value);
-		} catch {
-			// The setting still applies until the page closes.
-		}
+		void saveReviewSettings(reviewPresentation, value);
 	};
 	const dismissCoachmark = (id: CoachmarkID) => {
 		if (!user?.id) return;
@@ -3913,7 +3951,8 @@ export const MiniApp = () => {
 							(item) => item.sourceDocumentID !== pending.sourceDocumentID,
 						),
 					);
-					if (pending.sourceDocumentID === guidedCaptureSourceID) {
+					const guided = pending.sourceDocumentID === guidedCaptureSourceID;
+					if (guided) {
 						setGuidedReviewCandidateID(candidate.id);
 						setGuidedCaptureSourceID(0);
 						trackFirstCaptureGoal(
@@ -3921,21 +3960,22 @@ export const MiniApp = () => {
 							user?.id,
 							pending.sourceDocumentID,
 						);
-						if (
-							shouldAutoOpenFirstReview(
-								guidedCaptureExpanded,
-								pending.spaceID === spaceID,
-								reviewCompletionBehavior,
-							)
-						) {
+						setGuidedCaptureExpanded(false);
+					}
+					if (
+						shouldAutoOpenReview(
+							pending.spaceID === spaceID,
+							reviewCompletionBehavior,
+						)
+					) {
+						if (guided) {
 							trackFirstCaptureGoal(
 								"first_review_opened",
 								user?.id,
 								pending.sourceDocumentID,
 							);
-							void openReviewCandidate(candidate, pending.spaceID);
 						}
-						setGuidedCaptureExpanded(false);
+						void openReviewCandidate(candidate, pending.spaceID);
 					}
 					void refreshNotifications();
 					if (pending.spaceID === spaceID)
@@ -7139,6 +7179,7 @@ export const MiniApp = () => {
 								largeText={largeText}
 								reviewPresentation={reviewPresentation}
 								reviewCompletionBehavior={reviewCompletionBehavior}
+								reviewSettingsSaving={reviewSettingsSaving}
 								quota={accountQuota}
 								developerDashboard={developerDashboard}
 								developerDashboardLoading={developerDashboardLoading}
@@ -12226,6 +12267,7 @@ const ProfileView = ({
 	largeText,
 	reviewPresentation,
 	reviewCompletionBehavior,
+	reviewSettingsSaving,
 	quota,
 	developerDashboard,
 	developerDashboardLoading,
@@ -12268,6 +12310,7 @@ const ProfileView = ({
 	largeText: boolean;
 	reviewPresentation: ReviewPresentation;
 	reviewCompletionBehavior: ReviewCompletionBehavior;
+	reviewSettingsSaving: boolean;
 	quota: Quota | null;
 	developerDashboard: DeveloperDashboard | null;
 	developerDashboardLoading: boolean;
@@ -12347,6 +12390,7 @@ const ProfileView = ({
 					testModeEnabled={Boolean(quota.maintenance_enabled)}
 					reviewPresentation={reviewPresentation}
 					reviewCompletionBehavior={reviewCompletionBehavior}
+					reviewSettingsSaving={reviewSettingsSaving}
 					onApply={onDevUpdate}
 					onReviewPresentation={onReviewPresentation}
 					onReviewCompletionBehavior={onReviewCompletionBehavior}
@@ -13137,6 +13181,7 @@ const BillingDeveloperTools = ({
 	testModeEnabled,
 	reviewPresentation,
 	reviewCompletionBehavior,
+	reviewSettingsSaving,
 	onApply,
 	onReviewPresentation,
 	onReviewCompletionBehavior,
@@ -13154,6 +13199,7 @@ const BillingDeveloperTools = ({
 	testModeEnabled: boolean;
 	reviewPresentation: ReviewPresentation;
 	reviewCompletionBehavior: ReviewCompletionBehavior;
+	reviewSettingsSaving: boolean;
 	onApply: (patch: DeveloperQuotaPatch) => void;
 	onReviewPresentation: (value: ReviewPresentation) => void;
 	onReviewCompletionBehavior: (value: ReviewCompletionBehavior) => void;
@@ -13182,7 +13228,11 @@ const BillingDeveloperTools = ({
 				<summary>
 					<span>
 						<b>Сценарий разбора</b>
-						<small>Локальный режим только для вашего устройства</small>
+						<small>
+							{reviewSettingsSaving
+								? "Сохраняю настройку…"
+								: "Сохраняется в вашем аккаунте"}
+						</small>
 					</span>
 					<CaretDown size={17} weight="bold" />
 				</summary>
@@ -13196,6 +13246,7 @@ const BillingDeveloperTools = ({
 							<button
 								className={reviewPresentation === "ready" ? "is-active" : ""}
 								type="button"
+								disabled={reviewSettingsSaving}
 								aria-pressed={reviewPresentation === "ready"}
 								onClick={() => onReviewPresentation("ready")}
 							>
@@ -13204,6 +13255,7 @@ const BillingDeveloperTools = ({
 							<button
 								className={reviewPresentation === "editor" ? "is-active" : ""}
 								type="button"
+								disabled={reviewSettingsSaving}
 								aria-pressed={reviewPresentation === "editor"}
 								onClick={() => onReviewPresentation("editor")}
 							>
@@ -13222,6 +13274,7 @@ const BillingDeveloperTools = ({
 									reviewCompletionBehavior === "open" ? "is-active" : ""
 								}
 								type="button"
+								disabled={reviewSettingsSaving}
 								aria-pressed={reviewCompletionBehavior === "open"}
 								onClick={() => onReviewCompletionBehavior("open")}
 							>
@@ -13232,6 +13285,7 @@ const BillingDeveloperTools = ({
 									reviewCompletionBehavior === "background" ? "is-active" : ""
 								}
 								type="button"
+								disabled={reviewSettingsSaving}
 								aria-pressed={reviewCompletionBehavior === "background"}
 								onClick={() => onReviewCompletionBehavior("background")}
 							>

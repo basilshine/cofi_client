@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+	captureReviewSettings,
 	captureSourceKind,
-	shouldAutoOpenFirstReview,
+	shouldAutoOpenReview,
 	shouldGuideFirstCapture,
+	withCaptureReviewSettings,
 } from "../src/capture-source.ts";
 
 test("recognizes canonical and historical capture source kinds", () => {
@@ -22,8 +24,24 @@ test("guides only the first AI expense capture", () => {
 	assert.equal(shouldGuideFirstCapture("expense", 0, 0, 1), false);
 });
 
-test("auto-opens the first result only in the active foreground flow", () => {
-	assert.equal(shouldAutoOpenFirstReview(true, true, "open"), true);
-	assert.equal(shouldAutoOpenFirstReview(true, true, "background"), false);
-	assert.equal(shouldAutoOpenFirstReview(true, false, "open"), false);
+test("auto-opens every result in the active foreground flow", () => {
+	assert.equal(shouldAutoOpenReview(true, "open"), true);
+	assert.equal(shouldAutoOpenReview(true, "background"), false);
+	assert.equal(shouldAutoOpenReview(false, "open"), false);
+});
+
+test("persists capture review settings without replacing other preferences", () => {
+	const preferences = withCaptureReviewSettings(
+		{ appearance: { theme: "ceits-editorial" }, developer: { debug: true } },
+		{ presentation: "ready", completion: "background" },
+	);
+	assert.deepEqual(
+		captureReviewSettings(preferences, {
+			presentation: "editor",
+			completion: "open",
+		}),
+		{ presentation: "ready", completion: "background" },
+	);
+	assert.deepEqual(preferences.appearance, { theme: "ceits-editorial" });
+	assert.equal((preferences.developer as Record<string, unknown>).debug, true);
 });
