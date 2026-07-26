@@ -6086,6 +6086,149 @@
 .mini-record-lines button > svg {
 	color: var(--mini-muted);
 }
+.plan-purchase-summary {
+	display: grid;
+	grid-template-columns: 42px minmax(0, 1fr);
+	align-items: center;
+	gap: 11px;
+	padding: 12px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-soft);
+}
+.plan-purchase-summary > span {
+	display: grid;
+	width: 42px;
+	height: 42px;
+	place-items: center;
+	border-radius: 50%;
+	background: #e9edfb;
+	color: var(--mini-green);
+}
+.plan-purchase-summary > div {
+	display: grid;
+	gap: 3px;
+}
+.plan-purchase-summary strong {
+	font-size: 14px;
+}
+.plan-purchase-summary small {
+	color: var(--mini-muted);
+	font-size: 12px;
+	line-height: 1.4;
+}
+.plan-purchase-items {
+	display: grid;
+	max-height: min(34vh, 280px);
+	overflow-y: auto;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+}
+.plan-purchase-items label {
+	display: grid;
+	grid-template-columns: 22px minmax(0, 1fr);
+	align-items: center;
+	gap: 9px;
+	min-height: 48px;
+	padding: 8px 11px;
+	background: var(--mini-paper);
+}
+.plan-purchase-items label + label {
+	border-top: 1px solid var(--mini-line);
+}
+.plan-purchase-items input {
+	width: 18px;
+	height: 18px;
+	margin: 0;
+	accent-color: var(--mini-green);
+}
+.plan-purchase-items label > span {
+	display: flex;
+	min-width: 0;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+}
+.plan-purchase-items b {
+	overflow: hidden;
+	font-size: 13px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.plan-purchase-items small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	white-space: nowrap;
+}
+.plan-purchase-selected {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	color: var(--mini-muted);
+	font-size: 12px;
+}
+.plan-purchase-selected strong {
+	color: var(--mini-ink);
+	font-size: 13px;
+}
+.plan-purchase-methods {
+	display: grid;
+	gap: 8px;
+}
+.plan-purchase-methods button {
+	display: grid;
+	grid-template-columns: 42px minmax(0, 1fr) 18px;
+	align-items: center;
+	gap: 10px;
+	min-height: 62px;
+	padding: 9px 11px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	text-align: left;
+}
+.plan-purchase-methods button:active {
+	border-color: var(--mini-green);
+	background: var(--mini-soft);
+}
+.plan-purchase-methods button:disabled {
+	opacity: 0.45;
+}
+.plan-purchase-methods button > span:first-child {
+	display: grid;
+	width: 42px;
+	height: 42px;
+	place-items: center;
+	border-radius: 50%;
+}
+.plan-purchase-methods button > span:nth-child(2) {
+	display: grid;
+	gap: 3px;
+}
+.plan-purchase-methods .is-photo {
+	background: #fff0ec;
+	color: var(--mini-signal);
+}
+.plan-purchase-methods .is-voice {
+	background: #e9edfb;
+	color: var(--mini-green);
+}
+.plan-purchase-methods .is-manual {
+	background: #edf5f0;
+	color: var(--mini-success);
+}
+.plan-purchase-methods strong {
+	font-size: 13px;
+}
+.plan-purchase-methods small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	line-height: 1.35;
+}
+.plan-purchase-methods button > svg {
+	color: var(--mini-muted);
+}
 .mini-record-parent {
 	display: grid;
 	grid-template-columns: 36px minmax(0, 1fr) 18px;

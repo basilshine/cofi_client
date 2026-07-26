@@ -2649,7 +2649,9 @@ export interface paths {
                     content: {
                         "application/json": {
                             plans: components["schemas"]["PurchasePlan"][];
+                            /** @description Estimated total of remaining one-time and recurring plan occurrences in the current calendar month, in the Space currency */
                             month_total?: number;
+                            /** @description Current-month forecast converted to the requested reporting currency */
                             reporting_month_total?: number | null;
                             reporting_currency?: components["schemas"]["CurrencyCode"];
                         };
@@ -2758,10 +2760,13 @@ export interface paths {
             };
         };
         post?: never;
-        /** Delete a one-time plan or cancel one recurring occurrence */
+        /** Delete a one-time plan, skip a recurring occurrence, or delete its series */
         delete: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Delete the entire recurring series instead of skipping this occurrence */
+                    series?: boolean;
+                };
                 header?: never;
                 path: {
                     /** @description Space ID */
@@ -2772,7 +2777,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description One-time plan deleted or recurring occurrence cancelled */
+                /** @description Plan deleted, recurring occurrence skipped, or recurring series deleted */
                 204: {
                     headers: {
                         [name: string]: unknown;
@@ -3092,11 +3097,13 @@ export interface paths {
                     "application/json": {
                         /** Format: int64 */
                         expense_id: number;
+                        /** @description Optional planned item IDs to complete; omit to complete the whole plan. */
+                        item_ids?: number[];
                     };
                 };
             };
             responses: {
-                /** @description Planned purchase completed */
+                /** @description Planned purchase completed or updated after completing selected items */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -8632,6 +8639,12 @@ export interface components {
             language?: string;
             timezone?: string;
             currency?: string;
+            /**
+             * @description First supported acquisition landing seen before account creation.
+             * @default general
+             * @enum {string}
+             */
+            acquisition_funnel: "general" | "family" | "repair" | "crew" | "events";
             /** @description Separate consent to personal data processing for account creation. */
             personal_data_consent: boolean;
         };
@@ -8661,6 +8674,12 @@ export interface components {
             challenge_token?: string;
             language?: string;
             timezone?: string;
+            /**
+             * @description First supported acquisition landing seen before account creation.
+             * @default general
+             * @enum {string}
+             */
+            acquisition_funnel: "general" | "family" | "repair" | "crew" | "events";
             /** @description Separate consent to personal data processing for account creation. */
             personal_data_consent: boolean;
         };

@@ -867,10 +867,20 @@ type CaptureSubmission =
 	| { kind: "image"; files: File[] }
 	| { kind: "voice"; file: File; durationSeconds: number };
 type CapturePurpose = "expense" | "purchase_plan";
+type PlanCompletionContext = {
+	planID: number;
+	itemIDs: number[];
+};
 type PendingCapture = {
 	sourceDocumentID: number;
 	spaceID: number;
 	purpose: CapturePurpose;
+	planCompletion?: PlanCompletionContext;
+};
+type PlanPurchaseMethod = "photo" | "voice" | "manual";
+type PlanPurchaseIntent = {
+	plan: PurchasePlan;
+	itemID?: number;
 };
 
 type ReviewCandidate = {
@@ -1452,6 +1462,24 @@ const captureForExpense = (expense: Expense, captures: CapturePacket[]) =>
 const captureForPlan = (plan: PurchasePlan, captures: CapturePacket[]) =>
 	captureForSourceDocument(plan.source_document_id, captures);
 
+const planCompletionForSourceDocument = (
+	sourceDocumentID: number,
+	captures: CapturePacket[],
+): PlanCompletionContext | null => {
+	const context = captureForSourceDocument(
+		sourceDocumentID,
+		captures,
+	)?.source_context;
+	const planID = Number(context?.purchase_plan_id);
+	if (!Number.isInteger(planID) || planID <= 0) return null;
+	const itemIDs = Array.isArray(context?.purchase_plan_item_ids)
+		? context.purchase_plan_item_ids
+				.map(Number)
+				.filter((itemID) => Number.isInteger(itemID) && itemID > 0)
+		: [];
+	return { planID, itemIDs };
+};
+
 const isStandaloneApp = () =>
 	window.matchMedia("(display-mode: standalone)").matches ||
 	Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
@@ -1829,7 +1857,13 @@ export const MiniApp = () => {
 	const [editingPlanCandidate, setEditingPlanCandidate] =
 		useState<ReviewCandidate | null>(null);
 	const [completingPlanID, setCompletingPlanID] = useState(0);
-	const [completingPlanItemID, setCompletingPlanItemID] = useState(0);
+	const [completingPlanItemIDs, setCompletingPlanItemIDs] = useState<number[]>(
+		[],
+	);
+	const [capturePlanCompletion, setCapturePlanCompletion] =
+		useState<PlanCompletionContext | null>(null);
+	const [planPurchaseIntent, setPlanPurchaseIntent] =
+		useState<PlanPurchaseIntent | null>(null);
 	const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
 	const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 	const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -3535,6 +3569,10 @@ export const MiniApp = () => {
 	const openReviewCandidate = async (
 		candidate: ReviewCandidate,
 		targetSpaceID = spaceID,
+		planCompletion = planCompletionForSourceDocument(
+			candidate.source_document_id,
+			captures,
+		),
 	) => {
 		if (!token) return;
 		if (candidate.status !== "pending_review") {
@@ -3546,6 +3584,8 @@ export const MiniApp = () => {
 			return;
 		}
 		if (candidate.candidate_type === "purchase_plan_candidate") {
+			setCompletingPlanID(0);
+			setCompletingPlanItemIDs([]);
 			const data = candidate.structured_data || {};
 			const reviewSpace =
 				spaces.find((item) => item.id === targetSpaceID) || activeSpace;
@@ -3629,6 +3669,8 @@ export const MiniApp = () => {
 			});
 			return;
 		}
+		setCompletingPlanID(planCompletion?.planID || 0);
+		setCompletingPlanItemIDs(planCompletion?.itemIDs || []);
 		const previousView = view === "review" ? "overview" : view;
 		const controller = new AbortController();
 		blockingRequest.current?.abort();
@@ -3735,6 +3777,7 @@ export const MiniApp = () => {
 
 	const submitCapture = async (submission: CaptureSubmission) => {
 		const purpose = capturePurpose;
+		const planCompletion = capturePlanCompletion;
 		const guideFirstCapture = shouldGuideFirstCapture(
 			purpose,
 			captures.length,
@@ -3761,6 +3804,12 @@ export const MiniApp = () => {
 				telegram_chat_id: user?.id || 0,
 				telegram_message_id: captureID,
 				capture_target: purpose,
+				...(planCompletion
+					? {
+							purchase_plan_id: planCompletion.planID,
+							purchase_plan_item_ids: planCompletion.itemIDs,
+						}
+					: {}),
 				...(submission.kind === "voice"
 					? { voice_duration_seconds: submission.durationSeconds }
 					: {}),
@@ -3814,8 +3863,10 @@ export const MiniApp = () => {
 					sourceDocumentID,
 					spaceID,
 					purpose,
+					planCompletion: planCompletion || undefined,
 				},
 			]);
+			setCapturePlanCompletion(null);
 			setCaptureOpen(false);
 		} catch (err) {
 			if (
@@ -3909,6 +3960,13 @@ export const MiniApp = () => {
 					return;
 				}
 				if (packet?.processing_status === "succeeded") {
+					setCaptures((current) => [
+						...current.filter(
+							(capture) =>
+								capture.source_document_id !== packet.source_document_id,
+						),
+						packet,
+					]);
 					const candidates = await apiRequest<{
 						candidates: ReviewCandidate[];
 					}>(
@@ -3989,7 +4047,11 @@ export const MiniApp = () => {
 								pending.sourceDocumentID,
 							);
 						}
-						void openReviewCandidate(candidate, pending.spaceID);
+						void openReviewCandidate(
+							candidate,
+							pending.spaceID,
+							pending.planCompletion || null,
+						);
 					}
 					void refreshNotifications();
 					if (pending.spaceID === spaceID)
@@ -4124,16 +4186,21 @@ export const MiniApp = () => {
 								pending.sourceDocumentID === capture.source_document_id,
 						),
 				)
-				.map(
-					(capture): PendingCapture => ({
+				.map((capture): PendingCapture => {
+					const planCompletion = planCompletionForSourceDocument(
+						capture.source_document_id,
+						[capture],
+					);
+					return {
 						sourceDocumentID: capture.source_document_id,
 						spaceID: capture.space_id || spaceID,
 						purpose:
 							capture.source_context?.capture_target === "purchase_plan"
 								? "purchase_plan"
 								: "expense",
-					}),
-				),
+						planCompletion: planCompletion || undefined,
+					};
+				}),
 		]);
 	}, [token, captures, captureSubmitting, spaceID]);
 
@@ -4147,6 +4214,8 @@ export const MiniApp = () => {
 		setReviewDraft(null);
 		setSavedReviewExpense(null);
 		setReviewMediaURL("");
+		setCompletingPlanID(0);
+		setCompletingPlanItemIDs([]);
 		if (requestedReview) {
 			setView(reviewReturnView.current);
 			WebApp.close();
@@ -4301,6 +4370,20 @@ export const MiniApp = () => {
 		[sourceViewer],
 	);
 
+	const completePlanWithExpense = (
+		targetSpaceID: number,
+		planID: number,
+		itemIDs: number[],
+		expenseID: number,
+	) =>
+		apiRequest(`/spaces/${targetSpaceID}/plans/${planID}/complete`, token, {
+			method: "POST",
+			body: JSON.stringify({
+				expense_id: expenseID,
+				...(itemIDs.length ? { item_ids: itemIDs } : {}),
+			}),
+		});
+
 	const saveReview = async () => {
 		if (!reviewDraft || reviewSaving.current) return;
 		const targetSpaceID = reviewSpaceID || spaceID;
@@ -4329,6 +4412,19 @@ export const MiniApp = () => {
 						(candidate) => candidate.id !== reviewDraft.candidateID,
 					),
 				);
+				if (completingPlanID) {
+					setPlans((current) =>
+						current.flatMap((plan) => {
+							if (plan.id !== completingPlanID) return [plan];
+							const remaining = purchasePlanItems(plan).filter(
+								(item) => !completingPlanItemIDs.includes(item.id || 0),
+							);
+							return completingPlanItemIDs.length && remaining.length
+								? [withPurchasePlanItems(plan, remaining)]
+								: [];
+						}),
+					);
+				}
 				return;
 			}
 			const result = await apiRequest<{
@@ -4349,6 +4445,19 @@ export const MiniApp = () => {
 			setReviewCandidates((current) =>
 				current.filter((candidate) => candidate.id !== reviewDraft.candidateID),
 			);
+			let planCompletionFailed = false;
+			if (completingPlanID) {
+				try {
+					await completePlanWithExpense(
+						targetSpaceID,
+						completingPlanID,
+						completingPlanItemIDs,
+						result.expense.id,
+					);
+				} catch {
+					planCompletionFailed = true;
+				}
+			}
 			void apiRequest<{ categories: Category[] }>(
 				`/spaces/${targetSpaceID}/categories?currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
@@ -4363,6 +4472,10 @@ export const MiniApp = () => {
 			if (targetSpaceID === spaceID) void loadSpace(true);
 			if (result.budget_warnings?.[0]) {
 				setNotice(budgetWarningText(result.budget_warnings[0]));
+			} else if (planCompletionFailed) {
+				setNotice("Расход сохранён, но план пока остался в списке");
+			} else if (completingPlanID) {
+				setNotice(uiText(language, "planPurchaseSaved"));
 			}
 			WebApp.HapticFeedback.notificationOccurred("success");
 		} catch (err) {
@@ -4776,15 +4889,15 @@ export const MiniApp = () => {
 					current.flatMap((plan) => {
 						if (plan.id !== completingPlanID) return [plan];
 						const remaining = purchasePlanItems(plan).filter(
-							(item) => item.id !== completingPlanItemID,
+							(item) => !completingPlanItemIDs.includes(item.id || 0),
 						);
-						return completingPlanItemID && remaining.length > 0
+						return completingPlanItemIDs.length && remaining.length > 0
 							? [withPurchasePlanItems(plan, remaining)]
 							: [];
 					}),
 				);
 				setCompletingPlanID(0);
-				setCompletingPlanItemID(0);
+				setCompletingPlanItemIDs([]);
 				setExpenseSection("history");
 			}
 			setNotice(successNotice);
@@ -4903,13 +5016,11 @@ export const MiniApp = () => {
 			}
 			if (creating && completingPlanID && savedExpenseID > 0) {
 				try {
-					await apiRequest(
-						`/spaces/${spaceID}/plans/${completingPlanID}${completingPlanItemID ? `/items/${completingPlanItemID}` : ""}/complete`,
-						token,
-						{
-							method: "POST",
-							body: JSON.stringify({ expense_id: savedExpenseID }),
-						},
+					await completePlanWithExpense(
+						spaceID,
+						completingPlanID,
+						completingPlanItemIDs,
+						savedExpenseID,
 					);
 				} catch {
 					planCompletionFailed = true;
@@ -4918,7 +5029,7 @@ export const MiniApp = () => {
 			setEditingExpense(null);
 			setEditingItemIndex(null);
 			setCompletingPlanID(0);
-			setCompletingPlanItemID(0);
+			setCompletingPlanItemIDs([]);
 			if (creating) setExpenseSection("history");
 			setNotice(
 				planCompletionFailed
@@ -6318,26 +6429,30 @@ export const MiniApp = () => {
 		setNotice("Распознанный план удалён");
 	};
 
-	const buyPlan = (plan: PurchasePlan, planItem?: PurchasePlanItem) => {
+	const buyPlan = (plan: PurchasePlan, itemIDs: number[] = []) => {
 		const fallbackCategory =
 			categories.find((item) => item.key === "other") || categories[0];
 		const vendorName =
 			plan.vendor_name ||
 			vendors.find((vendor) => vendor.id === plan.vendor_id)?.name ||
 			"";
+		const planItems = purchasePlanItems(plan);
+		const selectedItems = itemIDs.length
+			? planItems.filter((item) => itemIDs.includes(item.id || 0))
+			: planItems;
 		setCompletingPlanID(plan.id);
-		setCompletingPlanItemID(planItem?.id || 0);
+		setCompletingPlanItemIDs(itemIDs);
 		setEditingItemIndex(null);
 		setEditingExpense({
 			id: 0,
 			user_id: user?.id || 0,
-			title: planItem?.name || plan.title,
+			title: selectedItems.length === 1 ? selectedItems[0].name : plan.title,
 			payee_text: vendorName,
 			vendor_id: plan.vendor_id || undefined,
 			expense_date: localISODate(),
 			currency: plan.currency,
 			space_currency: plan.currency,
-			items: (planItem ? [planItem] : purchasePlanItems(plan)).map((item) => {
+			items: selectedItems.map((item) => {
 				const notes = notesWithTags(item.notes || "", []);
 				return {
 					name: item.name,
@@ -6350,6 +6465,26 @@ export const MiniApp = () => {
 				};
 			}),
 		});
+	};
+
+	const openPlanPurchase = (plan: PurchasePlan, item?: PurchasePlanItem) => {
+		setRecordDetail(null);
+		setPlanPurchaseIntent({ plan, itemID: item?.id });
+	};
+
+	const choosePlanPurchaseMethod = (
+		method: PlanPurchaseMethod,
+		itemIDs: number[],
+	) => {
+		if (!planPurchaseIntent) return;
+		const plan = planPurchaseIntent.plan;
+		setPlanPurchaseIntent(null);
+		setRecordDetail(null);
+		if (method === "manual") {
+			buyPlan(plan, itemIDs);
+			return;
+		}
+		openCapture(method, "expense", { planID: plan.id, itemIDs });
 	};
 
 	useEffect(() => {
@@ -6416,7 +6551,7 @@ export const MiniApp = () => {
 		openedRequestedPlan.current = true;
 		setExpenseSection("plans");
 		setView("expenses");
-		buyPlan(plan);
+		openPlanPurchase(plan);
 	}, [
 		spaceID,
 		plans,
@@ -6469,7 +6604,7 @@ export const MiniApp = () => {
 
 	const addExpense = () => {
 		setCompletingPlanID(0);
-		setCompletingPlanItemID(0);
+		setCompletingPlanItemIDs([]);
 		const category =
 			categories.find((item) => item.key === "other") || categories[0];
 		setEditingItemIndex(null);
@@ -6490,6 +6625,7 @@ export const MiniApp = () => {
 	const openCapture = (
 		mode: CaptureMode = "choose",
 		purpose: CapturePurpose = "expense",
+		planCompletion: PlanCompletionContext | null = null,
 	) => {
 		if (captureSubmitting) {
 			setNotice("Текущий запрос ещё отправляется");
@@ -6499,6 +6635,7 @@ export const MiniApp = () => {
 		setCaptureFailure("");
 		setCaptureMode(mode);
 		setCapturePurpose(purpose);
+		setCapturePlanCompletion(planCompletion);
 		setCaptureOpen(true);
 	};
 
@@ -7038,7 +7175,7 @@ export const MiniApp = () => {
 									setView("expenses");
 								}}
 								onEditPlan={(plan) => setRecordDetail({ kind: "plan", plan })}
-								onBuyPlan={buyPlan}
+								onBuyPlan={openPlanPurchase}
 								onCancelPlan={(plan) => void deletePlan(plan)}
 								onReviewCandidate={(candidate) =>
 									void openReviewCandidate(candidate)
@@ -7108,7 +7245,7 @@ export const MiniApp = () => {
 								onOpenPlanItem={(plan, itemIndex) =>
 									setRecordDetail({ kind: "plan-item", plan, itemIndex })
 								}
-								onBuyPlan={buyPlan}
+								onBuyPlan={openPlanPurchase}
 								onCancelPlan={(plan) => void deletePlan(plan)}
 								onUpgrade={() => setView("subscription")}
 								coachmark={activeCoachmark}
@@ -7594,6 +7731,30 @@ export const MiniApp = () => {
 				</Modal>
 			)}
 
+			{planPurchaseIntent && (
+				<PlanPurchaseDialog
+					plan={planPurchaseIntent.plan}
+					itemID={planPurchaseIntent.itemID}
+					currency={currency}
+					language={language}
+					onClose={() => {
+						const intent = planPurchaseIntent;
+						setPlanPurchaseIntent(null);
+						setRecordDetail(
+							intent.itemID
+								? {
+										kind: "plan-item",
+										plan: intent.plan,
+										itemIndex: purchasePlanItems(intent.plan).findIndex(
+											(item) => item.id === intent.itemID,
+										),
+									}
+								: { kind: "plan", plan: intent.plan },
+						);
+					}}
+					onChoose={choosePlanPurchaseMethod}
+				/>
+			)}
 			{captureOpen && (
 				<CaptureComposer
 					language={language}
@@ -7601,11 +7762,25 @@ export const MiniApp = () => {
 					initialMode={captureMode}
 					saving={captureSubmitting}
 					error={captureError}
-					onClose={() => setCaptureOpen(false)}
+					onClose={() => {
+						setCaptureOpen(false);
+						setCapturePlanCompletion(null);
+					}}
 					onManual={() => {
 						setCaptureOpen(false);
-						if (capturePurpose === "purchase_plan") addPlan();
-						else addExpense();
+						const completion = capturePlanCompletion;
+						setCapturePlanCompletion(null);
+						if (capturePurpose === "purchase_plan") {
+							addPlan();
+						} else if (completion) {
+							const plan = plans.find(
+								(current) => current.id === completion.planID,
+							);
+							if (plan) buyPlan(plan, completion.itemIDs);
+							else addExpense();
+						} else {
+							addExpense();
+						}
 					}}
 					onSubmit={submitCapture}
 				/>
@@ -7773,8 +7948,8 @@ export const MiniApp = () => {
 					saving={saving}
 					onClose={() => setRecordDetail(null)}
 					onBuy={() => {
+						setPlanPurchaseIntent({ plan: recordDetail.plan });
 						setRecordDetail(null);
-						buyPlan(recordDetail.plan);
 					}}
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() => void deletePlan(recordDetail.plan)}
@@ -7813,11 +7988,14 @@ export const MiniApp = () => {
 					saving={saving}
 					onClose={() => setRecordDetail(null)}
 					onBuy={() => {
+						const item = purchasePlanItems(recordDetail.plan)[
+							recordDetail.itemIndex
+						];
+						setPlanPurchaseIntent({
+							plan: recordDetail.plan,
+							itemID: item.id,
+						});
 						setRecordDetail(null);
-						buyPlan(
-							recordDetail.plan,
-							purchasePlanItems(recordDetail.plan)[recordDetail.itemIndex],
-						);
 					}}
 					onEdit={() => editRecord(recordDetail)}
 					onDelete={() =>
@@ -7862,7 +8040,7 @@ export const MiniApp = () => {
 					onClose={() => {
 						setEditingExpense(null);
 						setCompletingPlanID(0);
-						setCompletingPlanItemID(0);
+						setCompletingPlanItemIDs([]);
 					}}
 					onSave={saveExpense}
 					onSource={() => openExpenseSource(editingExpense)}
@@ -15509,6 +15687,142 @@ const ExpenseSplitEditor = ({
 	);
 };
 
+const PlanPurchaseDialog = ({
+	plan,
+	itemID,
+	currency,
+	language,
+	onClose,
+	onChoose,
+}: {
+	plan: PurchasePlan;
+	itemID?: number;
+	currency: string;
+	language: UILanguage;
+	onClose: () => void;
+	onChoose: (method: PlanPurchaseMethod, itemIDs: number[]) => void;
+}) => {
+	const allItems = purchasePlanItems(plan);
+	const availableItems = itemID
+		? allItems.filter((item) => item.id === itemID)
+		: allItems;
+	const [selectedIDs, setSelectedIDs] = useState(
+		() => new Set(availableItems.map((item) => item.id || 0)),
+	);
+	const selectedItems = availableItems.filter((item) =>
+		selectedIDs.has(item.id || 0),
+	);
+	const completionItemIDs =
+		itemID === undefined && selectedItems.length === allItems.length
+			? []
+			: selectedItems
+					.map((item) => item.id || 0)
+					.filter((selectedItemID) => selectedItemID > 0);
+	const selectedTotal = selectedItems.reduce(
+		(sum, item) => sum + planDisplayMoney(plan, currency, item).amount,
+		0,
+	);
+	const choose = (method: PlanPurchaseMethod) => {
+		if (selectedItems.length) onChoose(method, completionItemIDs);
+	};
+	return (
+		<Modal title={uiText(language, "planPurchaseTitle")} onClose={onClose}>
+			<div className="plan-purchase-summary">
+				<span>
+					<ShoppingBagOpen size={22} weight="bold" />
+				</span>
+				<div>
+					<strong>{plan.title}</strong>
+					<small>{uiText(language, "planPurchaseHint")}</small>
+				</div>
+			</div>
+			{availableItems.length > 1 && (
+				<div className="plan-purchase-items">
+					{availableItems.map((item, index) => {
+						const key = item.id || index;
+						const checked = selectedIDs.has(item.id || 0);
+						const money = planDisplayMoney(plan, currency, item);
+						return (
+							<label key={key}>
+								<input
+									type="checkbox"
+									checked={checked}
+									onChange={() =>
+										setSelectedIDs((current) => {
+											const next = new Set(current);
+											if (checked) next.delete(item.id || 0);
+											else next.add(item.id || 0);
+											return next;
+										})
+									}
+								/>
+								<span>
+									<b>{item.name}</b>
+									{money.amount > 0 && (
+										<small>{formatMoney(money.amount, money.currency)}</small>
+									)}
+								</span>
+							</label>
+						);
+					})}
+				</div>
+			)}
+			<div className="plan-purchase-selected" aria-live="polite">
+				<span>
+					{uiText(language, "planPurchaseSelected")}: {selectedItems.length}
+				</span>
+				{selectedTotal > 0 && (
+					<strong>{formatMoney(selectedTotal, currency)}</strong>
+				)}
+			</div>
+			<div className="plan-purchase-methods">
+				<button
+					type="button"
+					disabled={!selectedItems.length}
+					onClick={() => choose("photo")}
+				>
+					<span className="is-photo">
+						<Receipt size={21} weight="fill" />
+					</span>
+					<span>
+						<strong>{uiText(language, "planPurchasePhoto")}</strong>
+						<small>{uiText(language, "planPurchasePhotoHint")}</small>
+					</span>
+					<ArrowRight size={17} />
+				</button>
+				<button
+					type="button"
+					disabled={!selectedItems.length}
+					onClick={() => choose("voice")}
+				>
+					<span className="is-voice">
+						<Microphone size={21} weight="fill" />
+					</span>
+					<span>
+						<strong>{uiText(language, "planPurchaseVoice")}</strong>
+						<small>{uiText(language, "planPurchaseVoiceHint")}</small>
+					</span>
+					<ArrowRight size={17} />
+				</button>
+				<button
+					type="button"
+					disabled={!selectedItems.length}
+					onClick={() => choose("manual")}
+				>
+					<span className="is-manual">
+						<NotePencil size={21} weight="fill" />
+					</span>
+					<span>
+						<strong>{uiText(language, "planPurchaseManual")}</strong>
+						<small>{uiText(language, "planPurchaseManualHint")}</small>
+					</span>
+					<ArrowRight size={17} />
+				</button>
+			</div>
+		</Modal>
+	);
+};
+
 const PlanDetail = ({
 	plan,
 	itemIndex,
@@ -15692,7 +16006,7 @@ const PlanDetail = ({
 					onClick={onBuy}
 				>
 					<Check size={18} weight="bold" />
-					{uiText(language, "bought")}
+					{uiText(language, "planPurchaseTitle")}
 				</button>
 				<button
 					className="mini-secondary-action"
