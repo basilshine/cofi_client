@@ -6124,30 +6124,58 @@
 	border: 1px solid var(--mini-line);
 	border-radius: 8px;
 }
-.plan-purchase-items label {
+.plan-purchase-items > button {
 	display: grid;
-	grid-template-columns: 22px minmax(0, 1fr);
+	grid-template-columns: 28px minmax(0, 1fr);
 	align-items: center;
 	gap: 9px;
-	min-height: 48px;
+	min-height: 58px;
 	padding: 8px 11px;
+	border: 0;
 	background: var(--mini-paper);
+	color: var(--mini-ink);
+	text-align: left;
 }
-.plan-purchase-items label + label {
+.plan-purchase-items > button + button {
 	border-top: 1px solid var(--mini-line);
 }
-.plan-purchase-items input {
-	width: 18px;
-	height: 18px;
-	margin: 0;
-	accent-color: var(--mini-green);
+.plan-purchase-items > button:active {
+	background: var(--mini-soft);
 }
-.plan-purchase-items label > span {
+.plan-purchase-items > button > i {
+	display: grid;
+	width: 26px;
+	height: 26px;
+	place-items: center;
+	border: 1px solid var(--mini-line);
+	border-radius: 50%;
+	color: var(--mini-muted);
+	font-style: normal;
+}
+.plan-purchase-items > button.is-selected > i {
+	border-color: var(--mini-green);
+	background: var(--mini-green);
+	color: #fff;
+}
+.plan-purchase-items > button > span {
+	display: grid;
+	min-width: 0;
+	gap: 4px;
+}
+.plan-purchase-items > button > span > span {
 	display: flex;
 	min-width: 0;
 	align-items: center;
 	justify-content: space-between;
 	gap: 10px;
+}
+.plan-purchase-items em {
+	color: var(--mini-muted);
+	font-size: 11px;
+	font-style: normal;
+}
+.plan-purchase-items > button.is-selected em {
+	color: var(--mini-green);
 }
 .plan-purchase-items b {
 	overflow: hidden;

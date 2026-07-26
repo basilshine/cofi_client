@@ -15743,26 +15743,39 @@ const PlanPurchaseDialog = ({
 						const checked = selectedIDs.has(item.id || 0);
 						const money = planDisplayMoney(plan, currency, item);
 						return (
-							<label key={key}>
-								<input
-									type="checkbox"
-									checked={checked}
-									onChange={() =>
-										setSelectedIDs((current) => {
-											const next = new Set(current);
-											if (checked) next.delete(item.id || 0);
-											else next.add(item.id || 0);
-											return next;
-										})
-									}
-								/>
-								<span>
-									<b>{item.name}</b>
-									{money.amount > 0 && (
-										<small>{formatMoney(money.amount, money.currency)}</small>
+							<button
+								key={key}
+								type="button"
+								className={checked ? "is-selected" : undefined}
+								aria-pressed={checked}
+								onClick={() =>
+									setSelectedIDs((current) => {
+										const next = new Set(current);
+										if (checked) next.delete(item.id || 0);
+										else next.add(item.id || 0);
+										return next;
+									})
+								}
+							>
+								<i>
+									{checked ? (
+										<Check size={15} weight="bold" />
+									) : (
+										<X size={14} />
 									)}
+								</i>
+								<span>
+									<span>
+										<b>{item.name}</b>
+										{money.amount > 0 && (
+											<small>{formatMoney(money.amount, money.currency)}</small>
+										)}
+									</span>
+									<em>
+										{uiText(language, checked ? "bought" : "firstReviewLeave")}
+									</em>
 								</span>
-							</label>
+							</button>
 						);
 					})}
 				</div>
