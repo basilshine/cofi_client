@@ -17,6 +17,7 @@ type MetrikaWindow = Window & {
 export type MetrikaGoal =
 	| "landing_app_click"
 	| "app_open"
+	| "pwa_install"
 	| "registration"
 	| "first_expense"
 	| "first_capture_submitted"
@@ -64,6 +65,14 @@ export const trackFirstExpenseGoal = (
 	const key = `pnz:metrika:first-expense:${userID}`;
 	if (window.localStorage.getItem(key)) return false;
 	if (!reachMetrikaGoal("first_expense")) return false;
+	window.localStorage.setItem(key, "1");
+	return true;
+};
+
+export const trackPwaInstallGoal = () => {
+	const key = "pnz:metrika:pwa-install";
+	if (window.localStorage.getItem(key)) return false;
+	if (!reachMetrikaGoal("pwa_install")) return false;
 	window.localStorage.setItem(key, "1");
 	return true;
 };

@@ -86,6 +86,7 @@ import {
 	reachMetrikaGoal,
 	trackFirstCaptureGoal,
 	trackFirstExpenseGoal,
+	trackPwaInstallGoal,
 } from "./metrika";
 import {
 	type UILanguage,
@@ -2114,6 +2115,7 @@ export const MiniApp = () => {
 		if (started.current) return;
 		started.current = true;
 		if (!previewMode) reachMetrikaGoal("app_open");
+		if (!previewMode && isStandaloneApp()) trackPwaInstallGoal();
 		if (WebApp.initData) {
 			const useFullscreen = shouldUseFullscreen(telegramWebApp.platform);
 			WebApp.ready();
@@ -2490,6 +2492,7 @@ export const MiniApp = () => {
 		const onInstalled = () => {
 			setBrowserInstallPrompt(null);
 			setHomeScreenStatus("added");
+			trackPwaInstallGoal();
 			setNotice(browserAuthCopy(language).installedNotice);
 		};
 		window.addEventListener("beforeinstallprompt", onInstallPrompt);
@@ -2503,6 +2506,7 @@ export const MiniApp = () => {
 	useEffect(() => {
 		const handleHomeScreenAdded = () => {
 			setHomeScreenStatus("added");
+			trackPwaInstallGoal();
 			setNotice(browserAuthCopy(language).installedNotice);
 		};
 		telegramWebApp.onEvent("homeScreenAdded", handleHomeScreenAdded);

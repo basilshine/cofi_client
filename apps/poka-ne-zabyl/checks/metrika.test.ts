@@ -4,6 +4,7 @@ import {
 	initializeMetrika,
 	trackFirstCaptureGoal,
 	trackFirstExpenseGoal,
+	trackPwaInstallGoal,
 } from "../src/metrika.ts";
 
 test("initializes the counter on application-only pages", () => {
@@ -51,6 +52,12 @@ test("tracks the first expense once per user", () => {
 	assert.equal(trackFirstExpenseGoal(8, 1), false);
 	assert.equal(trackFirstCaptureGoal("first_capture_ready", 7, 42), true);
 	assert.equal(trackFirstCaptureGoal("first_capture_ready", 7, 42), false);
-	assert.deepEqual(goals, ["first_expense", "first_capture_ready"]);
+	assert.equal(trackPwaInstallGoal(), true);
+	assert.equal(trackPwaInstallGoal(), false);
+	assert.deepEqual(goals, [
+		"first_expense",
+		"first_capture_ready",
+		"pwa_install",
+	]);
 	Reflect.deleteProperty(globalThis, "window");
 });
