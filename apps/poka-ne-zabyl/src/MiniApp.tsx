@@ -688,6 +688,8 @@ type DeveloperDashboard = {
 		active_users_30_days: number;
 		inputs_30_days: number;
 		quota_units_30_days: number;
+		pwa_installed_users: number;
+		pwa_active_30_days: number;
 		average_inputs_per_active_user: number;
 		recent_users: {
 			id: number;
@@ -697,6 +699,8 @@ type DeveloperDashboard = {
 			last_input_at?: string | null;
 			inputs_30_days: number;
 			quota_units_30_days: number;
+			pwa_installed_at?: string | null;
+			pwa_last_seen_at?: string | null;
 		}[];
 	};
 	incomplete_registrations: {
@@ -735,6 +739,8 @@ type DeveloperUserDetail = {
 	currency?: string;
 	created_at: string;
 	updated_at: string;
+	pwa_installed_at?: string | null;
+	pwa_last_seen_at?: string | null;
 	consent_granted: boolean;
 	contacts: {
 		email?: string;
@@ -1524,6 +1530,11 @@ const apiRequest = async <T,>(
 	if (response.status === 204) return undefined as T;
 	return response.json() as Promise<T>;
 };
+
+const reportPWAInstallation = (token: string) =>
+	apiRequest<void>("/auth/pwa-installation", token, { method: "POST" }).catch(
+		() => undefined,
+	);
 
 const submitCheckout = (checkout: CheckoutResponse) => {
 	const form = document.createElement("form");
@@ -2361,6 +2372,8 @@ export const MiniApp = () => {
 					active_users_30_days: 15,
 					inputs_30_days: 127,
 					quota_units_30_days: 214,
+					pwa_installed_users: 7,
+					pwa_active_30_days: 5,
 					average_inputs_per_active_user: 8.5,
 					recent_users: [
 						{
@@ -2371,6 +2384,8 @@ export const MiniApp = () => {
 							last_input_at: isoDay(0),
 							inputs_30_days: 6,
 							quota_units_30_days: 11,
+							pwa_installed_at: isoDay(-1),
+							pwa_last_seen_at: isoDay(0),
 						},
 						{
 							id: 17,
@@ -2493,6 +2508,7 @@ export const MiniApp = () => {
 			setBrowserInstallPrompt(null);
 			setHomeScreenStatus("added");
 			trackPwaInstallGoal();
+			if (token && token !== "preview") void reportPWAInstallation(token);
 			setNotice(browserAuthCopy(language).installedNotice);
 		};
 		window.addEventListener("beforeinstallprompt", onInstallPrompt);
@@ -2501,7 +2517,12 @@ export const MiniApp = () => {
 			window.removeEventListener("beforeinstallprompt", onInstallPrompt);
 			window.removeEventListener("appinstalled", onInstalled);
 		};
-	}, [language]);
+	}, [language, token]);
+
+	useEffect(() => {
+		if (!token || token === "preview" || !isStandaloneApp()) return;
+		void reportPWAInstallation(token);
+	}, [token]);
 
 	useEffect(() => {
 		const handleHomeScreenAdded = () => {
@@ -13035,6 +13056,8 @@ const previewDeveloperUser = (
 	currency: "RUB",
 	created_at: recentUser.created_at,
 	updated_at: recentUser.last_input_at || recentUser.created_at,
+	pwa_installed_at: recentUser.pwa_installed_at,
+	pwa_last_seen_at: recentUser.pwa_last_seen_at,
 	consent_granted: true,
 	contacts: {
 		email: "user@example.com",
@@ -13236,6 +13259,11 @@ const DeveloperUserRow = ({
 							Последний ввод: {formatDateTime(recentUser.last_input_at, "ru")}
 						</small>
 					)}
+					<small>
+						{recentUser.pwa_last_seen_at
+							? `PWA: ${formatDateTime(recentUser.pwa_last_seen_at, "ru")}`
+							: "PWA: установка не подтверждена"}
+					</small>
 				</span>
 				<strong>
 					{recentUser.inputs_30_days}
@@ -13356,6 +13384,26 @@ const DeveloperUserRow = ({
 											<b>
 												{formatDateTime(detail.stats.last_session_at, "ru")}
 											</b>
+										</p>
+									)}
+									<p>
+										<span>PWA-приложение</span>
+										<b>
+											{detail.pwa_installed_at
+												? "Установка подтверждена"
+												: "Не подтверждено"}
+										</b>
+									</p>
+									{detail.pwa_installed_at && (
+										<p>
+											<span>Первая установка</span>
+											<b>{formatDateTime(detail.pwa_installed_at, "ru")}</b>
+										</p>
+									)}
+									{detail.pwa_last_seen_at && (
+										<p>
+											<span>Последний запуск PWA</span>
+											<b>{formatDateTime(detail.pwa_last_seen_at, "ru")}</b>
 										</p>
 									)}
 								</div>
@@ -13668,6 +13716,16 @@ const BillingDeveloperTools = ({
 										)}
 									</b>
 									<small>ввода на активного</small>
+								</p>
+								<p>
+									<span>PWA</span>
+									<b>{dashboard.product.pwa_installed_users}</b>
+									<small>установок подтверждено</small>
+								</p>
+								<p>
+									<span>PWA активны</span>
+									<b>{dashboard.product.pwa_active_30_days}</b>
+									<small>запускали за 30 дней</small>
 								</p>
 							</div>
 							{dashboard.product.recent_users.length > 0 && (
