@@ -148,6 +148,7 @@ import {
 import {
 	currentWebPushSubscription,
 	renewWebPushSubscription,
+	shouldOfferWebPush,
 	subscribeToWebPush,
 	syncAppBadge,
 	webPushSupported,
@@ -1928,6 +1929,7 @@ export const MiniApp = () => {
 		useState<BeforeInstallPromptEvent | null>(null);
 	const [installGuideOpen, setInstallGuideOpen] = useState(false);
 	const [dismissedInstallPrompt, setDismissedInstallPrompt] = useState(false);
+	const [dismissedPushPrompt, setDismissedPushPrompt] = useState(false);
 	const language = user
 		? normalizeUILanguage(user.language)
 		: requestedEntryLanguage;
@@ -1992,6 +1994,20 @@ export const MiniApp = () => {
 		!showCaptureStatus &&
 		!showExpiredSubscriptionStatus &&
 		!showQuotaStatus;
+	const showPushStatus =
+		Boolean(token) &&
+		!WebApp.initData &&
+		shouldOfferWebPush({
+			standalone: homeScreenStatus === "added",
+			available: notificationChannelSettings.pushAvailable,
+			subscribed: notificationChannelSettings.pushOnThisDevice,
+			dismissed: dismissedPushPrompt,
+			blocked: webPushSupported() && Notification.permission === "denied",
+		}) &&
+		!showCaptureStatus &&
+		!showExpiredSubscriptionStatus &&
+		!showQuotaStatus &&
+		!showInstallStatus;
 	const quotaStatusCopy =
 		quotaLevel === "low"
 			? uiText(language, "quotaLowBody").replace(
@@ -2822,19 +2838,26 @@ export const MiniApp = () => {
 	useEffect(() => {
 		if (!token || previewMode || !webPushSupported()) return;
 		let cancelled = false;
-		void currentWebPushSubscription()
-			.then(async (subscription) => {
-				if (!subscription) return;
-				await apiRequest("/me/push-subscriptions", token, {
-					method: "POST",
-					body: JSON.stringify(subscription.toJSON()),
-				});
+		void Promise.all([
+			currentWebPushSubscription(),
+			apiRequest<{ available: boolean; public_key: string }>(
+				"/me/push/config",
+				token,
+			),
+		])
+			.then(async ([subscription, config]) => {
+				if (subscription && config.available) {
+					await apiRequest("/me/push-subscriptions", token, {
+						method: "POST",
+						body: JSON.stringify(subscription.toJSON()),
+					});
+				}
 				if (cancelled) return;
 				setNotificationChannelSettings((current) => ({
 					...current,
-					pushAvailable: true,
-					pushEnabled: true,
-					pushOnThisDevice: true,
+					pushAvailable: config.available,
+					pushEnabled: current.pushEnabled || Boolean(subscription),
+					pushOnThisDevice: Boolean(subscription),
 				}));
 			})
 			.catch(() => undefined);
@@ -5853,6 +5876,7 @@ export const MiniApp = () => {
 				pushEnabled,
 				pushOnThisDevice: false,
 			}));
+			setDismissedPushPrompt(true);
 		} catch (err) {
 			setNotice(
 				err instanceof Error
@@ -7586,13 +7610,45 @@ export const MiniApp = () => {
 					</button>
 				</div>
 			)}
+			{showPushStatus && (
+				<div
+					className="capture-status is-quota is-push"
+					role="status"
+					aria-live="polite"
+				>
+					<BellRinging size={22} weight="fill" />
+					<div>
+						<strong>{uiText(language, "pushPromptTitle")}</strong>
+						<small>{uiText(language, "pushPromptBody")}</small>
+					</div>
+					<button
+						className="capture-status-dismiss"
+						type="button"
+						aria-label={uiText(language, "close")}
+						onClick={() => setDismissedPushPrompt(true)}
+					>
+						<X size={17} />
+					</button>
+					<button
+						className="capture-status-action"
+						type="button"
+						disabled={pushSubscriptionSaving}
+						onClick={() => void enablePushOnThisDevice()}
+					>
+						{pushSubscriptionSaving
+							? uiText(language, "saving")
+							: uiText(language, "pushPromptAction")}
+					</button>
+				</div>
+			)}
 
 			{token &&
 				(feedbackStatus?.feedback_daily_remaining ?? 0) > 0 &&
 				!showCaptureStatus &&
 				!showQuotaStatus &&
 				!showExpiredSubscriptionStatus &&
-				!showInstallStatus && (
+				!showInstallStatus &&
+				!showPushStatus && (
 					<button
 						className="mini-feedback-button"
 						type="button"

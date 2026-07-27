@@ -364,6 +364,10 @@ const messages = {
 		deviceNotificationsFailed:
 			"Не удалось настроить уведомления на устройстве.",
 		deviceNotificationsEnabled: "Уведомления на этом устройстве включены",
+		pushPromptTitle: "Не пропустите важное",
+		pushPromptBody:
+			"Напомним о планах в выбранное время и сообщим, когда разбор готов, даже если приложение закрыто.",
+		pushPromptAction: "Включить",
 		testDeviceNotifications: "Проверить",
 		testDeviceNotificationsHint:
 			"Отправим настоящее системное уведомление на это устройство.",
@@ -927,6 +931,10 @@ const messages = {
 		deviceNotificationsFailed:
 			"Could not configure notifications on this device.",
 		deviceNotificationsEnabled: "Notifications are enabled on this device",
+		pushPromptTitle: "Stay up to date",
+		pushPromptBody:
+			"We will remind you about plans at your chosen time and let you know when an analysis is ready, even while the app is closed.",
+		pushPromptAction: "Enable",
 		testDeviceNotifications: "Test",
 		testDeviceNotificationsHint:
 			"We will send a real system notification to this device.",
@@ -1493,6 +1501,10 @@ const messages = {
 			"No se pudieron configurar las notificaciones en este dispositivo.",
 		deviceNotificationsEnabled:
 			"Las notificaciones están activadas en este dispositivo",
+		pushPromptTitle: "No te pierdas nada importante",
+		pushPromptBody:
+			"Te recordaremos tus planes a la hora elegida y te avisaremos cuando un análisis esté listo, aunque la aplicación esté cerrada.",
+		pushPromptAction: "Activar",
 		testDeviceNotifications: "Probar",
 		testDeviceNotificationsHint:
 			"Enviaremos una notificación real del sistema a este dispositivo.",

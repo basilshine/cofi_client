@@ -4,6 +4,20 @@ export const webPushSupported = () =>
 	"PushManager" in window &&
 	"Notification" in window;
 
+export const shouldOfferWebPush = ({
+	standalone,
+	available,
+	subscribed,
+	dismissed,
+	blocked,
+}: {
+	standalone: boolean;
+	available: boolean;
+	subscribed: boolean;
+	dismissed: boolean;
+	blocked: boolean;
+}) => standalone && available && !subscribed && !dismissed && !blocked;
+
 const urlBase64ToUint8Array = (value: string) => {
 	const padding = "=".repeat((4 - (value.length % 4)) % 4);
 	const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
