@@ -70,6 +70,9 @@ const copy = {
 		installGuideTitle: "Добавить на главный экран",
 		installGuideBody:
 			"Приложение откроется отдельным окном и будет доступно как обычная иконка.",
+		installGuideLinkLabel: "Ссылка на приложение",
+		installGuideCopyLink: "Скопировать",
+		installGuideLinkCopied: "Скопировано",
 		installGuideDone: "Понятно",
 		installGuideIOS: [
 			"Откройте эту страницу в Safari.",
@@ -174,6 +177,9 @@ const copy = {
 		installGuideTitle: "Add to home screen",
 		installGuideBody:
 			"The app will open in its own window and be available like a regular app icon.",
+		installGuideLinkLabel: "App link",
+		installGuideCopyLink: "Copy",
+		installGuideLinkCopied: "Copied",
 		installGuideDone: "Got it",
 		installGuideIOS: [
 			"Open this page in Safari.",
@@ -279,6 +285,9 @@ const copy = {
 		installGuideTitle: "Añadir a la pantalla de inicio",
 		installGuideBody:
 			"La aplicación se abrirá en su propia ventana y estará disponible como un icono normal.",
+		installGuideLinkLabel: "Enlace de la aplicación",
+		installGuideCopyLink: "Copiar",
+		installGuideLinkCopied: "Copiado",
 		installGuideDone: "Entendido",
 		installGuideIOS: [
 			"Abre esta página en Safari.",

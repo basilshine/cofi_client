@@ -18459,7 +18459,9 @@ const InstallGuide = ({
 	onClose: () => void;
 }) => {
 	const copy = browserAuthCopy(language);
+	const [linkCopied, setLinkCopied] = useState(false);
 	const platform = homeScreenPlatform(navigator.userAgent);
+	const appURL = new URL("/app", window.location.origin).href;
 	const steps =
 		platform === "ios"
 			? copy.installGuideIOS
@@ -18476,6 +18478,37 @@ const InstallGuide = ({
 					<div>
 						<strong>{copy.installTitle}</strong>
 						<p>{copy.installGuideBody}</p>
+					</div>
+				</div>
+				<div className="install-guide-link">
+					<span>{copy.installGuideLinkLabel}</span>
+					<div className="mini-invite-share">
+						<input
+							aria-label={copy.installGuideLinkLabel}
+							readOnly
+							value={appURL}
+							onFocus={(event) => event.currentTarget.select()}
+						/>
+						<button
+							type="button"
+							onClick={async () => {
+								try {
+									await navigator.clipboard.writeText(appURL);
+									setLinkCopied(true);
+								} catch {
+									setLinkCopied(false);
+								}
+							}}
+						>
+							{linkCopied ? (
+								<Check size={17} weight="bold" />
+							) : (
+								<Copy size={17} />
+							)}
+							{linkCopied
+								? copy.installGuideLinkCopied
+								: copy.installGuideCopyLink}
+						</button>
 					</div>
 				</div>
 				<ol>
