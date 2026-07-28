@@ -301,6 +301,13 @@ const pageHead = ({ path, title, description, language }) => {
 const withHead = (html, head) =>
 	withoutDefaultSeo(html).replace("</head>", `${head}\n\t</head>`);
 
+const unexpectedLocalizedCyrillic = (html) =>
+	html
+		.replace(/<script[\s\S]*?<\/script>/gi, "")
+		.replaceAll("Пока не забыл", "")
+		.replaceAll("ИП Еньшин Василий Сергеевич", "")
+		.match(/[\u0400-\u04ff][^<]*/g);
+
 for (const seo of PUBLIC_PAGE_SEO) {
 	const html = withHead(template, `${pageHead(seo)}\n${metrikaScript}`)
 		.replace(/<html lang="[^"]*"/, `<html lang="${seo.language}"`)
@@ -336,6 +343,11 @@ for (const seo of PUBLIC_PAGE_SEO) {
 		assert(html.includes('"@type":"FAQPage"'));
 		assert(html.includes('"name":"Plus","price":"9.99","priceCurrency":"USD"'));
 		assert(html.includes("$9.99"));
+		assert.deepEqual(
+			unexpectedLocalizedCyrillic(html),
+			null,
+			`${seo.path} contains untranslated Cyrillic`,
+		);
 	}
 }
 
