@@ -32,20 +32,20 @@ test("opens production on the business host and keeps local development local", 
 	assert.equal(personalAppHref("?space_id=2", "127.0.0.1"), "/app?space_id=2");
 });
 
-test("keeps personal and business spaces in separate app shells", () => {
+test("treats only organization tenant spaces as business", () => {
 	const spaces = [
 		{ id: 1, settings: { experience: "personal" } },
 		{ id: 2, settings: { experience: "business" } },
 		{ id: 3, tenant_type: "organization" },
 		{ id: 4 },
 	];
-	assert.equal(isBusinessSpace(spaces[1]), true);
+	assert.equal(isBusinessSpace(spaces[1]), false);
 	assert.deepEqual(
 		spacesForAppExperience(spaces, false).map(({ id }) => id),
-		[1, 4],
+		[1, 2, 4],
 	);
 	assert.deepEqual(
 		spacesForAppExperience(spaces, true).map(({ id }) => id),
-		[2, 3],
+		[3],
 	);
 });

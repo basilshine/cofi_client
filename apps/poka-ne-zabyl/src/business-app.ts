@@ -8,8 +8,7 @@ type ExperienceSpace = {
 };
 
 export const isBusinessSpace = (space: ExperienceSpace) =>
-	space.tenant_type === "organization" ||
-	space.settings?.experience === "business";
+	space.tenant_type === "organization";
 
 export const spacesForAppExperience = <T extends ExperienceSpace>(
 	spaces: T[],

@@ -295,6 +295,11 @@
 	padding: 0 10px 5px;
 	font-weight: 700;
 }
+.mini-space-menu-list > .mini-space-menu-subhead {
+	margin-top: 8px;
+	padding-top: 10px;
+	border-top: 1px solid var(--mini-line);
+}
 .mini-space-menu-list button {
 	display: grid;
 	width: 100%;
@@ -3984,6 +3989,97 @@
 .mini-member-remove {
 	flex: none;
 	color: var(--mini-red);
+}
+.mini-members select {
+	width: min(152px, 38vw);
+	min-height: 36px;
+	padding: 7px 28px 7px 9px;
+	border: 1px solid var(--mini-line);
+	border-radius: 6px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	font-size: 12px;
+}
+.business-organization-card {
+	display: grid;
+	grid-template-columns: 44px minmax(0, 1fr) 42px;
+	align-items: center;
+	gap: 12px;
+	padding: 15px;
+	border: 1px solid var(--mini-line);
+	border-left: 3px solid var(--mini-green);
+	border-radius: 8px;
+	background: var(--mini-paper);
+}
+.business-organization-card__icon {
+	display: grid;
+	width: 44px;
+	height: 44px;
+	place-items: center;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+}
+.business-organization-card > div {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.business-organization-card small,
+.business-organization-card p,
+.is-business-section small {
+	margin: 0;
+	color: var(--mini-muted);
+	font-size: 11px;
+}
+.business-organization-card strong {
+	overflow: hidden;
+	font-size: 16px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-section-head.is-business-section {
+	align-items: end;
+	margin-top: 20px;
+}
+.is-business-section > div {
+	display: grid;
+	gap: 2px;
+}
+.is-business-section h2 {
+	margin: 0;
+}
+.business-organization-editor,
+.organization-invite-form {
+	display: grid;
+	gap: 17px;
+	padding: 4px 20px calc(20px + env(safe-area-inset-bottom));
+}
+.business-organization-editor > label {
+	display: grid;
+	gap: 7px;
+	font-size: 13px;
+	font-weight: 750;
+}
+.business-organization-editor input {
+	min-height: 46px;
+	padding: 10px 12px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	font: inherit;
+}
+.organization-invite-actions {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 8px;
+}
+.organization-invite-actions button {
+	display: inline-flex;
+	min-height: 46px;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
 }
 .mini-nav {
 	position: fixed;

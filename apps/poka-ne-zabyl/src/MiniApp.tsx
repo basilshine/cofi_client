@@ -224,6 +224,16 @@ type SpaceMember = {
 	role: string;
 };
 
+type Organization = {
+	id: number;
+	name: string;
+	industry: BusinessIndustry | "";
+	role: string;
+	member_count: number;
+	space_count: number;
+	can_manage: boolean;
+};
+
 type SpaceParticipant = {
 	id: number;
 	space_id: number;
@@ -1668,6 +1678,11 @@ export const MiniApp = ({
 	const [spaces, setSpaces] = useState<Space[]>([]);
 	const [spaceID, setSpaceID] = useState(0);
 	const [members, setMembers] = useState<SpaceMember[]>([]);
+	const [organizations, setOrganizations] = useState<Organization[]>([]);
+	const [organizationID, setOrganizationID] = useState(0);
+	const [organizationMembers, setOrganizationMembers] = useState<SpaceMember[]>(
+		[],
+	);
 	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
 	const [expenseSplits, setExpenseSplits] = useState<ExpenseSplit[]>([]);
 	const [splitExpenses, setSplitExpenses] = useState<Expense[]>([]);
@@ -1933,6 +1948,10 @@ export const MiniApp = ({
 	const [billingLoading, setBillingLoading] = useState(false);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [invitingSpace, setInvitingSpace] = useState<Space | null>(null);
+	const [invitingOrganization, setInvitingOrganization] =
+		useState<Organization | null>(null);
+	const [editingOrganization, setEditingOrganization] =
+		useState<Organization | null>(null);
 	const [businessSetupOpen, setBusinessSetupOpen] = useState(false);
 	const [businessSpaceName, setBusinessSpaceName] = useState("Мой бизнес");
 	const [businessIndustry, setBusinessIndustry] =
@@ -2253,6 +2272,20 @@ export const MiniApp = ({
 						: undefined,
 				},
 			]);
+			if (businessApp) {
+				setOrganizations([
+					{
+						id: 2,
+						name: "Студия Василия",
+						industry: "construction",
+						role: "owner",
+						member_count: 2,
+						space_count: 1,
+						can_manage: true,
+					},
+				]);
+				setOrganizationID(2);
+			}
 			setMembers([
 				{
 					user_id: 1,
@@ -2271,6 +2304,24 @@ export const MiniApp = ({
 						]
 					: []),
 			]);
+			setOrganizationMembers(
+				businessApp
+					? [
+							{
+								user_id: 1,
+								name: "Василий",
+								email: "telegram_1@telegram.local",
+								role: "owner",
+							},
+							{
+								user_id: 2,
+								name: "Наталья",
+								email: "natalya@example.com",
+								role: "member",
+							},
+						]
+					: [],
+			);
 			setParticipants(
 				previewSpaceID === 2
 					? [
@@ -2600,7 +2651,7 @@ export const MiniApp = ({
 
 	const acceptAuth = async (
 		auth: AuthResponse,
-		context?: AuthCompletionContext,
+		_context?: AuthCompletionContext,
 	) => {
 		let joinedSpaceID = 0;
 		let inviteNotice = "";
@@ -2621,7 +2672,12 @@ export const MiniApp = ({
 					err instanceof Error ? err.message : "Не удалось принять приглашение";
 			}
 		}
-		const availableSpaces = await apiRequest<Space[]>("/spaces", auth.token);
+		const [availableSpaces, organizationData] = await Promise.all([
+			apiRequest<Space[]>("/spaces", auth.token),
+			businessApp
+				? apiRequest<{ organizations: Organization[] }>("/tenants", auth.token)
+				: Promise.resolve({ organizations: [] }),
+		]);
 		const experienceSpaces = spacesForAppExperience(
 			availableSpaces,
 			businessApp,
@@ -2647,6 +2703,14 @@ export const MiniApp = ({
 		setToken(auth.token);
 		setUser(auth.user);
 		setSpaces(availableSpaces);
+		setOrganizations(organizationData.organizations || []);
+		setOrganizationID(
+			joinedSpace?.tenant_id ||
+				experienceSpaces.find((space) => space.id === targetSpaceID)
+					?.tenant_id ||
+				organizationData.organizations[0]?.id ||
+				0,
+		);
 		setSpaceID(
 			experienceSpaces.some((space) => space.id === targetSpaceID)
 				? targetSpaceID
@@ -2658,12 +2722,7 @@ export const MiniApp = ({
 		}
 		if (joinedSpaceID) setView("spaces");
 		if (inviteNotice) setNotice(inviteNotice);
-		if (
-			!joinedSpaceID &&
-			!preferredBusinessSpace &&
-			(businessApp ||
-				(context?.registered && context.acquisitionFunnel === "business"))
-		) {
+		if (!joinedSpaceID && !preferredBusinessSpace && businessApp) {
 			setBusinessSpaceName("Мой бизнес");
 			setBusinessSetupOpen(true);
 		}
@@ -4750,6 +4809,40 @@ export const MiniApp = ({
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
 	const shellSpaces = spacesForAppExperience(spaces, businessApp);
+	const activeOrganization =
+		organizations.find(({ id }) => id === organizationID) ||
+		organizations.find(({ id }) => id === activeSpace?.tenant_id) ||
+		null;
+	const organizationSpaces = businessApp
+		? shellSpaces.filter(
+				(space) => space.tenant_id === (activeOrganization?.id || 0),
+			)
+		: shellSpaces;
+	const activeWorkspaceName =
+		activeSpace && businessApp
+			? organizationSpaceName(activeSpace, activeOrganization)
+			: activeSpace?.name || "";
+	useEffect(() => {
+		if (!businessApp || !activeSpace?.tenant_id) return;
+		setOrganizationID(activeSpace.tenant_id);
+	}, [businessApp, activeSpace?.tenant_id]);
+	useEffect(() => {
+		if (!businessApp || !token || !activeOrganization?.id || previewMode)
+			return;
+		void apiRequest<{ members: SpaceMember[] }>(
+			`/tenants/${activeOrganization.id}/members?limit=200`,
+			token,
+		)
+			.then((response) => setOrganizationMembers(response.members || []))
+			.catch(() => setOrganizationMembers([]));
+	}, [businessApp, token, activeOrganization?.id]);
+	const selectOrganization = (tenantID: number) => {
+		const nextSpace = shellSpaces.find((space) => space.tenant_id === tenantID);
+		setOrganizationID(tenantID);
+		setSpaceID(nextSpace?.id || 0);
+		setSpaceMenuOpen(false);
+		if (!nextSpace) setView("spaces");
+	};
 	const accountHasPlus = ["medium", "plus"].includes(accountQuota?.plan || "");
 	const activeSpaceHasPlus = ["medium", "plus"].includes(quota?.plan || "");
 	const activeSpaceOwnedByUser = activeSpace?.owner_user_id === user?.id;
@@ -4762,7 +4855,9 @@ export const MiniApp = ({
 		setSpaceMenuOpen(false);
 		setEditingSpace({
 			id: 0,
-			tenant_id: activeSpace?.tenant_id || 0,
+			tenant_id: businessApp
+				? activeOrganization?.id || 0
+				: activeSpace?.tenant_id || 0,
 			owner_user_id: user?.id || 0,
 			is_personal: false,
 			name: "",
@@ -4771,52 +4866,40 @@ export const MiniApp = ({
 	};
 	const createBusinessSpace = async () => {
 		const name = businessSpaceName.trim();
-		if (!token || !name || businessSetupSaving) return;
+		if (!businessApp || !token || !name || businessSetupSaving) return;
 		setBusinessSetupSaving(true);
 		setError("");
 		try {
-			let saved: Space;
-			if (businessApp) {
-				const created = await apiRequest<{ default_space_id: number }>(
-					"/tenants",
-					token,
-					{
-						method: "POST",
-						body: JSON.stringify({
-							name,
-							template: "business",
-							industry: businessIndustry,
-						}),
-					},
-				);
-				const freshSpaces = await apiRequest<Space[]>("/spaces", token);
-				saved =
-					freshSpaces.find((space) => space.id === created.default_space_id) ||
-					freshSpaces[freshSpaces.length - 1];
-				if (!saved) throw new Error("Рабочее пространство не найдено");
-				setSpaces(freshSpaces);
-			} else {
-				saved = await apiRequest<Space>("/spaces", token, {
-					method: "POST",
-					body: JSON.stringify({
-						name,
-						currency: user?.currency || "RUB",
-						template: "business",
-						industry: businessIndustry,
-					}),
-				});
-				setSpaces((current) => [...current, saved]);
-			}
+			const created = await apiRequest<{
+				tenant: Organization;
+				default_space_id: number;
+			}>("/tenants", token, {
+				method: "POST",
+				body: JSON.stringify({
+					name,
+					template: "business",
+					industry: businessIndustry,
+				}),
+			});
+			const [freshSpaces, organizationData] = await Promise.all([
+				apiRequest<Space[]>("/spaces", token),
+				apiRequest<{ organizations: Organization[] }>("/tenants", token),
+			]);
+			const saved =
+				freshSpaces.find((space) => space.id === created.default_space_id) ||
+				freshSpaces[freshSpaces.length - 1];
+			if (!saved) throw new Error("Рабочее пространство не найдено");
+			setSpaces(freshSpaces);
+			setOrganizations(organizationData.organizations || []);
+			setOrganizationID(created.tenant.id);
 			setSpaceID(saved.id);
 			setView("overview");
 			setBusinessSetupOpen(false);
-			setNotice(`Рабочее пространство «${saved.name}» готово`);
+			setNotice(`Компания «${name}» готова`);
 			reachMetrikaGoal("business_space_created");
 		} catch (err) {
 			setError(
-				err instanceof Error
-					? err.message
-					: "Не удалось создать рабочее пространство",
+				err instanceof Error ? err.message : "Не удалось создать организацию",
 			);
 		} finally {
 			setBusinessSetupSaving(false);
@@ -6126,8 +6209,12 @@ export const MiniApp = ({
 		}
 		setSaving(true);
 		try {
+			const createPath =
+				businessApp && editingSpace.tenant_id
+					? `/tenants/${editingSpace.tenant_id}/spaces`
+					: "/spaces";
 			const saved = await apiRequest<Space>(
-				creating ? "/spaces" : `/spaces/${editingSpace.id}`,
+				creating ? createPath : `/spaces/${editingSpace.id}`,
 				token,
 				{
 					method: creating ? "POST" : "PATCH",
@@ -6139,12 +6226,34 @@ export const MiniApp = ({
 					}),
 				},
 			);
+			const visibleSaved =
+				businessApp && creating
+					? {
+							...saved,
+							tenant_name: activeOrganization?.name,
+							tenant_type: "organization",
+						}
+					: saved;
 			setSpaces((current) =>
 				creating
-					? [...current, saved]
-					: current.map((space) => (space.id === saved.id ? saved : space)),
+					? [...current, visibleSaved]
+					: current.map((space) =>
+							space.id === visibleSaved.id ? visibleSaved : space,
+						),
 			);
-			setSpaceID(saved.id);
+			if (businessApp && creating) {
+				setOrganizations((current) =>
+					current.map((organization) =>
+						organization.id === visibleSaved.tenant_id
+							? {
+									...organization,
+									space_count: organization.space_count + 1,
+								}
+							: organization,
+					),
+				);
+			}
+			setSpaceID(visibleSaved.id);
 			setEditingSpace(null);
 			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
 		} catch (err) {
@@ -6248,6 +6357,118 @@ export const MiniApp = ({
 				current.filter((item) => item.user_id !== member.user_id),
 			);
 			setNotice(`${member.name || "Участник"} удалён из пространства`);
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось удалить участника",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const saveOrganization = async () => {
+		if (!editingOrganization || saving) return;
+		setSaving(true);
+		try {
+			const saved = previewMode
+				? editingOrganization
+				: await apiRequest<Organization>(
+						`/tenants/${editingOrganization.id}`,
+						token,
+						{
+							method: "PATCH",
+							body: JSON.stringify({
+								name: editingOrganization.name,
+								industry: editingOrganization.industry,
+							}),
+						},
+					);
+			const next = { ...editingOrganization, ...saved };
+			setOrganizations((current) =>
+				current.map((organization) =>
+					organization.id === next.id ? next : organization,
+				),
+			);
+			setSpaces((current) =>
+				current.map((space) =>
+					space.tenant_id === next.id
+						? {
+								...space,
+								tenant_name: next.name,
+								settings: {
+									...space.settings,
+									experience: "business",
+									industry: next.industry || "construction",
+								},
+							}
+						: space,
+				),
+			);
+			setEditingOrganization(null);
+			setNotice("Настройки компании сохранены");
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: "Не удалось сохранить настройки компании",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const updateOrganizationMemberRole = async (
+		member: SpaceMember,
+		role: string,
+	) => {
+		if (!activeOrganization?.can_manage || saving) return;
+		setSaving(true);
+		try {
+			if (!previewMode) {
+				await apiRequest(
+					`/tenants/${activeOrganization.id}/members/${member.user_id}`,
+					token,
+					{ method: "PATCH", body: JSON.stringify({ role }) },
+				);
+			}
+			setOrganizationMembers((current) =>
+				current.map((item) =>
+					item.user_id === member.user_id ? { ...item, role } : item,
+				),
+			);
+			setNotice("Роль участника обновлена");
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось изменить роль",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const removeOrganizationMember = async (member: SpaceMember) => {
+		if (
+			!activeOrganization?.can_manage ||
+			member.role === "owner" ||
+			member.user_id === user?.id ||
+			saving
+		)
+			return;
+		if (!window.confirm(`Удалить ${member.name || "участника"} из компании?`))
+			return;
+		setSaving(true);
+		try {
+			if (!previewMode) {
+				await apiRequest(
+					`/tenants/${activeOrganization.id}/members/${member.user_id}`,
+					token,
+					{ method: "DELETE" },
+				);
+			}
+			setOrganizationMembers((current) =>
+				current.filter((item) => item.user_id !== member.user_id),
+			);
+			setNotice(`${member.name || "Участник"} удалён из компании`);
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : "Не удалось удалить участника",
@@ -7048,7 +7269,7 @@ export const MiniApp = ({
 						<button
 							className={`mini-space-trigger${spaceMenuOpen ? " is-open" : ""}`}
 							type="button"
-							aria-label={`${uiText(language, "space")}: ${activeSpace?.name || ""}`}
+							aria-label={`${uiText(language, "space")}: ${activeWorkspaceName}`}
 							aria-haspopup="menu"
 							aria-expanded={spaceMenuOpen}
 							onClick={() => {
@@ -7065,7 +7286,17 @@ export const MiniApp = ({
 										: uiText(language, "brand")}
 								</strong>
 								<span>
-									<small title={activeSpace?.name}>{activeSpace?.name}</small>
+									<small
+										title={
+											businessApp
+												? `${activeOrganization?.name || ""} · ${activeWorkspaceName}`
+												: activeSpace?.name
+										}
+									>
+										{businessApp
+											? activeOrganization?.name || "Выберите компанию"
+											: activeSpace?.name}
+									</small>
 									<CaretDown size={13} weight="bold" />
 								</span>
 							</span>
@@ -7073,7 +7304,11 @@ export const MiniApp = ({
 						{activeCoachmark === "spaceSwitcher" && (
 							<CoachTip
 								className="is-space"
-								text={uiText(language, "coachSpace")}
+								text={
+									businessApp
+										? businessSpaceCoachText(language)
+										: uiText(language, "coachSpace")
+								}
 								closeLabel={uiText(language, "coachDismiss")}
 								onDismiss={() => dismissCoachmark("spaceSwitcher")}
 							/>
@@ -7082,18 +7317,66 @@ export const MiniApp = ({
 							<div className="mini-space-menu" role="menu">
 								{activeSpace && (
 									<div className="mini-space-menu-summary">
-										<small>{uiText(language, "currentSpace")}</small>
-										<strong>{activeSpace.name}</strong>
-										<span>{spaceSubtitle(activeSpace)}</span>
+										<small>
+											{businessApp
+												? "Текущая организация"
+												: uiText(language, "currentSpace")}
+										</small>
+										<strong>
+											{businessApp
+												? activeOrganization?.name || activeSpace.tenant_name
+												: activeSpace.name}
+										</strong>
+										<span>
+											{businessApp
+												? `${activeWorkspaceName} · ${organizationRoleLabel(activeOrganization?.role || "")}`
+												: spaceSubtitle(activeSpace)}
+										</span>
 									</div>
 								)}
 								<div className="mini-space-menu-list">
 									<small>
 										{businessApp
-											? "Рабочие пространства"
+											? "Организации"
 											: uiText(language, "yourSpaces")}
 									</small>
-									{shellSpaces.map((space) => (
+									{businessApp &&
+										organizations.map((organization) => (
+											<button
+												key={organization.id}
+												className={
+													organization.id === activeOrganization?.id
+														? "is-active"
+														: ""
+												}
+												type="button"
+												role="menuitemradio"
+												aria-checked={
+													organization.id === activeOrganization?.id
+												}
+												onClick={() => selectOrganization(organization.id)}
+											>
+												<span className="mini-space-menu-icon">
+													<Buildings size={18} weight="fill" />
+												</span>
+												<span>
+													<strong>{organization.name}</strong>
+													<small>
+														{organization.member_count} участников ·{" "}
+														{organization.space_count} пространств
+													</small>
+												</span>
+												{organization.id === activeOrganization?.id && (
+													<Check size={18} weight="bold" />
+												)}
+											</button>
+										))}
+									{businessApp && activeOrganization && (
+										<small className="mini-space-menu-subhead">
+											Пространства компании
+										</small>
+									)}
+									{organizationSpaces.map((space) => (
 										<button
 											key={space.id}
 											className={space.id === spaceID ? "is-active" : ""}
@@ -7113,7 +7396,9 @@ export const MiniApp = ({
 												)}
 											</span>
 											<span>
-												<strong>{space.name}</strong>
+												<strong>
+													{organizationSpaceName(space, activeOrganization)}
+												</strong>
 												<small>{spaceSubtitle(space)}</small>
 											</span>
 											{space.id === spaceID && (
@@ -7143,7 +7428,7 @@ export const MiniApp = ({
 									/>
 								)}
 								<div className="mini-space-menu-actions">
-									{!businessApp && (
+									{(!businessApp || activeOrganization?.can_manage) && (
 										<button
 											className="mini-space-menu-add"
 											type="button"
@@ -7152,25 +7437,44 @@ export const MiniApp = ({
 										>
 											<Plus size={18} weight="bold" />
 											<span>
-												<strong>{uiText(language, "addSpace")}</strong>
-												{!accountHasPlus && (
+												<strong>
+													{businessApp
+														? "Добавить рабочее пространство"
+														: uiText(language, "addSpace")}
+												</strong>
+												{!businessApp && !accountHasPlus && (
 													<small>{uiText(language, "plusMoreSpaces")}</small>
 												)}
 											</span>
 											<ArrowRight size={16} />
 										</button>
 									)}
-									{activeSpace && (
+									{activeSpace &&
+										(!businessApp || activeOrganization?.can_manage) && (
+											<button
+												type="button"
+												role="menuitem"
+												onClick={() => {
+													setSpaceMenuOpen(false);
+													setEditingSpace({ ...activeSpace });
+												}}
+											>
+												<GearSix size={18} />
+												<span>{uiText(language, "configureCurrentSpace")}</span>
+											</button>
+										)}
+									{businessApp && (
 										<button
 											type="button"
 											role="menuitem"
 											onClick={() => {
 												setSpaceMenuOpen(false);
-												setEditingSpace({ ...activeSpace });
+												setBusinessSpaceName("Мой бизнес");
+												setBusinessSetupOpen(true);
 											}}
 										>
-											<GearSix size={18} />
-											<span>{uiText(language, "configureCurrentSpace")}</span>
+											<Plus size={18} />
+											<span>Создать другую компанию</span>
 										</button>
 									)}
 									<button
@@ -7361,8 +7665,8 @@ export const MiniApp = ({
 							<Overview
 								user={user}
 								language={language}
-								spaceName={activeSpace?.name || ""}
-								businessMode={activeSpace?.settings?.experience === "business"}
+								spaceName={activeWorkspaceName}
+								businessMode={businessApp}
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
@@ -7516,7 +7820,8 @@ export const MiniApp = ({
 						{view === "spaces" && (
 							<SpacesView
 								businessApp={businessApp}
-								spaces={shellSpaces}
+								organization={activeOrganization}
+								spaces={businessApp ? organizationSpaces : shellSpaces}
 								quota={accountQuota}
 								ownedSpacesCount={ownedSpacesCount}
 								showBasicLimits={
@@ -7524,23 +7829,49 @@ export const MiniApp = ({
 								}
 								language={language}
 								activeSpaceID={spaceID}
-								members={members}
-								canManageMembers={activeSpace?.owner_user_id === user?.id}
+								members={businessApp ? organizationMembers : members}
+								currentUserID={user?.id || 0}
+								canManageMembers={
+									businessApp
+										? Boolean(activeOrganization?.can_manage)
+										: activeSpace?.owner_user_id === user?.id
+								}
 								saving={saving}
 								onSelect={setSpaceID}
 								onBack={() => setView("profile")}
 								onEdit={(space) => setEditingSpace({ ...space })}
-								onRemoveMember={removeSpaceMember}
-								onUpgrade={() => setView("subscription")}
-								onInvite={
-									activeSpace &&
-									!activeSpace.is_personal &&
-									activeSpace.owner_user_id === user?.id
-										? setInvitingSpace
+								onRemoveMember={
+									businessApp ? removeOrganizationMember : removeSpaceMember
+								}
+								onChangeMemberRole={
+									businessApp ? updateOrganizationMemberRole : undefined
+								}
+								onEditOrganization={
+									activeOrganization?.can_manage
+										? () =>
+												setEditingOrganization({
+													...activeOrganization,
+												})
 										: undefined
 								}
-								inviting={Boolean(invitingSpace)}
-								onAdd={businessApp ? undefined : openNewSpaceEditor}
+								onUpgrade={() => setView("subscription")}
+								onInvite={
+									businessApp
+										? activeOrganization?.can_manage && activeOrganization
+											? () => setInvitingOrganization(activeOrganization)
+											: undefined
+										: activeSpace &&
+												!activeSpace.is_personal &&
+												activeSpace.owner_user_id === user?.id
+											? setInvitingSpace
+											: undefined
+								}
+								inviting={Boolean(invitingSpace || invitingOrganization)}
+								onAdd={
+									!businessApp || activeOrganization?.can_manage
+										? openNewSpaceEditor
+										: undefined
+								}
 							/>
 						)}
 						{view === "profile" && (
@@ -8564,16 +8895,39 @@ export const MiniApp = ({
 					}}
 				/>
 			)}
+			{editingOrganization && (
+				<OrganizationEditor
+					organization={editingOrganization}
+					saving={saving}
+					onChange={setEditingOrganization}
+					onClose={() => setEditingOrganization(null)}
+					onSave={() => void saveOrganization()}
+				/>
+			)}
+			{invitingOrganization && (
+				<OrganizationInviteDialog
+					organization={invitingOrganization}
+					token={token}
+					previewMode={previewMode}
+					onClose={() => setInvitingOrganization(null)}
+					onNotice={setNotice}
+				/>
+			)}
 			{editingSpace && !invitingSpace && (
 				<SpaceEditor
 					language={language}
 					space={editingSpace}
-					canEditCurrency={editingSpace.owner_user_id === user?.id}
+					canEditCurrency={
+						businessApp
+							? Boolean(activeOrganization?.can_manage)
+							: editingSpace.owner_user_id === user?.id
+					}
 					saving={saving}
 					onChange={setEditingSpace}
 					onClose={() => setEditingSpace(null)}
 					onSave={saveSpace}
 					onInvite={
+						!businessApp &&
 						editingSpace.id &&
 						!editingSpace.is_personal &&
 						editingSpace.owner_user_id === user?.id
@@ -8581,7 +8935,7 @@ export const MiniApp = ({
 							: undefined
 					}
 					onDelete={
-						editingSpace.id && !editingSpace.is_personal
+						!businessApp && editingSpace.id && !editingSpace.is_personal
 							? deleteSpace
 							: undefined
 					}
@@ -12169,6 +12523,7 @@ const VendorsView = ({
 
 const SpacesView = ({
 	businessApp,
+	organization,
 	spaces,
 	quota,
 	ownedSpacesCount,
@@ -12176,11 +12531,14 @@ const SpacesView = ({
 	language,
 	activeSpaceID,
 	members,
+	currentUserID,
 	canManageMembers,
 	onSelect,
 	onBack,
 	onEdit,
 	onRemoveMember,
+	onChangeMemberRole,
+	onEditOrganization,
 	onUpgrade,
 	onInvite,
 	inviting,
@@ -12188,6 +12546,7 @@ const SpacesView = ({
 	onAdd,
 }: {
 	businessApp: boolean;
+	organization: Organization | null;
 	spaces: Space[];
 	quota: Quota | null;
 	ownedSpacesCount: number;
@@ -12195,11 +12554,14 @@ const SpacesView = ({
 	language: UILanguage;
 	activeSpaceID: number;
 	members: SpaceMember[];
+	currentUserID: number;
 	canManageMembers: boolean;
 	onSelect: (id: number) => void;
 	onBack: () => void;
 	onEdit: (space: Space) => void;
 	onRemoveMember: (member: SpaceMember) => void;
+	onChangeMemberRole?: (member: SpaceMember, role: string) => void;
+	onEditOrganization?: () => void;
 	onUpgrade: () => void;
 	onInvite?: (space: Space) => void;
 	inviting: boolean;
@@ -12222,11 +12584,11 @@ const SpacesView = ({
 					</p>
 					<h1>
 						{businessApp
-							? activeSpace?.tenant_name || "Компания"
+							? organization?.name || "Компания"
 							: uiText(language, "spaces")}
 					</h1>
 				</div>
-				{onAdd && (
+				{onAdd && !businessApp && (
 					<button className="mini-add-button" type="button" onClick={onAdd}>
 						<Plus size={18} weight="bold" />
 						{uiText(language, "add")}
@@ -12245,6 +12607,45 @@ const SpacesView = ({
 					onUpgrade={onUpgrade}
 				/>
 			)}
+			{businessApp && organization && (
+				<div className="business-organization-card">
+					<span className="business-organization-card__icon">
+						<Buildings size={24} weight="duotone" />
+					</span>
+					<div>
+						<small>Организация</small>
+						<strong>{organization.name}</strong>
+						<p>
+							{organization.industry === "tourism" ? "Туризм" : "Строительство"}{" "}
+							· {organizationRoleLabel(organization.role)}
+						</p>
+					</div>
+					{onEditOrganization && (
+						<button
+							className="mini-icon-button"
+							type="button"
+							aria-label="Настроить организацию"
+							onClick={onEditOrganization}
+						>
+							<GearSix size={19} />
+						</button>
+					)}
+				</div>
+			)}
+			{businessApp && (
+				<div className="mini-section-head is-business-section">
+					<div>
+						<small>Внутри организации</small>
+						<h2>Рабочие пространства</h2>
+					</div>
+					{onAdd && (
+						<button type="button" onClick={onAdd}>
+							<Plus size={17} weight="bold" />
+							Добавить
+						</button>
+					)}
+				</div>
+			)}
 			<div className="mini-spaces">
 				{spaces.map((space) => (
 					<article
@@ -12253,22 +12654,24 @@ const SpacesView = ({
 					>
 						<button type="button" onClick={() => onSelect(space.id)}>
 							<span>
-								<b>{space.name}</b>
+								<b>{organizationSpaceName(space, organization)}</b>
 								<small>{space.currency}</small>
 							</span>
 							{space.id === activeSpaceID && <Check size={18} weight="bold" />}
 						</button>
-						<button
-							className="mini-icon-button"
-							type="button"
-							aria-label={uiText(language, "configureSpace").replace(
-								"{name}",
-								space.name,
-							)}
-							onClick={() => onEdit(space)}
-						>
-							<GearSix size={19} />
-						</button>
+						{(!businessApp || canManageMembers) && (
+							<button
+								className="mini-icon-button"
+								type="button"
+								aria-label={uiText(language, "configureSpace").replace(
+									"{name}",
+									space.name,
+								)}
+								onClick={() => onEdit(space)}
+							>
+								<GearSix size={19} />
+							</button>
+						)}
 					</article>
 				))}
 			</div>
@@ -12277,10 +12680,12 @@ const SpacesView = ({
 			)}
 			<div className="mini-section-head">
 				<h2>
-					{uiText(language, "membersCount").replace(
-						"{count}",
-						String(members.length),
-					)}
+					{businessApp
+						? `Команда · ${members.length}`
+						: uiText(language, "membersCount").replace(
+								"{count}",
+								String(members.length),
+							)}
 				</h2>
 				{onInvite && activeSpace && (
 					<button
@@ -12296,7 +12701,9 @@ const SpacesView = ({
 			<div className="mini-members">
 				{members.map((member) => {
 					const canRemove =
-						canManageMembers && activeSpace?.owner_user_id !== member.user_id;
+						canManageMembers &&
+						member.role !== "owner" &&
+						member.user_id !== currentUserID;
 					return (
 						<div key={member.user_id}>
 							<span>
@@ -12306,8 +12713,28 @@ const SpacesView = ({
 							</span>
 							<p>
 								<b>{member.name || uiText(language, "user")}</b>
-								<small>{memberRole(member.role, language)}</small>
+								<small>
+									{businessApp
+										? organizationRoleLabel(member.role)
+										: memberRole(member.role, language)}
+								</small>
 							</p>
+							{businessApp && onChangeMemberRole && canRemove && (
+								<select
+									aria-label={`Роль: ${member.name}`}
+									value={member.role}
+									disabled={saving}
+									onChange={(event) =>
+										onChangeMemberRole(member, event.target.value)
+									}
+								>
+									{organization?.role === "owner" && (
+										<option value="admin">Администратор</option>
+									)}
+									<option value="member">Участник</option>
+									<option value="viewer">Наблюдатель</option>
+								</select>
+							)}
 							{canRemove && (
 								<button
 									className="mini-icon-button mini-member-remove"
@@ -18049,6 +18476,231 @@ const SpaceInviteDialog = ({
 	);
 };
 
+const OrganizationEditor = ({
+	organization,
+	saving,
+	onChange,
+	onClose,
+	onSave,
+}: {
+	organization: Organization;
+	saving: boolean;
+	onChange: (organization: Organization) => void;
+	onClose: () => void;
+	onSave: () => void;
+}) => (
+	<Modal title="Настройки организации" variant="editor" onClose={onClose}>
+		<div className="business-organization-editor">
+			<label>
+				Название компании
+				<input
+					maxLength={120}
+					value={organization.name}
+					onChange={(event) =>
+						onChange({ ...organization, name: event.target.value })
+					}
+				/>
+			</label>
+			<fieldset className="business-setup__industry">
+				<legend>Сфера работы</legend>
+				<div>
+					<button
+						type="button"
+						className={
+							organization.industry === "construction" ? "is-active" : ""
+						}
+						onClick={() =>
+							onChange({ ...organization, industry: "construction" })
+						}
+					>
+						<HardHat size={20} weight="duotone" />
+						<span>
+							<strong>Строительство</strong>
+							<small>Объекты и подрядчики</small>
+						</span>
+					</button>
+					<button
+						type="button"
+						className={organization.industry === "tourism" ? "is-active" : ""}
+						onClick={() => onChange({ ...organization, industry: "tourism" })}
+					>
+						<AirplaneTilt size={20} weight="duotone" />
+						<span>
+							<strong>Туризм</strong>
+							<small>Гости и поездки</small>
+						</span>
+					</button>
+				</div>
+			</fieldset>
+			<p className="mini-field-note">
+				Организация объединяет команду и рабочие пространства. Личные и семейные
+				пространства остаются отдельно.
+			</p>
+			<button
+				className="mini-save"
+				type="button"
+				disabled={saving || !organization.name.trim()}
+				onClick={onSave}
+			>
+				{saving ? "Сохраняем…" : "Сохранить"}
+			</button>
+		</div>
+	</Modal>
+);
+
+const OrganizationInviteDialog = ({
+	organization,
+	token,
+	previewMode,
+	onClose,
+	onNotice,
+}: {
+	organization: Organization;
+	token: string;
+	previewMode: boolean;
+	onClose: () => void;
+	onNotice: (message: string) => void;
+}) => {
+	const [email, setEmail] = useState("");
+	const [role, setRole] = useState("member");
+	const [submitting, setSubmitting] = useState(false);
+	const [createdLinkToken, setCreatedLinkToken] = useState("");
+	const [error, setError] = useState("");
+	const inviteURL = (inviteToken: string) =>
+		`${window.location.origin}/join?token=${encodeURIComponent(inviteToken)}`;
+	const createInvite = async (channel: "email" | "link") => {
+		if (submitting) return null;
+		if (channel === "email" && !email.trim()) {
+			setError("Укажите электронную почту");
+			return null;
+		}
+		setSubmitting(true);
+		setError("");
+		try {
+			return previewMode
+				? { token: `preview-organization-${Date.now()}` }
+				: await apiRequest<{ token: string }>(
+						`/tenants/${organization.id}/invites`,
+						token,
+						{
+							method: "POST",
+							body: JSON.stringify({
+								email: channel === "email" ? email.trim() : "",
+								channel,
+								invited_tenant_role: role,
+							}),
+						},
+					);
+		} catch (err) {
+			setError(
+				err instanceof Error ? err.message : "Не удалось создать приглашение",
+			);
+			return null;
+		} finally {
+			setSubmitting(false);
+		}
+	};
+	const copyInvite = async (inviteToken: string) => {
+		await navigator.clipboard.writeText(inviteURL(inviteToken));
+		onNotice("Ссылка приглашения скопирована");
+	};
+	const shareInvite = async () => {
+		let inviteToken = createdLinkToken;
+		if (!inviteToken) {
+			const invite = await createInvite("link");
+			if (!invite) return;
+			inviteToken = invite.token;
+			setCreatedLinkToken(inviteToken);
+		}
+		if (!navigator.share) {
+			await copyInvite(inviteToken);
+			return;
+		}
+		try {
+			await navigator.share({
+				title: organization.name,
+				text: `Присоединяйтесь к команде «${organization.name}» в «Пока не забыл Бизнес».`,
+				url: inviteURL(inviteToken),
+			});
+		} catch (err) {
+			if (err instanceof DOMException && err.name === "AbortError") return;
+			await copyInvite(inviteToken);
+		}
+	};
+	const sendEmail = async () => {
+		const invite = await createInvite("email");
+		if (!invite) return;
+		onNotice(`Приглашение отправлено на ${email.trim()}`);
+		onClose();
+	};
+	return (
+		<Modal title={`Пригласить в «${organization.name}»`} onClose={onClose}>
+			<div className="mini-invite-form organization-invite-form">
+				<p className="mini-invite-copy">
+					Участник получит отдельный вход в организацию и доступ к её рабочим
+					пространствам согласно роли.
+				</p>
+				<label className="mini-field">
+					<span>Роль в компании</span>
+					<select
+						value={role}
+						onChange={(event) => setRole(event.target.value)}
+					>
+						<option value="member">Участник — работает с расходами</option>
+						<option value="viewer">Наблюдатель — только просмотр</option>
+					</select>
+				</label>
+				<label className="mini-field">
+					<span>Электронная почта</span>
+					<input
+						type="email"
+						value={email}
+						placeholder="name@company.ru"
+						onChange={(event) => setEmail(event.target.value)}
+					/>
+				</label>
+				<div className="organization-invite-actions">
+					<button
+						className="mini-save"
+						type="button"
+						disabled={submitting || !email.trim()}
+						onClick={() => void sendEmail()}
+					>
+						<PaperPlaneTilt size={18} weight="bold" />
+						{submitting ? "Отправляем…" : "Отправить на почту"}
+					</button>
+					<button
+						className="mini-secondary-action"
+						type="button"
+						disabled={submitting}
+						onClick={() => void shareInvite()}
+					>
+						<ShareNetwork size={18} weight="bold" />
+						Поделиться ссылкой
+					</button>
+				</div>
+				{createdLinkToken && (
+					<div className="mini-invite-share">
+						<input readOnly value={inviteURL(createdLinkToken)} />
+						<button
+							type="button"
+							aria-label="Копировать ссылку"
+							onClick={() => void copyInvite(createdLinkToken)}
+						>
+							<Copy size={17} />
+						</button>
+					</div>
+				)}
+				{error && (
+					<p className="mini-form-error" role="alert">
+						{error}
+					</p>
+				)}
+			</div>
+		</Modal>
+	);
+};
+
 const SpaceEditor = ({
 	language,
 	space,
@@ -18167,6 +18819,11 @@ const notificationTitle = (
 			ru: "Новый участник пространства",
 			en: "New space member",
 			es: "Nuevo miembro del espacio",
+		},
+		organization_invite_accepted: {
+			ru: "Новый участник компании",
+			en: "New company member",
+			es: "Nuevo miembro de la empresa",
 		},
 		space_invite_received: {
 			ru: "Приглашение в пространство",
@@ -18822,9 +19479,7 @@ const BusinessSetupDialog = ({
 	return (
 		<Modal
 			title={
-				organization
-					? "Создадим пространство компании"
-					: "Настроим рабочее пространство"
+				organization ? "Создадим организацию" : "Настроим рабочее пространство"
 			}
 			onClose={onClose}
 		>
@@ -18836,12 +19491,12 @@ const BusinessSetupDialog = ({
 					<div>
 						<strong>
 							{organization
-								? "Отдельный контур для вашей команды"
+								? "Компания, команда и проекты отдельно"
 								: "Личные и рабочие расходы отдельно"}
 						</strong>
 						<p>
 							{organization
-								? "Создадим организацию, где у каждого сотрудника будет свой вход и назначенный доступ."
+								? "Сначала создадим организацию, а внутри неё — первое рабочее пространство. У каждого сотрудника будет свой вход и роль."
 								: "Создадим обычное пространство для бизнеса. В него можно приглашать коллег и настраивать как любое другое."}
 						</p>
 					</div>
@@ -20671,6 +21326,26 @@ const memberRole = (role: string, language: UILanguage) =>
 			} as const
 		)[role as "owner" | "admin" | "editor"] || "spaceMember",
 	);
+const organizationRoleLabel = (role: string) =>
+	({
+		owner: "Владелец",
+		admin: "Администратор",
+		member: "Участник",
+		viewer: "Наблюдатель",
+	})[role] || "Участник";
+const organizationSpaceName = (
+	space: Space,
+	organization?: Organization | null,
+) =>
+	space.name.trim() === (organization?.name || space.tenant_name || "").trim()
+		? "Основное пространство"
+		: space.name;
+const businessSpaceCoachText = (language: UILanguage) =>
+	({
+		ru: "Здесь вы выбираете организацию и рабочее пространство внутри неё. Личные пространства остаются в обычном приложении.",
+		en: "Choose an organization and a workspace inside it here. Personal spaces stay in the personal app.",
+		es: "Aquí eliges una organización y uno de sus espacios de trabajo. Los espacios personales permanecen en la aplicación personal.",
+	})[language];
 function isoDay(offset: number) {
 	const date = new Date();
 	date.setDate(date.getDate() + offset);
