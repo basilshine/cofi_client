@@ -12,9 +12,13 @@ const copy = {
 		registerTitle: "Создать аккаунт",
 		loginTitle: "Войти",
 		inviteEyebrow: "Приглашение в пространство",
+		businessInviteEyebrow: "Приглашение от компании",
+		businessInviteProject: (name: string) => `Проект «${name}»`,
 		inviteFrom: (name: string) => `${name} приглашает вас`,
 		inviteAfterAuth:
 			"После входа вы присоединитесь к пространству и увидите общие расходы и планы.",
+		businessInviteAfterAuth:
+			"После входа рабочий проект появится в приложении для бизнеса. Личные расходы останутся отдельно.",
 		methodLabel: "Способ входа",
 		phone: "Телефон",
 		email: "Почта",
@@ -116,9 +120,13 @@ const copy = {
 		registerTitle: "Create an account",
 		loginTitle: "Sign in",
 		inviteEyebrow: "Space invitation",
+		businessInviteEyebrow: "Company invitation",
+		businessInviteProject: (name: string) => `Project “${name}”`,
 		inviteFrom: (name: string) => `${name} invited you`,
 		inviteAfterAuth:
 			"After signing in, you will join the space and see its shared expenses and plans.",
+		businessInviteAfterAuth:
+			"After signing in, the project will appear in the business app. Personal expenses stay separate.",
 		methodLabel: "Sign-in method",
 		phone: "Phone",
 		email: "Email",
@@ -224,9 +232,13 @@ const copy = {
 		registerTitle: "Crear una cuenta",
 		loginTitle: "Iniciar sesión",
 		inviteEyebrow: "Invitación a un espacio",
+		businessInviteEyebrow: "Invitación de una empresa",
+		businessInviteProject: (name: string) => `Proyecto «${name}»`,
 		inviteFrom: (name: string) => `${name} te ha invitado`,
 		inviteAfterAuth:
 			"Después de iniciar sesión, entrarás al espacio y verás sus gastos y planes compartidos.",
+		businessInviteAfterAuth:
+			"Después de iniciar sesión, el proyecto aparecerá en la aplicación para empresas. Tus gastos personales seguirán separados.",
 		methodLabel: "Método de acceso",
 		phone: "Teléfono",
 		email: "Correo",

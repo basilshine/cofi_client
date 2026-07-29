@@ -1,8 +1,19 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { App } from "./App";
+import { isBusinessAppLocation } from "./business-app";
 import { initializeMetrika } from "./metrika";
 import "./styles.css";
+
+if (isBusinessAppLocation(window.location.hostname, window.location.search)) {
+	document.title = "Пока не забыл Бизнес";
+	document
+		.querySelector<HTMLLinkElement>('link[rel="manifest"]')
+		?.setAttribute("href", "/business-manifest.webmanifest");
+	document
+		.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+		?.setAttribute("content", "#14251e");
+}
 
 initializeMetrika();
 

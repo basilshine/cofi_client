@@ -4,6 +4,8 @@ export const ACQUISITION_FUNNELS = [
 	"repair",
 	"crew",
 	"events",
+	"business",
+	"telegram-expense-bot",
 ] as const;
 
 export type AcquisitionFunnel = (typeof ACQUISITION_FUNNELS)[number];
@@ -30,6 +32,13 @@ export const landingQueryWithFunnel = (
 	return suffix ? `?${suffix}` : "";
 };
 
+export const acquisitionFunnelFromSearch = (
+	search: string,
+): AcquisitionFunnel | null => {
+	const incoming = new URLSearchParams(search).get("funnel");
+	return isAcquisitionFunnel(incoming) ? incoming : null;
+};
+
 type FunnelStorage = Pick<Storage, "getItem" | "setItem">;
 
 export const rememberAcquisitionFunnel = (
@@ -39,8 +48,8 @@ export const rememberAcquisitionFunnel = (
 	const saved = storage.getItem(ACQUISITION_FUNNEL_KEY);
 	if (isAcquisitionFunnel(saved)) return saved;
 
-	const incoming = new URLSearchParams(search).get("funnel");
-	if (isAcquisitionFunnel(incoming)) {
+	const incoming = acquisitionFunnelFromSearch(search);
+	if (incoming) {
 		storage.setItem(ACQUISITION_FUNNEL_KEY, incoming);
 		return incoming;
 	}

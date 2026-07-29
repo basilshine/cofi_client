@@ -1,4 +1,5 @@
 import {
+	AirplaneTilt,
 	ArrowClockwise,
 	ArrowDown,
 	ArrowLeft,
@@ -6,6 +7,7 @@ import {
 	ArrowsLeftRight,
 	BellRinging,
 	BellSlash,
+	Buildings,
 	CalendarBlank,
 	Camera,
 	CaretDown,
@@ -15,6 +17,7 @@ import {
 	EnvelopeSimple,
 	FunnelSimple,
 	GearSix,
+	HardHat,
 	House,
 	ImageSquare,
 	MagnifyingGlass,
@@ -50,13 +53,23 @@ import {
 	useState,
 } from "react";
 import "./mini-app.css";
-import { rememberAcquisitionFunnel } from "./acquisition-funnel";
+import {
+	type AcquisitionFunnel,
+	acquisitionFunnelFromSearch,
+	rememberAcquisitionFunnel,
+} from "./acquisition-funnel";
 import {
 	AVATAR_IMAGE_SIZE,
 	avatarCropLayout,
 	avatarFileFromCanvas,
 } from "./avatar-crop";
 import { browserAuthCopy } from "./browser-auth-copy";
+import {
+	businessAppHref,
+	isBusinessSpace,
+	personalAppHref,
+	spacesForAppExperience,
+} from "./business-app";
 import {
 	type ReviewCompletionBehavior,
 	type ReviewPresentation,
@@ -188,15 +201,20 @@ declare global {
 type CaptureMode = "choose" | "text" | "voice" | "photo";
 type ExpenseSection = "history" | "plans" | "splits";
 type TransferOperation = "move" | "clone";
+type BusinessIndustry = "construction" | "tourism";
 type Space = {
 	id: number;
 	tenant_id: number;
+	tenant_name?: string;
+	tenant_type?: string;
 	owner_user_id: number;
+	owner_display_name?: string;
 	is_personal: boolean;
 	name: string;
 	description?: string;
 	currency: string;
 	member_count?: number;
+	settings?: { experience?: string; industry?: BusinessIndustry };
 };
 
 type SpaceMember = {
@@ -632,6 +650,8 @@ type AppNotification = {
 	id: number;
 	space_id?: number;
 	space_name?: string;
+	tenant_name?: string;
+	tenant_type?: string;
 	message: string;
 	type: string;
 	action_url?: string;
@@ -860,9 +880,15 @@ type ActivationCodeResponse = {
 };
 
 type AuthResponse = { token: string; user: User };
+type AuthCompletionContext = {
+	registered: boolean;
+	acquisitionFunnel: AcquisitionFunnel;
+};
 type InvitePreview = {
 	status: "ready" | "expired" | "used" | "not_found";
 	space_name?: string;
+	tenant_name?: string;
+	tenant_type?: string;
 	inviter_name?: string;
 };
 type CaptureResponse = {
@@ -1615,7 +1641,12 @@ const initialView = (): View => {
 		: "overview";
 };
 
-export const MiniApp = () => {
+export const MiniApp = ({
+	appExperience = "personal",
+}: {
+	appExperience?: "personal" | "business";
+}) => {
+	const businessApp = appExperience === "business";
 	const started = useRef(false);
 	const openedRequestedPlan = useRef(false);
 	const openedRequestedExpense = useRef(false);
@@ -1902,6 +1933,11 @@ export const MiniApp = () => {
 	const [billingLoading, setBillingLoading] = useState(false);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
 	const [invitingSpace, setInvitingSpace] = useState<Space | null>(null);
+	const [businessSetupOpen, setBusinessSetupOpen] = useState(false);
+	const [businessSpaceName, setBusinessSpaceName] = useState("Мой бизнес");
+	const [businessIndustry, setBusinessIndustry] =
+		useState<BusinessIndustry>("construction");
+	const [businessSetupSaving, setBusinessSetupSaving] = useState(false);
 	const [addChoiceOpen, setAddChoiceOpen] = useState(false);
 	const [captureOpen, setCaptureOpen] = useState(false);
 	const [captureMode, setCaptureMode] = useState<CaptureMode>("choose");
@@ -2040,8 +2076,12 @@ export const MiniApp = () => {
 
 	useEffect(() => {
 		document.body.classList.add("mini-body");
-		return () => document.body.classList.remove("mini-body");
-	}, []);
+		if (businessApp) document.body.classList.add("mini-business-body");
+		return () => {
+			document.body.classList.remove("mini-body");
+			document.body.classList.remove("mini-business-body");
+		};
+	}, [businessApp]);
 
 	useEffect(() => {
 		let active = true;
@@ -2166,9 +2206,11 @@ export const MiniApp = () => {
 			}
 		}
 		if (previewMode) {
-			const previewSpaceID = [1, 2].includes(requestedSpaceID)
-				? requestedSpaceID
-				: 1;
+			const previewSpaceID = businessApp
+				? 2
+				: [1, 2].includes(requestedSpaceID)
+					? requestedSpaceID
+					: 1;
 			setToken("preview");
 			setUser({
 				id: 1,
@@ -2198,12 +2240,17 @@ export const MiniApp = () => {
 				},
 				{
 					id: 2,
-					tenant_id: 1,
+					tenant_id: businessApp ? 2 : 1,
+					tenant_name: businessApp ? "Студия Василия" : undefined,
+					tenant_type: businessApp ? "organization" : "personal",
 					owner_user_id: 1,
 					is_personal: false,
-					name: "Семейный бюджет",
+					name: businessApp ? "Студия Василия" : "Семейный бюджет",
 					currency: "RUB",
 					member_count: 2,
+					settings: businessApp
+						? { experience: "business", industry: "construction" }
+						: undefined,
 				},
 			]);
 			setMembers([
@@ -2551,7 +2598,10 @@ export const MiniApp = () => {
 		}
 	};
 
-	const acceptAuth = async (auth: AuthResponse) => {
+	const acceptAuth = async (
+		auth: AuthResponse,
+		context?: AuthCompletionContext,
+	) => {
 		let joinedSpaceID = 0;
 		let inviteNotice = "";
 		if (requestedInviteToken) {
@@ -2565,32 +2615,58 @@ export const MiniApp = () => {
 				inviteNotice = outcome.space
 					? `Вы присоединились к пространству «${outcome.space.name}»`
 					: "Приглашение принято";
-				window.history.replaceState(null, "", "/app");
+				window.history.replaceState(null, "", businessApp ? "/" : "/app");
 			} catch (err) {
 				inviteNotice =
 					err instanceof Error ? err.message : "Не удалось принять приглашение";
 			}
 		}
 		const availableSpaces = await apiRequest<Space[]>("/spaces", auth.token);
+		const experienceSpaces = spacesForAppExperience(
+			availableSpaces,
+			businessApp,
+		);
+		const joinedSpace = availableSpaces.find(
+			(space) => space.id === joinedSpaceID,
+		);
+		if (joinedSpace && isBusinessSpace(joinedSpace) !== businessApp) {
+			const query = `?space_id=${joinedSpace.id}`;
+			window.location.assign(
+				isBusinessSpace(joinedSpace)
+					? businessAppHref(query, window.location.hostname)
+					: personalAppHref(query, window.location.hostname),
+			);
+			return;
+		}
 		const targetSpaceID =
 			joinedSpaceID ||
 			requestedReview?.spaceID ||
 			requestedPlan?.spaceID ||
 			requestedSpaceID;
+		const preferredBusinessSpace = experienceSpaces.find(isBusinessSpace);
 		setToken(auth.token);
 		setUser(auth.user);
 		setSpaces(availableSpaces);
 		setSpaceID(
-			availableSpaces.some((space) => space.id === targetSpaceID)
+			experienceSpaces.some((space) => space.id === targetSpaceID)
 				? targetSpaceID
-				: availableSpaces[0]?.id || 0,
+				: experienceSpaces[0]?.id || 0,
 		);
-		if (availableSpaces.length === 0) {
+		if (experienceSpaces.length === 0) {
 			setView("spaces");
 			setLoading(false);
 		}
 		if (joinedSpaceID) setView("spaces");
 		if (inviteNotice) setNotice(inviteNotice);
+		if (
+			!joinedSpaceID &&
+			!preferredBusinessSpace &&
+			(businessApp ||
+				(context?.registered && context.acquisitionFunnel === "business"))
+		) {
+			setBusinessSpaceName("Мой бизнес");
+			setBusinessSetupOpen(true);
+		}
 	};
 
 	const restoreBrowserSession = async () => {
@@ -2841,7 +2917,7 @@ export const MiniApp = () => {
 			);
 			if (newest)
 				setNotice(
-					`${notificationTitle(newest.type, language)}: ${newest.message}`,
+					`${notificationTitle(newest.type, language, newest.tenant_type)}: ${newest.message}`,
 				);
 			knownNotificationIDs.current = new Set(
 				nextNotifications.map(({ id }) => id),
@@ -2986,6 +3062,24 @@ export const MiniApp = () => {
 	};
 
 	const followNotification = (notification: AppNotification) => {
+		const targetSpace = spaces.find(({ id }) => id === notification.space_id);
+		const targetIsBusiness =
+			notification.tenant_type === "organization" ||
+			Boolean(targetSpace && isBusinessSpace(targetSpace));
+		if (
+			(notification.tenant_type || targetSpace) &&
+			targetIsBusiness !== businessApp
+		) {
+			const query = notification.action_url
+				? new URL(notification.action_url, window.location.origin).search
+				: `?space_id=${notification.space_id}`;
+			window.location.assign(
+				targetIsBusiness
+					? businessAppHref(query, window.location.hostname)
+					: personalAppHref(query, window.location.hostname),
+			);
+			return;
+		}
 		if (notification.action_url) {
 			window.location.assign(notification.action_url);
 			return;
@@ -4655,12 +4749,13 @@ export const MiniApp = () => {
 	};
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
+	const shellSpaces = spacesForAppExperience(spaces, businessApp);
 	const accountHasPlus = ["medium", "plus"].includes(accountQuota?.plan || "");
 	const activeSpaceHasPlus = ["medium", "plus"].includes(quota?.plan || "");
 	const activeSpaceOwnedByUser = activeSpace?.owner_user_id === user?.id;
 	const showActiveSpaceBasicLimits =
 		Boolean(activeSpaceOwnedByUser && quota) && !activeSpaceHasPlus;
-	const ownedSpacesCount = spaces.filter(
+	const ownedSpacesCount = shellSpaces.filter(
 		(space) => space.owner_user_id === user?.id,
 	).length;
 	const openNewSpaceEditor = () => {
@@ -4673,6 +4768,59 @@ export const MiniApp = () => {
 			name: "",
 			currency: user?.currency || "RUB",
 		});
+	};
+	const createBusinessSpace = async () => {
+		const name = businessSpaceName.trim();
+		if (!token || !name || businessSetupSaving) return;
+		setBusinessSetupSaving(true);
+		setError("");
+		try {
+			let saved: Space;
+			if (businessApp) {
+				const created = await apiRequest<{ default_space_id: number }>(
+					"/tenants",
+					token,
+					{
+						method: "POST",
+						body: JSON.stringify({
+							name,
+							template: "business",
+							industry: businessIndustry,
+						}),
+					},
+				);
+				const freshSpaces = await apiRequest<Space[]>("/spaces", token);
+				saved =
+					freshSpaces.find((space) => space.id === created.default_space_id) ||
+					freshSpaces[freshSpaces.length - 1];
+				if (!saved) throw new Error("Рабочее пространство не найдено");
+				setSpaces(freshSpaces);
+			} else {
+				saved = await apiRequest<Space>("/spaces", token, {
+					method: "POST",
+					body: JSON.stringify({
+						name,
+						currency: user?.currency || "RUB",
+						template: "business",
+						industry: businessIndustry,
+					}),
+				});
+				setSpaces((current) => [...current, saved]);
+			}
+			setSpaceID(saved.id);
+			setView("overview");
+			setBusinessSetupOpen(false);
+			setNotice(`Рабочее пространство «${saved.name}» готово`);
+			reachMetrikaGoal("business_space_created");
+		} catch (err) {
+			setError(
+				err instanceof Error
+					? err.message
+					: "Не удалось создать рабочее пространство",
+			);
+		} finally {
+			setBusinessSetupSaving(false);
+		}
 	};
 	const eligibleParticipants = useMemo(
 		() =>
@@ -4716,8 +4864,14 @@ export const MiniApp = () => {
 		const known = new Set(expenses.map(({ id }) => id));
 		return [...expenses, ...splitExpenses.filter(({ id }) => !known.has(id))];
 	}, [expenses, splitExpenses]);
-	const spaceSubtitle = (space: Space) =>
-		`${uiText(
+	const spaceSubtitle = (space: Space) => {
+		const industry =
+			space.settings?.industry === "construction"
+				? "Строительство"
+				: space.settings?.industry === "tourism"
+					? "Туризм"
+					: "";
+		return `${industry ? `${industry} · ` : ""}${uiText(
 			language,
 			space.is_personal
 				? "personalSpace"
@@ -4731,6 +4885,7 @@ export const MiniApp = () => {
 			),
 			language,
 		)}`;
+	};
 	const currency = reportingCurrency;
 	const overviewExpenses = expensesForMonth(expenses);
 	const overviewTotal =
@@ -6745,6 +6900,7 @@ export const MiniApp = () => {
 	if (!token && !WebApp.initData)
 		return (
 			<BrowserEntry
+				businessApp={businessApp}
 				error={error}
 				language={language}
 				homeScreenStatus={homeScreenStatus}
@@ -6780,7 +6936,7 @@ export const MiniApp = () => {
 	if (view === "review") {
 		return (
 			<div
-				className={`mini-app mini-review-app${largeText ? " is-large-text" : ""}`}
+				className={`mini-app mini-review-app${businessApp ? " is-business-app" : ""}${largeText ? " is-large-text" : ""}`}
 				onFocusCapture={keepFocusedControlVisible}
 				onKeyDown={focusNextFieldOnEnter}
 				onPointerDown={dismissKeyboard}
@@ -6856,7 +7012,7 @@ export const MiniApp = () => {
 
 	return (
 		<div
-			className={`mini-app${largeText ? " is-large-text" : ""}`}
+			className={`mini-app${businessApp ? " is-business-app" : ""}${largeText ? " is-large-text" : ""}`}
 			onFocusCapture={keepFocusedControlVisible}
 			onKeyDown={focusNextFieldOnEnter}
 			onPointerDown={dismissKeyboard}
@@ -6903,7 +7059,11 @@ export const MiniApp = () => {
 						>
 							<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
 							<span className="mini-space-trigger-copy">
-								<strong>{uiText(language, "brand")}</strong>
+								<strong>
+									{businessApp
+										? "Пока не забыл Бизнес"
+										: uiText(language, "brand")}
+								</strong>
 								<span>
 									<small title={activeSpace?.name}>{activeSpace?.name}</small>
 									<CaretDown size={13} weight="bold" />
@@ -6928,8 +7088,12 @@ export const MiniApp = () => {
 									</div>
 								)}
 								<div className="mini-space-menu-list">
-									<small>{uiText(language, "yourSpaces")}</small>
-									{spaces.map((space) => (
+									<small>
+										{businessApp
+											? "Рабочие пространства"
+											: uiText(language, "yourSpaces")}
+									</small>
+									{shellSpaces.map((space) => (
 										<button
 											key={space.id}
 											className={space.id === spaceID ? "is-active" : ""}
@@ -6958,7 +7122,7 @@ export const MiniApp = () => {
 										</button>
 									))}
 								</div>
-								{accountQuota && !accountHasPlus && (
+								{!businessApp && accountQuota && !accountHasPlus && (
 									<BasicLimitNudge
 										className="is-menu"
 										language={language}
@@ -6979,21 +7143,23 @@ export const MiniApp = () => {
 									/>
 								)}
 								<div className="mini-space-menu-actions">
-									<button
-										className="mini-space-menu-add"
-										type="button"
-										role="menuitem"
-										onClick={openNewSpaceEditor}
-									>
-										<Plus size={18} weight="bold" />
-										<span>
-											<strong>{uiText(language, "addSpace")}</strong>
-											{!accountHasPlus && (
-												<small>{uiText(language, "plusMoreSpaces")}</small>
-											)}
-										</span>
-										<ArrowRight size={16} />
-									</button>
+									{!businessApp && (
+										<button
+											className="mini-space-menu-add"
+											type="button"
+											role="menuitem"
+											onClick={openNewSpaceEditor}
+										>
+											<Plus size={18} weight="bold" />
+											<span>
+												<strong>{uiText(language, "addSpace")}</strong>
+												{!accountHasPlus && (
+													<small>{uiText(language, "plusMoreSpaces")}</small>
+												)}
+											</span>
+											<ArrowRight size={16} />
+										</button>
+									)}
 									{activeSpace && (
 										<button
 											type="button"
@@ -7016,7 +7182,11 @@ export const MiniApp = () => {
 										}}
 									>
 										<UsersThree size={18} />
-										<span>{uiText(language, "manageSpaces")}</span>
+										<span>
+											{businessApp
+												? "Компания и команда"
+												: uiText(language, "manageSpaces")}
+										</span>
 										<ArrowRight size={16} />
 									</button>
 								</div>
@@ -7192,6 +7362,7 @@ export const MiniApp = () => {
 								user={user}
 								language={language}
 								spaceName={activeSpace?.name || ""}
+								businessMode={activeSpace?.settings?.experience === "business"}
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
@@ -7344,10 +7515,13 @@ export const MiniApp = () => {
 						)}
 						{view === "spaces" && (
 							<SpacesView
-								spaces={spaces}
+								businessApp={businessApp}
+								spaces={shellSpaces}
 								quota={accountQuota}
 								ownedSpacesCount={ownedSpacesCount}
-								showBasicLimits={Boolean(accountQuota) && !accountHasPlus}
+								showBasicLimits={
+									!businessApp && Boolean(accountQuota) && !accountHasPlus
+								}
 								language={language}
 								activeSpaceID={spaceID}
 								members={members}
@@ -7366,7 +7540,7 @@ export const MiniApp = () => {
 										: undefined
 								}
 								inviting={Boolean(invitingSpace)}
-								onAdd={openNewSpaceEditor}
+								onAdd={businessApp ? undefined : openNewSpaceEditor}
 							/>
 						)}
 						{view === "profile" && (
@@ -7387,7 +7561,7 @@ export const MiniApp = () => {
 								developerFeedbackLoading={developerFeedbackLoading}
 								selectedFeedbackID={requestedFeedbackID}
 								vendorsCount={vendors.length}
-								spacesCount={spaces.length}
+								spacesCount={shellSpaces.length}
 								homeScreenStatus={homeScreenStatus}
 								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
@@ -7435,6 +7609,7 @@ export const MiniApp = () => {
 							<SubscriptionView
 								language={language}
 								quota={accountQuota}
+								businessMode={activeSpace?.settings?.experience === "business"}
 								billingLoading={billingLoading}
 								onBack={() => setView("profile")}
 								onStartPlus={() => void startCheckout("plus_30d")}
@@ -7769,6 +7944,23 @@ export const MiniApp = () => {
 				/>
 			)}
 
+			{businessSetupOpen && (
+				<BusinessSetupDialog
+					organization={businessApp}
+					name={businessSpaceName}
+					industry={businessIndustry}
+					saving={businessSetupSaving}
+					error={error}
+					onName={setBusinessSpaceName}
+					onIndustry={setBusinessIndustry}
+					onCreate={() => void createBusinessSpace()}
+					onClose={() => {
+						setBusinessSetupOpen(false);
+						setError("");
+					}}
+				/>
+			)}
+
 			{addChoiceOpen && (
 				<Modal
 					title={uiText(language, "addChoiceTitle")}
@@ -7930,7 +8122,7 @@ export const MiniApp = () => {
 					currentUserID={user?.id || 0}
 					capture={captureForExpense(recordDetail.expense, captures)}
 					sourceLoading={sourceLoading}
-					moveTargets={spaces.filter(
+					moveTargets={shellSpaces.filter(
 						(space) =>
 							space.id !== spaceID &&
 							space.tenant_id === activeSpace?.tenant_id &&
@@ -7970,7 +8162,7 @@ export const MiniApp = () => {
 					members={members}
 					capture={captureForExpense(recordDetail.expense, captures)}
 					sourceLoading={sourceLoading}
-					moveTargets={spaces.filter(
+					moveTargets={shellSpaces.filter(
 						(space) =>
 							space.id !== spaceID &&
 							space.tenant_id === activeSpace?.tenant_id &&
@@ -8020,7 +8212,7 @@ export const MiniApp = () => {
 					members={members}
 					capture={captureForPlan(recordDetail.plan, captures)}
 					sourceLoading={sourceLoading}
-					moveTargets={spaces.filter(
+					moveTargets={shellSpaces.filter(
 						(space) =>
 							space.id !== (recordDetail.plan.space_id || spaceID) &&
 							space.tenant_id === recordDetail.plan.tenant_id &&
@@ -8060,7 +8252,7 @@ export const MiniApp = () => {
 					members={members}
 					capture={captureForPlan(recordDetail.plan, captures)}
 					sourceLoading={sourceLoading}
-					moveTargets={spaces.filter(
+					moveTargets={shellSpaces.filter(
 						(space) =>
 							space.id !== (recordDetail.plan.space_id || spaceID) &&
 							space.tenant_id === recordDetail.plan.tenant_id &&
@@ -8111,7 +8303,7 @@ export const MiniApp = () => {
 					saving={saving}
 					capture={captureForExpense(editingExpense, captures)}
 					sourceLoading={sourceLoading}
-					moveTargets={spaces.filter(
+					moveTargets={shellSpaces.filter(
 						(space) =>
 							space.id !== spaceID &&
 							space.tenant_id === activeSpace?.tenant_id &&
@@ -8142,7 +8334,7 @@ export const MiniApp = () => {
 					fromCandidate={Boolean(editingPlanCandidate)}
 					capture={captureForPlan(editingPlan, captures)}
 					sourceLoading={sourceLoading}
-					moveTargets={spaces.filter(
+					moveTargets={shellSpaces.filter(
 						(space) =>
 							space.id !== (editingPlan.space_id || spaceID) &&
 							space.tenant_id === editingPlan.tenant_id &&
@@ -8183,7 +8375,7 @@ export const MiniApp = () => {
 					saving={saving}
 					capture={captureForExpense(editingExpense, captures)}
 					sourceLoading={sourceLoading}
-					moveTargets={spaces.filter(
+					moveTargets={shellSpaces.filter(
 						(space) =>
 							space.id !== spaceID &&
 							space.tenant_id === activeSpace?.tenant_id &&
@@ -9563,6 +9755,7 @@ const Overview = ({
 	user,
 	language,
 	spaceName,
+	businessMode,
 	total,
 	currency,
 	categories,
@@ -9595,6 +9788,7 @@ const Overview = ({
 	user: User | null;
 	language: UILanguage;
 	spaceName: string;
+	businessMode: boolean;
 	total: number;
 	currency: string;
 	categories: HomeCategoryRow<Category & { filteredTotal: number }>[];
@@ -9630,6 +9824,7 @@ const Overview = ({
 				country={user?.country || "RU"}
 				currency={currency}
 				language={language}
+				businessMode={businessMode}
 				onCapture={onCapture}
 				onManual={onManual}
 				onConfigureLocale={onConfigureLocale}
@@ -10022,6 +10217,7 @@ const FirstExpenseEmpty = ({
 	country,
 	currency,
 	language,
+	businessMode,
 	onCapture,
 	onManual,
 	onConfigureLocale,
@@ -10029,6 +10225,7 @@ const FirstExpenseEmpty = ({
 	country: string;
 	currency: string;
 	language: UILanguage;
+	businessMode: boolean;
 	onCapture: (mode?: CaptureMode) => void;
 	onManual: () => void;
 	onConfigureLocale: () => void;
@@ -10038,9 +10235,33 @@ const FirstExpenseEmpty = ({
 			<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
 		</div>
 		<div className="mini-first-expense-copy">
-			<p>{uiText(language, "personalSpaceReady")}</p>
-			<h1>{uiText(language, "addFirstExpense")}</h1>
-			<span>{uiText(language, "firstExpenseHint")}</span>
+			<p>
+				{businessMode
+					? language === "ru"
+						? "Рабочее пространство готово"
+						: language === "es"
+							? "Tu espacio de trabajo está listo"
+							: "Your work space is ready"
+					: uiText(language, "personalSpaceReady")}
+			</p>
+			<h1>
+				{businessMode
+					? language === "ru"
+						? "Добавьте первый рабочий расход"
+						: language === "es"
+							? "Añade el primer gasto de trabajo"
+							: "Add your first work expense"
+					: uiText(language, "addFirstExpense")}
+			</h1>
+			<span>
+				{businessMode
+					? language === "ru"
+						? "Продиктуйте закупку, напишите её или сфотографируйте документ. Перед сохранением всё можно проверить."
+						: language === "es"
+							? "Dicta, escribe o fotografía el documento. Podrás revisar todo antes de guardarlo."
+							: "Say it, type it, or photograph the document. You can review everything before saving."
+					: uiText(language, "firstExpenseHint")}
+			</span>
 		</div>
 		<button
 			className="mini-first-expense-locale"
@@ -11947,6 +12168,7 @@ const VendorsView = ({
 );
 
 const SpacesView = ({
+	businessApp,
 	spaces,
 	quota,
 	ownedSpacesCount,
@@ -11965,6 +12187,7 @@ const SpacesView = ({
 	saving,
 	onAdd,
 }: {
+	businessApp: boolean;
 	spaces: Space[];
 	quota: Quota | null;
 	ownedSpacesCount: number;
@@ -11981,7 +12204,7 @@ const SpacesView = ({
 	onInvite?: (space: Space) => void;
 	inviting: boolean;
 	saving: boolean;
-	onAdd: () => void;
+	onAdd?: () => void;
 }) => {
 	const activeSpace = spaces.find((space) => space.id === activeSpaceID);
 	return (
@@ -11992,13 +12215,23 @@ const SpacesView = ({
 			</button>
 			<div className="mini-title-row">
 				<div className="mini-title">
-					<p>{uiText(language, "personalAndShared")}</p>
-					<h1>{uiText(language, "spaces")}</h1>
+					<p>
+						{businessApp
+							? "Рабочие пространства и доступы"
+							: uiText(language, "personalAndShared")}
+					</p>
+					<h1>
+						{businessApp
+							? activeSpace?.tenant_name || "Компания"
+							: uiText(language, "spaces")}
+					</h1>
 				</div>
-				<button className="mini-add-button" type="button" onClick={onAdd}>
-					<Plus size={18} weight="bold" />
-					{uiText(language, "add")}
-				</button>
+				{onAdd && (
+					<button className="mini-add-button" type="button" onClick={onAdd}>
+						<Plus size={18} weight="bold" />
+						{uiText(language, "add")}
+					</button>
+				)}
 			</div>
 			{showBasicLimits && quota && (
 				<BasicLimitNudge
@@ -12100,6 +12333,7 @@ const SpacesView = ({
 const SubscriptionView = ({
 	language,
 	quota,
+	businessMode,
 	billingLoading,
 	onBack,
 	onStartPlus,
@@ -12109,6 +12343,7 @@ const SubscriptionView = ({
 }: {
 	language: UILanguage;
 	quota: Quota | null;
+	businessMode: boolean;
 	billingLoading: boolean;
 	onBack: () => void;
 	onStartPlus: () => void;
@@ -12133,7 +12368,9 @@ const SubscriptionView = ({
 	const copy =
 		language === "ru"
 			? {
-					eyebrow: "Тариф и быстрые разборы",
+					eyebrow: businessMode
+						? "Возможности рабочего пространства"
+						: "Тариф и быстрые разборы",
 					title: "Подписка",
 					current: "Сейчас у вас",
 					available: "разборов доступно",
@@ -12153,10 +12390,15 @@ const SubscriptionView = ({
 					autoRenewUnavailable:
 						"Плюс действует 30 дней и пока продлевается только вручную.",
 					disableAutoRenew: "Отключить автопродление",
-					plusTitle: "Зачем нужен Плюс",
-					basicNote: "Для спокойного ручного учёта и знакомства с разборами.",
-					plusNote:
-						"Для регулярного использования, планов и общих пространств.",
+					plusTitle: businessMode
+						? "Плюс для регулярной работы"
+						: "Зачем нужен Плюс",
+					basicNote: businessMode
+						? "Чтобы настроить рабочее пространство и проверить основной сценарий."
+						: "Для спокойного ручного учёта и знакомства с разборами.",
+					plusNote: businessMode
+						? "Для ежедневных документов, закупок, команды и нескольких рабочих пространств."
+						: "Для регулярного использования, планов и общих пространств.",
 					basicBenefits: [
 						"Ручные расходы и история без ограничений",
 						"20 приветственных разборов один раз",
@@ -17905,7 +18147,11 @@ const SpaceEditor = ({
 	</Modal>
 );
 
-const notificationTitle = (type: string, language: UILanguage) => {
+const notificationTitle = (
+	type: string,
+	language: UILanguage,
+	tenantType = "",
+) => {
 	const titles: Record<string, Record<UILanguage, string>> = {
 		purchase_plan_due: {
 			ru: "Напоминание о покупке",
@@ -17993,6 +18239,13 @@ const notificationTitle = (type: string, language: UILanguage) => {
 			es: "Gasto recurrente",
 		},
 	};
+	if (type === "space_invite_received" && tenantType === "organization") {
+		return {
+			ru: "Приглашение от компании",
+			en: "Company invitation",
+			es: "Invitación de una empresa",
+		}[language];
+	}
 	return titles[type]?.[language] || uiText(language, "notification");
 };
 
@@ -18074,7 +18327,16 @@ const NotificationCenter = ({
 						<BellRinging size={21} weight="fill" />
 					</span>
 					<div>
-						<h3>{notificationTitle(selected.type, language)}</h3>
+						<h3>
+							{notificationTitle(selected.type, language, selected.tenant_type)}
+						</h3>
+						{selected.tenant_type === "organization" &&
+							selected.tenant_name && (
+								<span className="notification-space">
+									<Buildings size={13} />
+									{selected.tenant_name}
+								</span>
+							)}
 						{selected.space_name && (
 							<span className="notification-space">
 								<UsersThree size={13} />
@@ -18185,8 +18447,19 @@ const NotificationCenter = ({
 									</span>
 									<span>
 										<strong>
-											{notificationTitle(notification.type, language)}
+											{notificationTitle(
+												notification.type,
+												language,
+												notification.tenant_type,
+											)}
 										</strong>
+										{notification.tenant_type === "organization" &&
+											notification.tenant_name && (
+												<span className="notification-space">
+													<Buildings size={12} />
+													{notification.tenant_name}
+												</span>
+											)}
 										{notification.space_name && (
 											<span className="notification-space">
 												<UsersThree size={12} />
@@ -18510,6 +18783,149 @@ const Modal = ({
 				{children}
 			</section>
 		</div>
+	);
+};
+
+const BusinessSetupDialog = ({
+	organization,
+	name,
+	industry,
+	saving,
+	error,
+	onName,
+	onIndustry,
+	onCreate,
+	onClose,
+}: {
+	organization: boolean;
+	name: string;
+	industry: BusinessIndustry;
+	saving: boolean;
+	error: string;
+	onName: (value: string) => void;
+	onIndustry: (value: BusinessIndustry) => void;
+	onCreate: () => void;
+	onClose: () => void;
+}) => {
+	const categories =
+		industry === "tourism"
+			? [
+					"Проживание и объекты",
+					"Транспорт и трансферы",
+					"Продвижение и комиссии",
+				]
+			: [
+					"Материалы и поставщики",
+					"Команда и подрядчики",
+					"Техника и транспорт",
+				];
+	return (
+		<Modal
+			title={
+				organization
+					? "Создадим пространство компании"
+					: "Настроим рабочее пространство"
+			}
+			onClose={onClose}
+		>
+			<div className="business-setup">
+				<div className="business-setup__intro">
+					<span>
+						<Buildings size={25} weight="duotone" />
+					</span>
+					<div>
+						<strong>
+							{organization
+								? "Отдельный контур для вашей команды"
+								: "Личные и рабочие расходы отдельно"}
+						</strong>
+						<p>
+							{organization
+								? "Создадим организацию, где у каждого сотрудника будет свой вход и назначенный доступ."
+								: "Создадим обычное пространство для бизнеса. В него можно приглашать коллег и настраивать как любое другое."}
+						</p>
+					</div>
+				</div>
+				<label className="mini-field">
+					<span>
+						{organization ? "Название компании" : "Название пространства"}
+					</span>
+					<input
+						maxLength={120}
+						value={name}
+						placeholder="Например, Студия или Мастерская"
+						onChange={(event) => onName(event.target.value)}
+					/>
+				</label>
+				<fieldset className="business-setup__industry">
+					<legend>Сфера работы</legend>
+					<div>
+						<button
+							type="button"
+							className={industry === "construction" ? "is-active" : ""}
+							aria-pressed={industry === "construction"}
+							onClick={() => onIndustry("construction")}
+						>
+							<HardHat size={20} weight="duotone" />
+							<span>
+								<strong>Строительство</strong>
+								<small>Объекты, материалы, подрядчики</small>
+							</span>
+						</button>
+						<button
+							type="button"
+							className={industry === "tourism" ? "is-active" : ""}
+							aria-pressed={industry === "tourism"}
+							onClick={() => onIndustry("tourism")}
+						>
+							<AirplaneTilt size={20} weight="duotone" />
+							<span>
+								<strong>Туризм</strong>
+								<small>Размещение, трансферы, агрегаторы</small>
+							</span>
+						</button>
+					</div>
+				</fieldset>
+				<div className="business-setup__categories">
+					<small>Сразу добавим категории</small>
+					<ul>
+						{categories.map((category) => (
+							<li key={category}>
+								<Check size={16} weight="bold" />
+								{category}
+							</li>
+						))}
+					</ul>
+				</div>
+				{error && (
+					<p className="mini-form-error" role="alert">
+						{error}
+					</p>
+				)}
+				<div className="mini-modal-actions">
+					<button
+						className="mini-secondary-action"
+						type="button"
+						disabled={saving}
+						onClick={onClose}
+					>
+						Пока не нужно
+					</button>
+					<button
+						className="mini-save"
+						type="button"
+						disabled={saving || !name.trim()}
+						onClick={onCreate}
+					>
+						{saving
+							? "Создаём…"
+							: organization
+								? "Создать компанию"
+								: "Создать пространство"}
+					</button>
+				</div>
+			</div>
+		</Modal>
 	);
 };
 
@@ -18850,6 +19266,7 @@ const formatRussianPhone = (value: string) => {
 };
 
 const BrowserEntry = ({
+	businessApp,
 	error,
 	language,
 	homeScreenStatus,
@@ -18860,6 +19277,7 @@ const BrowserEntry = ({
 	onTelegramAuth,
 	onEmailAuth,
 }: {
+	businessApp: boolean;
 	error: string;
 	language: UILanguage;
 	homeScreenStatus: HomeScreenStatus;
@@ -18868,7 +19286,10 @@ const BrowserEntry = ({
 	onInstall: () => Promise<void>;
 	onCloseInstallGuide: () => void;
 	onTelegramAuth: (user: TelegramWidgetUser) => Promise<void>;
-	onEmailAuth: (auth: AuthResponse) => Promise<void>;
+	onEmailAuth: (
+		auth: AuthResponse,
+		context: AuthCompletionContext,
+	) => Promise<void>;
 }) => {
 	const copy = browserAuthCopy(language);
 	const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(
@@ -18876,6 +19297,10 @@ const BrowserEntry = ({
 	);
 	const [acquisitionFunnel] = useState(() =>
 		rememberAcquisitionFunnel(window.location.search, window.localStorage),
+	);
+	const [registrationExperience] = useState(
+		() =>
+			acquisitionFunnelFromSearch(window.location.search) || acquisitionFunnel,
 	);
 	const [region, setRegion] = useState<"ru" | "outside">(
 		language === "ru" ? "ru" : "outside",
@@ -19058,7 +19483,10 @@ const BrowserEntry = ({
 				},
 			);
 			if (authMode === "register") reachMetrikaGoal("registration");
-			await onEmailAuth(auth);
+			await onEmailAuth(auth, {
+				registered: authMode === "register",
+				acquisitionFunnel: registrationExperience,
+			});
 		} catch (requestError) {
 			const message =
 				requestError instanceof Error ? requestError.message : copy.invalidCode;
@@ -19142,31 +19570,60 @@ const BrowserEntry = ({
 
 	return (
 		<main
-			className="mini-entry mini-browser-entry"
+			className={`mini-entry mini-browser-entry${businessApp ? " is-business-entry" : ""}`}
 			data-enter-navigation
 			onKeyDown={focusNextFieldOnEnter}
 		>
 			<section className="browser-entry-brand">
 				<div className="mini-brand">
 					<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
-					<span>{uiText(language, "brand")}</span>
+					<span>
+						{businessApp ? "Пока не забыл Бизнес" : uiText(language, "brand")}
+					</span>
 				</div>
 				<div>
-					<h1>{copy.taglineTitle}</h1>
-					<p>{copy.taglineBody}</p>
+					<h1>
+						{businessApp ? "Рабочие расходы под контролем" : copy.taglineTitle}
+					</h1>
+					<p>
+						{businessApp
+							? "Войдите своим аккаунтом. Доступ к компании определяется вашей ролью, а не общим паролем."
+							: copy.taglineBody}
+					</p>
 				</div>
 			</section>
 			<section className="browser-auth-panel">
 				{invitePreview && (
 					<aside className="browser-invite-context" role="status">
 						<span aria-hidden="true">
-							<UsersThree size={20} weight="fill" />
+							{invitePreview.tenant_type === "organization" ? (
+								<Buildings size={20} weight="fill" />
+							) : (
+								<UsersThree size={20} weight="fill" />
+							)}
 						</span>
 						<div>
-							<small>{copy.inviteEyebrow}</small>
-							<strong>«{invitePreview.space_name}»</strong>
+							<small>
+								{invitePreview.tenant_type === "organization"
+									? copy.businessInviteEyebrow
+									: copy.inviteEyebrow}
+							</small>
+							<strong>
+								{invitePreview.tenant_type === "organization"
+									? invitePreview.tenant_name
+									: `«${invitePreview.space_name}»`}
+							</strong>
+							{invitePreview.tenant_type === "organization" && (
+								<p>
+									{copy.businessInviteProject(invitePreview.space_name || "")}
+								</p>
+							)}
 							<p>{copy.inviteFrom(invitePreview.inviter_name || "")}</p>
-							<p>{copy.inviteAfterAuth}</p>
+							<p>
+								{invitePreview.tenant_type === "organization"
+									? copy.businessInviteAfterAuth
+									: copy.inviteAfterAuth}
+							</p>
 						</div>
 					</aside>
 				)}

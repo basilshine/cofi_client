@@ -1,5 +1,7 @@
 import {
 	ArrowRight,
+	Buildings,
+	ChartLineUp,
 	ChatCircleText,
 	Check,
 	Microphone,
@@ -14,6 +16,7 @@ import {
 	acquisitionFunnelFromPath,
 	landingQueryWithFunnel,
 } from "./acquisition-funnel";
+import { businessAppHref, isBusinessAppLocation } from "./business-app";
 import {
 	type LandingLocale,
 	landingHomePath,
@@ -53,9 +56,12 @@ const operator = {
 export const App = ({ pathname }: { pathname?: string }) => {
 	const path =
 		(pathname ?? window.location.pathname).replace(/\/+$/, "") || "/";
+	const businessApp =
+		pathname === undefined &&
+		isBusinessAppLocation(window.location.hostname, window.location.search);
 
 	useEffect(() => {
-		if (pathname !== undefined || path !== "/") return;
+		if (pathname !== undefined || path !== "/" || businessApp) return;
 		const locale = preferredLandingLocale(
 			navigator.language,
 			window.localStorage.getItem(LANDING_LANGUAGE_KEY),
@@ -64,7 +70,7 @@ export const App = ({ pathname }: { pathname?: string }) => {
 			window.location.replace(
 				`${landingHomePath(locale)}${window.location.search}`,
 			);
-	}, [path, pathname]);
+	}, [businessApp, path, pathname]);
 
 	useEffect(() => {
 		if (!window.location.hash) {
@@ -75,6 +81,14 @@ export const App = ({ pathname }: { pathname?: string }) => {
 			document.getElementById(window.location.hash.slice(1))?.scrollIntoView(),
 		);
 	}, []);
+
+	if (businessApp && (path === "/" || path === "/app" || path === "/join")) {
+		return (
+			<Suspense fallback={<AppLoading business />}>
+				<MiniApp appExperience="business" />
+			</Suspense>
+		);
+	}
 
 	switch (path) {
 		case "/app":
@@ -104,20 +118,25 @@ export const App = ({ pathname }: { pathname?: string }) => {
 			return <PaymentStatus success />;
 		case "/payment/failed":
 			return <PaymentStatus success={false} />;
-		default:
+		default: {
+			const funnel = acquisitionFunnelFromPath(path);
+			if (funnel === "business")
+				return <BusinessLandingPage locale={landingLocaleFromPath(path)} />;
 			return (
-				<LandingPage
-					funnel={acquisitionFunnelFromPath(path)}
-					locale={landingLocaleFromPath(path)}
-				/>
+				<LandingPage funnel={funnel} locale={landingLocaleFromPath(path)} />
 			);
+		}
 	}
 };
 
-const AppLoading = () => (
-	<main className="app-loading" role="status" aria-live="polite">
+const AppLoading = ({ business = false }: { business?: boolean }) => (
+	<main
+		className={`app-loading${business ? " is-business" : ""}`}
+		role="status"
+		aria-live="polite"
+	>
 		<img src="/assets/poka-ne-zabyl-logo.svg?v=20260717" alt="" />
-		<span>Открываем приложение…</span>
+		<span>Открываем {business ? "бизнес-пространство" : "приложение"}…</span>
 	</main>
 );
 
@@ -165,14 +184,16 @@ const AppButton = ({
 	light = false,
 	locale = "ru",
 	landingQuery = "",
+	href,
 }: {
 	light?: boolean;
 	locale?: LandingLocale;
 	landingQuery?: string;
+	href?: string;
 }) => (
 	<a
 		className={`button ${light ? "button--light" : ""}`}
-		href={landingAppPath(locale, "", landingQuery)}
+		href={href || landingAppPath(locale, "", landingQuery)}
 		onClick={trackLandingAppClick}
 	>
 		{locale === "en"
@@ -364,6 +385,58 @@ const funnelCaptureStories = {
 			offset: "-4s",
 		},
 	],
+	business: [
+		{
+			mode: "photo",
+			stage: "input",
+			phase: "Добавьте документ",
+			caption: "Чек, счёт или закупка начинаются с обычного фото",
+			image: "/pwa-flow-photo-input.png",
+			offset: "0s",
+		},
+		{
+			mode: "photo",
+			stage: "review",
+			phase: "Проверьте расход",
+			caption: "Сумма, поставщик и категория остаются под вашим контролем",
+			image: "/pwa-scenario-crew-review.webp",
+			offset: "-8s",
+		},
+		{
+			mode: "photo",
+			stage: "saved",
+			phase: "Увидьте результат",
+			caption: "Расход появился в рабочем пространстве и общей сводке",
+			image: "/pwa-scenario-crew-saved.webp",
+			offset: "-4s",
+		},
+	],
+	"telegram-expense-bot": [
+		{
+			mode: "voice",
+			stage: "input",
+			phase: "Отправьте сообщение",
+			caption: "Продиктуйте сумму и покупку прямо в Telegram",
+			image: "/pwa-flow-voice-input.png",
+			offset: "0s",
+		},
+		{
+			mode: "voice",
+			stage: "review",
+			phase: "Проверьте запись",
+			caption: "Бот покажет распознанные данные до сохранения",
+			image: "/pwa-flow-voice-review.png",
+			offset: "-8s",
+		},
+		{
+			mode: "voice",
+			stage: "saved",
+			phase: "Подтвердите расход",
+			caption: "Готовая запись появится в приложении и истории",
+			image: "/pwa-flow-voice-saved.png",
+			offset: "-4s",
+		},
+	],
 } as const;
 
 const scenarioCopy = {
@@ -391,6 +464,16 @@ const scenarioCopy = {
 		title: "От оплаты до бюджета события",
 		lead: "Оплата подрядчику становится фактом бюджета только после подтверждения организатором.",
 		result: "Обновляет бюджет и историю команды",
+	},
+	business: {
+		title: "От документа до рабочей сводки",
+		lead: "Расход становится частью истории бизнеса только после вашей проверки.",
+		result: "Обновляет расходы рабочего пространства",
+	},
+	"telegram-expense-bot": {
+		title: "Бот предлагает. Решаете вы.",
+		lead: "Telegram помогает быстро разобрать сообщение, но не сохраняет расход без вашего подтверждения.",
+		result: "Сохраняет подтверждённую запись в приложении",
 	},
 } as const;
 
@@ -498,8 +581,8 @@ const funnelCopy: Record<
 > = {
 	general: {
 		pageTitle: landingSeo.ru.title,
-		kicker: "Приложение для телефона",
-		title: "Расходы, пока не забылись",
+		kicker: "Приложение и Telegram-бот",
+		title: "Учёт расходов, пока не забылись",
 		lead: "Добавьте на экран телефона и записывайте расходы голосом, текстом или по чеку. Бесплатно, без привязки карты.",
 		demo: "Кофе и круассан 550 ₽",
 		amount: "550 ₽",
@@ -581,6 +664,200 @@ const funnelCopy: Record<
 		finalTitle: "Добавьте её в бюджет события.",
 		screenAlt: "Пример бюджета фестиваля с подрядчиками и планами",
 	},
+	business: {
+		pageTitle: "Учёт расходов малого бизнеса - Пока не забыл Бизнес",
+		kicker: "Расходы малого бизнеса",
+		title: "Рабочие расходы без общей таблицы",
+		lead: "Фиксируйте закупки, услуги и оплаты подрядчикам голосом, текстом или по документу.",
+		demo: "Материалы и доставка 18 700 ₽",
+		amount: "18 700 ₽",
+		merchant: "Поставщик · сегодня",
+		stepsLead:
+			"Оперативный учёт расходов без потерянных чеков и ручной сверки рабочих чатов.",
+		sharedTitle: "Одна картина для команды",
+		sharedLead:
+			"Пригласите коллег, разделяйте оплаты и сохраняйте рабочую историю в одном пространстве.",
+		finalLead: "Рабочий расход уже случился.",
+		finalTitle: "Зафиксируйте его сразу.",
+		screenAlt: "Рабочая сводка расходов малого бизнеса",
+	},
+	"telegram-expense-bot": {
+		pageTitle: "Telegram-бот для учёта расходов — Пока не забыл",
+		kicker: "Telegram-бот и приложение",
+		title: "Учёт расходов в Telegram без таблиц",
+		lead: "Отправьте сумму и покупку текстом, голосом или фотографией чека. Бот подготовит запись, а вы проверите её перед сохранением.",
+		demo: "Продукты 2 450 ₽",
+		amount: "2 450 ₽",
+		merchant: "Супермаркет · сегодня",
+		stepsLead:
+			"Быстрый ввод остаётся в привычном чате, а история, лимиты, планы и общие расходы доступны в приложении.",
+		sharedTitle: "Продолжите в приложении",
+		sharedLead:
+			"Откройте историю, найдите покупку, настройте лимиты или разделите общий расход между участниками.",
+		finalLead: "Покупка уже оплачена.",
+		finalTitle: "Отправьте её боту, пока не забыли.",
+		screenAlt: "История расходов, добавленных через Telegram-бота",
+	},
+};
+
+const BusinessLandingPage = ({ locale }: { locale: LandingLocale }) => {
+	const [landingQuery, setLandingQuery] = useState("");
+	useEffect(() => setLandingQuery(window.location.search), []);
+	const trackedLandingQuery = landingQueryWithFunnel(landingQuery, "business");
+	const appHref = businessAppHref(
+		trackedLandingQuery,
+		typeof window === "undefined" ? "" : window.location.hostname,
+	);
+	usePageTitle(funnelCopy.business.pageTitle);
+
+	return (
+		<main className="business-landing">
+			<section className="business-hero">
+				<div className="business-hero__media" aria-hidden="true">
+					<img
+						className="business-hero__screen is-primary"
+						src="/pwa-home-crew.webp"
+						alt=""
+					/>
+					<img
+						className="business-hero__screen is-secondary"
+						src="/pwa-splits-list.png"
+						alt=""
+					/>
+				</div>
+				<header className="business-nav shell">
+					<a className="business-brand" href="/business">
+						<span className="business-brand__mark">
+							<BrandMark />
+						</span>
+						<span>
+							Пока не забыл <b>Бизнес</b>
+						</span>
+					</a>
+					<nav aria-label="Навигация бизнес-страницы">
+						<a href="#business-flow">Как работает</a>
+						<a href="#business-fit">Возможности</a>
+						<AppButton
+							light
+							locale={locale}
+							landingQuery={trackedLandingQuery}
+							href={appHref}
+						/>
+					</nav>
+				</header>
+				<div className="business-hero__content shell">
+					<p className="business-eyebrow">Для малого бизнеса и команд</p>
+					<h1>Расходы бизнеса, пока не забылись</h1>
+					<p>
+						Чеки, закупки, подрядчики и планы в одном рабочем пространстве.
+						Добавляйте голосом, текстом или фотографией и подтверждайте готовую
+						запись.
+					</p>
+					<div className="business-hero__actions">
+						<AppButton
+							light
+							locale={locale}
+							landingQuery={trackedLandingQuery}
+							href={appHref}
+						/>
+						<a href="#business-flow">
+							Посмотреть сценарий <ArrowRight size={18} weight="bold" />
+						</a>
+					</div>
+					<ul className="business-proof" aria-label="Основные возможности">
+						<li>
+							<Check size={18} weight="bold" />
+							Без привязки банковского счёта
+						</li>
+						<li>
+							<Check size={18} weight="bold" />
+							Бизнес-пространство после регистрации
+						</li>
+						<li>
+							<Check size={18} weight="bold" />
+							Бесплатный старт
+						</li>
+					</ul>
+				</div>
+			</section>
+
+			<section className="business-flow shell" id="business-flow">
+				<div className="business-section-heading">
+					<p>Один короткий путь</p>
+					<h2>Сказали. Проверили. Учли.</h2>
+				</div>
+				<div className="business-flow__steps">
+					<article>
+						<span>01</span>
+						<Receipt size={28} weight="duotone" />
+						<h3>Добавьте расход</h3>
+						<p>
+							Сфотографируйте документ, продиктуйте покупку или напишите её.
+						</p>
+					</article>
+					<article>
+						<span>02</span>
+						<Check size={28} weight="bold" />
+						<h3>Проверьте запись</h3>
+						<p>Исправьте сумму, поставщика или категорию до сохранения.</p>
+					</article>
+					<article>
+						<span>03</span>
+						<ChartLineUp size={28} weight="duotone" />
+						<h3>Смотрите картину</h3>
+						<p>Расход появляется в рабочей истории, категориях и сводке.</p>
+					</article>
+				</div>
+			</section>
+
+			<section className="business-fit" id="business-fit">
+				<div className="shell business-fit__layout">
+					<div>
+						<p className="business-eyebrow">Рабочее пространство</p>
+						<h2>У компании своё защищённое пространство</h2>
+						<p>
+							После регистрации создадим рабочее пространство организации и
+							добавим категории для поставщиков, подрядчиков и продвижения.
+							Каждый сотрудник входит под своим аккаунтом.
+						</p>
+						<AppButton
+							locale={locale}
+							landingQuery={trackedLandingQuery}
+							href={appHref}
+						/>
+					</div>
+					<figure>
+						<img
+							src="/pwa-plans.png"
+							alt="Планы и будущие закупки в приложении"
+						/>
+						<figcaption>
+							<Buildings size={20} weight="duotone" />
+							Отдельные пространства для бизнеса, объектов и команд
+						</figcaption>
+					</figure>
+				</div>
+			</section>
+
+			<footer className="business-footer">
+				<div className="shell">
+					<a className="business-brand" href="/business">
+						<span className="business-brand__mark">
+							<BrandMark />
+						</span>
+						<span>
+							Пока не забыл <b>Бизнес</b>
+						</span>
+					</a>
+					<nav>
+						<a href="/privacy">Конфиденциальность</a>
+						<a href="/offer">Оферта</a>
+						<a href={`mailto:${EMAIL}`}>{EMAIL}</a>
+					</nav>
+				</div>
+			</footer>
+		</main>
+	);
 };
 
 const LandingPage = ({
@@ -774,7 +1051,7 @@ const LandingPage = ({
 							decoding="async"
 							height="1040"
 							src={
-								funnel === "general"
+								funnel === "general" || funnel === "telegram-expense-bot"
 									? "/pwa-home.png"
 									: `/pwa-home-${funnel}.webp`
 							}
@@ -800,6 +1077,12 @@ const LandingPage = ({
 								В приложении вручную, текстом, голосом или по фото. В Telegram
 								работают те же быстрые способы.
 							</p>
+							{funnel === "general" && (
+								<a className="text-link" href="/telegram-expense-bot">
+									Подробнее о Telegram-боте
+									<ArrowRight size={16} weight="bold" />
+								</a>
+							)}
 						</article>
 						<article>
 							<span>02</span>
@@ -1909,6 +2192,7 @@ const SiteFooter = ({ locale = "ru" }: { locale?: LandingLocale }) =>
 						aria-label="Сценарии использования"
 					>
 						<span>Сценарии</span>
+						<a href="/telegram-expense-bot">Telegram-бот для расходов</a>
 						<a href="/family">Семейный бюджет</a>
 						<a href="/repair">Расходы на ремонт</a>
 						<a href="/crew">Расходы бригады</a>

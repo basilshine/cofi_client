@@ -63,13 +63,15 @@ const translations: Record<
 		Приложение: "App",
 		Тарифы: "Pricing",
 		"Для компании": "Shared expenses",
-		"Приложение для телефона": "An app for your phone",
-		"Расходы, пока не забылись": "Expenses, before they slip your mind",
+		"Приложение и Telegram-бот": "App and Telegram bot",
+		"Учёт расходов, пока не забылись":
+			"Track expenses before they slip your mind",
 		"Добавьте на экран телефона и записывайте расходы голосом, текстом или по чеку. Бесплатно, без привязки карты.":
 			"Add it to your phone’s home screen and record expenses by voice, text, or receipt photo. Free, with no card required.",
 		"Откройте по ссылке, добавьте на экран телефона и пользуйтесь как обычным приложением. Telegram остаётся быстрым помощником.":
 			"Open it from a link, add it to your home screen, and use it like any other app. Telegram remains your quick assistant.",
 		"Открыть бота": "Open the bot",
+		"Подробнее о Telegram-боте": "Learn more about the Telegram bot",
 		"Пример записи расхода": "Example of adding an expense",
 		"Кофе и круассан 550 ₽": "Coffee and croissant ₽550",
 		"Голосовое сообщение": "Voice message",
@@ -271,13 +273,15 @@ const translations: Record<
 		Приложение: "Aplicación",
 		Тарифы: "Precios",
 		"Для компании": "Gastos compartidos",
-		"Приложение для телефона": "Una aplicación para tu móvil",
-		"Расходы, пока не забылись": "Tus gastos, antes de que se te olviden",
+		"Приложение и Telegram-бот": "Aplicación y bot de Telegram",
+		"Учёт расходов, пока не забылись":
+			"Controla tus gastos antes de que se te olviden",
 		"Добавьте на экран телефона и записывайте расходы голосом, текстом или по чеку. Бесплатно, без привязки карты.":
 			"Añádela a la pantalla de inicio de tu móvil y registra gastos por voz, texto o foto del recibo. Gratis, sin tarjeta.",
 		"Откройте по ссылке, добавьте на экран телефона и пользуйтесь как обычным приложением. Telegram остаётся быстрым помощником.":
 			"Ábrela desde un enlace, añádela a la pantalla de inicio y úsala como cualquier otra aplicación. Telegram sigue siendo tu asistente rápido.",
 		"Открыть бота": "Abrir el bot",
+		"Подробнее о Telegram-боте": "Más sobre el bot de Telegram",
 		"Пример записи расхода": "Ejemplo de cómo añadir un gasto",
 		"Кофе и круассан 550 ₽": "Café y cruasán, 550 ₽",
 		"Голосовое сообщение": "Mensaje de voz",

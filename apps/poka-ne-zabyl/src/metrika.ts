@@ -19,6 +19,7 @@ export type MetrikaGoal =
 	| "app_open"
 	| "pwa_install"
 	| "registration"
+	| "business_space_created"
 	| "first_expense"
 	| "first_capture_submitted"
 	| "first_capture_ready"

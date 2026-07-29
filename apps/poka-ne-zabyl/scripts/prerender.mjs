@@ -149,7 +149,14 @@ const localizedStructuredData = ({ path, description, language }) => {
 	}).replaceAll("<", "\\u003c")}</script>`;
 };
 
-const acquisitionPaths = new Set(["/family", "/repair", "/crew", "/events"]);
+const acquisitionPaths = new Set([
+	"/family",
+	"/repair",
+	"/crew",
+	"/events",
+	"/business",
+	"/telegram-expense-bot",
+]);
 
 const acquisitionStructuredData = ({ path, description, language }) => {
 	if (!acquisitionPaths.has(path)) return "";

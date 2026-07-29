@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
 	acquisitionFunnelFromPath,
+	acquisitionFunnelFromSearch,
 	landingQueryWithFunnel,
 	rememberAcquisitionFunnel,
 } from "../src/acquisition-funnel.ts";
@@ -11,7 +12,17 @@ test("maps only supported landing routes to acquisition funnels", () => {
 	assert.equal(acquisitionFunnelFromPath("/repair/"), "repair");
 	assert.equal(acquisitionFunnelFromPath("/crew"), "crew");
 	assert.equal(acquisitionFunnelFromPath("/events"), "events");
+	assert.equal(acquisitionFunnelFromPath("/business"), "business");
+	assert.equal(
+		acquisitionFunnelFromPath("/telegram-expense-bot"),
+		"telegram-expense-bot",
+	);
 	assert.equal(acquisitionFunnelFromPath("/privacy"), "general");
+});
+
+test("keeps the current landing intent separate from first-touch storage", () => {
+	assert.equal(acquisitionFunnelFromSearch("?funnel=business"), "business");
+	assert.equal(acquisitionFunnelFromSearch("?funnel=unknown"), null);
 });
 
 test("adds the funnel without dropping campaign attribution", () => {

@@ -1,0 +1,32 @@
+{
+	"id": "/",
+	"name": "Пока не забыл Бизнес",
+	"short_name": "ПНЗ Бизнес",
+	"description": "Расходы, закупки и планы компании в общем рабочем пространстве.",
+	"lang": "ru",
+	"start_url": "/?source=pwa",
+	"scope": "/",
+	"display": "standalone",
+	"background_color": "#f4f6f1",
+	"theme_color": "#14251e",
+	"icons": [
+		{
+			"src": "/assets/poka-ne-zabyl-app-icon-192.png?v=20260717",
+			"sizes": "192x192",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/assets/poka-ne-zabyl-app-icon-512.png?v=20260717",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "any"
+		},
+		{
+			"src": "/assets/poka-ne-zabyl-maskable-512.png?v=20260717",
+			"sizes": "512x512",
+			"type": "image/png",
+			"purpose": "maskable"
+		}
+	]
+}
