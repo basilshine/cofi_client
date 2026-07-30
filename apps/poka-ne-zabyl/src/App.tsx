@@ -870,6 +870,10 @@ const LandingPage = ({
 	const [landingQuery, setLandingQuery] = useState("");
 	useEffect(() => setLandingQuery(window.location.search), []);
 	const trackedLandingQuery = landingQueryWithFunnel(landingQuery, funnel);
+	const businessLandingHref = `/business${landingQueryWithFunnel(
+		landingQuery,
+		"business",
+	)}`;
 	const copy = funnelCopy[funnel];
 	const faqItems = funnel === "general" ? GENERAL_FAQ : ACQUISITION_FAQ[funnel];
 	usePageTitle(locale === "ru" ? copy.pageTitle : landingSeo[locale].title);
@@ -907,7 +911,11 @@ const LandingPage = ({
 						<a href="#how">Как это работает</a>
 						<a href="#mini-app">Приложение</a>
 						<a href="#pricing">Тарифы</a>
-						<a href="#shared">Для компании</a>
+						{funnel === "general" && locale === "ru" ? (
+							<a href={businessLandingHref}>Для бизнеса</a>
+						) : (
+							<a href="#shared">Для компании</a>
+						)}
 						<AppButton locale={locale} landingQuery={trackedLandingQuery} />
 					</nav>
 				</header>
@@ -1194,6 +1202,68 @@ const LandingPage = ({
 					</div>
 				</div>
 			</section>
+
+			{funnel === "general" && locale === "ru" && (
+				<section
+					className="business-switch"
+					aria-labelledby="business-switch-title"
+				>
+					<div className="shell business-switch__layout" data-reveal>
+						<div className="business-switch__copy">
+							<p className="section-label">Отдельно для бизнеса</p>
+							<Buildings size={44} weight="duotone" />
+							<h2 id="business-switch-title">
+								Личные расходы здесь. Для компании есть отдельное решение.
+							</h2>
+							<p>
+								«Пока не забыл Бизнес» помогает команде учитывать закупки,
+								подрядчиков и планы в пространстве компании, не смешивая их с
+								личными расходами.
+							</p>
+							<ul>
+								<li>
+									<Check size={18} weight="bold" />У компании своё пространство
+									и рабочие категории
+								</li>
+								<li>
+									<Check size={18} weight="bold" />
+									Каждый сотрудник входит под своим аккаунтом
+								</li>
+								<li>
+									<Check size={18} weight="bold" />
+									Общая история расходов, планы и разделённые оплаты
+								</li>
+							</ul>
+							<a className="button" href={businessLandingHref}>
+								Посмотреть решение для бизнеса
+								<ArrowRight size={18} weight="bold" />
+							</a>
+						</div>
+
+						<figure className="business-switch__screens">
+							<img
+								className="business-switch__screen business-switch__screen--primary"
+								alt="Расходы рабочего пространства в приложении"
+								decoding="async"
+								height="1040"
+								src="/pwa-home-crew.webp"
+								width="520"
+							/>
+							<img
+								className="business-switch__screen business-switch__screen--secondary"
+								alt="Планы закупок компании в приложении"
+								decoding="async"
+								height="1040"
+								src="/pwa-plans.png"
+								width="520"
+							/>
+							<figcaption>
+								Рабочая история и планы остаются отдельно от личных расходов
+							</figcaption>
+						</figure>
+					</div>
+				</section>
+			)}
 
 			<section className="pricing-section" id="pricing">
 				<div className="shell" data-reveal>
