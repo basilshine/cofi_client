@@ -174,6 +174,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/pwa-installation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an installed PWA launch for the current user */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description PWA usage recorded */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analytics/stats/summary": {
         parameters: {
             query?: never;
@@ -6832,6 +6873,9 @@ export interface paths {
                     "application/json": {
                         name: string;
                         currency?: components["schemas"]["CurrencyCode"];
+                        /** @enum {string} */
+                        template?: "business";
+                        industry?: components["schemas"]["BusinessIndustry"];
                     };
                 };
             };
@@ -6982,10 +7026,13 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        name: string;
+                        /** @enum {string} */
+                        template?: "business";
+                        industry?: components["schemas"]["BusinessIndustry"];
                     };
                 };
             };
@@ -8303,7 +8350,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List organizations for the current user */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
         put?: never;
         /** Create tenants */
         post: {
@@ -8313,10 +8382,13 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: {
+            requestBody: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        name: string;
+                        /** @enum {string} */
+                        template?: "business";
+                        industry?: components["schemas"]["BusinessIndustry"];
                     };
                 };
             };
@@ -8390,7 +8462,8 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        name?: string;
+                        industry?: components["schemas"]["BusinessIndustry"];
                     };
                 };
             };
@@ -8591,6 +8664,79 @@ export interface paths {
         };
         options?: never;
         head?: never;
+        /** Update an organization member role */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                    userId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            responses: {
+                /** @description No content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/tenants/{tenantId}/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create a work space in an organization */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    tenantId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
         patch?: never;
         trace?: never;
     };
@@ -8713,6 +8859,8 @@ export interface components {
          * @example USD
          */
         CurrencyCode: string;
+        /** @enum {string} */
+        BusinessIndustry: "construction" | "tourism" | "retail" | "food_service" | "events" | "beauty" | "services" | "logistics" | "property" | "manufacturing" | "other";
         /** @description Persisted FX snapshot for saved money records. Clients render Space reporting amounts from this snapshot and must not recalculate historical conversions. */
         CurrencyConversion: {
             source_currency?: components["schemas"]["CurrencyCode"];

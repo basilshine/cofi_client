@@ -1,5 +1,4 @@
 import {
-	AirplaneTilt,
 	ArrowClockwise,
 	ArrowDown,
 	ArrowLeft,
@@ -17,7 +16,6 @@ import {
 	EnvelopeSimple,
 	FunnelSimple,
 	GearSix,
-	HardHat,
 	House,
 	ImageSquare,
 	MagnifyingGlass,
@@ -201,7 +199,136 @@ declare global {
 type CaptureMode = "choose" | "text" | "voice" | "photo";
 type ExpenseSection = "history" | "plans" | "splits";
 type TransferOperation = "move" | "clone";
-type BusinessIndustry = "construction" | "tourism";
+type BusinessIndustry =
+	| "construction"
+	| "tourism"
+	| "retail"
+	| "food_service"
+	| "events"
+	| "beauty"
+	| "services"
+	| "logistics"
+	| "property"
+	| "manufacturing"
+	| "other";
+
+const BUSINESS_INDUSTRIES: ReadonlyArray<{
+	value: BusinessIndustry;
+	label: string;
+	description: string;
+	categories: readonly string[];
+}> = [
+	{
+		value: "construction",
+		label: "Строительство и ремонт",
+		description: "Объекты, материалы, подрядчики",
+		categories: [
+			"Материалы и поставщики",
+			"Команда и подрядчики",
+			"Техника и транспорт",
+		],
+	},
+	{
+		value: "tourism",
+		label: "Туризм и гостеприимство",
+		description: "Размещение, поездки, комиссии",
+		categories: [
+			"Проживание и объекты",
+			"Транспорт и трансферы",
+			"Продвижение и комиссии",
+		],
+	},
+	{
+		value: "retail",
+		label: "Розничная торговля",
+		description: "Товары, точки продаж, доставка",
+		categories: [
+			"Товары и закупки",
+			"Торговое оборудование",
+			"Доставка и упаковка",
+		],
+	},
+	{
+		value: "food_service",
+		label: "Кафе и рестораны",
+		description: "Продукты, расходники, оборудование",
+		categories: [
+			"Продукты и напитки",
+			"Упаковка и расходники",
+			"Оборудование и обслуживание",
+		],
+	},
+	{
+		value: "events",
+		label: "Мероприятия",
+		description: "Площадки, подрядчики, декор",
+		categories: [
+			"Площадки и аренда",
+			"Подрядчики и персонал",
+			"Декор и оборудование",
+		],
+	},
+	{
+		value: "beauty",
+		label: "Салоны и студии",
+		description: "Материалы, оборудование, аренда",
+		categories: [
+			"Материалы и косметика",
+			"Оборудование и инструменты",
+			"Аренда и обслуживание",
+		],
+	},
+	{
+		value: "services",
+		label: "Услуги и агентства",
+		description: "Специалисты, реклама, сервисы",
+		categories: [
+			"Подрядчики и специалисты",
+			"Реклама и продвижение",
+			"Сервисы и подписки",
+		],
+	},
+	{
+		value: "logistics",
+		label: "Логистика и доставка",
+		description: "Топливо, транспорт, обслуживание",
+		categories: [
+			"Топливо и дороги",
+			"Ремонт и обслуживание",
+			"Транспорт и аренда",
+		],
+	},
+	{
+		value: "property",
+		label: "Недвижимость и аренда",
+		description: "Объекты, ремонт, коммунальные расходы",
+		categories: [
+			"Ремонт и материалы",
+			"Коммунальные расходы",
+			"Мебель и оснащение",
+		],
+	},
+	{
+		value: "manufacturing",
+		label: "Производство и мастерские",
+		description: "Сырьё, оборудование, упаковка",
+		categories: [
+			"Сырьё и материалы",
+			"Оборудование и ремонт",
+			"Упаковка и логистика",
+		],
+	},
+	{
+		value: "other",
+		label: "Другая сфера",
+		description: "Начните с собственных категорий",
+		categories: [],
+	},
+];
+
+const businessIndustryProfile = (industry: BusinessIndustry | "") =>
+	BUSINESS_INDUSTRIES.find(({ value }) => value === industry) ??
+	BUSINESS_INDUSTRIES[0];
 type Space = {
 	id: number;
 	tenant_id: number;
@@ -4948,12 +5075,9 @@ export const MiniApp = ({
 		return [...expenses, ...splitExpenses.filter(({ id }) => !known.has(id))];
 	}, [expenses, splitExpenses]);
 	const spaceSubtitle = (space: Space) => {
-		const industry =
-			space.settings?.industry === "construction"
-				? "Строительство"
-				: space.settings?.industry === "tourism"
-					? "Туризм"
-					: "";
+		const industry = space.settings?.industry
+			? businessIndustryProfile(space.settings.industry).label
+			: "";
 		return `${industry ? `${industry} · ` : ""}${uiText(
 			language,
 			space.is_personal
@@ -12616,8 +12740,8 @@ const SpacesView = ({
 						<small>Организация</small>
 						<strong>{organization.name}</strong>
 						<p>
-							{organization.industry === "tourism" ? "Туризм" : "Строительство"}{" "}
-							· {organizationRoleLabel(organization.role)}
+							{businessIndustryProfile(organization.industry).label} ·{" "}
+							{organizationRoleLabel(organization.role)}
 						</p>
 					</div>
 					{onEditOrganization && (
@@ -18501,37 +18625,27 @@ const OrganizationEditor = ({
 					}
 				/>
 			</label>
-			<fieldset className="business-setup__industry">
-				<legend>Сфера работы</legend>
-				<div>
-					<button
-						type="button"
-						className={
-							organization.industry === "construction" ? "is-active" : ""
-						}
-						onClick={() =>
-							onChange({ ...organization, industry: "construction" })
-						}
-					>
-						<HardHat size={20} weight="duotone" />
-						<span>
-							<strong>Строительство</strong>
-							<small>Объекты и подрядчики</small>
-						</span>
-					</button>
-					<button
-						type="button"
-						className={organization.industry === "tourism" ? "is-active" : ""}
-						onClick={() => onChange({ ...organization, industry: "tourism" })}
-					>
-						<AirplaneTilt size={20} weight="duotone" />
-						<span>
-							<strong>Туризм</strong>
-							<small>Гости и поездки</small>
-						</span>
-					</button>
-				</div>
-			</fieldset>
+			<label className="business-industry-field">
+				Сфера работы
+				<select
+					value={organization.industry || "construction"}
+					onChange={(event) =>
+						onChange({
+							...organization,
+							industry: event.target.value as BusinessIndustry,
+						})
+					}
+				>
+					{BUSINESS_INDUSTRIES.map(({ value, label }) => (
+						<option key={value} value={value}>
+							{label}
+						</option>
+					))}
+				</select>
+				<small>
+					{businessIndustryProfile(organization.industry).description}
+				</small>
+			</label>
 			<p className="mini-field-note">
 				Организация объединяет команду и рабочие пространства. Личные и семейные
 				пространства остаются отдельно.
@@ -19464,18 +19578,7 @@ const BusinessSetupDialog = ({
 	onCreate: () => void;
 	onClose: () => void;
 }) => {
-	const categories =
-		industry === "tourism"
-			? [
-					"Проживание и объекты",
-					"Транспорт и трансферы",
-					"Продвижение и комиссии",
-				]
-			: [
-					"Материалы и поставщики",
-					"Команда и подрядчики",
-					"Техника и транспорт",
-				];
+	const profile = businessIndustryProfile(industry);
 	return (
 		<Modal
 			title={
@@ -19512,45 +19615,43 @@ const BusinessSetupDialog = ({
 						onChange={(event) => onName(event.target.value)}
 					/>
 				</label>
-				<fieldset className="business-setup__industry">
-					<legend>Сфера работы</legend>
-					<div>
-						<button
-							type="button"
-							className={industry === "construction" ? "is-active" : ""}
-							aria-pressed={industry === "construction"}
-							onClick={() => onIndustry("construction")}
-						>
-							<HardHat size={20} weight="duotone" />
-							<span>
-								<strong>Строительство</strong>
-								<small>Объекты, материалы, подрядчики</small>
-							</span>
-						</button>
-						<button
-							type="button"
-							className={industry === "tourism" ? "is-active" : ""}
-							aria-pressed={industry === "tourism"}
-							onClick={() => onIndustry("tourism")}
-						>
-							<AirplaneTilt size={20} weight="duotone" />
-							<span>
-								<strong>Туризм</strong>
-								<small>Размещение, трансферы, агрегаторы</small>
-							</span>
-						</button>
-					</div>
-				</fieldset>
-				<div className="business-setup__categories">
-					<small>Сразу добавим категории</small>
-					<ul>
-						{categories.map((category) => (
-							<li key={category}>
-								<Check size={16} weight="bold" />
-								{category}
-							</li>
+				<label className="mini-field business-industry-field">
+					<span>Сфера работы</span>
+					<select
+						value={industry}
+						onChange={(event) =>
+							onIndustry(event.target.value as BusinessIndustry)
+						}
+					>
+						{BUSINESS_INDUSTRIES.map(({ value, label }) => (
+							<option key={value} value={value}>
+								{label}
+							</option>
 						))}
-					</ul>
+					</select>
+					<small>{profile.description}</small>
+				</label>
+				<div className="business-setup__categories">
+					<small>
+						{profile.categories.length
+							? "Сразу добавим категории"
+							: "Категории настроите сами"}
+					</small>
+					{profile.categories.length ? (
+						<ul>
+							{profile.categories.map((category) => (
+								<li key={category}>
+									<Check size={16} weight="bold" />
+									{category}
+								</li>
+							))}
+						</ul>
+					) : (
+						<p>
+							Создадим чистую организацию: названия и структуру категорий
+							выберете под свою работу.
+						</p>
+					)}
 				</div>
 				{error && (
 					<p className="mini-form-error" role="alert">
