@@ -225,7 +225,10 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 		categories: [
 			"Материалы и поставщики",
 			"Команда и подрядчики",
-			"Техника и транспорт",
+			"Техника и инструмент",
+			"Транспорт и доставка",
+			"Проектирование и разрешения",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -235,7 +238,10 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 		categories: [
 			"Проживание и объекты",
 			"Транспорт и трансферы",
+			"Экскурсии и активности",
 			"Продвижение и комиссии",
+			"Сервис для гостей",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -244,8 +250,11 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 		description: "Товары, точки продаж, доставка",
 		categories: [
 			"Товары и закупки",
+			"Аренда и коммунальные",
 			"Торговое оборудование",
 			"Доставка и упаковка",
+			"Реклама и маркетплейсы",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -256,6 +265,9 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 			"Продукты и напитки",
 			"Упаковка и расходники",
 			"Оборудование и обслуживание",
+			"Аренда и коммунальные",
+			"Персонал и доставка",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -266,6 +278,9 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 			"Площадки и аренда",
 			"Подрядчики и персонал",
 			"Декор и оборудование",
+			"Кейтеринг и напитки",
+			"Реклама и билеты",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -275,7 +290,10 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 		categories: [
 			"Материалы и косметика",
 			"Оборудование и инструменты",
-			"Аренда и обслуживание",
+			"Аренда и коммунальные",
+			"Персонал и обучение",
+			"Продвижение и запись",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -286,6 +304,9 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 			"Подрядчики и специалисты",
 			"Реклама и продвижение",
 			"Сервисы и подписки",
+			"Офис и аренда",
+			"Командировки и встречи",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -296,6 +317,9 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 			"Топливо и дороги",
 			"Ремонт и обслуживание",
 			"Транспорт и аренда",
+			"Склады и упаковка",
+			"Страхование и разрешения",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -306,6 +330,9 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 			"Ремонт и материалы",
 			"Коммунальные расходы",
 			"Мебель и оснащение",
+			"Уборка и обслуживание",
+			"Налоги и страхование",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -316,6 +343,9 @@ const BUSINESS_INDUSTRIES: ReadonlyArray<{
 			"Сырьё и материалы",
 			"Оборудование и ремонт",
 			"Упаковка и логистика",
+			"Аренда и коммунальные",
+			"Качество и сертификация",
+			"Прочие расходы",
 		],
 	},
 	{
@@ -425,6 +455,7 @@ type Category = {
 	reporting_currency?: string;
 	pinned?: boolean;
 	is_system?: boolean;
+	is_preset?: boolean;
 	created_by_user_id?: number | null;
 	created_by_name?: string;
 	can_edit?: boolean;
@@ -1357,6 +1388,21 @@ const previewCategories: Category[] = [
 		can_delete: false,
 	},
 ];
+const previewBusinessCategories: Category[] =
+	BUSINESS_INDUSTRIES[0].categories.map((name, index) => ({
+		id: 100 + index,
+		key: `custom_business_${index + 1}`,
+		name,
+		count: index < 3 ? 3 - index : 0,
+		total: index < 3 ? 128000 - index * 31000 : 0,
+		month_spent: index < 3 ? 52000 - index * 14000 : 0,
+		last_used:
+			index < 3 ? new Date(Date.now() - index * 86400000).toISOString() : null,
+		aliases: [],
+		is_preset: true,
+		can_edit: true,
+		can_delete: true,
+	}));
 const previewExpenses: Expense[] = [
 	{
 		id: 1,
@@ -2512,7 +2558,9 @@ export const MiniApp = ({
 			setPlanTotalCount(previewPlans.length);
 			setCaptures(previewCaptures);
 			setReviewCandidates(previewReviewCandidates);
-			setCategories(previewCategories);
+			setCategories(
+				businessApp ? previewBusinessCategories : previewCategories,
+			);
 			setVendors(previewVendors);
 			const previewQuota: Quota = {
 				plan: "basic",
@@ -12432,7 +12480,7 @@ const CategoriesView = ({
 	onAdd: () => void;
 }) => {
 	const customCategoryCount = categories.filter(
-		(category) => !category.is_system,
+		(category) => !category.is_system && !category.is_preset,
 	).length;
 	const categoryBudgetCount = categories.filter(
 		(category) => (category.budget_amount || 0) > 0,
@@ -12488,9 +12536,11 @@ const CategoriesView = ({
 						category.budget_period === "week" ? "forWeek" : "forMonth";
 					const attribution = category.is_system
 						? uiText(language, "systemCategory")
-						: shared && category.created_by_name
-							? `${uiText(language, "userCategory")} · ${category.created_by_name}`
-							: uiText(language, "userCategory");
+						: category.is_preset
+							? uiText(language, "businessCategory")
+							: shared && category.created_by_name
+								? `${uiText(language, "userCategory")} · ${category.created_by_name}`
+								: uiText(language, "userCategory");
 					return (
 						<article
 							className={`${category.pinned ? "is-pinned " : ""}${overLimit ? "is-over" : ""}`.trim()}
