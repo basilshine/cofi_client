@@ -13162,10 +13162,6 @@ const CategoriesView = ({
 											<small>{uiText(language, "spentForMonth")}</small>
 											<strong>{formatMoney(monthSpent, currency)}</strong>
 										</span>
-										<span>
-											<small>{uiText(language, "spentTotal")}</small>
-											<strong>{formatMoney(display.total, currency)}</strong>
-										</span>
 									</span>
 									{hasLimit ? (
 										<span className="mini-category-limit">
