@@ -3392,6 +3392,176 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List completed weekly and monthly reports for the current user */
+        get: {
+            parameters: {
+                query?: {
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Immutable report snapshots, newest first */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PeriodReportListResponse"];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/reports/{reportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one immutable period report */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Report snapshot with a flag when source data changed later */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PeriodReport"];
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Report not found for this user and space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/reports/{reportId}/advice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate or return cached Plus advice for a report
+         * @description Sends only the report's aggregate snapshot to the configured model. Server calculations remain authoritative.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    reportId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Aggregate-grounded advice */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PeriodReportAdvice"];
+                    };
+                };
+                /** @description Plus subscription required */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Report not found for this user and space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description AI advice is temporarily unavailable */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/categories": {
         parameters: {
             query?: never;
@@ -3408,6 +3578,8 @@ export interface paths {
                 query?: {
                     /** @description Optional reporting currency for category totals and budgets. */
                     currency?: components["schemas"]["CurrencyCode"];
+                    /** @description Optional calendar month for monthly spending and monthly budget usage, interpreted in the current user's timezone. */
+                    month?: string;
                 };
                 header?: never;
                 path: {
@@ -10025,6 +10197,76 @@ export interface components {
             offset?: number;
             has_more?: boolean;
             next_offset?: number | null;
+        };
+        PeriodReportCategory: {
+            /** Format: int64 */
+            category_id?: number | null;
+            name: string;
+            spent: number;
+            /** @enum {string} */
+            budget_period?: "week" | "month";
+            budget_amount?: number | null;
+            budget_spent?: number | null;
+            remaining?: number | null;
+        };
+        PeriodReportPlan: {
+            /** Format: int64 */
+            id: number;
+            title: string;
+            expected_amount?: number | null;
+            /** Format: date */
+            due_date?: string | null;
+            overdue: boolean;
+        };
+        PeriodReportFacts: {
+            total_spent: number;
+            previous_total: number;
+            delta_ratio?: number | null;
+            categories: components["schemas"]["PeriodReportCategory"][];
+            budget_total: number;
+            budget_remaining: number;
+            planned_total: number;
+            plans: components["schemas"]["PeriodReportPlan"][];
+            /** Format: int64 */
+            unclassified_count: number;
+            completeness_message: string;
+        };
+        PeriodReportAdviceSuggestion: {
+            title: string;
+            body: string;
+            evidence: string;
+        };
+        PeriodReportAdvice: {
+            summary: string;
+            suggestions: components["schemas"]["PeriodReportAdviceSuggestion"][];
+            caveat: string;
+        };
+        PeriodReport: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            tenant_id: number;
+            /** Format: int64 */
+            space_id: number;
+            /** @enum {string} */
+            kind: "week" | "month";
+            /** Format: date */
+            period_start: string;
+            /** Format: date */
+            period_end: string;
+            revision: number;
+            timezone: string;
+            currency: components["schemas"]["CurrencyCode"];
+            facts: components["schemas"]["PeriodReportFacts"];
+            advice?: components["schemas"]["PeriodReportAdvice"];
+            /** Format: date-time */
+            advice_generated_at?: string | null;
+            /** Format: date-time */
+            generated_at: string;
+            data_changed: boolean;
+        };
+        PeriodReportListResponse: {
+            reports: components["schemas"]["PeriodReport"][];
         };
         CategorySummary: {
             /** Format: int64 */

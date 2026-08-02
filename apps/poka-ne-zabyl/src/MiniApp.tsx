@@ -10,6 +10,9 @@ import {
 	CalendarBlank,
 	Camera,
 	CaretDown,
+	CaretLeft,
+	CaretRight,
+	ChartLineUp,
 	ChatCircleText,
 	Check,
 	Copy,
@@ -30,6 +33,7 @@ import {
 	ShareNetwork,
 	ShoppingBagOpen,
 	SignOut,
+	Sparkle,
 	Star,
 	Storefront,
 	Tag,
@@ -77,6 +81,11 @@ import {
 	shouldGuideFirstCapture,
 	withCaptureReviewSettings,
 } from "./capture-source";
+import {
+	categoryBudgetSummary,
+	categoryMonth,
+	shiftCategoryMonth,
+} from "./category-budget-summary";
 import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
 import { groupRowsByExpense } from "./expense-groups";
 import {
@@ -168,6 +177,7 @@ import {
 
 type View =
 	| "overview"
+	| "report"
 	| "expenses"
 	| "vendors"
 	| "categories"
@@ -430,6 +440,58 @@ type PageInfo = {
 
 type DashboardSummary = {
 	monthly_snapshot?: { total_spent: number };
+};
+
+type PeriodReportCategory = {
+	category_id?: number;
+	name: string;
+	spent: number;
+	budget_period?: "week" | "month";
+	budget_amount?: number;
+	budget_spent?: number;
+	remaining?: number;
+};
+
+type PeriodReportPlan = {
+	id: number;
+	title: string;
+	expected_amount?: number;
+	due_date?: string;
+	overdue: boolean;
+};
+
+type PeriodReportAdvice = {
+	summary: string;
+	suggestions: { title: string; body: string; evidence: string }[];
+	caveat: string;
+};
+
+type PeriodReport = {
+	id: number;
+	tenant_id: number;
+	space_id: number;
+	kind: "week" | "month";
+	period_start: string;
+	period_end: string;
+	revision: number;
+	timezone: string;
+	currency: string;
+	facts: {
+		total_spent: number;
+		previous_total: number;
+		delta_ratio?: number;
+		categories: PeriodReportCategory[];
+		budget_total: number;
+		budget_remaining: number;
+		planned_total: number;
+		plans: PeriodReportPlan[];
+		unclassified_count: number;
+		completeness_message: string;
+	};
+	advice?: PeriodReportAdvice;
+	advice_generated_at?: string;
+	generated_at: string;
+	data_changed: boolean;
 };
 
 type Category = {
@@ -1801,6 +1863,7 @@ const requestedPreviewLanguage = normalizeUILanguage(
 	requestedQuery.get("lang") ?? undefined,
 );
 const requestedExpenseID = Number(requestedQuery.get("expense_id"));
+const requestedReportID = Number(requestedQuery.get("report_id"));
 const requestedFeedbackID = Number(requestedQuery.get("feedback"));
 const requestedInviteToken = (
 	requestedQuery.get("token") ||
@@ -1815,6 +1878,7 @@ const initialView = (): View => {
 	if (requestedFeedbackID > 0) return "profile";
 	const requested = new URLSearchParams(window.location.search).get("view");
 	return requested === "expenses" ||
+		requested === "report" ||
 		requested === "categories" ||
 		requested === "vendors" ||
 		requested === "spaces" ||
@@ -1836,6 +1900,7 @@ export const MiniApp = ({
 	const loadSequence = useRef(0);
 	const loadingMoreExpensesRef = useRef(false);
 	const loadingMorePlansRef = useRef(false);
+	const categoryLoadSequence = useRef(0);
 	const pullStart = useRef<{ x: number; y: number } | null>(null);
 	const currentPullDistance = useRef(0);
 	const blockingRequest = useRef<AbortController | null>(null);
@@ -1885,6 +1950,9 @@ export const MiniApp = ({
 	);
 	const [loadedCategories, setCategories] = useState<Category[]>([]);
 	const [categorySpaceID, setCategorySpaceID] = useState(0);
+	const [selectedCategoryMonth, setSelectedCategoryMonth] =
+		useState(categoryMonth);
+	const [categoriesLoading, setCategoriesLoading] = useState(false);
 	const categories = spaceScopedItems(
 		loadedCategories,
 		categorySpaceID,
@@ -1897,6 +1965,10 @@ export const MiniApp = ({
 	const [feedbackStatus, setFeedbackStatus] =
 		useState<FeedbackDailyStatus | null>(null);
 	const [notifications, setNotifications] = useState<AppNotification[]>([]);
+	const [reports, setReports] = useState<PeriodReport[]>([]);
+	const [reportID, setReportID] = useState(requestedReportID);
+	const [reportLoading, setReportLoading] = useState(false);
+	const [reportAdviceLoading, setReportAdviceLoading] = useState(false);
 	const knownNotificationIDs = useRef<Set<number> | null>(null);
 	const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 	const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -3577,6 +3649,7 @@ export const MiniApp = ({
 	const loadSpace = async (background = false) => {
 		if (previewMode) return;
 		const requestID = ++loadSequence.current;
+		categoryLoadSequence.current++;
 		if (!background) setLoading(true);
 		setLoadFailed(false);
 		setServiceUnavailable(false);
@@ -3596,6 +3669,7 @@ export const MiniApp = ({
 				planData,
 				reviewData,
 				feedbackStatusData,
+				reportData,
 			] = await Promise.all([
 				apiRequest<{ expenses: Expense[] } & PageInfo>(
 					`/spaces/${spaceID}/expenses?limit=20&currency=${encodeURIComponent(reportingCurrency)}`,
@@ -3606,7 +3680,7 @@ export const MiniApp = ({
 					token,
 				).catch(() => null),
 				apiRequest<{ categories: Category[] }>(
-					`/spaces/${spaceID}/categories?currency=${encodeURIComponent(reportingCurrency)}`,
+					`/spaces/${spaceID}/categories?currency=${encodeURIComponent(reportingCurrency)}&month=${selectedCategoryMonth}`,
 					token,
 				),
 				apiRequest<Quota>(`/quota?space_id=${spaceID}`, token),
@@ -3639,6 +3713,10 @@ export const MiniApp = ({
 				apiRequest<FeedbackDailyStatus>("/feedback/status", token).catch(
 					() => null,
 				),
+				apiRequest<{ reports: PeriodReport[] }>(
+					`/spaces/${spaceID}/reports?limit=12`,
+					token,
+				).catch(() => ({ reports: [] })),
 			]);
 			if (requestID !== loadSequence.current) return;
 			setExpenses(expenseData.expenses || []);
@@ -3682,6 +3760,10 @@ export const MiniApp = ({
 			);
 			setPlanTotalCount(planData.total_count ?? planData.plans?.length ?? 0);
 			setReviewCandidates(reviewData.candidates || []);
+			setReports(reportData.reports || []);
+			if (view === "report" && !reportID && reportData.reports?.[0]) {
+				setReportID(reportData.reports[0].id);
+			}
 			if (accountQuotaData.dev_tools_enabled) {
 				void refreshDeveloperDashboard();
 			} else {
@@ -3715,7 +3797,79 @@ export const MiniApp = ({
 					: "Не удалось загрузить пространство",
 			);
 		} finally {
-			if (!background && requestID === loadSequence.current) setLoading(false);
+			if (requestID === loadSequence.current) {
+				setCategoriesLoading(false);
+				if (!background) setLoading(false);
+			}
+		}
+	};
+
+	const openPeriodReport = (id: number) => {
+		setReportID(id);
+		setView("report");
+		const query = new URLSearchParams(window.location.search);
+		query.set("view", "report");
+		query.set("space_id", String(spaceID));
+		query.set("report_id", String(id));
+		window.history.replaceState(null, "", `/app?${query.toString()}`);
+	};
+
+	useEffect(() => {
+		if (view !== "report" || !reportID || !spaceID || !token || previewMode)
+			return;
+		let cancelled = false;
+		setReportLoading(true);
+		void apiRequest<PeriodReport>(
+			`/spaces/${spaceID}/reports/${reportID}`,
+			token,
+		)
+			.then((report) => {
+				if (cancelled) return;
+				setReports((current) =>
+					current.some(({ id }) => id === report.id)
+						? current.map((item) => (item.id === report.id ? report : item))
+						: [report, ...current],
+				);
+			})
+			.catch((err) => {
+				if (!cancelled)
+					setError(
+						err instanceof Error ? err.message : "Не удалось открыть сводку",
+					);
+			})
+			.finally(() => {
+				if (!cancelled) setReportLoading(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [view, reportID, spaceID, token]);
+
+	const generateReportAdvice = async (report: PeriodReport) => {
+		if (!token || reportAdviceLoading) return;
+		setReportAdviceLoading(true);
+		setError("");
+		try {
+			const advice = await apiRequest<PeriodReportAdvice>(
+				`/spaces/${spaceID}/reports/${report.id}/advice`,
+				token,
+				{ method: "POST" },
+			);
+			setReports((current) =>
+				current.map((item) =>
+					item.id === report.id ? { ...item, advice } : item,
+				),
+			);
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 402) {
+				setView("subscription");
+				return;
+			}
+			setError(
+				err instanceof Error ? err.message : "Не удалось сформировать советы",
+			);
+		} finally {
+			setReportAdviceLoading(false);
 		}
 	};
 
@@ -3820,6 +3974,34 @@ export const MiniApp = ({
 		token,
 		reportingCurrency,
 	]);
+
+	const changeCategoryMonth = async (nextMonth: string) => {
+		if (nextMonth > categoryMonth() || nextMonth === selectedCategoryMonth)
+			return;
+		const previousMonth = selectedCategoryMonth;
+		const requestID = ++categoryLoadSequence.current;
+		setSelectedCategoryMonth(nextMonth);
+		if (previewMode) return;
+		setCategoriesLoading(true);
+		try {
+			const data = await apiRequest<{ categories: Category[] }>(
+				`/spaces/${spaceID}/categories?currency=${encodeURIComponent(reportingCurrency)}&month=${nextMonth}`,
+				token,
+			);
+			if (requestID !== categoryLoadSequence.current) return;
+			setCategories(data.categories || []);
+			setCategorySpaceID(spaceID);
+		} catch (err) {
+			if (requestID !== categoryLoadSequence.current) return;
+			setSelectedCategoryMonth(previousMonth);
+			setNotice(
+				err instanceof Error ? err.message : uiText(language, "loadMoreFailed"),
+			);
+		} finally {
+			if (requestID === categoryLoadSequence.current)
+				setCategoriesLoading(false);
+		}
+	};
 
 	const refreshCurrentView = async () => {
 		if (refreshing || loading || !token || !spaceID) return;
@@ -4983,6 +5165,9 @@ export const MiniApp = ({
 	};
 
 	const activeSpace = spaces.find((space) => space.id === spaceID);
+	const latestReport = reports[0] || null;
+	const selectedReport =
+		reports.find((report) => report.id === reportID) || latestReport;
 	const shellSpaces = spacesForAppExperience(spaces, businessApp);
 	const activeOrganization =
 		organizations.find(({ id }) => id === organizationID) ||
@@ -7833,6 +8018,45 @@ export const MiniApp = ({
 					<LoadingRows />
 				) : (
 					<>
+						{view === "report" && (
+							<PeriodReportView
+								report={selectedReport || null}
+								loading={reportLoading}
+								adviceLoading={reportAdviceLoading}
+								hasPlus={activeSpaceHasPlus}
+								language={language}
+								onBack={() => setView("overview")}
+								onExpenses={() => {
+									if (!selectedReport) return;
+									setDateFrom(selectedReport.period_start);
+									setDateTo(selectedReport.period_end);
+									setPeriod("custom");
+									setCategoryID(0);
+									setExpenseSection("history");
+									setView("expenses");
+								}}
+								onCategory={(selectedCategoryID) => {
+									if (!selectedReport) return;
+									setDateFrom(selectedReport.period_start);
+									setDateTo(selectedReport.period_end);
+									setPeriod("custom");
+									setCategoryID(selectedCategoryID);
+									setExpenseSection("history");
+									setView("expenses");
+								}}
+								onPlans={() => {
+									setPlanInitialPeriod("all");
+									setExpenseSection("plans");
+									setView("expenses");
+								}}
+								onAdvice={() =>
+									selectedReport
+										? void generateReportAdvice(selectedReport)
+										: undefined
+								}
+								onUpgrade={() => setView("subscription")}
+							/>
+						)}
 						{view === "overview" && (
 							<Overview
 								user={user}
@@ -7854,6 +8078,8 @@ export const MiniApp = ({
 								currentUserID={user?.id || 0}
 								hasAnyExpenses={expenses.length > 0}
 								pendingCandidates={pendingReviewCandidates}
+								latestReport={latestReport}
+								onReport={openPeriodReport}
 								onConfigureLocale={openProfileEditor}
 								onCategory={openCategory}
 								onManageBudgets={() => setView("categories")}
@@ -7960,6 +8186,8 @@ export const MiniApp = ({
 						{view === "categories" && (
 							<CategoriesView
 								categories={categories}
+								month={selectedCategoryMonth}
+								loading={categoriesLoading}
 								currency={currency}
 								language={language}
 								shared={members.length > 1}
@@ -7968,6 +8196,7 @@ export const MiniApp = ({
 								onOpen={openCategory}
 								onEdit={editCategory}
 								onPin={(category) => void toggleCategoryPin(category)}
+								onMonth={(month) => void changeCategoryMonth(month)}
 								onUpgrade={() => setView("subscription")}
 								onAdd={() =>
 									setEditingCategory({
@@ -8368,7 +8597,7 @@ export const MiniApp = ({
 
 			<nav className="mini-nav" aria-label={uiText(language, "navLabel")}>
 				<NavButton
-					active={view === "overview"}
+					active={view === "overview" || view === "report"}
 					label={uiText(language, "navOverview")}
 					icon={<House />}
 					onClick={() => {
@@ -10277,6 +10506,254 @@ const ReviewSaved = ({
 	);
 };
 
+const reportKindTitle = (kind: PeriodReport["kind"], language: UILanguage) => {
+	if (language === "en")
+		return kind === "week" ? "Weekly summary" : "Monthly summary";
+	if (language === "es")
+		return kind === "week" ? "Resumen semanal" : "Resumen mensual";
+	return kind === "week" ? "Сводка за неделю" : "Сводка за месяц";
+};
+
+const reportPeriodLabel = (report: PeriodReport, language: UILanguage) => {
+	const locale =
+		language === "ru" ? "ru-RU" : language === "es" ? "es-ES" : "en-US";
+	const formatter = new Intl.DateTimeFormat(locale, {
+		day: "numeric",
+		month: "long",
+	});
+	const start = formatter.format(new Date(`${report.period_start}T00:00:00`));
+	const end = formatter.format(new Date(`${report.period_end}T00:00:00`));
+	return `${start} — ${end}`;
+};
+
+const PeriodReportView = ({
+	report,
+	loading,
+	adviceLoading,
+	hasPlus,
+	language,
+	onBack,
+	onExpenses,
+	onCategory,
+	onPlans,
+	onAdvice,
+	onUpgrade,
+}: {
+	report: PeriodReport | null;
+	loading: boolean;
+	adviceLoading: boolean;
+	hasPlus: boolean;
+	language: UILanguage;
+	onBack: () => void;
+	onExpenses: () => void;
+	onCategory: (id: number) => void;
+	onPlans: () => void;
+	onAdvice: () => void;
+	onUpgrade: () => void;
+}) => {
+	if (!report) {
+		return (
+			<section className="mini-view mini-report-view">
+				<button className="mini-back" type="button" onClick={onBack}>
+					<ArrowLeft size={18} />{" "}
+					{language === "ru" ? "Назад" : language === "es" ? "Atrás" : "Back"}
+				</button>
+				{loading ? <LoadingRows /> : <Empty text="Сводка не найдена" />}
+			</section>
+		);
+	}
+	const facts = report.facts;
+	const delta = facts.delta_ratio;
+	const deltaText =
+		delta === undefined
+			? "Нет данных для сравнения"
+			: `${Math.abs(Math.round(delta * 100))}% ${delta > 0 ? "больше" : delta < 0 ? "меньше" : "без изменений"}`;
+	return (
+		<section className="mini-view mini-report-view">
+			<header className="mini-report-header">
+				<button className="mini-back" type="button" onClick={onBack}>
+					<ArrowLeft size={18} />{" "}
+					{language === "ru" ? "Назад" : language === "es" ? "Atrás" : "Back"}
+				</button>
+				<div>
+					<p>{reportKindTitle(report.kind, language)}</p>
+					<h1>{reportPeriodLabel(report, language)}</h1>
+					<small>{facts.completeness_message}</small>
+				</div>
+			</header>
+
+			{report.data_changed && (
+				<div className="mini-report-changed" role="status">
+					<WarningCircle size={19} weight="fill" />
+					<span>
+						После формирования сводки данные изменились. Здесь сохранены
+						исходные цифры.
+					</span>
+				</div>
+			)}
+
+			<button className="mini-report-hero" type="button" onClick={onExpenses}>
+				<span>Потрачено</span>
+				<strong>{formatMoney(facts.total_spent, report.currency)}</strong>
+				<small>{deltaText} по сравнению с прошлым периодом</small>
+				<ArrowRight size={20} />
+			</button>
+
+			<div className="mini-report-metrics">
+				<div>
+					<small>Общий лимит</small>
+					<strong>{formatMoney(facts.budget_total, report.currency)}</strong>
+				</div>
+				<div className={facts.budget_remaining < 0 ? "is-over" : ""}>
+					<small>
+						{facts.budget_remaining < 0 ? "Сверх лимитов" : "Осталось"}
+					</small>
+					<strong>
+						{formatMoney(Math.abs(facts.budget_remaining), report.currency)}
+					</strong>
+				</div>
+				<div>
+					<small>Ближайшие планы</small>
+					<strong>{formatMoney(facts.planned_total, report.currency)}</strong>
+				</div>
+			</div>
+
+			<section className="mini-report-section">
+				<div className="mini-section-head">
+					<h2>Категории и лимиты</h2>
+					<button type="button" onClick={onExpenses}>
+						Все расходы
+					</button>
+				</div>
+				<div className="mini-report-categories">
+					{facts.categories.map((category) => {
+						const over =
+							category.remaining !== undefined && category.remaining < 0;
+						const progress = category.budget_amount
+							? Math.min(
+									100,
+									Math.max(
+										0,
+										((category.budget_spent || 0) / category.budget_amount) *
+											100,
+									),
+								)
+							: 0;
+						return (
+							<button
+								key={category.category_id || category.name}
+								className={over ? "is-over" : ""}
+								type="button"
+								disabled={!category.category_id}
+								onClick={() =>
+									category.category_id && onCategory(category.category_id)
+								}
+							>
+								<span>
+									<b>{category.name}</b>
+									<strong>
+										{formatMoney(category.spent, report.currency)}
+									</strong>
+								</span>
+								{category.budget_amount !== undefined && (
+									<>
+										<small>
+											{over ? "Сверх лимита" : "Осталось"}{" "}
+											{formatMoney(
+												Math.abs(category.remaining || 0),
+												report.currency,
+											)}
+										</small>
+										<i>
+											<span style={{ width: `${progress}%` }} />
+										</i>
+									</>
+								)}
+							</button>
+						);
+					})}
+				</div>
+			</section>
+
+			{facts.plans.length > 0 && (
+				<section className="mini-report-section">
+					<div className="mini-section-head">
+						<h2>Что запланировано</h2>
+						<button type="button" onClick={onPlans}>
+							Все планы
+						</button>
+					</div>
+					<button className="mini-report-plans" type="button" onClick={onPlans}>
+						{facts.plans.map((plan) => (
+							<span key={plan.id}>
+								<span>
+									<b>{plan.title}</b>
+									<small>
+										{plan.overdue
+											? "Срок прошёл"
+											: plan.due_date
+												? formatDate(plan.due_date, language)
+												: "Без даты"}
+									</small>
+								</span>
+								<strong>
+									{plan.expected_amount
+										? formatMoney(plan.expected_amount, report.currency)
+										: "Сумма не указана"}
+								</strong>
+							</span>
+						))}
+						<ArrowRight size={18} />
+					</button>
+				</section>
+			)}
+
+			<section className="mini-report-advice">
+				<div className="mini-report-advice-title">
+					<span>
+						<Sparkle size={21} weight="fill" />
+					</span>
+					<div>
+						<small>Пока не забыл Plus</small>
+						<h2>Разбор расходов</h2>
+					</div>
+				</div>
+				{report.advice ? (
+					<div className="mini-report-advice-result">
+						<p>{report.advice.summary}</p>
+						{report.advice.suggestions.map((suggestion) => (
+							<article key={`${suggestion.title}-${suggestion.evidence}`}>
+								<strong>{suggestion.title}</strong>
+								<span>{suggestion.body}</span>
+								{suggestion.evidence && <small>{suggestion.evidence}</small>}
+							</article>
+						))}
+						<small>{report.advice.caveat}</small>
+					</div>
+				) : (
+					<>
+						<p>
+							Получите несколько сценариев на основе лимитов, расходов и
+							ближайших планов.
+						</p>
+						<button
+							type="button"
+							disabled={adviceLoading}
+							onClick={hasPlus ? onAdvice : onUpgrade}
+						>
+							{adviceLoading
+								? "Формируем разбор…"
+								: hasPlus
+									? "Разобрать мои расходы"
+									: "Подключить Plus"}
+						</button>
+					</>
+				)}
+			</section>
+		</section>
+	);
+};
+
 const Overview = ({
 	user,
 	language,
@@ -10297,6 +10774,8 @@ const Overview = ({
 	currentUserID,
 	hasAnyExpenses,
 	pendingCandidates,
+	latestReport,
+	onReport,
 	onCategory,
 	onManageBudgets,
 	onExpense,
@@ -10330,6 +10809,8 @@ const Overview = ({
 	currentUserID: number;
 	hasAnyExpenses: boolean;
 	pendingCandidates: ReviewCandidate[];
+	latestReport: PeriodReport | null;
+	onReport: (id: number) => void;
 	onCategory: (id: number, period?: Period) => void;
 	onManageBudgets: () => void;
 	onExpense: (expense: Expense) => void;
@@ -10410,6 +10891,31 @@ const Overview = ({
 				</p>
 				<h1>{monthName}</h1>
 			</div>
+			{latestReport && (
+				<button
+					className="mini-report-card"
+					type="button"
+					onClick={() => onReport(latestReport.id)}
+				>
+					<span className="mini-report-card-icon">
+						<ChartLineUp size={23} weight="bold" />
+					</span>
+					<span className="mini-report-card-copy">
+						<small>{reportKindTitle(latestReport.kind, language)}</small>
+						<strong>{reportPeriodLabel(latestReport, language)}</strong>
+						<span>{latestReport.facts.completeness_message}</span>
+					</span>
+					<span className="mini-report-card-total">
+						<strong>
+							{formatMoney(
+								latestReport.facts.total_spent,
+								latestReport.currency,
+							)}
+						</strong>
+						<ArrowRight size={17} />
+					</span>
+				</button>
+			)}
 			<div className="mini-overview-grid">
 				<div className="mini-overview-summary">
 					<div className="mini-total">
@@ -12456,6 +12962,8 @@ const expenseItemRows = (expenses: Expense[]): ExpenseItemRow[] =>
 
 const CategoriesView = ({
 	categories,
+	month,
+	loading,
 	currency,
 	language,
 	shared,
@@ -12464,10 +12972,13 @@ const CategoriesView = ({
 	onOpen,
 	onEdit,
 	onPin,
+	onMonth,
 	onUpgrade,
 	onAdd,
 }: {
 	categories: Category[];
+	month: string;
+	loading: boolean;
 	currency: string;
 	language: UILanguage;
 	shared: boolean;
@@ -12476,6 +12987,7 @@ const CategoriesView = ({
 	onOpen: (id: number) => void;
 	onEdit: (category: Category) => void;
 	onPin: (category: Category) => void;
+	onMonth: (month: string) => void;
 	onUpgrade: () => void;
 	onAdd: () => void;
 }) => {
@@ -12485,6 +12997,23 @@ const CategoriesView = ({
 	const categoryBudgetCount = categories.filter(
 		(category) => (category.budget_amount || 0) > 0,
 	).length;
+	const currentMonth = categoryMonth();
+	const summary = categoryBudgetSummary(
+		categories.map((category) => {
+			const display = categoryDisplayAmounts(category, currency);
+			return {
+				monthSpent: display.monthSpent,
+				budgetAmount: display.budgetAmount,
+				budgetPeriod: category.budget_period,
+			};
+		}),
+	);
+	const monthLabel = new Intl.DateTimeFormat(language, {
+		month: "long",
+		year: "numeric",
+	}).format(new Date(`${month}-01T12:00:00`));
+	// ponytail: past months use today's configured limits; persist budget history when users need audit-grade comparisons.
+	const summaryOverLimit = summary.limit > 0 && summary.remaining < 0;
 	const orderedCategories = [...categories].sort((left, right) => {
 		const leftAmounts = categoryDisplayAmounts(left, currency);
 		const rightAmounts = categoryDisplayAmounts(right, currency);
@@ -12506,6 +13035,73 @@ const CategoriesView = ({
 				</button>
 			</div>
 			<p className="mini-intro">{uiText(language, "categoriesIntro")}</p>
+			<section
+				className={`mini-category-summary${summaryOverLimit ? " is-over" : ""}${loading ? " is-loading" : ""}`}
+				aria-busy={loading}
+			>
+				<div className="mini-category-period">
+					<button
+						type="button"
+						aria-label={uiText(language, "previousMonth")}
+						onClick={() => onMonth(shiftCategoryMonth(month, -1))}
+					>
+						<CaretLeft size={18} weight="bold" />
+					</button>
+					<span>
+						<small>{uiText(language, "categoryPeriod")}</small>
+						<b>{monthLabel}</b>
+					</span>
+					<button
+						type="button"
+						aria-label={uiText(language, "nextMonth")}
+						disabled={month >= currentMonth}
+						onClick={() => onMonth(shiftCategoryMonth(month, 1))}
+					>
+						<CaretRight size={18} weight="bold" />
+					</button>
+				</div>
+				<div className="mini-category-summary-metrics">
+					<span>
+						<small>{uiText(language, "spentInPeriod")}</small>
+						<strong>{formatMoney(summary.spent, currency)}</strong>
+					</span>
+					<span>
+						<small>{uiText(language, "totalMonthlyLimit")}</small>
+						<strong>
+							{summary.limit > 0
+								? formatMoney(summary.limit, currency)
+								: uiText(language, "noMonthlyLimit")}
+						</strong>
+					</span>
+					<span>
+						<small>
+							{uiText(
+								language,
+								summaryOverLimit ? "overLimitBy" : "remainingFromLimit",
+							)}
+						</small>
+						<strong>
+							{summary.limit > 0
+								? formatMoney(Math.abs(summary.remaining), currency)
+								: "—"}
+						</strong>
+					</span>
+				</div>
+				{summary.limit > 0 && (
+					<span className="mini-category-summary-progress" aria-hidden="true">
+						<i
+							style={{
+								width: `${Math.min(100, (summary.spent / summary.limit) * 100)}%`,
+							}}
+						/>
+					</span>
+				)}
+				{month !== currentMonth && (
+					<small className="mini-category-summary-note">
+						{uiText(language, "currentLimitsNote")}
+					</small>
+				)}
+			</section>
 			{showBasicLimits && quota && (
 				<BasicLimitNudge
 					language={language}
@@ -12527,8 +13123,12 @@ const CategoriesView = ({
 					const display = categoryDisplayAmounts(category, currency);
 					const hasLimit = display.budgetAmount > 0;
 					const monthSpent = display.monthSpent;
+					const historicalWeeklyLimit =
+						month !== currentMonth && category.budget_period === "week";
 					const overLimit =
-						hasLimit && display.budgetSpent > display.budgetAmount;
+						hasLimit &&
+						!historicalWeeklyLimit &&
+						display.budgetSpent > display.budgetAmount;
 					const difference = Math.abs(
 						display.budgetAmount - display.budgetSpent,
 					);
@@ -12579,22 +13179,30 @@ const CategoriesView = ({
 												</strong>
 											</span>
 											<small className="mini-category-limit-copy">
-												{uiText(
-													language,
-													overLimit ? "overLimitBy" : "remaining",
-												)}{" "}
-												{formatMoney(difference, currency)}
+												{historicalWeeklyLimit ? (
+													uiText(language, "currentWeeklyLimit")
+												) : (
+													<>
+														{uiText(
+															language,
+															overLimit ? "overLimitBy" : "remaining",
+														)}{" "}
+														{formatMoney(difference, currency)}
+													</>
+												)}
 											</small>
-											<span className="mini-category-budget">
-												<i
-													style={{
-														width: `${Math.min(
-															100,
-															category.budget_percent || 0,
-														)}%`,
-													}}
-												/>
-											</span>
+											{!historicalWeeklyLimit && (
+												<span className="mini-category-budget">
+													<i
+														style={{
+															width: `${Math.min(
+																100,
+																category.budget_percent || 0,
+															)}%`,
+														}}
+													/>
+												</span>
+											)}
 										</span>
 									) : (
 										<span className="mini-category-no-limit">
@@ -18969,6 +19577,11 @@ const notificationTitle = (
 	tenantType = "",
 ) => {
 	const titles: Record<string, Record<UILanguage, string>> = {
+		period_report_ready: {
+			ru: "Новая финансовая сводка",
+			en: "New financial summary",
+			es: "Nuevo resumen financiero",
+		},
 		purchase_plan_due: {
 			ru: "Напоминание о покупке",
 			en: "Purchase reminder",
