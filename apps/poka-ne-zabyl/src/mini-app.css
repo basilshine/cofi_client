@@ -2228,6 +2228,32 @@
 	margin-top: -4px;
 	text-align: center;
 }
+.mini-category-clone {
+	display: grid;
+	min-height: 44px;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 10px;
+	padding: 8px 11px;
+	border: 1px solid color-mix(in srgb, var(--mini-green) 22%, var(--mini-line));
+	border-radius: 9px;
+	background: color-mix(in srgb, var(--mini-green) 5%, var(--mini-paper));
+	color: var(--mini-green);
+	text-align: left;
+}
+.mini-category-clone > span {
+	display: grid;
+	gap: 1px;
+}
+.mini-category-clone strong {
+	color: var(--mini-ink);
+	font-size: 12px;
+}
+.mini-category-clone small {
+	color: var(--mini-muted);
+	font-size: 10px;
+	text-transform: capitalize;
+}
 .mini-categories {
 	display: grid;
 	gap: 8px;

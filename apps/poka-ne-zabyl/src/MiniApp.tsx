@@ -536,6 +536,7 @@ type Category = {
 	aliases?: string[];
 	alias_text?: string;
 	budget_period?: "week" | "month" | "";
+	budget_month?: string;
 	budget_amount?: number | null;
 	budget_spent?: number;
 	budget_remaining?: number | null;
@@ -2145,6 +2146,7 @@ export const MiniApp = ({
 	const [selectedCategoryMonth, setSelectedCategoryMonth] =
 		useState(categoryMonth);
 	const [categoriesLoading, setCategoriesLoading] = useState(false);
+	const [budgetCloneLoading, setBudgetCloneLoading] = useState(false);
 	const categories = spaceScopedItems(
 		loadedCategories,
 		categorySpaceID,
@@ -3845,7 +3847,7 @@ export const MiniApp = ({
 	const loadSpace = async (background = false) => {
 		if (previewMode) return;
 		const requestID = ++loadSequence.current;
-		categoryLoadSequence.current++;
+		const categoryRequestID = ++categoryLoadSequence.current;
 		if (!background) setLoading(true);
 		setLoadFailed(false);
 		setServiceUnavailable(false);
@@ -3927,8 +3929,10 @@ export const MiniApp = ({
 					null,
 			);
 			setCaptures(captureData.captures || []);
-			setCategories(categoryData.categories || []);
-			setCategorySpaceID(spaceID);
+			if (categoryRequestID === categoryLoadSequence.current) {
+				setCategories(categoryData.categories || []);
+				setCategorySpaceID(spaceID);
+			}
 			setQuota(quotaData);
 			setAccountQuota(accountQuotaData);
 			if (feedbackStatusData) setFeedbackStatus(feedbackStatusData);
@@ -4238,8 +4242,7 @@ export const MiniApp = ({
 	]);
 
 	const changeCategoryMonth = async (nextMonth: string) => {
-		if (nextMonth > categoryMonth() || nextMonth === selectedCategoryMonth)
-			return;
+		if (nextMonth === selectedCategoryMonth) return;
 		const previousMonth = selectedCategoryMonth;
 		const requestID = ++categoryLoadSequence.current;
 		setSelectedCategoryMonth(nextMonth);
@@ -4264,6 +4267,51 @@ export const MiniApp = ({
 				setCategoriesLoading(false);
 		}
 	};
+
+	const cloneCategoryBudgetsToNextMonth = async () => {
+		if (budgetCloneLoading) return;
+		const targetMonth = shiftCategoryMonth(selectedCategoryMonth, 1);
+		if (previewMode) {
+			setSelectedCategoryMonth(targetMonth);
+			setNotice(uiText(language, "budgetsCloned"));
+			return;
+		}
+		setBudgetCloneLoading(true);
+		try {
+			const result = await apiRequest<{ created_count: number }>(
+				`/spaces/${spaceID}/category-budgets/clone`,
+				token,
+				{
+					method: "POST",
+					body: JSON.stringify({
+						source_month: selectedCategoryMonth,
+						target_month: targetMonth,
+					}),
+				},
+			);
+			setNotice(
+				uiText(
+					language,
+					result.created_count > 0 ? "budgetsCloned" : "budgetsAlreadyExist",
+				),
+			);
+			await changeCategoryMonth(targetMonth);
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: uiText(language, "budgetsCloneFailed"),
+			);
+		} finally {
+			setBudgetCloneLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		const currentMonth = categoryMonth();
+		if (view !== "overview" || selectedCategoryMonth === currentMonth) return;
+		void changeCategoryMonth(currentMonth);
+	}, [view, selectedCategoryMonth]);
 
 	const refreshCurrentView = async () => {
 		if (refreshing || loading || !token || !spaceID) return;
@@ -6306,6 +6354,7 @@ export const MiniApp = ({
 							(editingCategory.budget_amount || 0) > 0
 								? editingCategory.budget_amount
 								: undefined,
+						budget_month: selectedCategoryMonth,
 					}),
 				},
 			);
@@ -8479,10 +8528,13 @@ export const MiniApp = ({
 								shared={members.length > 1}
 								quota={quota}
 								showBasicLimits={showActiveSpaceBasicLimits}
+								canManageBudgets={activeSpace?.owner_user_id === user?.id}
+								cloneLoading={budgetCloneLoading}
 								onOpen={openCategory}
 								onEdit={editCategory}
 								onPin={(category) => void toggleCategoryPin(category)}
 								onMonth={(month) => void changeCategoryMonth(month)}
+								onCloneNext={() => void cloneCategoryBudgetsToNextMonth()}
 								onUpgrade={() => setView("subscription")}
 								onAdd={() =>
 									setEditingCategory({
@@ -9455,6 +9507,7 @@ export const MiniApp = ({
 					categories={categories}
 					currency={activeSpace?.currency || currency}
 					language={language}
+					month={selectedCategoryMonth}
 					saving={saving}
 					onChange={setEditingCategory}
 					onClose={() => setEditingCategory(null)}
@@ -13450,10 +13503,13 @@ const CategoriesView = ({
 	shared,
 	quota,
 	showBasicLimits,
+	canManageBudgets,
+	cloneLoading,
 	onOpen,
 	onEdit,
 	onPin,
 	onMonth,
+	onCloneNext,
 	onUpgrade,
 	onAdd,
 }: {
@@ -13465,10 +13521,13 @@ const CategoriesView = ({
 	shared: boolean;
 	quota: Quota | null;
 	showBasicLimits: boolean;
+	canManageBudgets: boolean;
+	cloneLoading: boolean;
 	onOpen: (id: number) => void;
 	onEdit: (category: Category) => void;
 	onPin: (category: Category) => void;
 	onMonth: (month: string) => void;
+	onCloneNext: () => void;
 	onUpgrade: () => void;
 	onAdd: () => void;
 }) => {
@@ -13493,7 +13552,10 @@ const CategoriesView = ({
 		month: "long",
 		year: "numeric",
 	}).format(new Date(`${month}-01T12:00:00`));
-	// ponytail: past months use today's configured limits; persist budget history when users need audit-grade comparisons.
+	const nextMonthLabel = new Intl.DateTimeFormat(language, {
+		month: "long",
+		year: "numeric",
+	}).format(new Date(`${shiftCategoryMonth(month, 1)}-01T12:00:00`));
 	const summaryOverLimit = summary.limit > 0 && summary.remaining < 0;
 	const orderedCategories = [...categories].sort((left, right) => {
 		const leftAmounts = categoryDisplayAmounts(left, currency);
@@ -13535,7 +13597,6 @@ const CategoriesView = ({
 					<button
 						type="button"
 						aria-label={uiText(language, "nextMonth")}
-						disabled={month >= currentMonth}
 						onClick={() => onMonth(shiftCategoryMonth(month, 1))}
 					>
 						<CaretRight size={18} weight="bold" />
@@ -13577,10 +13638,30 @@ const CategoriesView = ({
 						/>
 					</span>
 				)}
-				{month !== currentMonth && (
+				{categoryBudgetCount > 0 && (
 					<small className="mini-category-summary-note">
-						{uiText(language, "currentLimitsNote")}
+						{uiText(language, "limitsForThisMonth")}
 					</small>
+				)}
+				{canManageBudgets && categoryBudgetCount > 0 && (
+					<button
+						className="mini-category-clone"
+						type="button"
+						disabled={cloneLoading}
+						onClick={onCloneNext}
+					>
+						<Copy size={17} />
+						<span>
+							<strong>
+								{uiText(
+									language,
+									cloneLoading ? "cloningBudgets" : "cloneBudgets",
+								)}
+							</strong>
+							<small>{nextMonthLabel}</small>
+						</span>
+						<ArrowRight size={16} />
+					</button>
 				)}
 			</section>
 			{showBasicLimits && quota && (
@@ -13657,7 +13738,7 @@ const CategoriesView = ({
 											</span>
 											<small className="mini-category-limit-copy">
 												{historicalWeeklyLimit ? (
-													uiText(language, "currentWeeklyLimit")
+													uiText(language, "weeklyLimitForMonth")
 												) : (
 													<>
 														{uiText(
@@ -19126,6 +19207,7 @@ const CategoryEditor = ({
 	categories,
 	currency,
 	language,
+	month,
 	saving,
 	onChange,
 	onClose,
@@ -19137,6 +19219,7 @@ const CategoryEditor = ({
 	categories: Category[];
 	currency: string;
 	language: UILanguage;
+	month: string;
 	saving: boolean;
 	onChange: (category: Category) => void;
 	onClose: () => void;
@@ -19147,6 +19230,10 @@ const CategoryEditor = ({
 	const [targetCategoryID, setTargetCategoryID] = useState(0);
 	const mergeTargets = categories.filter((item) => item.id !== category.id);
 	const canDestructivelyChange = category.can_delete !== false;
+	const monthLabel = new Intl.DateTimeFormat(language, {
+		month: "long",
+		year: "numeric",
+	}).format(new Date(`${month}-01T12:00:00`));
 	return (
 		<Modal
 			title={uiText(
@@ -19198,6 +19285,9 @@ const CategoryEditor = ({
 					<option value="month">{uiText(language, "monthly")}</option>
 				</select>
 			</label>
+			<small className="mini-field-hint">
+				{uiText(language, "budgetMonthHint").replace("{month}", monthLabel)}
+			</small>
 			{category.budget_period && (
 				<label htmlFor="category-budget-amount">
 					{uiText(language, "budgetAmount")}

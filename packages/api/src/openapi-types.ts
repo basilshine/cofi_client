@@ -3434,7 +3434,70 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /**
+         * Create or reopen a monthly report for the current user
+         * @description Only completed calendar months are accepted. Creating a new snapshot costs 30 analyses; reopening an existing snapshot is free.
+         */
+        post: {
+            parameters: {
+                query?: {
+                    /** @description Currency used to render the response. */
+                    currency?: components["schemas"]["CurrencyCode"];
+                };
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @example 2026-07 */
+                        month: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Created report or an existing report for the same user, space, and month */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PeriodReport"];
+                    };
+                };
+                /** @description Invalid, current, or future month */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Fewer than 30 analyses remain; a notification is queued */
+                402: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description No expenses or plans exist for the selected month */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -3586,7 +3649,7 @@ export interface paths {
                 query?: {
                     /** @description Optional reporting currency for category totals and budgets. */
                     currency?: components["schemas"]["CurrencyCode"];
-                    /** @description Optional calendar month for monthly spending and monthly budget usage, interpreted in the current user's timezone. */
+                    /** @description Optional calendar month for spending and the immutable budget snapshot shown for that month, interpreted in the current user's timezone. */
                     month?: string;
                 };
                 header?: never;
@@ -3637,6 +3700,8 @@ export interface paths {
                         /** @enum {string|null} */
                         budget_period?: "week" | "month" | null;
                         budget_amount?: number | null;
+                        /** @description Calendar month whose budget snapshot is created or edited. Defaults to the current month. */
+                        budget_month?: string;
                     };
                 };
             };
@@ -3743,6 +3808,8 @@ export interface paths {
                         /** @enum {string|null} */
                         budget_period?: "week" | "month" | null;
                         budget_amount?: number | null;
+                        /** @description Calendar month whose budget snapshot is created, edited, or removed. Defaults to the current month. */
+                        budget_month?: string;
                     };
                 };
             };
@@ -3826,6 +3893,73 @@ export interface paths {
                 };
             };
         };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/category-budgets/clone": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Clone category budget snapshots into the next calendar month
+         * @description Copies only missing category limits and preserves limits already edited in the target month. Requires Space owner access.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        source_month: string;
+                        /** @description Must be the calendar month immediately after source_month. */
+                        target_month: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Missing target-month limits were copied */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            source_month?: string;
+                            target_month?: string;
+                            created_count?: number;
+                        };
+                    };
+                };
+                /** @description Invalid or non-consecutive months */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not the Space owner */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -9162,6 +9296,12 @@ export interface components {
             description?: string;
             currency?: components["schemas"]["CurrencyCode"];
             settings?: {
+                /**
+                 * @description Opt-in for weekly and monthly summaries. Each successfully generated summary consumes 30 public analysis units.
+                 * @default false
+                 */
+                period_reports_enabled: boolean;
+            } & {
                 [key: string]: unknown;
             };
             /** Format: date-time */
@@ -10217,6 +10357,7 @@ export interface components {
             item_count: number;
             /** @enum {string} */
             budget_period?: "week" | "month";
+            budget_month?: string;
             budget_amount?: number | null;
             budget_spent?: number | null;
             remaining?: number | null;
