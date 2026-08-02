@@ -559,6 +559,9 @@ const messages = {
 		newSpace: "Новое пространство",
 		spaceName: "Название",
 		spaceCurrency: "Валюта пространства",
+		periodicReports: "Периодические сводки",
+		periodicReportsHint:
+			"Раз в неделю и раз в месяц формировать сводку и присылать уведомление.",
 		currencyConvertHint:
 			"При смене валюты расходы и лимиты пересчитаются. Исходные суммы сохранятся.",
 		ownerCurrencyOnly: "Валюту может менять только владелец пространства.",
@@ -1133,6 +1136,9 @@ const messages = {
 		newSpace: "New space",
 		spaceName: "Name",
 		spaceCurrency: "Space currency",
+		periodicReports: "Periodic summaries",
+		periodicReportsHint:
+			"Create a weekly and monthly summary and send a notification.",
 		currencyConvertHint:
 			"Changing currency recalculates expenses and limits. Original amounts are preserved.",
 		ownerCurrencyOnly: "Only the space owner can change its currency.",
@@ -1713,6 +1719,9 @@ const messages = {
 		newSpace: "Nuevo espacio",
 		spaceName: "Nombre",
 		spaceCurrency: "Moneda del espacio",
+		periodicReports: "Resúmenes periódicos",
+		periodicReportsHint:
+			"Crear un resumen semanal y mensual y enviar una notificación.",
 		currencyConvertHint:
 			"Al cambiar la moneda se recalculan los gastos y límites. Se conservan los importes originales.",
 		ownerCurrencyOnly:

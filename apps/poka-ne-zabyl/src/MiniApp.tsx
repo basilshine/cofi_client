@@ -383,7 +383,11 @@ type Space = {
 	description?: string;
 	currency: string;
 	member_count?: number;
-	settings?: { experience?: string; industry?: BusinessIndustry };
+	settings?: {
+		experience?: string;
+		industry?: BusinessIndustry;
+		period_reports_enabled?: boolean;
+	};
 };
 
 type SpaceMember = {
@@ -6763,6 +6767,12 @@ export const MiniApp = ({
 		}
 		setSaving(true);
 		try {
+			const canManageSettings = businessApp
+				? Boolean(activeOrganization?.can_manage)
+				: editingSpace.owner_user_id === user?.id;
+			const reportSettingChanged =
+				Boolean(previousSpace?.settings?.period_reports_enabled) !==
+				Boolean(editingSpace.settings?.period_reports_enabled);
 			const createPath =
 				businessApp && editingSpace.tenant_id
 					? `/tenants/${editingSpace.tenant_id}/spaces`
@@ -6780,14 +6790,26 @@ export const MiniApp = ({
 					}),
 				},
 			);
+			const configured =
+				canManageSettings &&
+				(creating
+					? Boolean(editingSpace.settings?.period_reports_enabled)
+					: reportSettingChanged)
+					? await apiRequest<Space>(`/spaces/${saved.id}/settings`, token, {
+							method: "PATCH",
+							body: JSON.stringify({
+								settings: { ...saved.settings, ...editingSpace.settings },
+							}),
+						})
+					: saved;
 			const visibleSaved =
 				businessApp && creating
 					? {
-							...saved,
+							...configured,
 							tenant_name: activeOrganization?.name,
 							tenant_type: "organization",
 						}
-					: saved;
+					: configured;
 			setSpaces((current) =>
 				creating
 					? [...current, visibleSaved]
@@ -19894,6 +19916,30 @@ const SpaceEditor = ({
 				canEditCurrency ? "currencyConvertHint" : "ownerCurrencyOnly",
 			)}
 		</p>
+		<div className="mini-field mini-device-notifications">
+			<button
+				type="button"
+				className={space.settings?.period_reports_enabled ? "active" : ""}
+				disabled={!canEditCurrency || saving}
+				aria-pressed={Boolean(space.settings?.period_reports_enabled)}
+				onClick={() =>
+					onChange({
+						...space,
+						settings: {
+							...space.settings,
+							period_reports_enabled: !space.settings?.period_reports_enabled,
+						},
+					})
+				}
+			>
+				<BellRinging size={21} />
+				<span>
+					<b>{uiText(language, "periodicReports")}</b>
+					<small>{uiText(language, "periodicReportsHint")}</small>
+				</span>
+				<i />
+			</button>
+		</div>
 		{onInvite && (
 			<div className="mini-invite-block">
 				<div>
