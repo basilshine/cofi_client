@@ -9147,12 +9147,44 @@
 	color: var(--mini-ink);
 	font-size: 17px;
 }
+.mini-report-trend-range {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 3px;
+	padding: 3px;
+	border: 1px solid var(--mini-line);
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--mini-ink) 4%, transparent);
+}
+.mini-report-trend-range button {
+	min-height: 34px;
+	padding: 6px 8px;
+	border: 0;
+	border-radius: 7px;
+	background: transparent;
+	color: var(--mini-muted);
+	font-size: 12px;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+}
+.mini-report-trend-range button.is-active {
+	background: var(--mini-green);
+	color: #fff;
+	box-shadow: 0 3px 10px color-mix(in srgb, var(--mini-green) 24%, transparent);
+}
+.mini-report-trend-range button:focus-visible {
+	outline: 2px solid var(--mini-green);
+	outline-offset: 2px;
+}
 .mini-report-chart {
 	display: grid;
 	grid-auto-columns: minmax(46px, 1fr);
 	grid-auto-flow: column;
 	gap: 8px;
 	min-height: 178px;
+	overflow-x: auto;
+	padding-bottom: 4px;
+	scrollbar-width: thin;
 }
 .mini-report-chart > div {
 	display: grid;
@@ -9190,6 +9222,30 @@
 .mini-report-chart b {
 	overflow: hidden;
 	font-size: 10px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-report-trend-totals {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+.mini-report-trend-totals > span {
+	display: grid;
+	min-width: 0;
+	gap: 3px;
+	padding: 11px 12px;
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--mini-green) 6%, transparent);
+}
+.mini-report-trend-totals small {
+	color: var(--mini-muted);
+	font-size: 10px;
+}
+.mini-report-trend-totals strong {
+	overflow: hidden;
+	font-size: 14px;
+	font-variant-numeric: tabular-nums;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }

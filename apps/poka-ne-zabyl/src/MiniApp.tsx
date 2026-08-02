@@ -519,6 +519,7 @@ type PeriodReport = {
 		unclassified_count: number;
 		completeness_message: string;
 	};
+	monthly_trend?: { month: string; total: number }[];
 	advice?: PeriodReportAdvice;
 	advice_generated_at?: string;
 	generated_at: string;
@@ -1529,6 +1530,20 @@ const previewReport: PeriodReport = {
 		completeness_message:
 			"По подтверждённым расходам; планы приведены по курсу на конец периода",
 	},
+	monthly_trend: [
+		{ month: "2025-08", total: 61_900 },
+		{ month: "2025-09", total: 68_400 },
+		{ month: "2025-10", total: 65_700 },
+		{ month: "2025-11", total: 72_100 },
+		{ month: "2025-12", total: 91_300 },
+		{ month: "2026-01", total: 70_800 },
+		{ month: "2026-02", total: 66_200 },
+		{ month: "2026-03", total: 71_900 },
+		{ month: "2026-04", total: 69_800 },
+		{ month: "2026-05", total: 76_100 },
+		{ month: "2026-06", total: 74_300 },
+		{ month: "2026-07", total: 86_450 },
+	],
 	advice: {
 		summary:
 			"Расходы выросли, а ближайшие обязательства почти равны половине трат за месяц. Главные точки внимания — продукты, такси и плановый платёж.",
@@ -10899,6 +10914,18 @@ const reportTrendLabel = (
 	).format(new Date(`${periodEnd}T00:00:00`));
 };
 
+const REPORT_TREND_MONTHS = [1, 3, 6, 12] as const;
+type ReportTrendMonths = (typeof REPORT_TREND_MONTHS)[number];
+
+const reportTrendMonthsLabel = (
+	months: ReportTrendMonths,
+	language: UILanguage,
+) => {
+	if (language === "en") return `${months} mo`;
+	if (language === "es") return `${months} mes`;
+	return `${months} мес`;
+};
+
 const PeriodReportView = ({
 	report,
 	reports,
@@ -10926,6 +10953,7 @@ const PeriodReportView = ({
 	onAdvice: () => void;
 	onUpgrade: () => void;
 }) => {
+	const [trendMonths, setTrendMonths] = useState<ReportTrendMonths>(6);
 	if (!report) {
 		return (
 			<section className="mini-view mini-report-view">
@@ -10945,8 +10973,19 @@ const PeriodReportView = ({
 	const categories = facts.categories || [];
 	const tags = facts.tags || [];
 	const topItems = facts.top_items || [];
-	const trend = periodReportTrend(report, reports);
+	const fullTrend = report.monthly_trend?.length
+		? report.monthly_trend.map((point, index, points) => ({
+				key: point.month,
+				periodStart: `${point.month}-01`,
+				periodEnd: `${point.month}-01`,
+				total: point.total,
+				current: index === points.length - 1,
+			}))
+		: periodReportTrend(report, reports, 12);
+	const trend = fullTrend.slice(-trendMonths);
 	const trendMax = Math.max(1, ...trend.map(({ total }) => total));
+	const trendTotal = trend.reduce((sum, point) => sum + point.total, 0);
+	const trendAverage = trendTotal / Math.max(1, trend.length);
 	const delta = facts.delta_ratio;
 	const deltaText =
 		delta === undefined
@@ -10992,10 +11031,39 @@ const PeriodReportView = ({
 				<header>
 					<div>
 						<small>Динамика</small>
-						<h2>Завершённые периоды</h2>
+						<h2>
+							{language === "ru"
+								? "Расходы по месяцам"
+								: language === "es"
+									? "Gastos por mes"
+									: "Monthly spending"}
+						</h2>
 					</div>
 					<ChartLineUp size={23} weight="bold" />
 				</header>
+				<div
+					className="mini-report-trend-range"
+					role="group"
+					aria-label={
+						language === "ru"
+							? "Период динамики"
+							: language === "es"
+								? "Periodo de dinámica"
+								: "Trend period"
+					}
+				>
+					{REPORT_TREND_MONTHS.map((months) => (
+						<button
+							key={months}
+							type="button"
+							aria-pressed={trendMonths === months}
+							className={trendMonths === months ? "is-active" : ""}
+							onClick={() => setTrendMonths(months)}
+						>
+							{reportTrendMonthsLabel(months, language)}
+						</button>
+					))}
+				</div>
 				<div className="mini-report-chart">
 					{trend.map((point) => (
 						<div
@@ -11011,13 +11079,32 @@ const PeriodReportView = ({
 									}}
 								/>
 							</span>
-							<b>{reportTrendLabel(point.periodEnd, report.kind, language)}</b>
+							<b>{reportTrendLabel(point.periodEnd, "month", language)}</b>
 						</div>
 					))}
 				</div>
+				<div className="mini-report-trend-totals">
+					<span>
+						<small>{language === "ru" ? "За период" : "Total"}</small>
+						<strong>{formatMoney(trendTotal, report.currency)}</strong>
+					</span>
+					<span>
+						<small>
+							{language === "ru"
+								? "В среднем в месяц"
+								: language === "es"
+									? "Promedio mensual"
+									: "Monthly average"}
+						</small>
+						<strong>{formatMoney(trendAverage, report.currency)}</strong>
+					</span>
+				</div>
 				<figcaption>
-					Только полные {report.kind === "week" ? "недели" : "месяцы"}. Текущий
-					незавершённый период не смешивается со сводкой.
+					{language === "ru"
+						? "Только полные календарные месяцы. Незавершённый месяц не влияет на динамику."
+						: language === "es"
+							? "Solo meses naturales completos. El mes actual incompleto no afecta la dinámica."
+							: "Completed calendar months only. The unfinished current month does not affect the trend."}
 				</figcaption>
 			</figure>
 

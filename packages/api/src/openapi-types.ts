@@ -3511,7 +3511,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one immutable period report */
+        /** Get one immutable period report with monthly spending dynamics */
         get: {
             parameters: {
                 query?: {
@@ -3527,7 +3527,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Report snapshot with a flag when source data changed later */
+                /** @description Report snapshot with a flag when source data changed later and 12 completed calendar months of spending dynamics */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -10414,6 +10414,12 @@ export interface components {
             suggestions: components["schemas"]["PeriodReportAdviceSuggestion"][];
             caveat: string;
         };
+        PeriodReportMonthlyTrendPoint: {
+            /** @example 2026-07 */
+            month: string;
+            /** @description Confirmed spending converted to the report response currency using each expense date. */
+            total: number;
+        };
         PeriodReport: {
             /** Format: int64 */
             id: number;
@@ -10431,6 +10437,8 @@ export interface components {
             timezone: string;
             currency: components["schemas"]["CurrencyCode"];
             facts: components["schemas"]["PeriodReportFacts"];
+            /** @description Twelve completed calendar months ending with the report month, or the last completed month for a weekly report. Empty months have total zero. Returned by report detail and manual generation responses. */
+            monthly_trend?: components["schemas"]["PeriodReportMonthlyTrendPoint"][];
             advice?: components["schemas"]["PeriodReportAdvice"];
             /** Format: date-time */
             advice_generated_at?: string | null;
