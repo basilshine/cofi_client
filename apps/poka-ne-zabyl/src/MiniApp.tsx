@@ -19989,6 +19989,11 @@ const notificationTitle = (
 			en: "New financial summary",
 			es: "Nuevo resumen financiero",
 		},
+		period_report_insufficient_quota: {
+			ru: "Не хватило разборов на сводку",
+			en: "Not enough analyses for the summary",
+			es: "No hay análisis suficientes para el resumen",
+		},
 		purchase_plan_due: {
 			ru: "Напоминание о покупке",
 			en: "Purchase reminder",

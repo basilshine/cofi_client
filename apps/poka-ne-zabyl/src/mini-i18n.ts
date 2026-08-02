@@ -561,7 +561,7 @@ const messages = {
 		spaceCurrency: "Валюта пространства",
 		periodicReports: "Периодические сводки",
 		periodicReportsHint:
-			"Раз в неделю и раз в месяц формировать сводку и присылать уведомление.",
+			"Каждая недельная или месячная сводка стоит 30 разборов. Если их не хватит, сообщим.",
 		currencyConvertHint:
 			"При смене валюты расходы и лимиты пересчитаются. Исходные суммы сохранятся.",
 		ownerCurrencyOnly: "Валюту может менять только владелец пространства.",
@@ -1138,7 +1138,7 @@ const messages = {
 		spaceCurrency: "Space currency",
 		periodicReports: "Periodic summaries",
 		periodicReportsHint:
-			"Create a weekly and monthly summary and send a notification.",
+			"Each weekly or monthly summary costs 30 analyses. We’ll notify you if the balance is too low.",
 		currencyConvertHint:
 			"Changing currency recalculates expenses and limits. Original amounts are preserved.",
 		ownerCurrencyOnly: "Only the space owner can change its currency.",
@@ -1721,7 +1721,7 @@ const messages = {
 		spaceCurrency: "Moneda del espacio",
 		periodicReports: "Resúmenes periódicos",
 		periodicReportsHint:
-			"Crear un resumen semanal y mensual y enviar una notificación.",
+			"Cada resumen semanal o mensual cuesta 30 análisis. Te avisaremos si no hay saldo suficiente.",
 		currencyConvertHint:
 			"Al cambiar la moneda se recalculan los gastos y límites. Se conservan los importes originales.",
 		ownerCurrencyOnly:
