@@ -125,6 +125,7 @@ import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
 	expenseOriginalMoney,
+	formatCompactMoney,
 	formatMoney,
 	itemAmountInCurrency,
 	itemDisplayMoney,
@@ -141,6 +142,7 @@ import {
 	expensesForMonth,
 	homeCategoryRows,
 } from "./overview";
+import { periodReportTrend } from "./period-report";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
 import {
 	collapsePurchasePlanSeries,
@@ -444,12 +446,29 @@ type DashboardSummary = {
 
 type PeriodReportCategory = {
 	category_id?: number;
+	key?: string;
 	name: string;
 	spent: number;
+	previous_spent: number;
+	item_count: number;
 	budget_period?: "week" | "month";
 	budget_amount?: number;
 	budget_spent?: number;
 	remaining?: number;
+};
+
+type PeriodReportTag = {
+	name: string;
+	spent: number;
+	previous_spent: number;
+	item_count: number;
+};
+
+type PeriodReportItem = {
+	name: string;
+	spent: number;
+	previous_spent: number;
+	purchase_count: number;
 };
 
 type PeriodReportPlan = {
@@ -462,7 +481,12 @@ type PeriodReportPlan = {
 
 type PeriodReportAdvice = {
 	summary: string;
-	suggestions: { title: string; body: string; evidence: string }[];
+	suggestions: {
+		kind: "budget" | "habits" | "plans" | "attention";
+		title: string;
+		body: string;
+		evidence: string;
+	}[];
 	caveat: string;
 };
 
@@ -477,10 +501,13 @@ type PeriodReport = {
 	timezone: string;
 	currency: string;
 	facts: {
+		schema_version: number;
 		total_spent: number;
 		previous_total: number;
 		delta_ratio?: number;
 		categories: PeriodReportCategory[];
+		tags: PeriodReportTag[];
+		top_items: PeriodReportItem[];
 		budget_total: number;
 		budget_remaining: number;
 		planned_total: number;
@@ -1380,6 +1407,167 @@ const previewMode =
 	new URLSearchParams(window.location.search).get("preview") === "1";
 const maintenanceAdminAccess =
 	new URLSearchParams(window.location.search).get("admin") === "1";
+const previewReport: PeriodReport = {
+	id: 901,
+	tenant_id: 1,
+	space_id: 1,
+	kind: "month",
+	period_start: "2026-07-01",
+	period_end: "2026-07-31",
+	revision: 2,
+	timezone: "Asia/Tomsk",
+	currency: "RUB",
+	facts: {
+		schema_version: 2,
+		total_spent: 86_450,
+		previous_total: 74_300,
+		delta_ratio: 0.164,
+		categories: [
+			{
+				category_id: 1,
+				key: "groceries",
+				name: "Продукты",
+				spent: 31_600,
+				previous_spent: 24_800,
+				item_count: 28,
+				budget_period: "month",
+				budget_amount: 30_000,
+				budget_spent: 31_600,
+				remaining: -1_600,
+			},
+			{
+				category_id: 2,
+				key: "transport",
+				name: "Транспорт",
+				spent: 18_250,
+				previous_spent: 13_900,
+				item_count: 16,
+				budget_period: "month",
+				budget_amount: 20_000,
+				budget_spent: 18_250,
+				remaining: 1_750,
+			},
+			{
+				category_id: 3,
+				key: "subscriptions",
+				name: "Подписки",
+				spent: 12_400,
+				previous_spent: 12_400,
+				item_count: 5,
+			},
+			{
+				category_id: 4,
+				key: "dining",
+				name: "Кафе и рестораны",
+				spent: 10_800,
+				previous_spent: 8_200,
+				item_count: 9,
+			},
+			{
+				name: "Без категории",
+				spent: 2_400,
+				previous_spent: 1_000,
+				item_count: 3,
+			},
+		],
+		tags: [
+			{
+				name: "молочные продукты",
+				spent: 6_420,
+				previous_spent: 3_900,
+				item_count: 14,
+			},
+			{ name: "сладкое", spent: 4_680, previous_spent: 2_100, item_count: 11 },
+			{ name: "такси", spent: 9_700, previous_spent: 6_400, item_count: 12 },
+			{
+				name: "обязательное",
+				spent: 12_400,
+				previous_spent: 12_400,
+				item_count: 5,
+			},
+		],
+		top_items: [
+			{
+				name: "Молоко",
+				spent: 3_780,
+				previous_spent: 2_100,
+				purchase_count: 9,
+			},
+			{ name: "Шоколад", spent: 2_450, previous_spent: 980, purchase_count: 7 },
+			{
+				name: "Такси",
+				spent: 9_700,
+				previous_spent: 6_400,
+				purchase_count: 12,
+			},
+		],
+		budget_total: 50_000,
+		budget_remaining: 150,
+		planned_total: 42_000,
+		plans: [
+			{
+				id: 21,
+				title: "Платёж по кредиту",
+				expected_amount: 32_000,
+				due_date: "2026-08-10",
+				overdue: false,
+			},
+			{
+				id: 22,
+				title: "Ремонт велосипеда",
+				expected_amount: 10_000,
+				due_date: "2026-08-15",
+				overdue: false,
+			},
+		],
+		unclassified_count: 3,
+		completeness_message:
+			"По подтверждённым расходам; планы приведены по курсу на конец периода",
+	},
+	advice: {
+		summary:
+			"Расходы выросли, а ближайшие обязательства почти равны половине трат за месяц. Главные точки внимания — продукты, такси и плановый платёж.",
+		suggestions: [
+			{
+				kind: "budget",
+				title: "Верните продукты в ориентир",
+				body: "Категория немного превысила месячный лимит. На следующую неделю можно задать отдельный ориентир и проверить его через семь дней.",
+				evidence: "Продукты: 31 600 RUB при лимите 30 000 RUB",
+			},
+			{
+				kind: "habits",
+				title: "Проверьте частые небольшие покупки",
+				body: "Покупки молока и сладкого встречались чаще прошлого периода. Это не говорит о потреблении, но может быть удобной точкой для проверки списка покупок.",
+				evidence: "Молоко — 9 покупок; сладкое — 11 позиций",
+			},
+			{
+				kind: "plans",
+				title: "Учтите обязательный платёж заранее",
+				body: "Плановый платёж лучше отделить от свободных покупок и сравнить с оставшимися лимитами до даты списания.",
+				evidence: "Платёж по кредиту: 32 000 RUB до 10 августа",
+			},
+		],
+		caveat:
+			"Разбор основан только на записанных расходах и планах; доход и остаток денег неизвестны.",
+	},
+	generated_at: "2026-08-01T03:00:00Z",
+	data_changed: false,
+};
+const previewReports: PeriodReport[] = [
+	previewReport,
+	{
+		...previewReport,
+		id: 900,
+		period_start: "2026-06-01",
+		period_end: "2026-06-30",
+		facts: {
+			...previewReport.facts,
+			total_spent: 74_300,
+			previous_total: 69_800,
+		},
+		advice: undefined,
+	},
+];
 const previewCategories: Category[] = [
 	{
 		id: 1,
@@ -2627,6 +2815,7 @@ export const MiniApp = ({
 			setCategorySpaceID(previewSpaceID);
 			setExpenses(previewExpenses);
 			setPlans(previewPlans);
+			setReports(previewReports);
 			setPlanTotalCount(previewPlans.length);
 			setCaptures(previewCaptures);
 			setReviewCandidates(previewReviewCandidates);
@@ -3714,7 +3903,7 @@ export const MiniApp = ({
 					() => null,
 				),
 				apiRequest<{ reports: PeriodReport[] }>(
-					`/spaces/${spaceID}/reports?limit=12`,
+					`/spaces/${spaceID}/reports?limit=12&currency=${encodeURIComponent(reportingCurrency)}`,
 					token,
 				).catch(() => ({ reports: [] })),
 			]);
@@ -3813,6 +4002,14 @@ export const MiniApp = ({
 		query.set("report_id", String(id));
 		window.history.replaceState(null, "", `/app?${query.toString()}`);
 	};
+	const closePeriodReport = () => {
+		setReportID(0);
+		setView("overview");
+		const query = new URLSearchParams(window.location.search);
+		query.set("view", "overview");
+		query.delete("report_id");
+		window.history.replaceState(null, "", `/app?${query.toString()}`);
+	};
 
 	useEffect(() => {
 		if (view !== "report" || !reportID || !spaceID || !token || previewMode)
@@ -3820,7 +4017,7 @@ export const MiniApp = ({
 		let cancelled = false;
 		setReportLoading(true);
 		void apiRequest<PeriodReport>(
-			`/spaces/${spaceID}/reports/${reportID}`,
+			`/spaces/${spaceID}/reports/${reportID}?currency=${encodeURIComponent(reportingCurrency)}`,
 			token,
 		)
 			.then((report) => {
@@ -3843,7 +4040,7 @@ export const MiniApp = ({
 		return () => {
 			cancelled = true;
 		};
-	}, [view, reportID, spaceID, token]);
+	}, [view, reportID, spaceID, token, reportingCurrency]);
 
 	const generateReportAdvice = async (report: PeriodReport) => {
 		if (!token || reportAdviceLoading) return;
@@ -3851,7 +4048,7 @@ export const MiniApp = ({
 		setError("");
 		try {
 			const advice = await apiRequest<PeriodReportAdvice>(
-				`/spaces/${spaceID}/reports/${report.id}/advice`,
+				`/spaces/${spaceID}/reports/${report.id}/advice?currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
 				{ method: "POST" },
 			);
@@ -8021,11 +8218,12 @@ export const MiniApp = ({
 						{view === "report" && (
 							<PeriodReportView
 								report={selectedReport || null}
+								reports={reports}
 								loading={reportLoading}
 								adviceLoading={reportAdviceLoading}
 								hasPlus={activeSpaceHasPlus}
 								language={language}
-								onBack={() => setView("overview")}
+								onBack={closePeriodReport}
 								onExpenses={() => {
 									if (!selectedReport) return;
 									setDateFrom(selectedReport.period_start);
@@ -10526,8 +10724,31 @@ const reportPeriodLabel = (report: PeriodReport, language: UILanguage) => {
 	return `${start} — ${end}`;
 };
 
+const reportPeriodDays = (report: PeriodReport) =>
+	Math.max(
+		1,
+		Math.round(
+			(Date.parse(`${report.period_end}T00:00:00Z`) -
+				Date.parse(`${report.period_start}T00:00:00Z`)) /
+				86_400_000,
+		) + 1,
+	);
+
+const reportTrendLabel = (
+	periodEnd: string | undefined,
+	kind: PeriodReport["kind"],
+	language: UILanguage,
+) => {
+	if (!periodEnd) return language === "ru" ? "Прошлый" : "Previous";
+	return new Intl.DateTimeFormat(
+		language === "ru" ? "ru-RU" : language === "es" ? "es-ES" : "en-US",
+		kind === "month" ? { month: "short" } : { day: "numeric", month: "short" },
+	).format(new Date(`${periodEnd}T00:00:00`));
+};
+
 const PeriodReportView = ({
 	report,
+	reports,
 	loading,
 	adviceLoading,
 	hasPlus,
@@ -10540,6 +10761,7 @@ const PeriodReportView = ({
 	onUpgrade,
 }: {
 	report: PeriodReport | null;
+	reports: PeriodReport[];
 	loading: boolean;
 	adviceLoading: boolean;
 	hasPlus: boolean;
@@ -10554,15 +10776,24 @@ const PeriodReportView = ({
 	if (!report) {
 		return (
 			<section className="mini-view mini-report-view">
-				<button className="mini-back" type="button" onClick={onBack}>
-					<ArrowLeft size={18} />{" "}
-					{language === "ru" ? "Назад" : language === "es" ? "Atrás" : "Back"}
+				<button className="mini-report-home" type="button" onClick={onBack}>
+					<House size={18} weight="fill" />
+					{language === "ru"
+						? "На главный экран"
+						: language === "es"
+							? "A la pantalla principal"
+							: "Back to home"}
 				</button>
 				{loading ? <LoadingRows /> : <Empty text="Сводка не найдена" />}
 			</section>
 		);
 	}
 	const facts = report.facts;
+	const categories = facts.categories || [];
+	const tags = facts.tags || [];
+	const topItems = facts.top_items || [];
+	const trend = periodReportTrend(report, reports);
+	const trendMax = Math.max(1, ...trend.map(({ total }) => total));
 	const delta = facts.delta_ratio;
 	const deltaText =
 		delta === undefined
@@ -10571,11 +10802,15 @@ const PeriodReportView = ({
 	return (
 		<section className="mini-view mini-report-view">
 			<header className="mini-report-header">
-				<button className="mini-back" type="button" onClick={onBack}>
-					<ArrowLeft size={18} />{" "}
-					{language === "ru" ? "Назад" : language === "es" ? "Atrás" : "Back"}
+				<button className="mini-report-home" type="button" onClick={onBack}>
+					<House size={18} weight="fill" />
+					{language === "ru"
+						? "На главный экран"
+						: language === "es"
+							? "A la pantalla principal"
+							: "Back to home"}
 				</button>
-				<div>
+				<div className="mini-report-heading">
 					<p>{reportKindTitle(report.kind, language)}</p>
 					<h1>{reportPeriodLabel(report, language)}</h1>
 					<small>{facts.completeness_message}</small>
@@ -10593,42 +10828,94 @@ const PeriodReportView = ({
 			)}
 
 			<button className="mini-report-hero" type="button" onClick={onExpenses}>
-				<span>Потрачено</span>
+				<span>Всего за полный период</span>
 				<strong>{formatMoney(facts.total_spent, report.currency)}</strong>
 				<small>{deltaText} по сравнению с прошлым периодом</small>
+				<em>Все суммы в {report.currency}</em>
 				<ArrowRight size={20} />
 			</button>
 
+			<figure className="mini-report-trend">
+				<header>
+					<div>
+						<small>Динамика</small>
+						<h2>Завершённые периоды</h2>
+					</div>
+					<ChartLineUp size={23} weight="bold" />
+				</header>
+				<div className="mini-report-chart">
+					{trend.map((point) => (
+						<div
+							className={point.current ? "is-current" : ""}
+							key={point.key}
+							title={formatMoney(point.total, report.currency)}
+						>
+							<small>{formatCompactMoney(point.total, report.currency)}</small>
+							<span>
+								<i
+									style={{
+										height: `${Math.max(6, (point.total / trendMax) * 100)}%`,
+									}}
+								/>
+							</span>
+							<b>{reportTrendLabel(point.periodEnd, report.kind, language)}</b>
+						</div>
+					))}
+				</div>
+				<figcaption>
+					Только полные {report.kind === "week" ? "недели" : "месяцы"}. Текущий
+					незавершённый период не смешивается со сводкой.
+				</figcaption>
+			</figure>
+
 			<div className="mini-report-metrics">
 				<div>
-					<small>Общий лимит</small>
-					<strong>{formatMoney(facts.budget_total, report.currency)}</strong>
-				</div>
-				<div className={facts.budget_remaining < 0 ? "is-over" : ""}>
-					<small>
-						{facts.budget_remaining < 0 ? "Сверх лимитов" : "Осталось"}
-					</small>
+					<small>В среднем за день</small>
 					<strong>
-						{formatMoney(Math.abs(facts.budget_remaining), report.currency)}
+						{formatMoney(
+							facts.total_spent / reportPeriodDays(report),
+							report.currency,
+						)}
 					</strong>
 				</div>
+				<div className={facts.budget_remaining < 0 ? "is-over" : ""}>
+					<small>Лимиты на {report.kind === "week" ? "неделю" : "месяц"}</small>
+					<strong>
+						{facts.budget_total > 0
+							? formatMoney(facts.budget_total, report.currency)
+							: "Не заданы"}
+					</strong>
+					{facts.budget_total > 0 && (
+						<span>
+							{facts.budget_remaining < 0 ? "Перерасход" : "Осталось"} ·{" "}
+							{formatMoney(Math.abs(facts.budget_remaining), report.currency)}
+						</span>
+					)}
+				</div>
 				<div>
-					<small>Ближайшие планы</small>
-					<strong>{formatMoney(facts.planned_total, report.currency)}</strong>
+					<small>Запланировано</small>
+					<strong>
+						{facts.planned_total > 0
+							? formatMoney(facts.planned_total, report.currency)
+							: "Без суммы"}
+					</strong>
 				</div>
 			</div>
 
 			<section className="mini-report-section">
 				<div className="mini-section-head">
-					<h2>Категории и лимиты</h2>
+					<h2>Все категории</h2>
 					<button type="button" onClick={onExpenses}>
 						Все расходы
 					</button>
 				</div>
 				<div className="mini-report-categories">
-					{facts.categories.map((category) => {
+					{categories.map((category) => {
 						const over =
 							category.remaining !== undefined && category.remaining < 0;
+						const share = facts.total_spent
+							? (category.spent / facts.total_spent) * 100
+							: 0;
 						const progress = category.budget_amount
 							? Math.min(
 									100,
@@ -10638,7 +10925,14 @@ const PeriodReportView = ({
 											100,
 									),
 								)
-							: 0;
+							: Math.min(100, Math.max(0, share));
+						const categoryDelta = category.previous_spent
+							? Math.round(
+									((category.spent - category.previous_spent) /
+										category.previous_spent) *
+										100,
+								)
+							: null;
 						return (
 							<button
 								key={category.category_id || category.name}
@@ -10650,30 +10944,86 @@ const PeriodReportView = ({
 								}
 							>
 								<span>
-									<b>{category.name}</b>
+									<span>
+										<b>{category.name}</b>
+										<small>
+											{category.item_count} поз. · {Math.round(share)}% расходов
+											{categoryDelta !== null
+												? ` · ${categoryDelta > 0 ? "+" : ""}${categoryDelta}% к прошлому периоду`
+												: ""}
+										</small>
+									</span>
 									<strong>
 										{formatMoney(category.spent, report.currency)}
 									</strong>
 								</span>
 								{category.budget_amount !== undefined && (
-									<>
-										<small>
-											{over ? "Сверх лимита" : "Осталось"}{" "}
-											{formatMoney(
-												Math.abs(category.remaining || 0),
-												report.currency,
-											)}
-										</small>
-										<i>
-											<span style={{ width: `${progress}%` }} />
-										</i>
-									</>
+									<small className="mini-report-category-budget">
+										Лимит {formatMoney(category.budget_amount, report.currency)}{" "}
+										· {over ? "сверх" : "осталось"}{" "}
+										{formatMoney(
+											Math.abs(category.remaining || 0),
+											report.currency,
+										)}
+									</small>
 								)}
+								<>
+									{category.budget_amount === undefined && (
+										<small>Доля в расходах · {Math.round(share)}%</small>
+									)}
+									<i>
+										<span style={{ width: `${progress}%` }} />
+									</i>
+								</>
 							</button>
 						);
 					})}
 				</div>
 			</section>
+
+			{tags.length > 0 && (
+				<section className="mini-report-section">
+					<div className="mini-section-head">
+						<h2>Темы расходов</h2>
+						<small>{tags.length}</small>
+					</div>
+					<div className="mini-report-tags">
+						{tags.map((tag) => (
+							<article key={tag.name}>
+								<Tag size={17} weight="fill" />
+								<span>
+									<b>{tag.name}</b>
+									<small>{tag.item_count} позиций</small>
+								</span>
+								<strong>{formatMoney(tag.spent, report.currency)}</strong>
+							</article>
+						))}
+					</div>
+					<p className="mini-report-note">
+						Одна покупка может иметь несколько отметок, поэтому суммы здесь не
+						нужно складывать между собой.
+					</p>
+				</section>
+			)}
+
+			{topItems.length > 0 && (
+				<section className="mini-report-section">
+					<div className="mini-section-head">
+						<h2>Что покупали чаще</h2>
+					</div>
+					<div className="mini-report-items">
+						{topItems.slice(0, 8).map((item) => (
+							<div key={item.name}>
+								<span>
+									<b>{item.name}</b>
+									<small>{item.purchase_count} покупок</small>
+								</span>
+								<strong>{formatMoney(item.spent, report.currency)}</strong>
+							</div>
+						))}
+					</div>
+				</section>
+			)}
 
 			{facts.plans.length > 0 && (
 				<section className="mini-report-section">
@@ -10684,7 +11034,7 @@ const PeriodReportView = ({
 						</button>
 					</div>
 					<button className="mini-report-plans" type="button" onClick={onPlans}>
-						{facts.plans.map((plan) => (
+						{facts.plans.slice(0, 5).map((plan) => (
 							<span key={plan.id}>
 								<span>
 									<b>{plan.title}</b>
@@ -10715,14 +11065,28 @@ const PeriodReportView = ({
 					</span>
 					<div>
 						<small>Пока не забыл Plus</small>
-						<h2>Разбор расходов</h2>
+						<h2>Разбор кошелька и привычек</h2>
 					</div>
 				</div>
 				{report.advice ? (
 					<div className="mini-report-advice-result">
 						<p>{report.advice.summary}</p>
 						{report.advice.suggestions.map((suggestion) => (
-							<article key={`${suggestion.title}-${suggestion.evidence}`}>
+							<article
+								className={`is-${suggestion.kind || "budget"}`}
+								key={`${suggestion.title}-${suggestion.evidence}`}
+							>
+								<i>
+									{suggestion.kind === "habits" ? (
+										<Sparkle size={17} weight="fill" />
+									) : suggestion.kind === "plans" ? (
+										<ShoppingBagOpen size={17} weight="fill" />
+									) : suggestion.kind === "attention" ? (
+										<WarningCircle size={17} weight="fill" />
+									) : (
+										<Receipt size={17} weight="fill" />
+									)}
+								</i>
 								<strong>{suggestion.title}</strong>
 								<span>{suggestion.body}</span>
 								{suggestion.evidence && <small>{suggestion.evidence}</small>}
@@ -10733,8 +11097,9 @@ const PeriodReportView = ({
 				) : (
 					<>
 						<p>
-							Получите несколько сценариев на основе лимитов, расходов и
-							ближайших планов.
+							Разбор учтёт все категории, отметки, повторяющиеся покупки, лимиты
+							и планы. Наблюдения о привычках будут осторожными: покупка не
+							считается доказательством употребления или состояния здоровья.
 						</p>
 						<button
 							type="button"

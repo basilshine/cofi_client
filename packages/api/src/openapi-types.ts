@@ -3404,6 +3404,8 @@ export interface paths {
             parameters: {
                 query?: {
                     limit?: number;
+                    /** @description Reporting currency. Defaults to the immutable Space currency stored by the report. */
+                    currency?: components["schemas"]["CurrencyCode"];
                 };
                 header?: never;
                 path: {
@@ -3449,7 +3451,10 @@ export interface paths {
         /** Get one immutable period report */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Reporting currency. Monetary facts are converted using the completed period end date. */
+                    currency?: components["schemas"]["CurrencyCode"];
+                };
                 header?: never;
                 path: {
                     spaceId: number;
@@ -3507,7 +3512,10 @@ export interface paths {
          */
         post: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description Currency used by the aggregate facts and generated advice. */
+                    currency?: components["schemas"]["CurrencyCode"];
+                };
                 header?: never;
                 path: {
                     spaceId: number;
@@ -10202,12 +10210,31 @@ export interface components {
             /** Format: int64 */
             category_id?: number | null;
             name: string;
+            key?: string;
             spent: number;
+            previous_spent: number;
+            /** Format: int64 */
+            item_count: number;
             /** @enum {string} */
             budget_period?: "week" | "month";
             budget_amount?: number | null;
             budget_spent?: number | null;
             remaining?: number | null;
+        };
+        /** @description Spend associated with one tag. Tagged amounts can overlap when an item has multiple tags and must not be added together. */
+        PeriodReportTag: {
+            name: string;
+            spent: number;
+            previous_spent: number;
+            /** Format: int64 */
+            item_count: number;
+        };
+        PeriodReportItem: {
+            name: string;
+            spent: number;
+            previous_spent: number;
+            /** Format: int64 */
+            purchase_count: number;
         };
         PeriodReportPlan: {
             /** Format: int64 */
@@ -10219,10 +10246,13 @@ export interface components {
             overdue: boolean;
         };
         PeriodReportFacts: {
+            schema_version: number;
             total_spent: number;
             previous_total: number;
             delta_ratio?: number | null;
             categories: components["schemas"]["PeriodReportCategory"][];
+            tags: components["schemas"]["PeriodReportTag"][];
+            top_items: components["schemas"]["PeriodReportItem"][];
             budget_total: number;
             budget_remaining: number;
             planned_total: number;
@@ -10232,6 +10262,8 @@ export interface components {
             completeness_message: string;
         };
         PeriodReportAdviceSuggestion: {
+            /** @enum {string} */
+            kind: "budget" | "habits" | "plans" | "attention";
             title: string;
             body: string;
             evidence: string;

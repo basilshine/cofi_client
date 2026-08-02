@@ -4,6 +4,7 @@ import {
 	expenseAmountInCurrency,
 	expenseDisplayMoney,
 	expenseOriginalMoney,
+	formatCompactMoney,
 	formatMoney,
 	itemDisplayMoney,
 	itemOriginalMoney,
@@ -14,6 +15,7 @@ import {
 test("keeps kopecks without padding whole ruble amounts", () => {
 	assert.equal(formatMoney(13.99, "RUB"), "13,99 ₽");
 	assert.equal(formatMoney(14, "RUB"), "14 ₽");
+	assert.match(formatCompactMoney(125000, "RUB"), /125.*тыс.*₽/);
 });
 
 test("compares receipt totals to the kopeck", () => {

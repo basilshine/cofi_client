@@ -34,6 +34,14 @@ export const formatMoney = (amount: number, currency: string) =>
 		maximumFractionDigits: 2,
 	}).format(amount || 0);
 
+export const formatCompactMoney = (amount: number, currency: string) =>
+	new Intl.NumberFormat("ru-RU", {
+		style: "currency",
+		currency: currency || "RUB",
+		notation: "compact",
+		maximumFractionDigits: 1,
+	}).format(amount || 0);
+
 export const moneyAmountsMatch = (left: number, right: number) =>
 	Math.round(left * 100) === Math.round(right * 100);
 
