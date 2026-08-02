@@ -2161,6 +2161,9 @@ export const MiniApp = ({
 	const [reportID, setReportID] = useState(requestedReportID);
 	const [reportLoading, setReportLoading] = useState(false);
 	const [reportAdviceLoading, setReportAdviceLoading] = useState(false);
+	const [reportMonthOpen, setReportMonthOpen] = useState(false);
+	const [reportMonth, setReportMonth] = useState(latestCompletedReportMonth);
+	const [reportGenerating, setReportGenerating] = useState(false);
 	const knownNotificationIDs = useRef<Set<number> | null>(null);
 	const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 	const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -4005,6 +4008,64 @@ export const MiniApp = ({
 		query.set("space_id", String(spaceID));
 		query.set("report_id", String(id));
 		window.history.replaceState(null, "", `/app?${query.toString()}`);
+	};
+	const generateMonthlyReport = async () => {
+		if (!reportMonth || reportGenerating) return;
+		if (previewMode) {
+			const report = reports.find(
+				(item) =>
+					item.kind === "month" && item.period_start.startsWith(reportMonth),
+			);
+			setReportMonthOpen(false);
+			if (report) openPeriodReport(report.id);
+			else setNotice(uiText(language, "reportEmpty"));
+			return;
+		}
+		if (!token || !spaceID) return;
+		setReportGenerating(true);
+		setError("");
+		try {
+			const report = await apiRequest<PeriodReport>(
+				`/spaces/${spaceID}/reports?currency=${encodeURIComponent(reportingCurrency)}`,
+				token,
+				{ method: "POST", body: JSON.stringify({ month: reportMonth }) },
+			);
+			setReports((current) =>
+				[
+					report,
+					...current.filter(
+						(item) =>
+							item.id !== report.id &&
+							!(
+								item.kind === report.kind &&
+								item.period_start === report.period_start
+							),
+					),
+				].sort(
+					(left, right) =>
+						right.period_end.localeCompare(left.period_end) ||
+						right.revision - left.revision,
+				),
+			);
+			setReportMonthOpen(false);
+			openPeriodReport(report.id);
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 402) {
+				setReportMonthOpen(false);
+				setNotice(uiText(language, "reportQuotaShortage"));
+				setView("subscription");
+				return;
+			}
+			setError(
+				err instanceof ApiError && err.code === "period_report_empty"
+					? uiText(language, "reportEmpty")
+					: err instanceof Error
+						? err.message
+						: "Не удалось сформировать сводку",
+			);
+		} finally {
+			setReportGenerating(false);
+		}
 	};
 	const closePeriodReport = () => {
 		setReportID(0);
@@ -8300,6 +8361,11 @@ export const MiniApp = ({
 								pendingCandidates={pendingReviewCandidates}
 								latestReport={latestReport}
 								onReport={openPeriodReport}
+								onCreateReport={() => {
+									setError("");
+									setReportMonth(latestCompletedReportMonth());
+									setReportMonthOpen(true);
+								}}
 								onConfigureLocale={openProfileEditor}
 								onCategory={openCategory}
 								onManageBudgets={() => setView("categories")}
@@ -9560,6 +9626,18 @@ export const MiniApp = ({
 							? deleteSpace
 							: undefined
 					}
+				/>
+			)}
+			{reportMonthOpen && (
+				<ReportMonthDialog
+					language={language}
+					month={reportMonth}
+					maxMonth={latestCompletedReportMonth()}
+					generating={reportGenerating}
+					error={error}
+					onMonth={setReportMonth}
+					onGenerate={() => void generateMonthlyReport()}
+					onClose={() => setReportMonthOpen(false)}
 				/>
 			)}
 			{invitingSpace && (
@@ -11163,6 +11241,7 @@ const Overview = ({
 	pendingCandidates,
 	latestReport,
 	onReport,
+	onCreateReport,
 	onCategory,
 	onManageBudgets,
 	onExpense,
@@ -11198,6 +11277,7 @@ const Overview = ({
 	pendingCandidates: ReviewCandidate[];
 	latestReport: PeriodReport | null;
 	onReport: (id: number) => void;
+	onCreateReport: () => void;
 	onCategory: (id: number, period?: Period) => void;
 	onManageBudgets: () => void;
 	onExpense: (expense: Expense) => void;
@@ -11278,31 +11358,45 @@ const Overview = ({
 				</p>
 				<h1>{monthName}</h1>
 			</div>
-			{latestReport && (
+			<div className="mini-report-launch">
+				{latestReport && (
+					<button
+						className="mini-report-card"
+						type="button"
+						onClick={() => onReport(latestReport.id)}
+					>
+						<span className="mini-report-card-icon">
+							<ChartLineUp size={23} weight="bold" />
+						</span>
+						<span className="mini-report-card-copy">
+							<small>{reportKindTitle(latestReport.kind, language)}</small>
+							<strong>{reportPeriodLabel(latestReport, language)}</strong>
+							<span>{latestReport.facts.completeness_message}</span>
+						</span>
+						<span className="mini-report-card-total">
+							<strong>
+								{formatMoney(
+									latestReport.facts.total_spent,
+									latestReport.currency,
+								)}
+							</strong>
+							<ArrowRight size={17} />
+						</span>
+					</button>
+				)}
 				<button
-					className="mini-report-card"
+					className="mini-report-create"
 					type="button"
-					onClick={() => onReport(latestReport.id)}
+					onClick={onCreateReport}
 				>
-					<span className="mini-report-card-icon">
-						<ChartLineUp size={23} weight="bold" />
+					<CalendarBlank size={20} />
+					<span>
+						<strong>{uiText(language, "createReport")}</strong>
+						<small>{uiText(language, "createReportHint")}</small>
 					</span>
-					<span className="mini-report-card-copy">
-						<small>{reportKindTitle(latestReport.kind, language)}</small>
-						<strong>{reportPeriodLabel(latestReport, language)}</strong>
-						<span>{latestReport.facts.completeness_message}</span>
-					</span>
-					<span className="mini-report-card-total">
-						<strong>
-							{formatMoney(
-								latestReport.facts.total_spent,
-								latestReport.currency,
-							)}
-						</strong>
-						<ArrowRight size={17} />
-					</span>
+					<ArrowRight size={17} />
 				</button>
-			)}
+			</div>
 			<div className="mini-overview-grid">
 				<div className="mini-overview-summary">
 					<div className="mini-total">
@@ -19856,6 +19950,56 @@ const OrganizationInviteDialog = ({
 	);
 };
 
+const ReportMonthDialog = ({
+	language,
+	month,
+	maxMonth,
+	generating,
+	error,
+	onMonth,
+	onGenerate,
+	onClose,
+}: {
+	language: UILanguage;
+	month: string;
+	maxMonth: string;
+	generating: boolean;
+	error: string;
+	onMonth: (month: string) => void;
+	onGenerate: () => void;
+	onClose: () => void;
+}) => (
+	<Modal
+		title={uiText(language, "createReport")}
+		variant="editor"
+		onClose={onClose}
+	>
+		<p className="mini-field-note">{uiText(language, "reportMonthHint")}</p>
+		<label>
+			{uiText(language, "reportMonth")}
+			<input
+				type="month"
+				min="2000-01"
+				value={month}
+				max={maxMonth}
+				disabled={generating}
+				onChange={(event) => onMonth(event.target.value)}
+			/>
+		</label>
+		{error && <p className="mini-form-error">{error}</p>}
+		<div className="mini-modal-actions">
+			<button
+				className="mini-save"
+				type="button"
+				disabled={generating || !month || month > maxMonth}
+				onClick={onGenerate}
+			>
+				{uiText(language, generating ? "generatingReport" : "generateReport")}
+			</button>
+		</div>
+	</Modal>
+);
+
 const SpaceEditor = ({
 	language,
 	space,
@@ -22533,4 +22677,9 @@ function localISODate(date = new Date()) {
 	const month = String(date.getMonth() + 1).padStart(2, "0");
 	const day = String(date.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
+}
+
+function latestCompletedReportMonth(date = new Date()) {
+	const previousMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+	return localISODate(previousMonth).slice(0, 7);
 }

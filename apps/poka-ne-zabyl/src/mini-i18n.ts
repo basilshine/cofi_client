@@ -562,6 +562,15 @@ const messages = {
 		periodicReports: "Периодические сводки",
 		periodicReportsHint:
 			"Каждая недельная или месячная сводка стоит 30 разборов. Если их не хватит, сообщим.",
+		createReport: "Создать сводку",
+		createReportHint: "Выбрать завершённый месяц · 30 разборов",
+		reportMonth: "Месяц для аналитики",
+		reportMonthHint:
+			"Сводка учтёт расходы, категории, отметки, лимиты и планы за выбранный месяц.",
+		generateReport: "Сформировать за 30 разборов",
+		generatingReport: "Формируем сводку…",
+		reportEmpty: "За этот месяц пока нет расходов или планов",
+		reportQuotaShortage: "Не хватает 30 разборов на сводку",
 		currencyConvertHint:
 			"При смене валюты расходы и лимиты пересчитаются. Исходные суммы сохранятся.",
 		ownerCurrencyOnly: "Валюту может менять только владелец пространства.",
@@ -1139,6 +1148,15 @@ const messages = {
 		periodicReports: "Periodic summaries",
 		periodicReportsHint:
 			"Each weekly or monthly summary costs 30 analyses. We’ll notify you if the balance is too low.",
+		createReport: "Create summary",
+		createReportHint: "Choose a completed month · 30 analyses",
+		reportMonth: "Month to analyse",
+		reportMonthHint:
+			"The summary covers expenses, categories, tags, limits and plans for the selected month.",
+		generateReport: "Create for 30 analyses",
+		generatingReport: "Creating summary…",
+		reportEmpty: "There are no expenses or plans for this month yet",
+		reportQuotaShortage: "You need 30 analyses for this summary",
 		currencyConvertHint:
 			"Changing currency recalculates expenses and limits. Original amounts are preserved.",
 		ownerCurrencyOnly: "Only the space owner can change its currency.",
@@ -1722,6 +1740,15 @@ const messages = {
 		periodicReports: "Resúmenes periódicos",
 		periodicReportsHint:
 			"Cada resumen semanal o mensual cuesta 30 análisis. Te avisaremos si no hay saldo suficiente.",
+		createReport: "Crear resumen",
+		createReportHint: "Elegir un mes terminado · 30 análisis",
+		reportMonth: "Mes para analizar",
+		reportMonthHint:
+			"El resumen incluye gastos, categorías, etiquetas, límites y planes del mes elegido.",
+		generateReport: "Crear por 30 análisis",
+		generatingReport: "Creando el resumen…",
+		reportEmpty: "Todavía no hay gastos ni planes para este mes",
+		reportQuotaShortage: "Necesitas 30 análisis para este resumen",
 		currencyConvertHint:
 			"Al cambiar la moneda se recalculan los gastos y límites. Se conservan los importes originales.",
 		ownerCurrencyOnly:
