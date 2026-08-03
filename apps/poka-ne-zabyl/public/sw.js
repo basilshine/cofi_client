@@ -1,8 +1,16 @@
-const CACHE_NAME = "pnz-offline-v5";
+const IS_BUSINESS_APP = self.location.hostname === "business.poka-ne-zabyl.ru";
+const APP_ICON_URL = IS_BUSINESS_APP
+	? "/assets/poka-ne-zabyl-business-app-icon-192.png?v=20260803"
+	: "/assets/poka-ne-zabyl-app-icon-192.png?v=20260717";
+const CACHE_NAME = "pnz-offline-v6";
 const OFFLINE_FILES = [
 	"/offline.html",
-	"/manifest.webmanifest?v=20260717",
-	"/assets/poka-ne-zabyl-logo.svg?v=20260717",
+	IS_BUSINESS_APP
+		? "/business-manifest.webmanifest?v=20260803"
+		: "/manifest.webmanifest?v=20260717",
+	IS_BUSINESS_APP
+		? "/assets/poka-ne-zabyl-business-logo.svg?v=20260803"
+		: "/assets/poka-ne-zabyl-logo.svg?v=20260717",
 ];
 
 self.addEventListener("install", (event) => {
@@ -53,8 +61,8 @@ self.addEventListener("push", (event) => {
 		Promise.all([
 			self.registration.showNotification(payload.title || "Пока не забыл", {
 				body: payload.body || "У вас новое уведомление",
-				icon: "/assets/poka-ne-zabyl-app-icon-192.png?v=20260717",
-				badge: "/assets/poka-ne-zabyl-app-icon-192.png?v=20260717",
+				icon: APP_ICON_URL,
+				badge: APP_ICON_URL,
 				tag: notificationID ? `pnz-notification-${notificationID}` : undefined,
 				data: { url },
 			}),

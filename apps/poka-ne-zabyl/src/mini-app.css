@@ -6958,9 +6958,8 @@
 }
 
 .mini-app.is-business-app .mini-brand-mark {
-	padding: 3px;
-	border-radius: 6px;
-	background: #fffefa;
+	padding: 0;
+	background: transparent;
 }
 
 .mini-app.is-business-app .mini-total {
@@ -7006,7 +7005,8 @@
 }
 
 .is-business-entry .browser-entry-brand .mini-brand-mark {
-	box-shadow: 0 8px 24px rgb(5 18 12 / 34%);
+	background: transparent;
+	box-shadow: none;
 }
 
 .is-business-entry .browser-entry-brand .mini-brand b {

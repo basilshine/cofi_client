@@ -2091,7 +2091,6 @@ button:focus-visible {
 
 .business-brand__mark {
 	align-items: center;
-	background: #fff;
 	display: inline-flex;
 	height: 38px;
 	justify-content: center;
@@ -2099,8 +2098,8 @@ button:focus-visible {
 }
 
 .business-brand__mark img {
-	height: 25px;
-	width: 25px;
+	height: 34px;
+	width: 34px;
 }
 
 .business-hero__content {

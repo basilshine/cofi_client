@@ -12,7 +12,28 @@ if (isBusinessAppLocation(window.location.hostname, window.location.search)) {
 		?.setAttribute("href", "/business-manifest.webmanifest");
 	document
 		.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-		?.setAttribute("content", "#14251e");
+		?.setAttribute("content", "#171915");
+	document
+		.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]')
+		?.setAttribute("content", "ПНЗ Бизнес");
+	document
+		.querySelector<HTMLLinkElement>('link[rel="icon"][type="image/svg+xml"]')
+		?.setAttribute(
+			"href",
+			"/assets/poka-ne-zabyl-business-favicon.svg?v=20260803",
+		);
+	document
+		.querySelector<HTMLLinkElement>('link[rel="icon"][sizes="48x48"]')
+		?.setAttribute(
+			"href",
+			"/assets/poka-ne-zabyl-business-icon-48.png?v=20260803",
+		);
+	document
+		.querySelector<HTMLLinkElement>('link[rel="apple-touch-icon"]')
+		?.setAttribute(
+			"href",
+			"/assets/poka-ne-zabyl-business-apple-touch-icon.png?v=20260803",
+		);
 }
 
 initializeMetrika();

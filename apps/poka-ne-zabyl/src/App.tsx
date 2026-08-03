@@ -135,14 +135,25 @@ const AppLoading = ({ business = false }: { business?: boolean }) => (
 		role="status"
 		aria-live="polite"
 	>
-		<img src="/assets/poka-ne-zabyl-logo.svg?v=20260717" alt="" />
+		<img
+			src={
+				business
+					? "/assets/poka-ne-zabyl-business-logo.svg?v=20260803"
+					: "/assets/poka-ne-zabyl-logo.svg?v=20260717"
+			}
+			alt=""
+		/>
 		<span>Открываем {business ? "бизнес-пространство" : "приложение"}…</span>
 	</main>
 );
 
-const BrandMark = () => (
+const BrandMark = ({ business = false }: { business?: boolean }) => (
 	<img
-		src="/assets/poka-ne-zabyl-logo.svg?v=20260717"
+		src={
+			business
+				? "/assets/poka-ne-zabyl-business-logo.svg?v=20260803"
+				: "/assets/poka-ne-zabyl-logo.svg?v=20260717"
+		}
 		alt=""
 		aria-hidden="true"
 	/>
@@ -728,7 +739,7 @@ const BusinessLandingPage = ({ locale }: { locale: LandingLocale }) => {
 				<header className="business-nav shell">
 					<a className="business-brand" href="/business">
 						<span className="business-brand__mark">
-							<BrandMark />
+							<BrandMark business />
 						</span>
 						<span>
 							Пока не забыл <b>Бизнес</b>
@@ -843,7 +854,7 @@ const BusinessLandingPage = ({ locale }: { locale: LandingLocale }) => {
 				<div className="shell">
 					<a className="business-brand" href="/business">
 						<span className="business-brand__mark">
-							<BrandMark />
+							<BrandMark business />
 						</span>
 						<span>
 							Пока не забыл <b>Бизнес</b>

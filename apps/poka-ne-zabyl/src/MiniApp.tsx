@@ -1395,6 +1395,8 @@ const keepFocusedControlVisible = (event: React.FocusEvent<HTMLElement>) => {
 
 const BOT_URL = "https://t.me/poka_ne_zabyl_bot";
 const BRAND_LOGO_URL = "/assets/poka-ne-zabyl-logo.svg?v=20260717";
+const BUSINESS_BRAND_LOGO_URL =
+	"/assets/poka-ne-zabyl-business-logo.svg?v=20260803";
 const aliasesFromText = (value: string) =>
 	Array.from(
 		new Set(
@@ -7979,7 +7981,11 @@ export const MiniApp = ({
 								setSpaceMenuOpen((open) => !open);
 							}}
 						>
-							<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+							<img
+								className="mini-brand-mark"
+								src={businessApp ? BUSINESS_BRAND_LOGO_URL : BRAND_LOGO_URL}
+								alt=""
+							/>
 							<span className="mini-space-trigger-copy">
 								<strong>
 									{businessApp
@@ -11885,7 +11891,11 @@ const FirstExpenseEmpty = ({
 }) => (
 	<section className="mini-first-expense">
 		<div className="mini-first-expense-mark">
-			<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+			<img
+				className="mini-brand-mark"
+				src={businessMode ? BUSINESS_BRAND_LOGO_URL : BRAND_LOGO_URL}
+				alt=""
+			/>
 		</div>
 		<div className="mini-first-expense-copy">
 			<p>
@@ -21728,7 +21738,11 @@ const BrowserEntry = ({
 		>
 			<section className="browser-entry-brand">
 				<div className="mini-brand">
-					<img className="mini-brand-mark" src={BRAND_LOGO_URL} alt="" />
+					<img
+						className="mini-brand-mark"
+						src={businessApp ? BUSINESS_BRAND_LOGO_URL : BRAND_LOGO_URL}
+						alt=""
+					/>
 					<span>
 						{businessApp ? "Пока не забыл Бизнес" : uiText(language, "brand")}
 					</span>
