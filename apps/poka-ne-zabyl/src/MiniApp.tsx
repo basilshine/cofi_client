@@ -65,6 +65,7 @@ import {
 	avatarCropLayout,
 	avatarFileFromCanvas,
 } from "./avatar-crop";
+import { compactBottomNavigation } from "./bottom-navigation";
 import { browserAuthCopy } from "./browser-auth-copy";
 import {
 	businessAppHref,
@@ -2230,6 +2231,7 @@ export const MiniApp = ({
 	const [serviceUnavailable, setServiceUnavailable] = useState(false);
 	const [pullDistance, setPullDistance] = useState(0);
 	const [refreshing, setRefreshing] = useState(false);
+	const [navigationCompact, setNavigationCompact] = useState(false);
 	const updatePullDistance = (distance: number) => {
 		currentPullDistance.current = distance;
 		setPullDistance(distance);
@@ -2256,6 +2258,26 @@ export const MiniApp = ({
 		} catch {
 			setLargeText(false);
 		}
+	}, []);
+	useEffect(() => {
+		let previousY = document.scrollingElement?.scrollTop || window.scrollY;
+		let frame = 0;
+		const updateNavigation = () => {
+			frame = 0;
+			const currentY = document.scrollingElement?.scrollTop || window.scrollY;
+			setNavigationCompact((compact) =>
+				compactBottomNavigation(compact, previousY, currentY),
+			);
+			previousY = currentY;
+		};
+		const handleScroll = () => {
+			if (!frame) frame = window.requestAnimationFrame(updateNavigation);
+		};
+		window.addEventListener("scroll", handleScroll, { passive: true });
+		return () => {
+			window.removeEventListener("scroll", handleScroll);
+			if (frame) window.cancelAnimationFrame(frame);
+		};
 	}, []);
 	useEffect(() => {
 		let fallback: {
@@ -5621,6 +5643,12 @@ export const MiniApp = ({
 					splits: view === "expenses" && eligibleParticipants.length > 1,
 				})
 			: null;
+	const navCoachmarkActive =
+		activeCoachmark === "overview" ||
+		activeCoachmark === "expenses" ||
+		activeCoachmark === "add" ||
+		activeCoachmark === "categories" ||
+		activeCoachmark === "settings";
 	const splitsByExpense = useMemo(() => {
 		const grouped = new Map<number, ExpenseSplit[]>();
 		for (const split of expenseSplits) {
@@ -8954,7 +8982,10 @@ export const MiniApp = ({
 					</button>
 				)}
 
-			<nav className="mini-nav" aria-label={uiText(language, "navLabel")}>
+			<nav
+				className={`mini-nav${navigationCompact ? " is-compact" : ""}`}
+				aria-label={uiText(language, "navLabel")}
+			>
 				<NavButton
 					active={view === "overview" || view === "report"}
 					label={uiText(language, "navOverview")}
@@ -8983,30 +9014,25 @@ export const MiniApp = ({
 						setAddChoiceOpen(true);
 					}}
 				/>
-				{activeCoachmark &&
-					(activeCoachmark === "overview" ||
-						activeCoachmark === "expenses" ||
-						activeCoachmark === "add" ||
-						activeCoachmark === "categories" ||
-						activeCoachmark === "settings") && (
-						<CoachTip
-							className={`is-nav is-${activeCoachmark}`}
-							text={uiText(
-								language,
-								activeCoachmark === "overview"
-									? "coachOverview"
-									: activeCoachmark === "expenses"
-										? "coachExpenses"
-										: activeCoachmark === "add"
-											? "coachAdd"
-											: activeCoachmark === "categories"
-												? "coachCategories"
-												: "coachSettings",
-							)}
-							closeLabel={uiText(language, "coachDismiss")}
-							onDismiss={() => dismissCoachmark(activeCoachmark)}
-						/>
-					)}
+				{activeCoachmark && navCoachmarkActive && !navigationCompact && (
+					<CoachTip
+						className={`is-nav is-${activeCoachmark}`}
+						text={uiText(
+							language,
+							activeCoachmark === "overview"
+								? "coachOverview"
+								: activeCoachmark === "expenses"
+									? "coachExpenses"
+									: activeCoachmark === "add"
+										? "coachAdd"
+										: activeCoachmark === "categories"
+											? "coachCategories"
+											: "coachSettings",
+						)}
+						closeLabel={uiText(language, "coachDismiss")}
+						onDismiss={() => dismissCoachmark(activeCoachmark)}
+					/>
+				)}
 				<NavButton
 					active={view === "categories"}
 					label={uiText(language, "navCategories")}
