@@ -11116,6 +11116,11 @@ export interface components {
             space_id?: number;
             /** Format: int64 */
             user_id?: number;
+            /**
+             * Format: int64
+             * @description Participant who paid the receipt; independent from who created it.
+             */
+            payer_participant_id?: number;
             type?: string;
             status?: string;
             title?: string;

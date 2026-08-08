@@ -791,6 +791,8 @@ export type ExpenseRecord = {
 	space_id: string | number;
 	/** Expense owner; used for Mine / Others filters in shared spaces. */
 	user_id?: number;
+	/** Space participant who paid the receipt; independent from who added it. */
+	payer_participant_id?: number;
 	type: "expense" | "income";
 	status: string;
 	/** Short label; aligns with expense header `title`. */

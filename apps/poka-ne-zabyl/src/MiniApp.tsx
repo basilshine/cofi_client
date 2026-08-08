@@ -702,6 +702,17 @@ const sharedRecordAuthor = (members: SpaceMember[], userID?: number | null) => {
 const participantUserID = (participant?: SpaceParticipant) =>
 	participant?.user_id || participant?.linked_user_id || 0;
 
+const expensePayerParticipant = (
+	expense: Expense,
+	participants: SpaceParticipant[],
+) =>
+	participants.find(
+		(participant) => participant.id === expense.payer_participant_id,
+	) ||
+	participants.find(
+		(participant) => participantUserID(participant) === expense.user_id,
+	);
+
 const expenseSplitTotal = (expense: Expense) =>
 	expenseDisplayMoney(expense, expense.space_currency || expense.currency);
 
@@ -12142,6 +12153,7 @@ const Overview = ({
 						expenses={latestExpenses.slice(0, 4)}
 						captures={captures}
 						members={members}
+						participants={participants}
 						language={language}
 						currency={currency}
 						onEdit={onExpense}
@@ -12793,6 +12805,7 @@ const ExpensesView = ({
 							categories={categories}
 							captures={captures}
 							members={members}
+							participants={participants}
 							language={language}
 							currency={currency}
 							onSource={onSource}
@@ -13609,6 +13622,7 @@ const GroupedExpenseItemList = ({
 	categories,
 	captures,
 	members,
+	participants,
 	language,
 	currency,
 	onSource,
@@ -13619,6 +13633,7 @@ const GroupedExpenseItemList = ({
 	categories: Category[];
 	captures: CapturePacket[];
 	members: SpaceMember[];
+	participants: SpaceParticipant[];
 	language: UILanguage;
 	currency: string;
 	onSource: (expense: Expense) => void;
@@ -13631,6 +13646,10 @@ const GroupedExpenseItemList = ({
 			{groups.map((rows) => {
 				const expense = rows[0].expense;
 				const author = sharedRecordAuthor(members, expense.user_id);
+				const payer =
+					participants.length > 1
+						? expensePayerParticipant(expense, participants)
+						: undefined;
 				const total = rows.reduce(
 					(sum, row) =>
 						sum + (itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
@@ -13656,6 +13675,11 @@ const GroupedExpenseItemList = ({
 								{author && (
 									<small className="mini-record-author">
 										{uiText(language, "addedBy")} {author}
+									</small>
+								)}
+								{payer && (
+									<small className="mini-record-payer">
+										{uiText(language, "receiptPaidBy")} {payer.display_name}
 									</small>
 								)}
 							</button>
@@ -13695,6 +13719,7 @@ const ExpenseList = ({
 	expenses,
 	captures,
 	members,
+	participants,
 	language,
 	currency,
 	onEdit,
@@ -13702,6 +13727,7 @@ const ExpenseList = ({
 	expenses: Expense[];
 	captures: CapturePacket[];
 	members: SpaceMember[];
+	participants: SpaceParticipant[];
 	language: UILanguage;
 	currency: string;
 	onEdit: (expense: Expense) => void;
@@ -13713,6 +13739,10 @@ const ExpenseList = ({
 			const seller = expenseSellerName(expense);
 			const capture = captureForExpense(expense, captures);
 			const author = sharedRecordAuthor(members, expense.user_id);
+			const payer =
+				participants.length > 1
+					? expensePayerParticipant(expense, participants)
+					: undefined;
 			return (
 				<button key={expense.id} type="button" onClick={() => onEdit(expense)}>
 					<span className="mini-expense-icon">
@@ -13730,6 +13760,11 @@ const ExpenseList = ({
 						{author && (
 							<small className="mini-record-author">
 								{uiText(language, "addedBy")} {author}
+							</small>
+						)}
+						{payer && (
+							<small className="mini-record-payer">
+								{uiText(language, "receiptPaidBy")} {payer.display_name}
 							</small>
 						)}
 					</span>
@@ -17839,9 +17874,7 @@ const ExpenseDetail = ({
 		(participant) => participantUserID(participant) === expense.user_id,
 	);
 	const splitPayer =
-		participants.find(
-			(participant) => participant.id === expense.payer_participant_id,
-		) ||
+		expensePayerParticipant(expense, participants) ||
 		splits[0]?.payer ||
 		participants.find(
 			(participant) => participant.id === splits[0]?.payer_participant_id,

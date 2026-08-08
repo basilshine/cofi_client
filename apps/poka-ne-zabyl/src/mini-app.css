@@ -1290,6 +1290,11 @@
 	font-size: 10px !important;
 	font-weight: 500;
 }
+.mini-record-payer {
+	color: var(--mini-green) !important;
+	font-size: 10px !important;
+	font-weight: 650;
+}
 .mini-original-money {
 	color: var(--mini-muted) !important;
 	font-size: 10px !important;
