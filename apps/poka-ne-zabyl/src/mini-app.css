@@ -1369,8 +1369,44 @@
 }
 .mini-expense-filter-stack {
 	display: grid;
-	gap: 18px;
+	gap: 0;
+	overflow: hidden;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
 	scroll-margin-top: calc(var(--mini-safe-top) + 72px);
+}
+.mini-expense-filter-stack > .mini-search {
+	min-height: 48px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+}
+.mini-expense-filter-stack > .mini-expense-scope {
+	border-top: 1px solid var(--mini-line);
+}
+.mini-expense-filter-stack > .mini-result {
+	align-items: center;
+	padding: 10px 13px;
+	border-top: 1px solid var(--mini-line);
+	border-bottom: 0;
+	background: color-mix(in srgb, var(--mini-green) 3%, var(--mini-paper));
+}
+.mini-expense-filter-stack > .mini-filter-bar {
+	padding: 8px;
+	border-top: 1px solid var(--mini-line);
+}
+.mini-expense-filter-stack > .mini-filter-bar select,
+.mini-expense-filter-stack > .mini-filter-bar button {
+	border-color: transparent;
+	background: var(--mini-soft);
+}
+.mini-expense-filter-stack > .mini-date-range,
+.mini-expense-filter-stack > .mini-filter-panel {
+	margin: 0 8px 8px;
+}
+.mini-expense-filter-stack > .mini-filter-chips {
+	padding: 0 8px 8px;
 }
 .mini-filter-context-anchor {
 	position: sticky;
@@ -2014,7 +2050,7 @@
 	grid-template-columns: 38px minmax(0, 1fr) auto;
 	align-items: center;
 	gap: 11px;
-	min-height: 78px;
+	min-height: 72px;
 	padding: 12px 13px;
 	background: var(--mini-paper);
 }
@@ -2051,7 +2087,7 @@
 .mini-plan-copy {
 	display: grid;
 	min-width: 0;
-	gap: 4px;
+	gap: 3px;
 	padding: 0;
 	border: 0;
 	background: transparent;
@@ -2070,12 +2106,12 @@
 .mini-plan-copy small,
 .mini-plan-actions small {
 	color: var(--mini-muted);
-	font-size: 11px;
+	font-size: 12px;
 }
 .mini-plan-actions {
 	display: grid;
 	justify-items: end;
-	gap: 7px;
+	gap: 5px;
 }
 .mini-plan-actions strong {
 	font-size: 13px;
@@ -2280,8 +2316,9 @@
 }
 .mini-result strong {
 	color: var(--mini-ink);
-	font-size: 24px;
+	font-size: 21px;
 	line-height: 1;
+	font-variant-numeric: tabular-nums;
 }
 .mini-intro {
 	margin: -8px 0 0;
