@@ -636,6 +636,7 @@
 }
 .mini-view {
 	display: grid;
+	grid-template-columns: minmax(0, 1fr);
 	gap: 18px;
 }
 .mini-overview-grid,
@@ -2169,22 +2170,81 @@
 	background: color-mix(in srgb, var(--mini-success) 9%, var(--mini-paper));
 	color: var(--mini-success);
 }
-.mini-split-empty {
+.mini-list-state {
 	display: grid;
+	width: 100%;
+	min-width: 0;
+	max-width: 100%;
+	min-height: 210px;
+	align-content: center;
 	justify-items: center;
-	gap: 5px;
-	padding: 30px 18px;
+	gap: 11px;
+	padding: 28px 18px;
 	border: 1px dashed var(--mini-line);
 	border-radius: 8px;
 	color: var(--mini-muted);
+	overflow: hidden;
 	text-align: center;
 }
-.mini-split-empty b {
-	color: var(--mini-ink);
-	font-size: 13px;
+.mini-list-state-icon {
+	display: grid;
+	width: 52px;
+	height: 52px;
+	place-items: center;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--mini-green) 8%, var(--mini-paper));
+	color: var(--mini-green);
 }
-.mini-split-empty small {
+.mini-list-state > div {
+	display: grid;
+	width: min(100%, 320px);
+	min-width: 0;
+	max-width: 320px;
+	gap: 5px;
+}
+.mini-list-state strong,
+.mini-list-state p {
+	margin: 0;
+}
+.mini-list-state strong {
+	color: var(--mini-ink);
+	font-size: 15px;
+	text-wrap: balance;
+}
+.mini-list-state p {
 	font-size: 11px;
+	line-height: 1.45;
+	text-wrap: pretty;
+}
+.mini-list-state > button {
+	display: inline-flex;
+	min-height: 40px;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	padding: 8px 12px;
+	border: 1px solid color-mix(in srgb, var(--mini-green) 28%, var(--mini-line));
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--mini-green) 5%, var(--mini-paper));
+	color: var(--mini-green);
+	font-size: 11px;
+	font-weight: 800;
+	transition: background 160ms ease, transform 160ms ease;
+}
+.mini-list-state > button:active {
+	transform: scale(0.96);
+}
+.mini-list-state.is-error {
+	border-color: color-mix(in srgb, var(--mini-red) 32%, var(--mini-line));
+}
+.mini-list-state.is-error .mini-list-state-icon {
+	background: color-mix(in srgb, var(--mini-red) 7%, var(--mini-paper));
+	color: var(--mini-red);
+}
+.mini-list-state.is-error > button {
+	border-color: color-mix(in srgb, var(--mini-red) 28%, var(--mini-line));
+	background: color-mix(in srgb, var(--mini-red) 4%, var(--mini-paper));
+	color: var(--mini-red);
 }
 .mini-plan-groups,
 .mini-plan-groups section {
@@ -2220,6 +2280,46 @@
 }
 .mini-load-more > button {
 	color: var(--mini-green);
+}
+.mini-load-more-error {
+	display: grid;
+	width: min(100%, 520px);
+	grid-template-columns: 24px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 9px;
+	padding: 10px 11px;
+	border: 1px solid color-mix(in srgb, var(--mini-red) 32%, var(--mini-line));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--mini-red) 5%, var(--mini-paper));
+	color: var(--mini-red);
+	text-align: left;
+}
+.mini-load-more-error > span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-load-more-error b {
+	font-size: 11px;
+}
+.mini-load-more-error small {
+	font-size: 9px;
+	line-height: 1.35;
+	overflow-wrap: anywhere;
+}
+.mini-load-more-error > button {
+	display: inline-flex;
+	min-height: 40px;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 7px 10px;
+	border: 1px solid currentColor;
+	border-radius: 7px;
+	background: transparent;
+	color: inherit;
+	font-size: 10px;
+	font-weight: 800;
 }
 .mini-plan-groups h2 {
 	margin: 0 2px;
@@ -8730,6 +8830,16 @@
 	display: grid;
 	gap: 10px;
 }
+.mini-loading-rows-label {
+	display: inline-flex;
+	min-height: 36px;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	color: var(--mini-muted);
+	font-size: 11px;
+	font-weight: 700;
+}
 .mini-loading-rows i {
 	display: block;
 	height: 72px;
@@ -8737,6 +8847,24 @@
 	background: linear-gradient(90deg, #dde2ee, #fcf9f2, #dde2ee);
 	background-size: 200% 100%;
 	animation: mini-pulse 1.2s infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+	.mini-loading-rows i {
+		animation-duration: 2.4s;
+	}
+}
+@media (max-width: 420px) {
+	.mini-load-more-error {
+		grid-template-columns: 22px minmax(0, 1fr);
+	}
+	.mini-load-more-error > button {
+		grid-column: 1 / -1;
+		width: 100%;
+	}
+	.mini-list-state {
+		min-height: 188px;
+		padding-inline: 14px;
+	}
 }
 .mini-review-app {
 	padding: 0;

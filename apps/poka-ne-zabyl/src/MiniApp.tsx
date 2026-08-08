@@ -151,6 +151,7 @@ import {
 	expensesForMonth,
 	homeCategoryRows,
 } from "./overview";
+import { appendUniquePage, nextPageOffset } from "./paged-list";
 import { periodReportTrend } from "./period-report";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
 import {
@@ -2199,6 +2200,8 @@ export const MiniApp = ({
 	const loadSequence = useRef(0);
 	const loadingMoreExpensesRef = useRef(false);
 	const loadingMorePlansRef = useRef(false);
+	const expensePageLoadSequence = useRef(0);
+	const planPageLoadSequence = useRef(0);
 	const categoryLoadSequence = useRef(0);
 	const pullStart = useRef<{ x: number; y: number } | null>(null);
 	const currentPullDistance = useRef(0);
@@ -2237,6 +2240,8 @@ export const MiniApp = ({
 	});
 	const [loadingMoreExpenses, setLoadingMoreExpenses] = useState(false);
 	const [loadingMorePlans, setLoadingMorePlans] = useState(false);
+	const [expensePageError, setExpensePageError] = useState("");
+	const [planPageError, setPlanPageError] = useState("");
 	const [overviewExpenseTotal, setOverviewExpenseTotal] = useState<
 		number | null
 	>(null);
@@ -4021,6 +4026,30 @@ export const MiniApp = ({
 		setReviewCandidates([]);
 		setDismissedCaptureSourceID(0);
 		setCaptureFailure("");
+		expensePageLoadSequence.current += 1;
+		planPageLoadSequence.current += 1;
+		loadingMoreExpensesRef.current = false;
+		loadingMorePlansRef.current = false;
+		setLoadingMoreExpenses(false);
+		setLoadingMorePlans(false);
+		setExpensePageError("");
+		setPlanPageError("");
+		if (previewMode) return;
+		setExpenses([]);
+		setPlans([]);
+		setMembers([]);
+		setParticipants([]);
+		setExpenseSplits([]);
+		setSplitExpenses([]);
+		setVendors([]);
+		setCategories([]);
+		setCategorySpaceID(0);
+		setExpensePage({ hasMore: false, nextOffset: 20 });
+		setPlanPage({ hasMore: false, nextOffset: 20 });
+		setOverviewExpenseTotal(null);
+		setAllTimeExpenseTotal(null);
+		setMonthPlanTotal(null);
+		setPlanTotalCount(0);
 	}, [spaceID]);
 
 	useEffect(() => {
@@ -4106,6 +4135,7 @@ export const MiniApp = ({
 				hasMore: Boolean(expenseData.has_more),
 				nextOffset: expenseData.next_offset || 20,
 			});
+			setExpensePageError("");
 			setAllTimeExpenseTotal(expenseData.total_amount ?? null);
 			setOverviewExpenseTotal(
 				expenseData.month_total ??
@@ -4139,6 +4169,7 @@ export const MiniApp = ({
 				hasMore: Boolean(planData.has_more),
 				nextOffset: planData.next_offset || 20,
 			});
+			setPlanPageError("");
 			setMonthPlanTotal(
 				planData.reporting_month_total ?? planData.month_total ?? null,
 			);
@@ -4335,31 +4366,43 @@ export const MiniApp = ({
 			return;
 		loadingMoreExpensesRef.current = true;
 		setLoadingMoreExpenses(true);
+		setExpensePageError("");
 		const requestID = loadSequence.current;
+		const pageRequestID = ++expensePageLoadSequence.current;
+		const requestedOffset = expensePage.nextOffset;
 		try {
 			const data = await apiRequest<{ expenses: Expense[] } & PageInfo>(
-				`/spaces/${spaceID}/expenses?limit=20&offset=${expensePage.nextOffset}&currency=${encodeURIComponent(reportingCurrency)}`,
+				`/spaces/${spaceID}/expenses?limit=20&offset=${requestedOffset}&currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
 			);
-			if (requestID !== loadSequence.current) return;
+			if (
+				requestID !== loadSequence.current ||
+				pageRequestID !== expensePageLoadSequence.current
+			)
+				return;
 			setExpenses((current) => {
-				const known = new Set(current.map(({ id }) => id));
-				return [
-					...current,
-					...(data.expenses || []).filter(({ id }) => !known.has(id)),
-				];
+				return appendUniquePage(current, data.expenses || []);
 			});
 			setExpensePage({
 				hasMore: Boolean(data.has_more),
-				nextOffset: data.next_offset || expensePage.nextOffset + 20,
+				nextOffset: nextPageOffset(data.next_offset, requestedOffset, 20),
 			});
 		} catch (err) {
-			setNotice(
-				err instanceof Error ? err.message : uiText(language, "loadMoreFailed"),
-			);
+			if (
+				requestID === loadSequence.current &&
+				pageRequestID === expensePageLoadSequence.current
+			) {
+				setExpensePageError(
+					err instanceof Error
+						? err.message
+						: uiText(language, "loadMoreFailed"),
+				);
+			}
 		} finally {
-			loadingMoreExpensesRef.current = false;
-			setLoadingMoreExpenses(false);
+			if (pageRequestID === expensePageLoadSequence.current) {
+				loadingMoreExpensesRef.current = false;
+				setLoadingMoreExpenses(false);
+			}
 		}
 	}, [
 		expensePage.hasMore,
@@ -4383,23 +4426,26 @@ export const MiniApp = ({
 			return;
 		loadingMorePlansRef.current = true;
 		setLoadingMorePlans(true);
+		setPlanPageError("");
 		const requestID = loadSequence.current;
+		const pageRequestID = ++planPageLoadSequence.current;
+		const requestedOffset = planPage.nextOffset;
 		try {
 			const data = await apiRequest<{ plans: PurchasePlan[] } & PageInfo>(
-				`/spaces/${spaceID}/plans?limit=20&offset=${planPage.nextOffset}&currency=${encodeURIComponent(reportingCurrency)}`,
+				`/spaces/${spaceID}/plans?limit=20&offset=${requestedOffset}&currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
 			);
-			if (requestID !== loadSequence.current) return;
+			if (
+				requestID !== loadSequence.current ||
+				pageRequestID !== planPageLoadSequence.current
+			)
+				return;
 			setPlans((current) => {
-				const known = new Set(current.map(({ id }) => id));
-				return [
-					...current,
-					...(data.plans || []).filter(({ id }) => !known.has(id)),
-				];
+				return appendUniquePage(current, data.plans || []);
 			});
 			setPlanPage({
 				hasMore: Boolean(data.has_more),
-				nextOffset: data.next_offset || planPage.nextOffset + 20,
+				nextOffset: nextPageOffset(data.next_offset, requestedOffset, 20),
 			});
 			if (typeof (data.reporting_month_total ?? data.month_total) === "number")
 				setMonthPlanTotal(
@@ -4408,12 +4454,21 @@ export const MiniApp = ({
 			if (typeof data.total_count === "number")
 				setPlanTotalCount(data.total_count);
 		} catch (err) {
-			setNotice(
-				err instanceof Error ? err.message : uiText(language, "loadMoreFailed"),
-			);
+			if (
+				requestID === loadSequence.current &&
+				pageRequestID === planPageLoadSequence.current
+			) {
+				setPlanPageError(
+					err instanceof Error
+						? err.message
+						: uiText(language, "loadMoreFailed"),
+				);
+			}
 		} finally {
-			loadingMorePlansRef.current = false;
-			setLoadingMorePlans(false);
+			if (pageRequestID === planPageLoadSequence.current) {
+				loadingMorePlansRef.current = false;
+				setLoadingMorePlans(false);
+			}
 		}
 	}, [
 		language,
@@ -8353,6 +8408,17 @@ export const MiniApp = ({
 		else if (WebApp.initData) void login();
 		else void restoreBrowserSession();
 	};
+	const contentLoadingLabel =
+		view === "expenses"
+			? uiText(
+					language,
+					expenseSection === "plans"
+						? "loadingPlans"
+						: expenseSection === "splits"
+							? "loadingSplits"
+							: "loadingExpenses",
+				)
+			: uiText(language, "loadingSpace");
 
 	if (serviceUnavailable)
 		return <ServiceUnavailable language={language} onRetry={retryService} />;
@@ -8879,11 +8945,12 @@ export const MiniApp = ({
 				{error && (
 					<div
 						className={`mini-alert${loadFailed ? " mini-alert--retry" : ""}`}
+						role="alert"
 					>
 						<span>{error}</span>
 						{loadFailed && (
 							<button type="button" onClick={() => void loadSpace()}>
-								Повторить
+								{uiText(language, "retry")}
 							</button>
 						)}
 					</div>
@@ -8901,7 +8968,7 @@ export const MiniApp = ({
 					</button>
 				)}
 				{loading ? (
-					<LoadingRows />
+					<LoadingRows label={contentLoadingLabel} />
 				) : (
 					<>
 						{view === "report" && (
@@ -9009,6 +9076,7 @@ export const MiniApp = ({
 								section={expenseSection}
 								plans={plans}
 								planTotalCount={planTotalCount}
+								monthPlanTotal={monthPlanTotal}
 								quota={quota}
 								showBasicLimits={showActiveSpaceBasicLimits}
 								planInitialPeriod={planInitialPeriod}
@@ -9031,8 +9099,10 @@ export const MiniApp = ({
 								query={query}
 								expensesHasMore={expensePage.hasMore}
 								expensesLoadingMore={loadingMoreExpenses}
+								expensesLoadMoreError={expensePageError}
 								plansHasMore={planPage.hasMore}
 								plansLoadingMore={loadingMorePlans}
+								plansLoadMoreError={planPageError}
 								onPeriod={changePeriod}
 								onDateFrom={changeDateFrom}
 								onDateTo={changeDateTo}
@@ -12586,6 +12656,7 @@ const ExpensesView = ({
 	section,
 	plans,
 	planTotalCount,
+	monthPlanTotal,
 	quota,
 	showBasicLimits,
 	planInitialPeriod,
@@ -12608,8 +12679,10 @@ const ExpensesView = ({
 	query,
 	expensesHasMore,
 	expensesLoadingMore,
+	expensesLoadMoreError,
 	plansHasMore,
 	plansLoadingMore,
+	plansLoadMoreError,
 	onPeriod,
 	onDateFrom,
 	onDateTo,
@@ -12644,6 +12717,7 @@ const ExpensesView = ({
 	section: ExpenseSection;
 	plans: PurchasePlan[];
 	planTotalCount: number;
+	monthPlanTotal: number | null;
 	quota: Quota | null;
 	showBasicLimits: boolean;
 	planInitialPeriod: Period;
@@ -12666,8 +12740,10 @@ const ExpensesView = ({
 	query: string;
 	expensesHasMore: boolean;
 	expensesLoadingMore: boolean;
+	expensesLoadMoreError: string;
 	plansHasMore: boolean;
 	plansLoadingMore: boolean;
+	plansLoadMoreError: string;
 	onPeriod: (period: Period) => void;
 	onDateFrom: (value: string) => void;
 	onDateTo: (value: string) => void;
@@ -12801,6 +12877,19 @@ const ExpensesView = ({
 		language,
 		section === "plans" ? "addPlan" : "addExpense",
 	);
+	const historyHasFilters =
+		Boolean(expense) ||
+		Boolean(activeCategory) ||
+		Boolean(activeVendor) ||
+		Boolean(query.trim()) ||
+		period !== "month";
+	const resetHistoryFilters = () => {
+		onClearExpense();
+		onCategory(0);
+		onVendor(0);
+		onQuery("");
+		onPeriod("month");
+	};
 
 	return (
 		<section className="mini-view mini-expenses-view">
@@ -12887,6 +12976,7 @@ const ExpensesView = ({
 				<PlansView
 					plans={plans}
 					totalCount={planTotalCount}
+					monthTotal={monthPlanTotal}
 					quota={quota}
 					showBasicLimits={showBasicLimits}
 					initialPeriod={planInitialPeriod}
@@ -12905,6 +12995,7 @@ const ExpensesView = ({
 					onSource={onPlanSource}
 					hasMore={plansHasMore}
 					loadingMore={plansLoadingMore}
+					loadMoreError={plansLoadMoreError}
 					onLoadMore={onLoadMorePlans}
 				/>
 			) : section === "splits" ? (
@@ -12916,6 +13007,7 @@ const ExpensesView = ({
 					currentUserID={currentUserID}
 					currency={currency}
 					onOpenExpense={onOpenExpense}
+					onOpenExpenses={() => onSection("history")}
 					onSettle={onSettleSplit}
 					settling={splitSaving}
 				/>
@@ -12979,7 +13071,9 @@ const ExpensesView = ({
 						)}
 						<div className="mini-result">
 							<div>
-								<small>{uiText(language, "found")}</small>
+								<small>
+									{uiText(language, expensesHasMore ? "shown" : "found")}
+								</small>
 								<span>{purchaseCountText(items.length, language)}</span>
 							</div>
 							<div>
@@ -13113,7 +13207,24 @@ const ExpensesView = ({
 							</div>
 						)}
 					</div>
-					{groupByExpense ? (
+					{items.length === 0 ? (
+						<ListState
+							icon={<Receipt size={25} weight="bold" />}
+							title={uiText(
+								language,
+								historyHasFilters ? "nothingFound" : "noExpenses",
+							)}
+							text={uiText(
+								language,
+								historyHasFilters ? "nothingFoundHint" : "noExpensesHint",
+							)}
+							actionLabel={uiText(
+								language,
+								historyHasFilters ? "clearFilters" : "addExpense",
+							)}
+							onAction={historyHasFilters ? resetHistoryFilters : onAdd}
+						/>
+					) : groupByExpense ? (
 						<GroupedExpenseItemList
 							items={items}
 							captures={captures}
@@ -13139,6 +13250,7 @@ const ExpensesView = ({
 						language={language}
 						hasMore={expensesHasMore}
 						loading={expensesLoadingMore}
+						error={expensesLoadMoreError}
 						onLoadMore={onLoadMoreExpenses}
 					/>
 				</>
@@ -13155,6 +13267,7 @@ const SplitsView = ({
 	currentUserID,
 	currency,
 	onOpenExpense,
+	onOpenExpenses,
 	onSettle,
 	settling,
 }: {
@@ -13165,6 +13278,7 @@ const SplitsView = ({
 	currentUserID: number;
 	currency: string;
 	onOpenExpense: (expense: Expense) => void;
+	onOpenExpenses: () => void;
 	onSettle: (balance: SplitBalanceRow) => void;
 	settling: boolean;
 }) => {
@@ -13346,11 +13460,13 @@ const SplitsView = ({
 						);
 					})
 				) : (
-					<div className="mini-split-empty">
-						<ArrowsLeftRight size={24} />
-						<b>{uiText(language, "noSplitExpenses")}</b>
-						<small>{uiText(language, "openAnyExpenseToSplit")}</small>
-					</div>
+					<ListState
+						icon={<ArrowsLeftRight size={25} weight="bold" />}
+						title={uiText(language, "noSplitExpenses")}
+						text={uiText(language, "openAnyExpenseToSplit")}
+						actionLabel={uiText(language, "openExpenses")}
+						onAction={onOpenExpenses}
+					/>
 				)}
 			</section>
 		</div>
@@ -13360,6 +13476,7 @@ const SplitsView = ({
 const PlansView = ({
 	plans,
 	totalCount,
+	monthTotal,
 	quota,
 	showBasicLimits,
 	initialPeriod,
@@ -13378,10 +13495,12 @@ const PlansView = ({
 	onSource,
 	hasMore,
 	loadingMore,
+	loadMoreError,
 	onLoadMore,
 }: {
 	plans: PurchasePlan[];
 	totalCount: number;
+	monthTotal: number | null;
 	quota: Quota | null;
 	showBasicLimits: boolean;
 	initialPeriod: Period;
@@ -13400,6 +13519,7 @@ const PlansView = ({
 	onSource: (plan: PurchasePlan) => void;
 	hasMore: boolean;
 	loadingMore: boolean;
+	loadMoreError: string;
 	onLoadMore: () => void;
 }) => {
 	const [query, setQuery] = useState("");
@@ -13441,7 +13561,7 @@ const PlansView = ({
 	);
 	const activeFilterCount =
 		Number(Boolean(categoryID)) + Number(Boolean(vendorID));
-	const visibleTotal = periodPlans.reduce(
+	const loadedVisibleTotal = periodPlans.reduce(
 		(sum, plan) =>
 			sum +
 			purchasePlanItems(plan).reduce(
@@ -13459,6 +13579,24 @@ const PlansView = ({
 				(groupByPlan ? 1 : purchasePlanItems(plan).length),
 		0,
 	);
+	const hasPlanFilters =
+		Boolean(query.trim()) || categoryID > 0 || vendorID > 0;
+	const completeMonthTotal =
+		period === "month" && !hasPlanFilters && monthTotal !== null
+			? monthTotal
+			: null;
+	const visibleTotal = completeMonthTotal ?? loadedVisibleTotal;
+	const showsPartialTotal =
+		hasMore && period === "all" && !hasPlanFilters && !dateFrom && !dateTo;
+	const resetPlanFilters = () => {
+		setQuery("");
+		setPeriod("all");
+		setDateFrom("");
+		setDateTo("");
+		setCategoryID(0);
+		setVendorID(0);
+		setFiltersOpen(false);
+	};
 	const sourceButton = (plan: PurchasePlan) =>
 		plan.source_document_id ? (
 			<button
@@ -13713,17 +13851,13 @@ const PlansView = ({
 		return (
 			<div className="mini-plan-workspace">
 				{basicPlanLimit}
-				<div className="mini-plans-empty">
-					<span>
-						<CalendarBlank size={26} />
-					</span>
-					<h2>{uiText(language, "noPlans")}</h2>
-					<p>{uiText(language, "noPlansHint")}</p>
-					<button type="button" onClick={onAdd}>
-						<Plus size={17} weight="bold" />
-						{uiText(language, "addPlan")}
-					</button>
-				</div>
+				<ListState
+					icon={<CalendarBlank size={26} />}
+					title={uiText(language, "noPlans")}
+					text={uiText(language, "noPlansHint")}
+					actionLabel={uiText(language, "addPlan")}
+					onAction={onAdd}
+				/>
 			</div>
 		);
 	}
@@ -13743,15 +13877,23 @@ const PlansView = ({
 					<div>
 						<small>{uiText(language, "found")}</small>
 						<span>
-							{visibleCount} ·{" "}
-							{uiText(
-								language,
-								groupByPlan ? "planListsView" : "planItemsView",
-							)}
+							{showsPartialTotal
+								? uiText(language, "shownOf")
+										.replace("{shown}", String(visibleCount))
+										.replace("{total}", String(totalCount))
+								: `${visibleCount} · ${uiText(
+										language,
+										groupByPlan ? "planListsView" : "planItemsView",
+									)}`}
 						</span>
 					</div>
 					<div>
-						<small>{uiText(language, "plannedTotalShort")}</small>
+						<small>
+							{uiText(
+								language,
+								showsPartialTotal ? "shownTotal" : "plannedTotalShort",
+							)}
+						</small>
 						<strong>{formatMoney(visibleTotal, currency)}</strong>
 					</div>
 				</div>
@@ -13909,12 +14051,19 @@ const PlansView = ({
 				<div className="mini-plan-list">{visibleItems.map(renderPlanItem)}</div>
 			) : null}
 			{filteredPlans.length === 0 && overduePlans.length === 0 && (
-				<Empty text={uiText(language, "nothingFound")} />
+				<ListState
+					icon={<MagnifyingGlass size={25} />}
+					title={uiText(language, "nothingFound")}
+					text={uiText(language, "nothingFoundHint")}
+					actionLabel={uiText(language, "clearFilters")}
+					onAction={resetPlanFilters}
+				/>
 			)}
 			<LoadMorePage
 				language={language}
 				hasMore={hasMore}
 				loading={loadingMore}
+				error={loadMoreError}
 				onLoadMore={onLoadMore}
 			/>
 		</div>
@@ -22522,20 +22671,60 @@ const Empty = ({ text }: { text: string }) => (
 		<span>{text}</span>
 	</div>
 );
+
+const ListState = ({
+	icon,
+	title,
+	text,
+	actionLabel,
+	onAction,
+	tone = "empty",
+}: {
+	icon: React.ReactNode;
+	title: string;
+	text: string;
+	actionLabel?: string;
+	onAction?: () => void;
+	tone?: "empty" | "error";
+}) => (
+	<div
+		className={`mini-list-state is-${tone}`}
+		role={tone === "error" ? "alert" : "status"}
+	>
+		<span className="mini-list-state-icon">{icon}</span>
+		<div>
+			<strong>{title}</strong>
+			<p>{text}</p>
+		</div>
+		{actionLabel && onAction && (
+			<button type="button" onClick={onAction}>
+				{tone === "error" ? (
+					<ArrowClockwise size={17} weight="bold" />
+				) : (
+					<ArrowRight size={17} weight="bold" />
+				)}
+				{actionLabel}
+			</button>
+		)}
+	</div>
+);
+
 const LoadMorePage = ({
 	language,
 	hasMore,
 	loading,
+	error,
 	onLoadMore,
 }: {
 	language: UILanguage;
 	hasMore: boolean;
 	loading: boolean;
+	error?: string;
 	onLoadMore: () => void;
 }) => {
 	const anchorRef = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		if (!hasMore || loading || !anchorRef.current) return;
+		if (!hasMore || loading || error || !anchorRef.current) return;
 		const observer = new IntersectionObserver(
 			([entry]) => {
 				if (entry.isIntersecting) onLoadMore();
@@ -22544,11 +22733,23 @@ const LoadMorePage = ({
 		);
 		observer.observe(anchorRef.current);
 		return () => observer.disconnect();
-	}, [hasMore, loading, onLoadMore]);
-	if (!hasMore && !loading) return null;
+	}, [error, hasMore, loading, onLoadMore]);
+	if (!hasMore && !loading && !error) return null;
 	return (
 		<div className="mini-load-more" ref={anchorRef} aria-live="polite">
-			{loading ? (
+			{error ? (
+				<div className="mini-load-more-error" role="alert">
+					<WarningCircle size={20} weight="fill" />
+					<span>
+						<b>{uiText(language, "loadMoreFailed")}</b>
+						<small>{error}</small>
+					</span>
+					<button type="button" onClick={onLoadMore}>
+						<ArrowClockwise size={16} weight="bold" />
+						{uiText(language, "retry")}
+					</button>
+				</div>
+			) : loading ? (
 				<span role="status">
 					<KnotLoader compact />
 					{uiText(language, "loadingMore")}
@@ -22562,8 +22763,20 @@ const LoadMorePage = ({
 		</div>
 	);
 };
-const LoadingRows = () => (
-	<div className="mini-loading-rows">
+
+const LoadingRows = ({ label = "" }: { label?: string }) => (
+	<div
+		className="mini-loading-rows"
+		role="status"
+		aria-label={label || undefined}
+		aria-live="polite"
+	>
+		{label && (
+			<span className="mini-loading-rows-label">
+				<KnotLoader compact />
+				{label}
+			</span>
+		)}
 		<i />
 		<i />
 		<i />
