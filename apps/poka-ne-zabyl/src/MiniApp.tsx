@@ -13684,7 +13684,6 @@ const PlansView = ({
 
 	return (
 		<div className="mini-plan-workspace">
-			{basicPlanLimit}
 			<div className="mini-expense-filter-stack">
 				<label className="mini-search">
 					<MagnifyingGlass size={19} />
@@ -13829,6 +13828,7 @@ const PlansView = ({
 					</div>
 				)}
 			</div>
+			{basicPlanLimit}
 			{overduePlans.length > 0 && (
 				<section className="mini-overdue-plans">
 					<div className="mini-section-head">
@@ -18240,6 +18240,7 @@ const ExpenseDetail = ({
 	return (
 		<Modal
 			title={uiText(language, item ? "viewExpense" : "viewReceipt")}
+			variant="record"
 			onClose={onClose}
 		>
 			<div className="mini-record-hero">
@@ -19128,6 +19129,7 @@ const PlanDetail = ({
 	return (
 		<Modal
 			title={uiText(language, item ? "viewPlan" : "viewPlanList")}
+			variant="record"
 			onClose={onClose}
 		>
 			<div className="mini-record-hero is-plan">
@@ -19458,6 +19460,9 @@ const PlanEditor = ({
 				{items.map((item, index) => (
 					<div className="mini-plan-editor-item" key={item.id || index}>
 						<div className="mini-plan-item-name">
+							<span className="mini-editor-label">
+								{uiText(language, "planItemName")} {index + 1}
+							</span>
 							<input
 								aria-label={uiText(language, "planItemName")}
 								value={item.name}
@@ -19571,7 +19576,7 @@ const PlanEditor = ({
 					onMove={onMove}
 				/>
 			)}
-			<div className="mini-modal-actions">
+			<div className="mini-modal-actions mini-editor-actions">
 				<button
 					className="mini-save"
 					type="button"
@@ -19838,41 +19843,53 @@ const ExpenseEditor = ({
 						className={`mini-editor-item${creating ? " mini-editor-item--new" : ""}`}
 					>
 						{!creating && (
-							<input
-								aria-label={uiText(language, "itemName").replace(
-									"{number}",
-									String(index + 1),
-								)}
-								value={item.name}
-								onChange={(event) =>
-									onChange({
-										...expense,
-										items: expense.items.map((current, itemIndex) =>
-											itemIndex === index
-												? { ...current, name: event.target.value }
-												: current,
-										),
-									})
-								}
-							/>
+							<label className="mini-editor-field">
+								<span className="mini-editor-label">
+									{uiText(language, "itemName").replace(
+										"{number}",
+										String(index + 1),
+									)}
+								</span>
+								<input
+									value={item.name}
+									onChange={(event) =>
+										onChange({
+											...expense,
+											items: expense.items.map((current, itemIndex) =>
+												itemIndex === index
+													? { ...current, name: event.target.value }
+													: current,
+											),
+										})
+									}
+								/>
+							</label>
 						)}
 						{!creating && (
-							<AmountInput
-								ariaLabel={uiText(language, "itemPrice").replace(
-									"{number}",
-									String(index + 1),
-								)}
-								amount={item.amount}
-								currency={expense.currency}
-								onChange={(amount) =>
-									onChange({
-										...expense,
-										items: expense.items.map((current, itemIndex) =>
-											itemIndex === index ? { ...current, amount } : current,
-										),
-									})
-								}
-							/>
+							<div className="mini-editor-field">
+								<span className="mini-editor-label">
+									{uiText(language, "itemPrice").replace(
+										"{number}",
+										String(index + 1),
+									)}
+								</span>
+								<AmountInput
+									ariaLabel={uiText(language, "itemPrice").replace(
+										"{number}",
+										String(index + 1),
+									)}
+									amount={item.amount}
+									currency={expense.currency}
+									onChange={(amount) =>
+										onChange({
+											...expense,
+											items: expense.items.map((current, itemIndex) =>
+												itemIndex === index ? { ...current, amount } : current,
+											),
+										})
+									}
+								/>
+							</div>
 						)}
 						{creating && (
 							<label className="mini-editor-field" htmlFor="new-expense-amount">
@@ -19895,16 +19912,10 @@ const ExpenseEditor = ({
 								/>
 							</label>
 						)}
-						<label
-							className={
-								creating ? "mini-editor-field" : "mini-editor-field--contents"
-							}
-						>
-							{creating && (
-								<span className="mini-editor-label">
-									{uiText(language, "category")}
-								</span>
-							)}
+						<label className="mini-editor-field mini-editor-field--wide">
+							<span className="mini-editor-label">
+								{uiText(language, "category")}
+							</span>
 							<select
 								aria-label={uiText(language, "itemCategory").replace(
 									"{number}",
@@ -19933,17 +19944,24 @@ const ExpenseEditor = ({
 							</select>
 						</label>
 						{!creating && (
-							<VendorAutocomplete
-								className="mini-editor-vendor"
-								vendors={vendors}
-								ariaLabel={uiText(language, "itemPurchasePlace").replace(
-									"{number}",
-									String(index + 1),
-								)}
-								placeholder={uiText(language, "whereBought")}
-								value={itemVendorName(item)}
-								onChange={(vendorName) => updateItemVendor(index, vendorName)}
-							/>
+							<div className="mini-editor-field mini-editor-field--wide mini-editor-vendor">
+								<span className="mini-editor-label">
+									{uiText(language, "itemPurchasePlace").replace(
+										"{number}",
+										String(index + 1),
+									)}
+								</span>
+								<VendorAutocomplete
+									vendors={vendors}
+									ariaLabel={uiText(language, "itemPurchasePlace").replace(
+										"{number}",
+										String(index + 1),
+									)}
+									placeholder={uiText(language, "whereBought")}
+									value={itemVendorName(item)}
+									onChange={(vendorName) => updateItemVendor(index, vendorName)}
+								/>
+							</div>
 						)}
 					</div>
 				))}
@@ -20002,7 +20020,7 @@ const ExpenseEditor = ({
 					onMove={onMove}
 				/>
 			)}
-			<div className="mini-modal-actions">
+			<div className="mini-modal-actions mini-editor-actions">
 				<button
 					className="mini-save"
 					type="button"
@@ -22017,7 +22035,7 @@ const Modal = ({
 }: {
 	title: string;
 	closeLabel?: string;
-	variant?: "default" | "editor";
+	variant?: "default" | "editor" | "record";
 	children: React.ReactNode;
 	onClose: () => void;
 }) => {
@@ -22113,7 +22131,7 @@ const Modal = ({
 		>
 			<section
 				ref={modalRef}
-				className={`mini-modal${variant === "editor" ? " is-editor" : ""}${sheetState === "peek" ? " is-peek" : ""}${dragY ? " is-dragging" : ""}`}
+				className={`mini-modal${variant === "editor" ? " is-editor" : ""}${variant === "record" ? " is-record" : ""}${sheetState === "peek" ? " is-peek" : ""}${dragY ? " is-dragging" : ""}`}
 				role="dialog"
 				aria-modal="true"
 				aria-label={title}
