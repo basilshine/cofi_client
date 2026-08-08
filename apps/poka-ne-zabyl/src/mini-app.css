@@ -1610,6 +1610,20 @@
 	color: var(--mini-ink);
 	box-shadow: 0 1px 4px rgba(23, 27, 45, 0.1);
 }
+.mini-browse-mode {
+	margin: 0 8px;
+	border-color: transparent;
+	background: var(--mini-soft);
+}
+.mini-browse-mode button {
+	min-height: 38px;
+}
+.mini-plan-browse-mode button {
+	text-transform: capitalize;
+}
+.mini-expense-filter-stack > .mini-browse-mode {
+	margin-top: 8px;
+}
 .mini-expense-sections {
 	position: relative;
 	display: grid;

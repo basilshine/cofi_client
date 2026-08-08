@@ -2471,7 +2471,7 @@ export const MiniApp = ({
 	const [expenseID, setExpenseID] = useState(
 		requestedExpenseID > 0 ? requestedExpenseID : 0,
 	);
-	const [groupByExpense, setGroupByExpense] = useState(false);
+	const [groupByExpense, setGroupByExpense] = useState(true);
 	const [query, setQuery] = useState("");
 	const [expenseSection, setExpenseSection] = useState<ExpenseSection>(
 		requestedPlan
@@ -12986,6 +12986,28 @@ const ExpensesView = ({
 								<strong>{formatMoney(summaryTotal, currency)}</strong>
 							</div>
 						</div>
+						<div
+							className="mini-expense-mode mini-browse-mode"
+							role="group"
+							aria-label={uiText(language, "expenseViewMode")}
+						>
+							<button
+								className={groupByExpense ? "active" : ""}
+								type="button"
+								aria-pressed={groupByExpense}
+								onClick={() => onGrouping(true)}
+							>
+								{uiText(language, "groupByExpense")}
+							</button>
+							<button
+								className={!groupByExpense ? "active" : ""}
+								type="button"
+								aria-pressed={!groupByExpense}
+								onClick={() => onGrouping(false)}
+							>
+								{uiText(language, "items")}
+							</button>
+						</div>
 						<div className="mini-filter-bar">
 							<select
 								aria-label={uiText(language, "periodLabel")}
@@ -13087,35 +13109,12 @@ const ExpensesView = ({
 										))}
 									</select>
 								</div>
-								<div
-									className="mini-expense-mode"
-									role="group"
-									aria-label="Вид расходов"
-								>
-									<button
-										className={!groupByExpense ? "active" : ""}
-										type="button"
-										aria-pressed={!groupByExpense}
-										onClick={() => onGrouping(false)}
-									>
-										Позиции
-									</button>
-									<button
-										className={groupByExpense ? "active" : ""}
-										type="button"
-										aria-pressed={groupByExpense}
-										onClick={() => onGrouping(true)}
-									>
-										{uiText(language, "groupByExpense")}
-									</button>
-								</div>
 							</div>
 						)}
 					</div>
 					{groupByExpense ? (
 						<GroupedExpenseItemList
 							items={items}
-							categories={categories}
 							captures={captures}
 							members={members}
 							participants={participants}
@@ -13123,7 +13122,6 @@ const ExpensesView = ({
 							currency={currency}
 							onSource={onSource}
 							onOpenExpense={onOpenExpense}
-							onOpenItem={onOpenExpenseItem}
 						/>
 					) : (
 						<ExpenseItemList
@@ -13363,7 +13361,7 @@ const PlansView = ({
 	const [categoryID, setCategoryID] = useState(0);
 	const [vendorID, setVendorID] = useState(0);
 	const [filtersOpen, setFiltersOpen] = useState(false);
-	const [groupByPlan, setGroupByPlan] = useState(false);
+	const [groupByPlan, setGroupByPlan] = useState(true);
 	const bounds = planPeriodBounds(period, dateFrom, dateTo);
 	const planSeries = collapsePurchasePlanSeries(plans);
 	const matchingPlans = filterPurchasePlans(planSeries, {
@@ -13709,6 +13707,28 @@ const PlansView = ({
 						<strong>{formatMoney(visibleTotal, currency)}</strong>
 					</div>
 				</div>
+				<div
+					className="mini-expense-mode mini-browse-mode mini-plan-browse-mode"
+					role="group"
+					aria-label={uiText(language, "planViewMode")}
+				>
+					<button
+						className={groupByPlan ? "active" : ""}
+						type="button"
+						aria-pressed={groupByPlan}
+						onClick={() => setGroupByPlan(true)}
+					>
+						{uiText(language, "planListsView")}
+					</button>
+					<button
+						className={!groupByPlan ? "active" : ""}
+						type="button"
+						aria-pressed={!groupByPlan}
+						onClick={() => setGroupByPlan(false)}
+					>
+						{uiText(language, "planItemsView")}
+					</button>
+				</div>
 				<div className="mini-filter-bar">
 					<select
 						aria-label={uiText(language, "periodLabel")}
@@ -13806,24 +13826,6 @@ const PlansView = ({
 									</option>
 								))}
 							</select>
-						</div>
-						<div className="mini-expense-mode" role="group">
-							<button
-								className={!groupByPlan ? "active" : ""}
-								type="button"
-								aria-pressed={!groupByPlan}
-								onClick={() => setGroupByPlan(false)}
-							>
-								{uiText(language, "planItemsView")}
-							</button>
-							<button
-								className={groupByPlan ? "active" : ""}
-								type="button"
-								aria-pressed={groupByPlan}
-								onClick={() => setGroupByPlan(true)}
-							>
-								{uiText(language, "planListsView")}
-							</button>
 						</div>
 					</div>
 				)}
@@ -13949,7 +13951,6 @@ const ExpenseItemList = ({
 
 const GroupedExpenseItemList = ({
 	items,
-	categories,
 	captures,
 	members,
 	participants,
@@ -13957,10 +13958,8 @@ const GroupedExpenseItemList = ({
 	currency,
 	onSource,
 	onOpenExpense,
-	onOpenItem,
 }: {
 	items: ExpenseItemRow[];
-	categories: Category[];
 	captures: CapturePacket[];
 	members: SpaceMember[];
 	participants: SpaceParticipant[];
@@ -13968,7 +13967,6 @@ const GroupedExpenseItemList = ({
 	currency: string;
 	onSource: (expense: Expense) => void;
 	onOpenExpense: (expense: Expense) => void;
-	onOpenItem: (item: ExpenseItemRow) => void;
 }) => {
 	const groups = groupRowsByExpense(items);
 	return (
@@ -14027,16 +14025,6 @@ const GroupedExpenseItemList = ({
 								<strong>{formatMoney(total, currency)}</strong>
 							</div>
 						</header>
-						<ExpenseItemList
-							items={rows}
-							categories={categories}
-							captures={captures}
-							members={members}
-							language={language}
-							currency={currency}
-							onOpen={onOpenItem}
-							showAuthors={false}
-						/>
 					</section>
 				);
 			})}
