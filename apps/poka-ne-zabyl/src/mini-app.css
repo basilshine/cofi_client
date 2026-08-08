@@ -3887,11 +3887,47 @@
 	display: grid;
 	gap: 7px;
 }
+.mini-profile-group.is-personal {
+	order: 1;
+}
+.mini-profile-group.is-account {
+	order: 2;
+}
+.mini-profile-group.is-application {
+	order: 3;
+}
+.mini-profile-group.is-accessibility {
+	order: 4;
+}
+.mini-profile-group.is-data-organization {
+	order: 5;
+}
+.mini-profile-danger-group {
+	order: 6;
+}
 .mini-profile-group h2 {
 	margin: 0 2px;
 	color: var(--mini-muted);
 	font-size: 12px;
 	font-weight: 700;
+}
+.mini-profile-admin {
+	display: grid;
+	gap: 8px;
+	margin-top: 4px;
+	padding-top: 18px;
+	border-top: 1px solid var(--mini-line);
+}
+.mini-profile-admin > h2 {
+	margin: 0 2px 2px;
+	color: var(--mini-muted);
+	font-size: 12px;
+	font-weight: 700;
+}
+.mini-profile-admin .mini-dev-tools {
+	border-style: solid;
+	border-color: var(--mini-line);
+	background: color-mix(in srgb, var(--mini-green) 2%, var(--mini-paper));
 }
 .mini-profile-auth-origin {
 	margin: -2px 2px 1px;

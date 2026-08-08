@@ -15482,46 +15482,8 @@ const ProfileView = ({
 			<div className="mini-title">
 				<h1>{uiText(language, "settings")}</h1>
 			</div>
-			{quota?.dev_tools_enabled && (
-				<BillingDeveloperTools
-					quota={quota}
-					token={token}
-					dashboard={developerDashboard}
-					dashboardLoading={developerDashboardLoading}
-					loading={billingLoading}
-					testModeEnabled={Boolean(quota.maintenance_enabled)}
-					reviewPresentation={reviewPresentation}
-					reviewCompletionBehavior={reviewCompletionBehavior}
-					reviewSettingsSaving={reviewSettingsSaving}
-					onApply={onDevUpdate}
-					onReviewPresentation={onReviewPresentation}
-					onReviewCompletionBehavior={onReviewCompletionBehavior}
-					onRefresh={onRefreshDeveloperDashboard}
-					onResendIncompleteRegistration={onResendIncompleteRegistration}
-					registrationRecoverySendingID={registrationRecoverySendingID}
-					generatedActivationCode={generatedActivationCode}
-					onGenerateActivationCode={onGenerateActivationCode}
-				/>
-			)}
-			{quota?.system_admin_enabled && (
-				<MaintenanceDeveloperTools
-					enabled={Boolean(quota.maintenance_enabled)}
-					loading={billingLoading}
-					onToggle={(enabled) => onDevUpdate({ maintenance_enabled: enabled })}
-				/>
-			)}
-			{quota?.feedback_admin_enabled && (
-				<FeedbackDeveloperTools
-					feedback={developerFeedback}
-					loading={developerFeedbackLoading}
-					mediaLoading={feedbackMediaLoading}
-					selectedFeedbackID={selectedFeedbackID}
-					onRefresh={onRefreshDeveloperFeedback}
-					onOpenMedia={onOpenFeedbackMedia}
-				/>
-			)}
 			<div className="mini-profile-groups">
-				<section className="mini-profile-group">
+				<section className="mini-profile-group is-account">
 					<h2>{uiText(language, "accountAndLogin")}</h2>
 					{registrationMethod && (
 						<p className="mini-profile-auth-origin">
@@ -15567,7 +15529,7 @@ const ProfileView = ({
 					</div>
 				</section>
 
-				<section className="mini-profile-group">
+				<section className="mini-profile-group is-personal">
 					<h2>{uiText(language, "personalSettings")}</h2>
 					<div className="mini-profile-list">
 						<div className="mini-profile-avatar-row">
@@ -15682,7 +15644,7 @@ const ProfileView = ({
 					</div>
 				</section>
 
-				<section className="mini-profile-group">
+				<section className="mini-profile-group is-data-organization">
 					<h2>{uiText(language, "dataOrganization")}</h2>
 					<div className="mini-profile-list">
 						<button type="button" onClick={onManageSpaces}>
@@ -15702,7 +15664,7 @@ const ProfileView = ({
 					</div>
 				</section>
 
-				<section className="mini-profile-group">
+				<section className="mini-profile-group is-application">
 					<h2>{uiText(language, "application")}</h2>
 					<div className="mini-profile-list">
 						<button type="button" onClick={onManageNotifications}>
@@ -15735,7 +15697,7 @@ const ProfileView = ({
 					</div>
 				</section>
 
-				<section className="mini-profile-group">
+				<section className="mini-profile-group is-accessibility">
 					<h2>{uiText(language, "accessibility")}</h2>
 					<div className="mini-profile-list">
 						<div className="mini-accessibility-setting">
@@ -15792,6 +15754,53 @@ const ProfileView = ({
 					</div>
 				</section>
 			</div>
+			{(quota?.dev_tools_enabled ||
+				quota?.system_admin_enabled ||
+				quota?.feedback_admin_enabled) && (
+				<section className="mini-profile-admin">
+					<h2>Служебные инструменты</h2>
+					{quota?.dev_tools_enabled && (
+						<BillingDeveloperTools
+							quota={quota}
+							token={token}
+							dashboard={developerDashboard}
+							dashboardLoading={developerDashboardLoading}
+							loading={billingLoading}
+							testModeEnabled={Boolean(quota.maintenance_enabled)}
+							reviewPresentation={reviewPresentation}
+							reviewCompletionBehavior={reviewCompletionBehavior}
+							reviewSettingsSaving={reviewSettingsSaving}
+							onApply={onDevUpdate}
+							onReviewPresentation={onReviewPresentation}
+							onReviewCompletionBehavior={onReviewCompletionBehavior}
+							onRefresh={onRefreshDeveloperDashboard}
+							onResendIncompleteRegistration={onResendIncompleteRegistration}
+							registrationRecoverySendingID={registrationRecoverySendingID}
+							generatedActivationCode={generatedActivationCode}
+							onGenerateActivationCode={onGenerateActivationCode}
+						/>
+					)}
+					{quota?.system_admin_enabled && (
+						<MaintenanceDeveloperTools
+							enabled={Boolean(quota.maintenance_enabled)}
+							loading={billingLoading}
+							onToggle={(enabled) =>
+								onDevUpdate({ maintenance_enabled: enabled })
+							}
+						/>
+					)}
+					{quota?.feedback_admin_enabled && (
+						<FeedbackDeveloperTools
+							feedback={developerFeedback}
+							loading={developerFeedbackLoading}
+							mediaLoading={feedbackMediaLoading}
+							selectedFeedbackID={selectedFeedbackID}
+							onRefresh={onRefreshDeveloperFeedback}
+							onOpenMedia={onOpenFeedbackMedia}
+						/>
+					)}
+				</section>
+			)}
 		</section>
 	);
 };
@@ -17058,12 +17067,15 @@ const FeedbackDeveloperTools = ({
 		open={selectedFeedbackID > 0 || undefined}
 	>
 		<summary>
-			<span>Фидбэк пользователей</span>
-			<small>
-				{feedback.length
-					? `${feedback.length} последних обращений`
-					: "Поддержка"}
-			</small>
+			<span>
+				<b>Фидбэк пользователей</b>
+				<small>
+					{feedback.length
+						? `${feedback.length} последних обращений`
+						: "Поддержка"}
+				</small>
+			</span>
+			<CaretDown size={18} weight="bold" />
 		</summary>
 		<div className="mini-feedback-admin-body">
 			<div className="mini-dev-section-head">
