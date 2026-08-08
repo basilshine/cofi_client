@@ -78,6 +78,8 @@ import {
 	type ReviewPresentation,
 	captureReviewSettings,
 	captureSourceKind,
+	mergeCaptureResultForSpace,
+	pendingCapturesForSpace,
 	shouldAutoOpenReview,
 	shouldGuideFirstCapture,
 	withCaptureReviewSettings,
@@ -2491,9 +2493,16 @@ export const MiniApp = ({
 	const [captureError, setCaptureError] = useState("");
 	const [captureSubmitting, setCaptureSubmitting] = useState(false);
 	const [pendingCaptures, setPendingCaptures] = useState<PendingCapture[]>([]);
-	const pendingCapture = pendingCaptures[0] || null;
+	const activePendingCaptures = pendingCapturesForSpace(
+		pendingCaptures,
+		spaceID,
+	);
+	const pendingCapture = activePendingCaptures[0] || null;
 	const [guidedCaptureSourceID, setGuidedCaptureSourceID] = useState(0);
 	const [guidedCaptureExpanded, setGuidedCaptureExpanded] = useState(false);
+	const guidedCaptureInActiveSpace = activePendingCaptures.some(
+		(pending) => pending.sourceDocumentID === guidedCaptureSourceID,
+	);
 	const [guidedReviewCandidateID, setGuidedReviewCandidateID] = useState(0);
 	const [dismissedCaptureSourceID, setDismissedCaptureSourceID] = useState(0);
 	const [captureFailure, setCaptureFailure] = useState("");
@@ -3952,6 +3961,13 @@ export const MiniApp = ({
 	);
 
 	useEffect(() => {
+		setCaptures([]);
+		setReviewCandidates([]);
+		setDismissedCaptureSourceID(0);
+		setCaptureFailure("");
+	}, [spaceID]);
+
+	useEffect(() => {
 		if (!token || !spaceID) return;
 		void loadSpace();
 	}, [token, spaceID, reportingCurrency]);
@@ -4762,7 +4778,7 @@ export const MiniApp = ({
 			purpose,
 			captures.length,
 			reviewCandidates.length,
-			pendingCaptures.length,
+			activePendingCaptures.length,
 		);
 		setCaptureSubmitting(true);
 		setCaptureError("");
@@ -4902,6 +4918,7 @@ export const MiniApp = ({
 		const timers = new Set<number>();
 		const poll = async (pending: PendingCapture) => {
 			try {
+				const sameSpace = pending.spaceID === spaceID;
 				const packets = await apiRequest<{ captures: CapturePacket[] }>(
 					`/spaces/${pending.spaceID}/captures?limit=1&source_document_id=${pending.sourceDocumentID}`,
 					token,
@@ -4913,24 +4930,25 @@ export const MiniApp = ({
 						setGuidedCaptureSourceID(0);
 						setGuidedCaptureExpanded(false);
 					}
-					setCaptureFailurePurpose(pending.purpose);
+					if (sameSpace) setCaptureFailurePurpose(pending.purpose);
 					setPendingCaptures((current) =>
 						current.filter(
 							(item) => item.sourceDocumentID !== pending.sourceDocumentID,
 						),
 					);
-					setCaptureFailure(
-						packet.failure_code === "unrecognized_input"
-							? uiText(
-									language,
-									pending.purpose === "purchase_plan"
-										? "captureUnrecognizedPlan"
-										: "captureUnrecognizedExpense",
-								)
-							: pending.purpose === "purchase_plan"
-								? "Не удалось разобрать план. Попробуйте ещё раз"
-								: "Не удалось разобрать расход. Попробуйте ещё раз",
-					);
+					if (sameSpace)
+						setCaptureFailure(
+							packet.failure_code === "unrecognized_input"
+								? uiText(
+										language,
+										pending.purpose === "purchase_plan"
+											? "captureUnrecognizedPlan"
+											: "captureUnrecognizedExpense",
+									)
+								: pending.purpose === "purchase_plan"
+									? "Не удалось разобрать план. Попробуйте ещё раз"
+									: "Не удалось разобрать расход. Попробуйте ещё раз",
+						);
 					setNotice(
 						pending.purpose === "purchase_plan"
 							? "Не удалось разобрать план"
@@ -4940,13 +4958,15 @@ export const MiniApp = ({
 					return;
 				}
 				if (packet?.processing_status === "succeeded") {
-					setCaptures((current) => [
-						...current.filter(
-							(capture) =>
-								capture.source_document_id !== packet.source_document_id,
+					setCaptures((current) =>
+						mergeCaptureResultForSpace(
+							current,
+							[packet],
+							packet.source_document_id,
+							pending.spaceID,
+							spaceID,
 						),
-						packet,
-					]);
+					);
 					const candidates = await apiRequest<{
 						candidates: ReviewCandidate[];
 					}>(
@@ -4966,28 +4986,32 @@ export const MiniApp = ({
 							setGuidedCaptureSourceID(0);
 							setGuidedCaptureExpanded(false);
 						}
-						setCaptureFailurePurpose(pending.purpose);
+						if (sameSpace) setCaptureFailurePurpose(pending.purpose);
 						setPendingCaptures((current) =>
 							current.filter(
 								(item) => item.sourceDocumentID !== pending.sourceDocumentID,
 							),
 						);
-						setCaptureFailure(
-							uiText(
-								language,
-								pending.purpose === "purchase_plan"
-									? "captureUnrecognizedPlan"
-									: "captureUnrecognizedExpense",
-							),
-						);
+						if (sameSpace)
+							setCaptureFailure(
+								uiText(
+									language,
+									pending.purpose === "purchase_plan"
+										? "captureUnrecognizedPlan"
+										: "captureUnrecognizedExpense",
+								),
+							);
 						return;
 					}
-					setReviewCandidates((current) => [
-						...current.filter(
-							(item) => item.source_document_id !== pending.sourceDocumentID,
+					setReviewCandidates((current) =>
+						mergeCaptureResultForSpace(
+							current,
+							candidates.candidates,
+							pending.sourceDocumentID,
+							pending.spaceID,
+							spaceID,
 						),
-						...candidates.candidates,
-					]);
+					);
 					setNotice(
 						pending.purpose === "purchase_plan"
 							? "План готов. Проверьте распознанные данные"
@@ -5009,7 +5033,6 @@ export const MiniApp = ({
 						);
 						setGuidedCaptureExpanded(false);
 					}
-					const sameSpace = pending.spaceID === spaceID;
 					const resultBlockedByOpenEditor = Boolean(
 						editingExpense ||
 							editingPlan ||
@@ -8941,7 +8964,7 @@ export const MiniApp = ({
 				)}
 			</main>
 
-			{guidedCaptureSourceID > 0 && guidedCaptureExpanded && (
+			{guidedCaptureInActiveSpace && guidedCaptureExpanded && (
 				<FirstCaptureProgress
 					language={language}
 					onMinimize={() => setGuidedCaptureExpanded(false)}
@@ -8975,8 +8998,8 @@ export const MiniApp = ({
 										? capturePurpose === "purchase_plan"
 											? "Отправляем план…"
 											: "Отправляем расход…"
-										: pendingCaptures.length > 1
-											? `Идёт разбор: ${pendingCaptures.length}`
+										: activePendingCaptures.length > 1
+											? `Идёт разбор: ${activePendingCaptures.length}`
 											: pendingCapture?.purpose === "purchase_plan"
 												? "Разбираем план…"
 												: "Разбираем расход…"}
@@ -8986,7 +9009,7 @@ export const MiniApp = ({
 								? captureFailure
 								: showReadyCandidate && !captureSubmitting && !pendingCapture
 									? uiText(language, "captureReadyBody")
-									: pendingCaptures.length > 1
+									: activePendingCaptures.length > 1
 										? "Можно отправлять следующие расходы и планы"
 										: "Можно продолжать пользоваться приложением"}
 						</small>

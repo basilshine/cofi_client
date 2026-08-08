@@ -80,3 +80,26 @@ export const shouldAutoOpenReview = (
 	behavior: ReviewCompletionBehavior,
 	blockedByOpenEditor = false,
 ) => sameSpace && behavior === "open" && !blockedByOpenEditor;
+
+export const pendingCapturesForSpace = <T extends { spaceID: number }>(
+	captures: T[],
+	spaceID: number,
+) => captures.filter((capture) => capture.spaceID === spaceID);
+
+export const mergeCaptureResultForSpace = <
+	T extends { source_document_id: number },
+>(
+	current: T[],
+	incoming: T[],
+	sourceDocumentID: number,
+	captureSpaceID: number,
+	activeSpaceID: number,
+) =>
+	captureSpaceID === activeSpaceID
+		? [
+				...current.filter(
+					(item) => item.source_document_id !== sourceDocumentID,
+				),
+				...incoming,
+			]
+		: current;
