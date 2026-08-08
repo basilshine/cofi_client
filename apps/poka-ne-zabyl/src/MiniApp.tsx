@@ -810,7 +810,7 @@ type SplitBalanceRow = {
 	creditorUserID: number;
 	creditorParticipantID: number;
 	amount: number;
-	obligations: { expenseID: number; splitID: number }[];
+	obligations: { expenseID: number; splitID: number; amount: number }[];
 	settlementStatus: "open" | "sent";
 	settlementNote?: string;
 	settlementMediaObjectID?: number;
@@ -897,7 +897,7 @@ const splitBalanceRows = (
 			settlementSentAt: split.settlement_sent_at || current?.settlementSentAt,
 			obligations: [
 				...(current?.obligations || []),
-				{ expenseID: expense.id, splitID: split.id },
+				{ expenseID: expense.id, splitID: split.id, amount },
 			],
 		});
 	}
@@ -9653,6 +9653,7 @@ export const MiniApp = ({
 			{settlementBalance && (
 				<SplitSettlementDialog
 					balance={settlementBalance}
+					expenses={expensesWithSplitContext}
 					currentUserID={user?.id || 0}
 					currency={currency}
 					language={language}
@@ -13177,27 +13178,62 @@ const SplitsView = ({
 		rowsByExpense.has(expense.id),
 	);
 	const balances = splitBalanceRows(expenses, splits, participants, currency);
+	const youOweTotal = balances
+		.filter((balance) => balance.debtorUserID === currentUserID)
+		.reduce((sum, balance) => sum + balance.amount, 0);
+	const owedToYouTotal = balances
+		.filter((balance) => balance.creditorUserID === currentUserID)
+		.reduce((sum, balance) => sum + balance.amount, 0);
+	const pendingCount = balances.filter(
+		(balance) => balance.settlementStatus === "sent",
+	).length;
 	return (
 		<div className="mini-splits-view">
-			<div className="mini-splits-intro">
-				<span>
-					<UsersThree size={21} weight="fill" />
-				</span>
-				<div>
-					<b>{uiText(language, "splitSharesTitle")}</b>
-					<small>{uiText(language, "splitSharesHint")}</small>
+			<section className="mini-splits-overview">
+				<header>
+					<span>
+						<ArrowsLeftRight size={21} weight="bold" />
+					</span>
+					<div>
+						<b>{uiText(language, "splitOverviewTitle")}</b>
+						<small>{uiText(language, "splitOverviewHint")}</small>
+					</div>
+				</header>
+				<div className="mini-splits-overview-totals">
+					<span className="is-debt">
+						<small>{uiText(language, "splitYouOwe")}</small>
+						<b>{formatMoney(youOweTotal, currency)}</b>
+					</span>
+					<span className="is-credit">
+						<small>{uiText(language, "splitOwedToYou")}</small>
+						<b>{formatMoney(owedToYouTotal, currency)}</b>
+					</span>
 				</div>
-			</div>
+				<p className={pendingCount > 0 ? "is-pending" : "is-clear"}>
+					{pendingCount > 0
+						? uiText(language, "splitPendingCount").replace(
+								"{count}",
+								String(pendingCount),
+							)
+						: uiText(language, "splitNoPending")}
+				</p>
+			</section>
 			{balances.length > 0 && (
 				<section className="mini-split-balances">
-					<h2>{uiText(language, "whoOwesWhom")}</h2>
+					<header>
+						<h2>{uiText(language, "whoOwesWhom")}</h2>
+						<span>{balances.length}</span>
+					</header>
 					{balances.map((balance) => {
 						const canOpenSettlement =
 							balance.debtorUserID === currentUserID ||
 							(balance.settlementStatus === "sent" &&
 								balance.creditorUserID === currentUserID);
 						return (
-							<div key={balance.key}>
+							<div
+								className={`${balance.debtorUserID === currentUserID ? "is-debt" : balance.creditorUserID === currentUserID ? "is-credit" : "is-observer"}${balance.settlementStatus === "sent" ? " is-pending" : ""}`}
+								key={balance.key}
+							>
 								<span className="mini-split-avatar">
 									{participantInitials(balance.debtorName)}
 								</span>
@@ -13220,7 +13256,10 @@ const SplitsView = ({
 									<small>
 										{balance.settlementStatus === "sent"
 											? uiText(language, "settlementPending")
-											: uiText(language, "splitBalanceHint")}
+											: uiText(language, "splitExpenseBasis").replace(
+													"{count}",
+													String(balance.obligations.length),
+												)}
 									</small>
 								</span>
 								<strong>{formatMoney(balance.amount, currency)}</strong>
@@ -13260,6 +13299,14 @@ const SplitsView = ({
 					splitExpenses.map((expense) => {
 						const money = expenseDisplayMoney(expense, currency);
 						const expenseRows = rowsByExpense.get(expense.id) || [];
+						const payer = expensePayerParticipant(expense, participants);
+						const payerID = payer?.id || expense.payer_participant_id || 0;
+						const debts = expenseRows.filter(
+							(split) => split.space_participant_id !== payerID,
+						);
+						const settled =
+							debts.length > 0 &&
+							debts.every((split) => split.settlement_status === "confirmed");
 						return (
 							<button
 								key={expense.id}
@@ -13273,26 +13320,27 @@ const SplitsView = ({
 									</span>
 									<strong>{formatMoney(money.amount, money.currency)}</strong>
 								</span>
-								<span className="mini-split-expense-shares">
-									{expenseRows.map((split) => (
-										<span key={split.space_participant_id}>
-											<i>
-												{participantInitials(
-													split.participant?.display_name || "",
-												)}
-											</i>
-											<small>
-												{split.participant?.display_name ||
-													uiText(language, "participant")}
-											</small>
+								<span className="mini-split-expense-footer">
+									<span className="mini-split-expense-payer">
+										<i>{participantInitials(payer?.display_name || "")}</i>
+										<span>
+											<small>{uiText(language, "receiptPaidBy")}</small>
 											<b>
-												{formatMoney(
-													splitDisplayMoney(split, currency).amount,
-													money.currency,
-												)}
+												{payer?.display_name || uiText(language, "participant")}
 											</b>
 										</span>
-									))}
+									</span>
+									<span
+										className={`mini-split-expense-status${settled ? " is-settled" : ""}`}
+									>
+										{settled
+											? uiText(language, "allSettled")
+											: uiText(language, "receiptSharesConfigured").replace(
+													"{count}",
+													String(expenseRows.length),
+												)}
+									</span>
+									<ArrowRight size={16} />
 								</span>
 							</button>
 						);
@@ -18460,6 +18508,7 @@ const ExpenseDetail = ({
 
 const SplitSettlementDialog = ({
 	balance,
+	expenses,
 	currentUserID,
 	currency,
 	language,
@@ -18470,6 +18519,7 @@ const SplitSettlementDialog = ({
 	onResolve,
 }: {
 	balance: SplitBalanceRow;
+	expenses: Expense[];
 	currentUserID: number;
 	currency: string;
 	language: UILanguage;
@@ -18487,6 +18537,12 @@ const SplitSettlementDialog = ({
 	const [localError, setLocalError] = useState("");
 	const pending = balance.settlementStatus === "sent";
 	const creditor = balance.creditorUserID === currentUserID;
+	const obligationRows = balance.obligations.flatMap((obligation) => {
+		const expense = expenses.find(
+			(current) => current.id === obligation.expenseID,
+		);
+		return expense ? [{ ...obligation, expense }] : [];
+	});
 
 	useEffect(() => {
 		if (!proof) return;
@@ -18556,8 +18612,14 @@ const SplitSettlementDialog = ({
 	};
 
 	return (
-		<Modal title={uiText(language, "settlementTitle")} onClose={onClose}>
-			<div className="mini-settlement-summary">
+		<Modal
+			title={uiText(language, "settlementTitle")}
+			variant={pending ? "record" : "editor"}
+			onClose={onClose}
+		>
+			<div
+				className={`mini-settlement-summary${creditor ? " is-credit" : " is-debt"}`}
+			>
 				<span className="mini-settlement-summary-icon">
 					<ArrowsLeftRight size={21} weight="bold" />
 				</span>
@@ -18574,6 +18636,27 @@ const SplitSettlementDialog = ({
 					<b>{formatMoney(balance.amount, currency)}</b>
 				</span>
 			</div>
+			{obligationRows.length > 0 && (
+				<section className="mini-settlement-expenses">
+					<header>
+						<b>{uiText(language, "settlementExpenses")}</b>
+						<span>{obligationRows.length}</span>
+					</header>
+					{obligationRows.map((row) => (
+						<div key={row.splitID}>
+							<span>
+								<b>
+									{row.expense.title ||
+										row.expense.items[0]?.name ||
+										uiText(language, "viewExpense")}
+								</b>
+								<small>{formatDate(row.expense.expense_date, language)}</small>
+							</span>
+							<strong>{formatMoney(row.amount, currency)}</strong>
+						</div>
+					))}
+				</section>
+			)}
 
 			{pending ? (
 				<div className="mini-settlement-proof">
@@ -18603,12 +18686,15 @@ const SplitSettlementDialog = ({
 			) : (
 				<div className="mini-settlement-compose">
 					<p>{uiText(language, "settlementProofHint")}</p>
-					<textarea
-						value={note}
-						maxLength={1000}
-						placeholder={uiText(language, "settlementNotePlaceholder")}
-						onChange={(event) => setNote(event.target.value)}
-					/>
+					<label>
+						<span>{uiText(language, "settlementNoteLabel")}</span>
+						<textarea
+							value={note}
+							maxLength={1000}
+							placeholder={uiText(language, "settlementNotePlaceholder")}
+							onChange={(event) => setNote(event.target.value)}
+						/>
+					</label>
 					<input
 						ref={proofInput}
 						type="file"
@@ -18634,15 +18720,6 @@ const SplitSettlementDialog = ({
 				{pending && creditor ? (
 					<>
 						<button
-							className="mini-delete"
-							type="button"
-							disabled={saving}
-							onClick={() => void onResolve(false)}
-						>
-							<X size={17} />
-							{uiText(language, "settlementNotReceived")}
-						</button>
-						<button
 							className="mini-save"
 							type="button"
 							disabled={saving}
@@ -18650,6 +18727,15 @@ const SplitSettlementDialog = ({
 						>
 							<Check size={18} weight="bold" />
 							{uiText(language, "settlementConfirmReceived")}
+						</button>
+						<button
+							className="mini-delete"
+							type="button"
+							disabled={saving}
+							onClick={() => void onResolve(false)}
+						>
+							<X size={17} />
+							{uiText(language, "settlementNotReceived")}
 						</button>
 					</>
 				) : pending ? (
