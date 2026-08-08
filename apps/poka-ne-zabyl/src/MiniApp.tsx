@@ -8624,22 +8624,14 @@ export const MiniApp = ({
 						)}
 						{spaceMenuOpen && (
 							<div className="mini-space-menu" role="menu">
-								{activeSpace && (
+								{businessApp && activeSpace && (
 									<div className="mini-space-menu-summary">
-										<small>
-											{businessApp
-												? "Текущая организация"
-												: uiText(language, "currentSpace")}
-										</small>
+										<small>Текущая организация</small>
 										<strong>
-											{businessApp
-												? activeOrganization?.name || activeSpace.tenant_name
-												: activeSpace.name}
+											{activeOrganization?.name || activeSpace.tenant_name}
 										</strong>
 										<span>
-											{businessApp
-												? `${activeWorkspaceName} · ${organizationRoleLabel(activeOrganization?.role || "")}`
-												: spaceSubtitle(activeSpace)}
+											{`${activeWorkspaceName} · ${organizationRoleLabel(activeOrganization?.role || "")}`}
 										</span>
 									</div>
 								)}
@@ -8716,28 +8708,10 @@ export const MiniApp = ({
 										</button>
 									))}
 								</div>
-								{!businessApp && accountQuota && !accountHasPlus && (
-									<BasicLimitNudge
-										className="is-menu"
-										language={language}
-										metrics={[
-											{
-												label: uiText(language, "parsesLimit"),
-												value: String(accountQuota.remaining),
-											},
-											{
-												label: uiText(language, "ownedSpacesLimit"),
-												value: `${ownedSpacesCount}/${accountQuota.max_spaces || 2}`,
-											},
-										]}
-										onUpgrade={() => {
-											setSpaceMenuOpen(false);
-											setView("subscription");
-										}}
-									/>
-								)}
-								<div className="mini-space-menu-actions">
-									{(!businessApp || activeOrganization?.can_manage) && (
+								<div
+									className={`mini-space-menu-actions${businessApp ? "" : " is-compact"}`}
+								>
+									{businessApp && activeOrganization?.can_manage && (
 										<button
 											className="mini-space-menu-add"
 											type="button"
@@ -8746,20 +8720,14 @@ export const MiniApp = ({
 										>
 											<Plus size={18} weight="bold" />
 											<span>
-												<strong>
-													{businessApp
-														? "Добавить рабочее пространство"
-														: uiText(language, "addSpace")}
-												</strong>
-												{!businessApp && !accountHasPlus && (
-													<small>{uiText(language, "plusMoreSpaces")}</small>
-												)}
+												<strong>Добавить рабочее пространство</strong>
 											</span>
 											<ArrowRight size={16} />
 										</button>
 									)}
-									{activeSpace &&
-										(!businessApp || activeOrganization?.can_manage) && (
+									{businessApp &&
+										activeSpace &&
+										activeOrganization?.can_manage && (
 											<button
 												type="button"
 												role="menuitem"
@@ -8794,7 +8762,11 @@ export const MiniApp = ({
 											setView("spaces");
 										}}
 									>
-										<UsersThree size={18} />
+										{businessApp ? (
+											<UsersThree size={18} />
+										) : (
+											<GearSix size={18} />
+										)}
 										<span>
 											{businessApp
 												? "Компания и команда"
@@ -14882,7 +14854,13 @@ const SpacesView = ({
 					</h1>
 				</div>
 				{onAdd && !businessApp && (
-					<button className="mini-add-button" type="button" onClick={onAdd}>
+					<button
+						className="mini-add-button"
+						type="button"
+						aria-label={uiText(language, "addSpace")}
+						title={uiText(language, "addSpace")}
+						onClick={onAdd}
+					>
 						<Plus size={18} weight="bold" />
 						{uiText(language, "add")}
 					</button>

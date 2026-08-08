@@ -350,6 +350,14 @@
 	padding-top: 6px;
 	border-top: 1px solid var(--mini-line);
 }
+.mini-space-menu-actions.is-compact {
+	padding: 6px 2px 0;
+}
+.mini-space-menu-actions.is-compact button {
+	min-height: 48px;
+	grid-template-columns: 24px minmax(0, 1fr) 16px;
+	font-weight: 750;
+}
 .mini-space-menu-actions button {
 	display: grid;
 	min-height: 46px;
@@ -9451,6 +9459,14 @@
 	color: var(--mini-ink);
 }
 @media (max-width: 360px) {
+	.mini-spaces-view .mini-add-button {
+		width: 40px;
+		height: 40px;
+		justify-content: center;
+		gap: 0;
+		padding: 0;
+		font-size: 0;
+	}
 	.review-ready-shell {
 		padding-bottom: calc(210px + var(--mini-safe-bottom));
 	}
