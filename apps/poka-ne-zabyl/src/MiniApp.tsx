@@ -12072,45 +12072,6 @@ const Overview = ({
 				</p>
 				<h1>{monthName}</h1>
 			</div>
-			<div className="mini-report-launch">
-				{latestReport && (
-					<button
-						className="mini-report-card"
-						type="button"
-						onClick={() => onReport(latestReport.id)}
-					>
-						<span className="mini-report-card-icon">
-							<ChartLineUp size={23} weight="bold" />
-						</span>
-						<span className="mini-report-card-copy">
-							<small>{reportKindTitle(latestReport.kind, language)}</small>
-							<strong>{reportPeriodLabel(latestReport, language)}</strong>
-							<span>{latestReport.facts.completeness_message}</span>
-						</span>
-						<span className="mini-report-card-total">
-							<strong>
-								{formatMoney(
-									latestReport.facts.total_spent,
-									latestReport.currency,
-								)}
-							</strong>
-							<ArrowRight size={17} />
-						</span>
-					</button>
-				)}
-				<button
-					className="mini-report-create"
-					type="button"
-					onClick={onCreateReport}
-				>
-					<CalendarBlank size={20} />
-					<span>
-						<strong>{uiText(language, "createReport")}</strong>
-						<small>{uiText(language, "createReportHint")}</small>
-					</span>
-					<ArrowRight size={17} />
-				</button>
-			</div>
 			<div className="mini-overview-grid">
 				<div className="mini-overview-summary">
 					<div className="mini-total">
@@ -12131,6 +12092,45 @@ const Overview = ({
 							<span>{uiText(language, "plannedThisMonth")}</span>
 							<b>{formatMoney(monthPlannedTotal, currency)}</b>
 							<ArrowRight size={16} />
+						</button>
+					</div>
+					<div className="mini-report-launch">
+						{latestReport && (
+							<button
+								className="mini-report-card"
+								type="button"
+								onClick={() => onReport(latestReport.id)}
+							>
+								<span className="mini-report-card-icon">
+									<ChartLineUp size={23} weight="bold" />
+								</span>
+								<span className="mini-report-card-copy">
+									<small>{reportKindTitle(latestReport.kind, language)}</small>
+									<strong>{reportPeriodLabel(latestReport, language)}</strong>
+									<span>{latestReport.facts.completeness_message}</span>
+								</span>
+								<span className="mini-report-card-total">
+									<strong>
+										{formatMoney(
+											latestReport.facts.total_spent,
+											latestReport.currency,
+										)}
+									</strong>
+									<ArrowRight size={17} />
+								</span>
+							</button>
+						)}
+						<button
+							className="mini-report-create"
+							type="button"
+							onClick={onCreateReport}
+						>
+							<CalendarBlank size={20} />
+							<span>
+								<strong>{uiText(language, "createReport")}</strong>
+								<small>{uiText(language, "createReportHint")}</small>
+							</span>
+							<ArrowRight size={17} />
 						</button>
 					</div>
 					{pendingCandidates.length > 0 && (

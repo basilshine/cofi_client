@@ -677,10 +677,10 @@
 }
 .mini-total {
 	display: grid;
-	min-height: 196px;
+	min-height: 176px;
 	grid-template-rows: auto 1fr auto auto;
 	align-items: center;
-	padding: 22px;
+	padding: 20px;
 	border: 1px solid #2038a8;
 	border-radius: 8px;
 	background: var(--mini-green);
@@ -9535,30 +9535,33 @@
 
 .mini-report-launch {
 	display: grid;
-	gap: 8px;
+	overflow: hidden;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
 }
 .mini-report-card {
 	display: grid;
 	width: 100%;
 	grid-template-columns: auto minmax(0, 1fr) auto;
 	align-items: center;
-	gap: 14px;
-	padding: 16px;
-	border: 1px solid rgba(41, 69, 199, 0.2);
-	border-radius: 14px;
-	background: var(--mini-paper);
+	gap: 11px;
+	min-height: 68px;
+	padding: 10px 13px;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
 	color: var(--mini-ink);
 	text-align: left;
-	box-shadow: 0 10px 28px rgba(23, 27, 45, 0.06);
 }
 .mini-report-card-icon {
 	display: grid;
-	width: 46px;
-	height: 46px;
+	width: 38px;
+	height: 38px;
 	place-items: center;
-	border-radius: 12px;
-	background: var(--mini-green);
-	color: white;
+	border-radius: 50%;
+	background: var(--mini-soft);
+	color: var(--mini-green);
 }
 .mini-report-card-copy,
 .mini-report-card-total {
@@ -9568,13 +9571,13 @@
 }
 .mini-report-card-copy small {
 	color: var(--mini-green);
-	font-size: 11px;
+	font-size: 10px;
 	font-weight: 800;
-	letter-spacing: 0.04em;
+	letter-spacing: 0;
 	text-transform: uppercase;
 }
 .mini-report-card-copy strong {
-	font-size: 16px;
+	font-size: 14px;
 }
 .mini-report-card-copy span {
 	overflow: hidden;
@@ -9586,25 +9589,39 @@
 .mini-report-card-total {
 	grid-template-columns: auto auto;
 	align-items: center;
-	gap: 8px;
+	gap: 6px;
 	color: var(--mini-green);
+}
+.mini-report-card-total strong {
+	font-size: 13px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
 }
 .mini-report-create {
 	display: grid;
 	width: 100%;
-	min-height: 50px;
+	min-height: 46px;
 	grid-template-columns: auto minmax(0, 1fr) auto;
 	align-items: center;
 	gap: 11px;
-	padding: 10px 14px;
-	border: 1px solid var(--mini-line);
-	border-radius: 12px;
-	background: color-mix(in srgb, var(--mini-green) 4%, var(--mini-paper));
+	padding: 8px 13px;
+	border: 0;
+	border-top: 1px solid var(--mini-line);
+	border-radius: 0;
+	background: color-mix(in srgb, var(--mini-green) 3%, var(--mini-paper));
 	color: var(--mini-green);
 	text-align: left;
 }
+.mini-report-create:first-child {
+	border-top: 0;
+}
+.mini-report-card:active,
+.mini-report-create:active {
+	background: var(--mini-soft);
+}
 .mini-report-create > span {
 	display: grid;
+	min-width: 0;
 	gap: 1px;
 	color: var(--mini-ink);
 }
@@ -9612,8 +9629,11 @@
 	font-size: 14px;
 }
 .mini-report-create small {
+	overflow: hidden;
 	color: var(--mini-muted);
 	font-size: 11px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .mini-report-view {
 	max-width: 860px;
