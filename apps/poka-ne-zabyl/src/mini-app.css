@@ -2048,6 +2048,51 @@
 	line-height: 1.45;
 	white-space: pre-wrap;
 }
+.mini-settlement-proof-media {
+	display: grid;
+	overflow: hidden;
+	gap: 0;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+}
+.mini-settlement-proof-media > header {
+	display: grid;
+	grid-template-columns: 34px minmax(0, 1fr);
+	align-items: center;
+	gap: 9px;
+	padding: 10px 11px;
+	background: color-mix(in srgb, var(--mini-green) 5%, var(--mini-paper));
+}
+.mini-settlement-proof-media-icon {
+	display: grid;
+	width: 32px;
+	height: 32px;
+	place-items: center;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--mini-green) 11%, var(--mini-paper));
+	color: var(--mini-green);
+}
+.mini-settlement-proof-media > header > span:last-child {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-settlement-proof-media > header b {
+	font-size: 12px;
+}
+.mini-settlement-proof-media > header small {
+	color: var(--mini-muted);
+	font-size: 10px;
+}
+.mini-settlement-proof-media > .mini-settlement-attachment {
+	margin: 10px;
+}
+.mini-settlement-proof-media > img {
+	border: 0;
+	border-top: 1px solid var(--mini-line);
+	border-radius: 0;
+}
 .mini-settlement-error {
 	margin: 0;
 	padding: 9px 10px;
@@ -5098,7 +5143,7 @@
 .mini-modal.is-dragging {
 	transition: none;
 }
-.mini-modal header {
+.mini-modal > header {
 	position: sticky;
 	z-index: 6;
 	top: 0;
@@ -5111,7 +5156,7 @@
 	background: var(--mini-paper);
 	cursor: grab;
 }
-.mini-modal header::before {
+.mini-modal > header::before {
 	position: absolute;
 	top: 2px;
 	left: 50%;
@@ -5122,7 +5167,7 @@
 	content: "";
 	transform: translateX(-50%);
 }
-.mini-modal h2 {
+.mini-modal > header h2 {
 	min-width: 0;
 	max-width: calc(100% - 54px);
 	margin: 0;
@@ -5131,7 +5176,7 @@
 	overflow-wrap: anywhere;
 	text-wrap: balance;
 }
-.mini-modal header button {
+.mini-modal > header button {
 	display: grid;
 	width: 42px;
 	height: 42px;

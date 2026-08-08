@@ -18657,6 +18657,7 @@ const SplitSettlementDialog = ({
 	onResolve: (confirmed: boolean) => Promise<boolean>;
 }) => {
 	const proofInput = useRef<HTMLInputElement | null>(null);
+	const automaticallyLoadedProofID = useRef(0);
 	const [note, setNote] = useState("");
 	const [proof, setProof] = useState<File>();
 	const [proofURL, setProofURL] = useState("");
@@ -18704,7 +18705,10 @@ const SplitSettlementDialog = ({
 					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 				},
 			);
-			if (!response.ok)
+			if (
+				!response.ok ||
+				!response.headers.get("content-type")?.startsWith("image/")
+			)
 				throw new Error(uiText(language, "settlementImageOpenFailed"));
 			const nextURL = URL.createObjectURL(await response.blob());
 			setProofURL((current) => {
@@ -18721,6 +18725,20 @@ const SplitSettlementDialog = ({
 			setProofLoading(false);
 		}
 	};
+
+	useEffect(() => {
+		if (
+			!pending ||
+			!balance.settlementMediaObjectID ||
+			proofURL ||
+			proofLoading
+		)
+			return;
+		if (automaticallyLoadedProofID.current === balance.settlementMediaObjectID)
+			return;
+		automaticallyLoadedProofID.current = balance.settlementMediaObjectID;
+		void openStoredProof();
+	}, [balance.settlementMediaObjectID, pending, proofLoading, proofURL]);
 
 	useEffect(
 		() => () => {
@@ -18795,20 +18813,37 @@ const SplitSettlementDialog = ({
 						</span>
 					</div>
 					{balance.settlementNote && <p>{balance.settlementNote}</p>}
-					{balance.settlementMediaObjectID && !proofURL && (
-						<button
-							className="mini-settlement-attachment"
-							type="button"
-							disabled={proofLoading}
-							onClick={() => void openStoredProof()}
-						>
-							<ImageSquare size={19} />
-							{proofLoading
-								? uiText(language, "openingSource")
-								: uiText(language, "settlementViewImage")}
-						</button>
+					{balance.settlementMediaObjectID && (
+						<section className="mini-settlement-proof-media">
+							<header>
+								<span className="mini-settlement-proof-media-icon">
+									<ImageSquare size={18} weight="duotone" />
+								</span>
+								<span>
+									<b>{uiText(language, "settlementProofImage")}</b>
+									<small>{uiText(language, "settlementProofImageHint")}</small>
+								</span>
+							</header>
+							{proofURL ? (
+								<img
+									src={proofURL}
+									alt={uiText(language, "settlementProofImage")}
+								/>
+							) : (
+								<button
+									className="mini-settlement-attachment"
+									type="button"
+									disabled={proofLoading}
+									onClick={() => void openStoredProof()}
+								>
+									<ImageSquare size={19} />
+									{proofLoading
+										? uiText(language, "openingSource")
+										: uiText(language, "settlementViewImage")}
+								</button>
+							)}
+						</section>
 					)}
-					{proofURL && <img src={proofURL} alt="" />}
 				</div>
 			) : (
 				<div className="mini-settlement-compose">
@@ -22273,8 +22308,10 @@ const Modal = ({
 	const beginDrag = (event: ReactPointerEvent<HTMLElement>) => {
 		const target = event.target;
 		if (!(target instanceof Element)) return;
+		const header = target.closest("header");
 		if (
-			!target.closest("header") ||
+			!header ||
+			header.parentElement !== event.currentTarget ||
 			target.closest("button, input, textarea, select")
 		)
 			return;
