@@ -1232,6 +1232,7 @@ type ReviewCandidate = {
 	title: string;
 	status: string;
 	structured_data?: Record<string, unknown>;
+	projected_expense_id?: number;
 };
 
 type ReviewDraftItem = {
@@ -4987,11 +4988,6 @@ export const MiniApp = ({
 						),
 						...candidates.candidates,
 					]);
-					setSavedReviewExpense(null);
-					setReviewDraft(null);
-					setReviewMediaURL("");
-					setEditingExpense(null);
-					setEditingItemIndex(null);
 					setNotice(
 						pending.purpose === "purchase_plan"
 							? "План готов. Проверьте распознанные данные"
@@ -5013,10 +5009,49 @@ export const MiniApp = ({
 						);
 						setGuidedCaptureExpanded(false);
 					}
+					const sameSpace = pending.spaceID === spaceID;
+					const resultBlockedByOpenEditor = Boolean(
+						editingExpense ||
+							editingPlan ||
+							recordDetail ||
+							captureOpen ||
+							view === "review",
+					);
 					if (
+						candidate.status === "projected" &&
+						candidate.projected_expense_id
+					) {
+						try {
+							const expense = await apiRequest<Expense>(
+								`/spaces/${pending.spaceID}/expenses/${candidate.projected_expense_id}`,
+								token,
+							);
+							if (cancelled) return;
+							if (sameSpace) {
+								setExpenses((current) => [
+									expense,
+									...current.filter((item) => item.id !== expense.id),
+								]);
+								if (
+									shouldAutoOpenReview(
+										sameSpace,
+										reviewCompletionBehavior,
+										resultBlockedByOpenEditor,
+									)
+								)
+									setRecordDetail({ kind: "expense", expense });
+							}
+							setNotice("Расход сохранён и добавлен в историю");
+						} catch {
+							if (sameSpace) void loadSpace(true);
+							setNotice("Расход сохранён. Обновляем историю");
+						}
+					} else if (
+						candidate.status === "pending_review" &&
 						shouldAutoOpenReview(
-							pending.spaceID === spaceID,
+							sameSpace,
 							reviewCompletionBehavior,
+							resultBlockedByOpenEditor,
 						)
 					) {
 						if (guided) {
@@ -5063,6 +5098,11 @@ export const MiniApp = ({
 		token,
 		pendingCaptures.map((pending) => pending.sourceDocumentID).join(","),
 		spaceID,
+		view,
+		Boolean(editingExpense),
+		Boolean(editingPlan),
+		Boolean(recordDetail),
+		captureOpen,
 		guidedCaptureSourceID,
 		guidedCaptureExpanded,
 		reviewCompletionBehavior,
@@ -13811,14 +13851,17 @@ const SourceExpiryNote = ({
 	);
 };
 
-const expenseSellerName = (expense: Expense) =>
-	expense.vendor_name ||
-	expense.vendor?.name ||
-	expense.items.find((item) => item.vendor_name || item.vendor?.name)
-		?.vendor_name ||
-	expense.items.find((item) => item.vendor?.name)?.vendor?.name ||
-	expense.payee_text ||
-	"Место покупки не указано";
+const expenseSellerName = (expense: Expense) => {
+	const items = Array.isArray(expense.items) ? expense.items : [];
+	return (
+		expense.vendor_name ||
+		expense.vendor?.name ||
+		items.find((item) => item.vendor_name || item.vendor?.name)?.vendor_name ||
+		items.find((item) => item.vendor?.name)?.vendor?.name ||
+		expense.payee_text ||
+		"Место покупки не указано"
+	);
+};
 
 const expenseItemSellerName = (item: ExpenseItem, expense: Expense) =>
 	item.vendor_name ||
@@ -23137,10 +23180,14 @@ const dateTimeInputValue = (value?: string | null) => {
 	const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
 	return local.toISOString().slice(0, 16);
 };
-const formatDate = (value: string, language: UILanguage) =>
-	new Intl.DateTimeFormat(language, { day: "numeric", month: "short" }).format(
-		new Date(value),
-	);
+const formatDate = (value: string, language: UILanguage) => {
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return value.slice(0, 10) || "—";
+	return new Intl.DateTimeFormat(language, {
+		day: "numeric",
+		month: "short",
+	}).format(date);
+};
 const localizedTimezoneName = (timezone: string, language: UILanguage) => {
 	const configured = timezoneOptions.find(([zone]) => zone === timezone)?.[1];
 	const location =

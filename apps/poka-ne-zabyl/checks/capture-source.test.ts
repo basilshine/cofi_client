@@ -28,6 +28,7 @@ test("auto-opens every result in the active foreground flow", () => {
 	assert.equal(shouldAutoOpenReview(true, "open"), true);
 	assert.equal(shouldAutoOpenReview(true, "background"), false);
 	assert.equal(shouldAutoOpenReview(false, "open"), false);
+	assert.equal(shouldAutoOpenReview(true, "open", true), false);
 });
 
 test("persists capture review settings without replacing other preferences", () => {

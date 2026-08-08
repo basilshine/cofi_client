@@ -18,6 +18,11 @@ test("keeps kopecks without padding whole ruble amounts", () => {
 	assert.match(formatCompactMoney(125000, "RUB"), /125.*тыс.*₽/);
 });
 
+test("keeps the screen renderable when a capture returns an invalid currency", () => {
+	assert.equal(formatMoney(6140.13, "руб."), "6 140,13 РУБ.");
+	assert.equal(formatMoney(Number.NaN, "RUB"), "0 ₽");
+});
+
 test("compares receipt totals to the kopeck", () => {
 	assert.equal(moneyAmountsMatch(0.1 + 0.2, 0.3), true);
 	assert.equal(moneyAmountsMatch(7173.33, 7173.34), false);

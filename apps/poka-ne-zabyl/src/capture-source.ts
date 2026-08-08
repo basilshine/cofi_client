@@ -78,4 +78,5 @@ export const shouldGuideFirstCapture = (
 export const shouldAutoOpenReview = (
 	sameSpace: boolean,
 	behavior: ReviewCompletionBehavior,
-) => sameSpace && behavior === "open";
+	blockedByOpenEditor = false,
+) => sameSpace && behavior === "open" && !blockedByOpenEditor;

@@ -26,13 +26,23 @@ export const profileReportingCurrency = (
 	spaceCurrency?: string,
 ) => code(profileCurrency) || code(spaceCurrency) || "RUB";
 
-export const formatMoney = (amount: number, currency: string) =>
-	new Intl.NumberFormat("ru-RU", {
-		style: "currency",
-		currency: currency || "RUB",
-		minimumFractionDigits: 0,
-		maximumFractionDigits: 2,
-	}).format(amount || 0);
+export const formatMoney = (amount: number, currency: string) => {
+	const normalizedCurrency = code(currency) || "RUB";
+	try {
+		return new Intl.NumberFormat("ru-RU", {
+			style: "currency",
+			currency: normalizedCurrency,
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 2,
+		}).format(Number.isFinite(amount) ? amount : 0);
+	} catch {
+		const value = new Intl.NumberFormat("ru-RU", {
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 2,
+		}).format(Number.isFinite(amount) ? amount : 0);
+		return `${value} ${normalizedCurrency}`;
+	}
+};
 
 export const formatCompactMoney = (amount: number, currency: string) =>
 	new Intl.NumberFormat("ru-RU", {
