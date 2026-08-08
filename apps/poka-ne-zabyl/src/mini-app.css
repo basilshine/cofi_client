@@ -4384,6 +4384,41 @@
 .mini-space-editor-section .mini-members {
 	background: var(--mini-paper);
 }
+.mini-space-editor-section.is-members .mini-members > div {
+	display: grid;
+	grid-template-columns: 36px minmax(0, 1fr) 36px;
+	grid-template-rows: auto auto;
+	column-gap: 11px;
+	row-gap: 8px;
+	padding-block: 12px;
+}
+.mini-space-editor-section.is-members .mini-members > div > span {
+	grid-column: 1;
+	grid-row: 1;
+}
+.mini-space-editor-section.is-members .mini-members p {
+	grid-column: 2;
+	grid-row: 1;
+}
+.mini-space-editor-section.is-members .mini-members p b {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-space-editor-section.is-members .mini-members select {
+	grid-column: 2 / -1;
+	grid-row: 2;
+	width: 100%;
+	min-height: 40px;
+	padding-inline: 11px 32px;
+	background-color: color-mix(in srgb, var(--mini-soft) 42%, var(--mini-paper));
+	font-size: 13px;
+}
+.mini-space-editor-section.is-members .mini-member-remove {
+	grid-column: 3;
+	grid-row: 1;
+	justify-self: end;
+}
 .business-organization-card {
 	display: grid;
 	grid-template-columns: 44px minmax(0, 1fr) 42px;
