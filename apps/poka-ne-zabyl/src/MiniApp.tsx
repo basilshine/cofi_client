@@ -118,6 +118,7 @@ import {
 } from "./metrika";
 import {
 	type UILanguage,
+	itemCountText,
 	languageOptions,
 	linkedIdentityErrorText,
 	localizedCategoryName,
@@ -13999,7 +14000,7 @@ const GroupedExpenseItemList = ({
 								</b>
 								<small>
 									{formatDate(expense.expense_date, language)} ·{" "}
-									{purchaseCountText(rows.length, language)}
+									{itemCountText(rows.length, language)}
 								</small>
 								{author && (
 									<small className="mini-record-author">
@@ -18249,7 +18250,7 @@ const ExpenseDetail = ({
 					<small>
 						{item
 							? expense.title
-							: purchaseCountText(expense.items.length, language)}
+							: itemCountText(expense.items.length, language)}
 					</small>
 					<h3>
 						{item?.name ||
@@ -18316,7 +18317,7 @@ const ExpenseDetail = ({
 						<Receipt size={18} />
 						<span>
 							<b>{uiText(language, "openReceipt")}</b>
-							<small>{purchaseCountText(expense.items.length, language)}</small>
+							<small>{itemCountText(expense.items.length, language)}</small>
 						</span>
 						<ArrowRight size={17} />
 					</button>

@@ -1983,6 +1983,14 @@ export const purchaseCountText = (count: number, language: UILanguage) => {
 	return `${count} ${form === "one" ? "покупка" : form === "few" ? "покупки" : "покупок"}`;
 };
 
+export const itemCountText = (count: number, language: UILanguage) => {
+	if (language === "en") return `${count} ${count === 1 ? "item" : "items"}`;
+	if (language === "es")
+		return `${count} ${count === 1 ? "artículo" : "artículos"}`;
+	const form = new Intl.PluralRules("ru").select(count);
+	return `${count} ${form === "one" ? "позиция" : form === "few" ? "позиции" : "позиций"}`;
+};
+
 export const languageOptions: [UILanguage, string][] = [
 	["ru", "Русский"],
 	["en", "English"],
