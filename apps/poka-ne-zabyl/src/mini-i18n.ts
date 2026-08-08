@@ -286,7 +286,12 @@ const messages = {
 		synonymsPlaceholder: "Например: уход за собой, маникюр, салон красоты",
 		synonymsHint:
 			"Названия, по которым бот узнает эту категорию. Укажите через запятую.",
+		autoSynonyms: "Подобрать синонимы автоматически",
+		autoSynonymsHint: "ИИ добавит подходящие слова после создания категории.",
 		budget: "Лимит расходов",
+		monthlyBudget: "Лимит на месяц",
+		monthlyBudgetHint:
+			"Оставьте сумму пустой, если лимит не нужен. Период: {month}",
 		noBudget: "Без лимита",
 		weekly: "На неделю",
 		monthly: "На месяц",
@@ -314,6 +319,10 @@ const messages = {
 		categorySaved: "Категория сохранена",
 		saving: "Сохраняем…",
 		deleteCategory: "Удалить категорию",
+		deleteCategoryConfirm:
+			"Удалить «{name}» из этого пространства? Сохранённые расходы не изменятся.",
+		categoryDeleted: "Категория удалена из пространства",
+		categoriesLimit: "Категории",
 		mergeCategories: "Объединить категории",
 		mergeWith: "Перенести в",
 		mergeSelect: "Выберите основную категорию",
@@ -955,7 +964,12 @@ const messages = {
 		synonymsPlaceholder: "For example: self-care, manicure, beauty salon",
 		synonymsHint:
 			"Names the bot should recognize as this category. Separate them with commas.",
+		autoSynonyms: "Suggest synonyms automatically",
+		autoSynonymsHint: "AI will add suitable recognition terms after creation.",
 		budget: "Spending limit",
+		monthlyBudget: "Monthly limit",
+		monthlyBudgetHint:
+			"Leave the amount empty if no limit is needed. Period: {month}",
 		noBudget: "No limit",
 		weekly: "Per week",
 		monthly: "Per month",
@@ -983,6 +997,10 @@ const messages = {
 		categorySaved: "Category saved",
 		saving: "Saving…",
 		deleteCategory: "Delete category",
+		deleteCategoryConfirm:
+			"Remove “{name}” from this space? Saved expenses will not change.",
+		categoryDeleted: "Category removed from the space",
+		categoriesLimit: "Categories",
 		mergeCategories: "Merge categories",
 		mergeWith: "Move into",
 		mergeSelect: "Choose the primary category",
@@ -1625,7 +1643,13 @@ const messages = {
 			"Por ejemplo: cuidado personal, manicura, salón de belleza",
 		synonymsHint:
 			"Nombres que el bot debe reconocer como esta categoría. Sepáralos con comas.",
+		autoSynonyms: "Sugerir sinónimos automáticamente",
+		autoSynonymsHint:
+			"La IA añadirá términos adecuados después de crear la categoría.",
 		budget: "Límite de gasto",
+		monthlyBudget: "Límite mensual",
+		monthlyBudgetHint:
+			"Deja el importe vacío si no necesitas un límite. Periodo: {month}",
 		noBudget: "Sin límite",
 		weekly: "Por semana",
 		monthly: "Por mes",
@@ -1654,6 +1678,10 @@ const messages = {
 		categorySaved: "Categoría guardada",
 		saving: "Guardando…",
 		deleteCategory: "Eliminar categoría",
+		deleteCategoryConfirm:
+			"¿Eliminar “{name}” de este espacio? Los gastos guardados no cambiarán.",
+		categoryDeleted: "Categoría eliminada del espacio",
+		categoriesLimit: "Categorías",
 		mergeCategories: "Combinar categorías",
 		mergeWith: "Mover a",
 		mergeSelect: "Elige la categoría principal",

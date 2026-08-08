@@ -558,6 +558,7 @@ type Category = {
 	last_used?: string | null;
 	aliases?: string[];
 	alias_text?: string;
+	auto_aliases?: boolean;
 	budget_period?: "week" | "month" | "";
 	budget_month?: string;
 	budget_amount?: number | null;
@@ -981,6 +982,7 @@ type Quota = {
 	remaining: number;
 	max_spaces?: number;
 	max_custom_categories?: number;
+	max_categories?: number;
 	max_category_budgets?: number;
 	max_active_plans?: number;
 	plan_expires_at?: string | null;
@@ -1696,7 +1698,7 @@ const previewCategories: Category[] = [
 		budget_percent: 62.3,
 		is_system: true,
 		can_edit: true,
-		can_delete: false,
+		can_delete: true,
 	},
 	{
 		id: 2,
@@ -1708,7 +1710,7 @@ const previewCategories: Category[] = [
 		last_used: new Date(Date.now() - 86400000).toISOString(),
 		is_system: true,
 		can_edit: true,
-		can_delete: false,
+		can_delete: true,
 	},
 	{
 		id: 3,
@@ -1734,7 +1736,7 @@ const previewCategories: Category[] = [
 		last_used: new Date(Date.now() - 259200000).toISOString(),
 		is_system: true,
 		can_edit: true,
-		can_delete: false,
+		can_delete: true,
 	},
 	{
 		id: 5,
@@ -2999,6 +3001,7 @@ export const MiniApp = ({
 				remaining: 13,
 				max_spaces: 2,
 				max_custom_categories: 3,
+				max_categories: 18,
 				max_category_budgets: 3,
 				max_active_plans: 10,
 				recurring_limit: 0,
@@ -6253,6 +6256,8 @@ export const MiniApp = ({
 		setEditingCategory({
 			...category,
 			alias_text: category.aliases?.join(", ") || "",
+			auto_aliases: false,
+			budget_period: (category.budget_amount || 0) > 0 ? "month" : "",
 		});
 
 	const toggleCategoryPin = async (category: Category) => {
@@ -6898,7 +6903,11 @@ export const MiniApp = ({
 					body: JSON.stringify({
 						name: editingCategory.name,
 						aliases,
-						budget_period: editingCategory.budget_period || undefined,
+						auto_aliases: creating
+							? editingCategory.auto_aliases !== false
+							: undefined,
+						budget_period:
+							(editingCategory.budget_amount || 0) > 0 ? "month" : undefined,
 						budget_amount:
 							(editingCategory.budget_amount || 0) > 0
 								? editingCategory.budget_amount
@@ -6927,29 +6936,19 @@ export const MiniApp = ({
 		if (!editingCategory || editingCategory.key === "other") return;
 		if (
 			!window.confirm(
-				`Удалить «${editingCategory.name}»? Все её расходы перейдут в «Другое».`,
+				uiText(language, "deleteCategoryConfirm").replace(
+					"{name}",
+					editingCategory.name,
+				),
 			)
 		)
 			return;
-		const other = categories.find((category) => category.key === "other");
 		if (previewMode) {
 			setCategories((current) =>
 				current.filter((category) => category.id !== editingCategory.id),
 			);
-			if (other) {
-				setExpenses((current) =>
-					current.map((expense) => ({
-						...expense,
-						items: expense.items.map((item) =>
-							item.category_id === editingCategory.id
-								? { ...item, category_id: other.id }
-								: item,
-						),
-					})),
-				);
-			}
 			setEditingCategory(null);
-			setNotice("Категория удалена, расходы перенесены в «Другое»");
+			setNotice(uiText(language, "categoryDeleted"));
 			return;
 		}
 		setSaving(true);
@@ -6960,7 +6959,7 @@ export const MiniApp = ({
 				{ method: "DELETE" },
 			);
 			setEditingCategory(null);
-			setNotice("Категория удалена, расходы перенесены в «Другое»");
+			setNotice(uiText(language, "categoryDeleted"));
 			await loadSpace();
 		} catch (err) {
 			setNotice(
@@ -9148,6 +9147,7 @@ export const MiniApp = ({
 										total: 0,
 										aliases: [],
 										alias_text: "",
+										auto_aliases: true,
 										budget_period: "",
 										budget_amount: null,
 										is_system: false,
@@ -14596,8 +14596,8 @@ const CategoriesView = ({
 					language={language}
 					metrics={[
 						{
-							label: uiText(language, "customCategoriesLimit"),
-							value: `${customCategoryCount}/${quota.max_custom_categories || 3}`,
+							label: uiText(language, "categoriesLimit"),
+							value: `${categories.length}/${quota.max_categories || categories.length + Math.max(0, (quota.max_custom_categories || 3) - customCategoryCount)}`,
 						},
 						{
 							label: uiText(language, "categoryBudgetsLimit"),
@@ -20636,6 +20636,8 @@ const CategoryEditor = ({
 	const [targetCategoryID, setTargetCategoryID] = useState(0);
 	const mergeTargets = categories.filter((item) => item.id !== category.id);
 	const canDestructivelyChange = category.can_delete !== false;
+	const creating = category.id === 0;
+	const autoAliases = creating && category.auto_aliases !== false;
 	const monthLabel = new Intl.DateTimeFormat(language, {
 		month: "long",
 		year: "numeric",
@@ -20660,69 +20662,75 @@ const CategoryEditor = ({
 					}
 				/>
 			</label>
-			<label>
-				{uiText(language, "synonyms")}
-				<input
-					maxLength={500}
-					placeholder={uiText(language, "synonymsPlaceholder")}
-					value={category.alias_text ?? category.aliases?.join(", ") ?? ""}
-					onChange={(event) =>
-						onChange({ ...category, alias_text: event.target.value })
+			<div className="mini-category-recognition">
+				{creating && (
+					<button
+						className="mini-category-auto-aliases"
+						type="button"
+						role="switch"
+						aria-checked={autoAliases}
+						onClick={() =>
+							onChange({ ...category, auto_aliases: !autoAliases })
+						}
+					>
+						<span className="mini-category-auto-aliases__icon">
+							<Sparkle size={18} weight="fill" />
+						</span>
+						<span>
+							<strong>{uiText(language, "autoSynonyms")}</strong>
+							<small>{uiText(language, "autoSynonymsHint")}</small>
+						</span>
+						<i />
+					</button>
+				)}
+				{(!creating || !autoAliases) && (
+					<label>
+						{uiText(language, "synonyms")}
+						<input
+							maxLength={500}
+							placeholder={uiText(language, "synonymsPlaceholder")}
+							value={category.alias_text ?? category.aliases?.join(", ") ?? ""}
+							onChange={(event) =>
+								onChange({ ...category, alias_text: event.target.value })
+							}
+						/>
+						<small className="mini-field-hint">
+							{uiText(language, "synonymsHint")}
+						</small>
+					</label>
+				)}
+			</div>
+			<label htmlFor="category-budget-amount">
+				{uiText(language, "monthlyBudget")}
+				<AmountInput
+					ariaLabel={uiText(language, "monthlyBudget")}
+					amount={category.budget_amount || 0}
+					currency={currency}
+					id="category-budget-amount"
+					onChange={(amount) =>
+						onChange({
+							...category,
+							budget_period: amount > 0 ? "month" : "",
+							budget_amount: amount || null,
+						})
 					}
 				/>
 				<small className="mini-field-hint">
-					{uiText(language, "synonymsHint")}
+					{uiText(language, "monthlyBudgetHint").replace("{month}", monthLabel)}
 				</small>
 			</label>
-			<label>
-				{uiText(language, "budget")}
-				<select
-					value={category.budget_period || ""}
-					onChange={(event) =>
-						onChange({
-							...category,
-							budget_period: event.target.value as "" | "week" | "month",
-							budget_amount: event.target.value ? category.budget_amount : null,
-						})
-					}
-				>
-					<option value="">{uiText(language, "noBudget")}</option>
-					<option value="week">{uiText(language, "weekly")}</option>
-					<option value="month">{uiText(language, "monthly")}</option>
-				</select>
-			</label>
-			<small className="mini-field-hint">
-				{uiText(language, "budgetMonthHint").replace("{month}", monthLabel)}
-			</small>
-			{category.budget_period && (
-				<label htmlFor="category-budget-amount">
-					{uiText(language, "budgetAmount")}
-					<AmountInput
-						ariaLabel={uiText(language, "budgetAmount")}
-						amount={category.budget_amount || 0}
-						currency={currency}
-						id="category-budget-amount"
-						onChange={(amount) =>
-							onChange({ ...category, budget_amount: amount || null })
-						}
-					/>
-				</label>
-			)}
 			<div className="mini-modal-actions">
 				<button
 					className="mini-save"
 					type="button"
-					disabled={
-						saving ||
-						!category.name.trim() ||
-						(Boolean(category.budget_period) && !category.budget_amount)
-					}
+					disabled={saving || !category.name.trim()}
 					onClick={onSave}
 				>
 					{uiText(language, saving ? "saving" : "save")}
 				</button>
 				{category.id > 0 &&
 					category.key !== "other" &&
+					!category.is_system &&
 					canDestructivelyChange &&
 					mergeTargets.length > 0 && (
 						<div className="mini-vendor-merge">
