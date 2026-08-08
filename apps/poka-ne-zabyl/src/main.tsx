@@ -1,7 +1,6 @@
 import React, { Component, type ErrorInfo, type ReactNode } from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
 import { App } from "./App";
-import { shouldRetryAppRender } from "./app-recovery";
 import { isBusinessAppLocation } from "./business-app";
 import { initializeMetrika } from "./metrika";
 import "./styles.css";
@@ -44,10 +43,9 @@ if (!root) throw new Error("Root element not found");
 
 class AppErrorBoundary extends Component<
 	{ children: ReactNode },
-	{ failed: boolean; recovering: boolean }
+	{ failed: boolean }
 > {
-	state = { failed: false, recovering: false };
-	private reloadTimer?: number;
+	state = { failed: false };
 
 	static getDerivedStateFromError() {
 		return { failed: true };
@@ -55,21 +53,6 @@ class AppErrorBoundary extends Component<
 
 	componentDidCatch(error: Error, info: ErrorInfo) {
 		console.error("Application render failed", error, info.componentStack);
-		try {
-			const key = "pnz:last-render-retry";
-			const now = Date.now();
-			const lastRetryAt = Number(window.sessionStorage.getItem(key));
-			if (!shouldRetryAppRender(lastRetryAt, now)) return;
-			window.sessionStorage.setItem(key, String(now));
-			this.setState({ recovering: true });
-			this.reloadTimer = window.setTimeout(() => window.location.reload(), 700);
-		} catch {
-			// Keep the manual recovery screen when session storage is unavailable.
-		}
-	}
-
-	componentWillUnmount() {
-		if (this.reloadTimer) window.clearTimeout(this.reloadTimer);
 	}
 
 	render() {
@@ -77,25 +60,18 @@ class AppErrorBoundary extends Component<
 		return (
 			<main className="app-recovery" role="alert">
 				<img src="/assets/poka-ne-zabyl-logo.svg?v=20260717" alt="" />
-				<p>
-					{this.state.recovering ? "Догружаем экран…" : "Экран не загрузился"}
-				</p>
-				<h1>
-					{this.state.recovering ? "Уже исправляем" : "Данные не потеряны"}
-				</h1>
+				<p>Экран не загрузился</p>
+				<h1>Данные не потеряны</h1>
 				<span>
-					{this.state.recovering
-						? "Результат распознавания сохранён. Приложение откроет его повторно."
-						: "Если ошибка появилась после сохранения, расход уже мог попасть в историю. Обновите приложение и проверьте его там."}
+					Если ошибка появилась после сохранения, расход уже мог попасть в
+					историю. Текущее пространство сохранено, поэтому можно безопасно
+					повторить загрузку.
 				</span>
-				{!this.state.recovering && (
-					<div>
-						<button type="button" onClick={() => window.location.reload()}>
-							Обновить
-						</button>
-						<a href="/app">На главную</a>
-					</div>
-				)}
+				<div>
+					<button type="button" onClick={() => window.location.reload()}>
+						Повторить
+					</button>
+				</div>
 			</main>
 		);
 	}

@@ -477,7 +477,7 @@ const messages = {
 		total: "Итого",
 		splitSharesTitle: "Доли совместных расходов",
 		splitSharesHint:
-			"Автор расхода оплачивает его целиком, остальные возвращают свои доли.",
+			"Выберите, кто оплатил, и распределите доли между участниками.",
 		whoOwesWhom: "Кто кому",
 		splitBalanceHint: "По разделённым расходам",
 		splitExpenses: "Разделённые расходы",
@@ -1071,7 +1071,7 @@ const messages = {
 		total: "Total",
 		splitSharesTitle: "Shared expense shares",
 		splitSharesHint:
-			"The expense author pays the full amount; the others repay their shares.",
+			"Choose who paid and divide the shares between participants.",
 		whoOwesWhom: "Who owes whom",
 		splitBalanceHint: "Across split expenses",
 		splitExpenses: "Split expenses",
@@ -1675,7 +1675,7 @@ const messages = {
 		total: "Total",
 		splitSharesTitle: "Partes de gastos compartidos",
 		splitSharesHint:
-			"El autor paga el gasto completo y los demás devuelven su parte.",
+			"Elige quién pagó y reparte las partes entre los participantes.",
 		whoOwesWhom: "Quién debe a quién",
 		splitBalanceHint: "En los gastos divididos",
 		splitExpenses: "Gastos divididos",

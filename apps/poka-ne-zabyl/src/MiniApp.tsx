@@ -160,6 +160,11 @@ import {
 	isServiceUnavailableError,
 	requestError,
 } from "./request";
+import {
+	LAST_SPACE_STORAGE_KEY,
+	appURLWithSpaceID,
+	preferredSpaceID,
+} from "./space-context";
 import { spaceScopedItems } from "./space-scoped-data";
 import { isSubscriptionExpired } from "./subscription";
 import { homeScreenPlatform, shouldUseFullscreen } from "./telegram-platform";
@@ -190,7 +195,7 @@ type View =
 	| "review";
 
 type TelegramWidgetUser = {
-	id: number;
+	id?: number;
 	first_name?: string;
 	last_name?: string;
 	username?: string;
@@ -421,10 +426,14 @@ type SpaceParticipant = {
 };
 
 type ExpenseSplit = {
+	id?: number;
 	expense_id: number;
 	user_id?: number;
 	space_participant_id: number;
 	participant?: SpaceParticipant;
+	payer_participant_id?: number;
+	payer?: SpaceParticipant;
+	settlement_status?: string;
 	amount: number;
 	reporting_amount?: number;
 	reporting_currency?: string;
@@ -773,9 +782,12 @@ type SplitBalanceRow = {
 	key: string;
 	debtorName: string;
 	debtorUserID: number;
+	debtorParticipantID: number;
 	creditorName: string;
 	creditorUserID: number;
+	creditorParticipantID: number;
 	amount: number;
+	obligations: { expenseID: number; splitID: number }[];
 };
 
 const splitBalanceRows = (
@@ -792,27 +804,54 @@ const splitBalanceRows = (
 			)
 			.filter(([userID]) => userID > 0),
 	);
+	const participantByID = new Map(
+		participants.map((participant) => [participant.id, participant]),
+	);
 	const balances = new Map<string, SplitBalanceRow>();
 	for (const split of splits) {
 		const expense = expenseByID.get(split.expense_id);
 		const debtorUserID = split.user_id || participantUserID(split.participant);
 		const amount = splitDisplayMoney(split, targetCurrency).amount;
-		if (!expense || debtorUserID === expense.user_id || amount <= 0) continue;
+		const fallbackPayer = participantByUserID.get(expense?.user_id || 0);
+		const payer =
+			split.payer ||
+			(split.payer_participant_id
+				? participantByID.get(split.payer_participant_id)
+				: undefined) ||
+			fallbackPayer;
+		const payerParticipantID = payer?.id || split.payer_participant_id || 0;
+		const payerUserID = participantUserID(payer) || expense?.user_id || 0;
+		if (
+			!expense ||
+			!split.id ||
+			split.settlement_status === "confirmed" ||
+			split.space_participant_id === payerParticipantID ||
+			amount <= 0
+		)
+			continue;
 		const debtorName =
 			split.participant?.display_name ||
 			participantByUserID.get(debtorUserID)?.display_name ||
 			"Участник";
 		const creditorName =
-			participantByUserID.get(expense.user_id)?.display_name || "Автор расхода";
-		const key = `${split.space_participant_id}:${expense.user_id}`;
+			payer?.display_name ||
+			participantByUserID.get(payerUserID)?.display_name ||
+			"Плательщик";
+		const key = `${split.space_participant_id}:${payerParticipantID}`;
 		const current = balances.get(key);
 		balances.set(key, {
 			key,
 			debtorName,
 			debtorUserID,
+			debtorParticipantID: split.space_participant_id,
 			creditorName,
-			creditorUserID: expense.user_id,
+			creditorUserID: payerUserID,
+			creditorParticipantID: payerParticipantID,
 			amount: (current?.amount || 0) + amount,
+			obligations: [
+				...(current?.obligations || []),
+				{ expenseID: expense.id, splitID: split.id },
+			],
 		});
 	}
 	return Array.from(balances.values()).sort(
@@ -2829,6 +2868,7 @@ export const MiniApp = ({
 				previewSpaceID === 2
 					? [
 							{
+								id: 1,
 								expense_id: 1,
 								user_id: 1,
 								space_participant_id: 1,
@@ -2840,9 +2880,12 @@ export const MiniApp = ({
 									participant_type: "registered_member",
 									status: "active",
 								},
+								payer_participant_id: 1,
+								settlement_status: "unpaid",
 								amount: 1420,
 							},
 							{
+								id: 2,
 								expense_id: 1,
 								user_id: 2,
 								space_participant_id: 2,
@@ -2854,6 +2897,8 @@ export const MiniApp = ({
 									participant_type: "registered_member",
 									status: "active",
 								},
+								payer_participant_id: 1,
+								settlement_status: "unpaid",
 								amount: 1420,
 							},
 						]
@@ -3178,11 +3223,20 @@ export const MiniApp = ({
 			);
 			return;
 		}
+		let rememberedSpaceID = 0;
+		try {
+			rememberedSpaceID = preferredSpaceID(
+				window.location.search,
+				window.localStorage.getItem(LAST_SPACE_STORAGE_KEY),
+			);
+		} catch {
+			rememberedSpaceID = requestedSpaceID;
+		}
 		const targetSpaceID =
 			joinedSpaceID ||
 			requestedReview?.spaceID ||
 			requestedPlan?.spaceID ||
-			requestedSpaceID;
+			rememberedSpaceID;
 		const preferredBusinessSpace = experienceSpaces.find(isBusinessSpace);
 		setToken(auth.token);
 		setUser(auth.user);
@@ -3211,6 +3265,19 @@ export const MiniApp = ({
 			setBusinessSetupOpen(true);
 		}
 	};
+
+	useEffect(() => {
+		if (!token || spaceID <= 0 || previewMode) return;
+		try {
+			window.localStorage.setItem(LAST_SPACE_STORAGE_KEY, String(spaceID));
+			const nextURL = appURLWithSpaceID(window.location.href, spaceID);
+			if (nextURL !== window.location.href) {
+				window.history.replaceState(window.history.state, "", nextURL);
+			}
+		} catch {
+			// The active space still remains in React state when storage is blocked.
+		}
+	}, [spaceID, token, previewMode]);
 
 	const restoreBrowserSession = async () => {
 		try {
@@ -5717,31 +5784,44 @@ export const MiniApp = ({
 	const saveExpenseSplits = async (
 		expense: Expense,
 		lines: { space_participant_id: number; amount: number }[],
+		payerParticipantID: number,
 	) => {
 		if (splitSaving) return;
 		setSplitSaving(true);
 		try {
+			let savedLines: Omit<ExpenseSplit, "expense_id">[] = [];
 			if (!previewMode) {
-				await apiRequest(
-					`/spaces/${spaceID}/expenses/${expense.id}/splits`,
-					token,
-					{ method: "PUT", body: JSON.stringify(lines) },
-				);
-			}
-			setExpenseSplits((current) => [
-				...current.filter((split) => split.expense_id !== expense.id),
-				...lines.map((line) => {
+				const response = await apiRequest<{
+					splits: Omit<ExpenseSplit, "expense_id">[];
+				}>(`/spaces/${spaceID}/expenses/${expense.id}/splits`, token, {
+					method: "PUT",
+					body: JSON.stringify({
+						payer_participant_id: payerParticipantID,
+						splits: lines,
+					}),
+				});
+				savedLines = response.splits || [];
+			} else {
+				savedLines = lines.map((line, index) => {
 					const participant = eligibleParticipants.find(
 						(item) => item.id === line.space_participant_id,
 					);
 					return {
-						expense_id: expense.id,
-						space_participant_id: line.space_participant_id,
+						id: Date.now() + index,
+						...line,
 						user_id: participantUserID(participant) || undefined,
 						participant,
-						amount: line.amount,
+						payer_participant_id: payerParticipantID,
+						payer: eligibleParticipants.find(
+							(item) => item.id === payerParticipantID,
+						),
+						settlement_status: "unpaid",
 					};
-				}),
+				});
+			}
+			setExpenseSplits((current) => [
+				...current.filter((split) => split.expense_id !== expense.id),
+				...savedLines.map((line) => ({ ...line, expense_id: expense.id })),
 			]);
 			setSplitEditorExpense(null);
 			setNotice(
@@ -5752,6 +5832,41 @@ export const MiniApp = ({
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : "Не удалось сохранить разделение",
+			);
+		} finally {
+			setSplitSaving(false);
+		}
+	};
+
+	const settleSplitBalance = async (balance: SplitBalanceRow) => {
+		if (splitSaving || balance.obligations.length === 0) return;
+		setSplitSaving(true);
+		try {
+			if (!previewMode) {
+				await Promise.all(
+					balance.obligations.map(({ expenseID, splitID }) =>
+						apiRequest(
+							`/spaces/${spaceID}/expenses/${expenseID}/splits/${splitID}/settlement`,
+							token,
+							{ method: "PATCH", body: JSON.stringify({ settled: true }) },
+						),
+					),
+				);
+			}
+			const settledIDs = new Set(
+				balance.obligations.map(({ splitID }) => splitID),
+			);
+			setExpenseSplits((current) =>
+				current.map((split) =>
+					split.id && settledIDs.has(split.id)
+						? { ...split, settlement_status: "confirmed" }
+						: split,
+				),
+			);
+			setNotice("Расчёт отмечен. Долг закрыт");
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось отметить расчёт",
 			);
 		} finally {
 			setSplitSaving(false);
@@ -8475,6 +8590,8 @@ export const MiniApp = ({
 									setExpenseSection("splits");
 									setView("expenses");
 								}}
+								onSettleSplit={(balance) => void settleSplitBalance(balance)}
+								splitSaving={splitSaving}
 								onPlans={(initialPeriod = "all") => {
 									setPlanInitialPeriod(initialPeriod);
 									setExpenseSection("plans");
@@ -8553,6 +8670,8 @@ export const MiniApp = ({
 								}
 								onBuyPlan={openPlanPurchase}
 								onCancelPlan={(plan) => void deletePlan(plan)}
+								onSettleSplit={(balance) => void settleSplitBalance(balance)}
+								splitSaving={splitSaving}
 								onUpgrade={() => setView("subscription")}
 								coachmark={activeCoachmark}
 								onDismissCoachmark={dismissCoachmark}
@@ -9316,7 +9435,13 @@ export const MiniApp = ({
 					splits={splitsByExpense.get(splitEditorExpense.id) || []}
 					saving={splitSaving}
 					onClose={() => setSplitEditorExpense(null)}
-					onSave={(lines) => void saveExpenseSplits(splitEditorExpense, lines)}
+					onSave={(lines, payerParticipantID) =>
+						void saveExpenseSplits(
+							splitEditorExpense,
+							lines,
+							payerParticipantID,
+						)
+					}
 				/>
 			)}
 			{recordDetail?.kind === "plan" && (
@@ -11419,6 +11544,8 @@ const Overview = ({
 	onExpense,
 	onExpenses,
 	onSplits,
+	onSettleSplit,
+	splitSaving,
 	onPlans,
 	onEditPlan,
 	onBuyPlan,
@@ -11455,6 +11582,8 @@ const Overview = ({
 	onExpense: (expense: Expense) => void;
 	onExpenses: () => void;
 	onSplits: () => void;
+	onSettleSplit: (balance: SplitBalanceRow) => void;
+	splitSaving: boolean;
 	onPlans: (initialPeriod?: Period) => void;
 	onEditPlan: (plan: PurchasePlan) => void;
 	onBuyPlan: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
@@ -11780,34 +11909,49 @@ const Overview = ({
 									{uiText(language, "all")}
 								</button>
 							</div>
-							<button
-								className="mini-home-splits-body"
-								type="button"
-								onClick={onSplits}
-							>
+							<div className="mini-home-splits-body">
 								<span className="mini-home-splits-icon">
 									<ArrowsLeftRight size={20} weight="bold" />
 								</span>
 								<span className="mini-home-splits-copy">
 									{splitBalances.length > 0 ? (
-										splitBalances.slice(0, 2).map((balance) => (
-											<span key={balance.key}>
-												<b>
-													{balance.debtorUserID === currentUserID
-														? uiText(language, "youOwe").replace(
-																"{name}",
-																balance.creditorName,
-															)
-														: balance.creditorUserID === currentUserID
-															? uiText(language, "owesYou").replace(
-																	"{name}",
-																	balance.debtorName,
-																)
-															: `${balance.debtorName} → ${balance.creditorName}`}
-												</b>
-												<strong>{formatMoney(balance.amount, currency)}</strong>
-											</span>
-										))
+										splitBalances.slice(0, 2).map((balance) => {
+											const canSettle =
+												balance.debtorUserID === currentUserID ||
+												balance.creditorUserID === currentUserID;
+											return (
+												<span key={balance.key}>
+													<span>
+														<b>
+															{balance.debtorUserID === currentUserID
+																? uiText(language, "youOwe").replace(
+																		"{name}",
+																		balance.creditorName,
+																	)
+																: balance.creditorUserID === currentUserID
+																	? uiText(language, "owesYou").replace(
+																			"{name}",
+																			balance.debtorName,
+																		)
+																	: `${balance.debtorName} → ${balance.creditorName}`}
+														</b>
+														<strong>
+															{formatMoney(balance.amount, currency)}
+														</strong>
+													</span>
+													{canSettle && (
+														<button
+															type="button"
+															disabled={splitSaving}
+															onClick={() => onSettleSplit(balance)}
+														>
+															<Check size={13} weight="bold" />
+															Рассчитались
+														</button>
+													)}
+												</span>
+											);
+										})
 									) : (
 										<span>
 											<b>{uiText(language, "sharedNotSplit")}</b>
@@ -11815,8 +11959,15 @@ const Overview = ({
 										</span>
 									)}
 								</span>
-								<ArrowRight size={17} />
-							</button>
+								<button
+									className="mini-home-splits-open"
+									type="button"
+									aria-label={uiText(language, "all")}
+									onClick={onSplits}
+								>
+									<ArrowRight size={17} />
+								</button>
+							</div>
 						</section>
 					)}
 					<div className="mini-section-head">
@@ -12051,6 +12202,8 @@ const ExpensesView = ({
 	onOpenPlanItem,
 	onBuyPlan,
 	onCancelPlan,
+	onSettleSplit,
+	splitSaving,
 	onUpgrade,
 	coachmark,
 	onDismissCoachmark,
@@ -12107,6 +12260,8 @@ const ExpensesView = ({
 	onOpenPlanItem: (plan: PurchasePlan, itemIndex: number) => void;
 	onBuyPlan: (plan: PurchasePlan, item?: PurchasePlanItem) => void;
 	onCancelPlan: (plan: PurchasePlan) => void;
+	onSettleSplit: (balance: SplitBalanceRow) => void;
+	splitSaving: boolean;
 	onUpgrade: () => void;
 	coachmark: CoachmarkID | null;
 	onDismissCoachmark: (id: CoachmarkID) => void;
@@ -12332,6 +12487,8 @@ const ExpensesView = ({
 					currentUserID={currentUserID}
 					currency={currency}
 					onOpenExpense={onOpenExpense}
+					onSettle={onSettleSplit}
+					settling={splitSaving}
 				/>
 			) : (
 				<>
@@ -12570,6 +12727,8 @@ const SplitsView = ({
 	currentUserID,
 	currency,
 	onOpenExpense,
+	onSettle,
+	settling,
 }: {
 	language: UILanguage;
 	expenses: Expense[];
@@ -12578,6 +12737,8 @@ const SplitsView = ({
 	currentUserID: number;
 	currency: string;
 	onOpenExpense: (expense: Expense) => void;
+	onSettle: (balance: SplitBalanceRow) => void;
+	settling: boolean;
 }) => {
 	const rowsByExpense = new Map<number, ExpenseSplit[]>();
 	for (const split of splits) {
@@ -12603,32 +12764,47 @@ const SplitsView = ({
 			{balances.length > 0 && (
 				<section className="mini-split-balances">
 					<h2>{uiText(language, "whoOwesWhom")}</h2>
-					{balances.map((balance) => (
-						<div key={balance.key}>
-							<span className="mini-split-avatar">
-								{participantInitials(balance.debtorName)}
-							</span>
-							<span>
-								<b>
-									{balance.debtorUserID === currentUserID
-										? uiText(language, "youOwe").replace(
-												"{name}",
-												balance.creditorName,
-											)
-										: balance.creditorUserID === currentUserID
-											? uiText(language, "owesYou").replace(
+					{balances.map((balance) => {
+						const canSettle =
+							balance.debtorUserID === currentUserID ||
+							balance.creditorUserID === currentUserID;
+						return (
+							<div key={balance.key}>
+								<span className="mini-split-avatar">
+									{participantInitials(balance.debtorName)}
+								</span>
+								<span>
+									<b>
+										{balance.debtorUserID === currentUserID
+											? uiText(language, "youOwe").replace(
 													"{name}",
-													balance.debtorName,
+													balance.creditorName,
 												)
-											: uiText(language, "owesAnother")
-													.replace("{debtor}", balance.debtorName)
-													.replace("{creditor}", balance.creditorName)}
-								</b>
-								<small>{uiText(language, "splitBalanceHint")}</small>
-							</span>
-							<strong>{formatMoney(balance.amount, currency)}</strong>
-						</div>
-					))}
+											: balance.creditorUserID === currentUserID
+												? uiText(language, "owesYou").replace(
+														"{name}",
+														balance.debtorName,
+													)
+												: uiText(language, "owesAnother")
+														.replace("{debtor}", balance.debtorName)
+														.replace("{creditor}", balance.creditorName)}
+									</b>
+									<small>{uiText(language, "splitBalanceHint")}</small>
+								</span>
+								<strong>{formatMoney(balance.amount, currency)}</strong>
+								{canSettle && (
+									<button
+										type="button"
+										disabled={settling}
+										onClick={() => onSettle(balance)}
+									>
+										<Check size={15} weight="bold" />
+										Рассчитались
+									</button>
+								)}
+							</div>
+						);
+					})}
 				</section>
 			)}
 			<section className="mini-split-expenses">
@@ -17553,6 +17729,17 @@ const ExpenseDetail = ({
 		: undefined;
 	const notes = notesWithTags(item?.notes || "", []);
 	const author = sharedRecordAuthor(members, expense.user_id);
+	const splitPayer =
+		splits[0]?.payer ||
+		participants.find(
+			(participant) => participant.id === splits[0]?.payer_participant_id,
+		);
+	const splitPayerID = splitPayer?.id || splits[0]?.payer_participant_id || 0;
+	const allSplitDebtsSettled =
+		splits.length > 0 &&
+		splits
+			.filter((split) => split.space_participant_id !== splitPayerID)
+			.every((split) => split.settlement_status === "confirmed");
 	const canSplit =
 		itemIndex === undefined &&
 		participants.length > 1 &&
@@ -17678,11 +17865,13 @@ const ExpenseDetail = ({
 						<div>
 							<b>{splits.length > 0 ? "Расход разделён" : "Общий расход"}</b>
 							<small>
-								{splits.length > 0
-									? `${splits.length} ${splits.length === 1 ? "участник" : "участника"}`
-									: canSplit
-										? "Сейчас вся сумма закреплена за вами"
-										: "Автор пока отвечает за всю сумму"}
+								{allSplitDebtsSettled
+									? "Все расчёты закрыты"
+									: splits.length > 0
+										? `${splits.length} ${splits.length === 1 ? "участник" : "участника"}`
+										: canSplit
+											? "Сейчас вся сумма закреплена за вами"
+											: "Автор пока отвечает за всю сумму"}
 							</small>
 						</div>
 						{canSplit && (
@@ -17691,6 +17880,15 @@ const ExpenseDetail = ({
 							</button>
 						)}
 					</div>
+					{splitPayer && splits.length > 0 && (
+						<div className="mini-record-split-payer">
+							<i>{participantInitials(splitPayer.display_name)}</i>
+							<span>
+								<small>Оплатил расход</small>
+								<b>{splitPayer.display_name}</b>
+							</span>
+						</div>
+					)}
 					{splits.length > 0 && (
 						<div className="mini-record-split-lines">
 							{splits.map((split) => (
@@ -17699,12 +17897,19 @@ const ExpenseDetail = ({
 										{participantInitials(split.participant?.display_name || "")}
 									</i>
 									<span>{split.participant?.display_name || "Участник"}</span>
-									<b>
-										{formatMoney(
-											splitDisplayMoney(split, currency).amount,
-											money.currency,
-										)}
-									</b>
+									<span className="mini-record-split-amount">
+										<b>
+											{formatMoney(
+												splitDisplayMoney(split, currency).amount,
+												money.currency,
+											)}
+										</b>
+										{split.space_participant_id === splitPayerID ? (
+											<small>Оплатил</small>
+										) : split.settlement_status === "confirmed" ? (
+											<small className="is-settled">Рассчитались</small>
+										) : null}
+									</span>
 								</div>
 							))}
 						</div>
@@ -17787,7 +17992,10 @@ const ExpenseSplitEditor = ({
 	splits: ExpenseSplit[];
 	saving: boolean;
 	onClose: () => void;
-	onSave: (lines: { space_participant_id: number; amount: number }[]) => void;
+	onSave: (
+		lines: { space_participant_id: number; amount: number }[],
+		payerParticipantID: number,
+	) => void;
 }) => {
 	const money = expenseSplitTotal(expense);
 	const creatorParticipant = participants.find(
@@ -17803,6 +18011,14 @@ const ExpenseSplitEditor = ({
 			? new Map([[creatorParticipant.id, money.amount]])
 			: new Map();
 	});
+	const [payerParticipantID, setPayerParticipantID] = useState(
+		() =>
+			splits[0]?.payer_participant_id ||
+			splits[0]?.payer?.id ||
+			creatorParticipant?.id ||
+			participants[0]?.id ||
+			0,
+	);
 	const selectedIDs = participants
 		.filter((participant) => amounts.has(participant.id))
 		.map((participant) => participant.id);
@@ -17811,7 +18027,10 @@ const ExpenseSplitEditor = ({
 		0,
 	);
 	const remaining = Math.round((money.amount - distributed) * 100) / 100;
-	const valid = selectedIDs.length >= 2 && Math.abs(remaining) <= 0.02;
+	const valid =
+		payerParticipantID > 0 &&
+		selectedIDs.length >= 2 &&
+		Math.abs(remaining) <= 0.02;
 	const distributeEqually = (ids = selectedIDs) =>
 		setAmounts(equalSplitAmounts(money.amount, ids));
 	const toggleParticipant = (participantID: number) => {
@@ -17831,6 +18050,31 @@ const ExpenseSplitEditor = ({
 					<strong>{formatMoney(money.amount, money.currency)}</strong>
 				</div>
 			</div>
+			<section className="mini-split-payer">
+				<span>
+					<b>Кто оплатил</b>
+					<small>Этому участнику вернут деньги остальные</small>
+				</span>
+				<div>
+					{participants.map((participant) => (
+						<button
+							className={
+								payerParticipantID === participant.id ? "is-selected" : ""
+							}
+							key={participant.id}
+							type="button"
+							aria-pressed={payerParticipantID === participant.id}
+							onClick={() => setPayerParticipantID(participant.id)}
+						>
+							<i>{participantInitials(participant.display_name)}</i>
+							<span>{participant.display_name}</span>
+							{payerParticipantID === participant.id && (
+								<Check size={14} weight="bold" />
+							)}
+						</button>
+					))}
+				</div>
+			</section>
 			<div className="mini-split-editor-toolbar">
 				<span>
 					<b>Доли участников</b>
@@ -17859,7 +18103,7 @@ const ExpenseSplitEditor = ({
 									<b>{participant.display_name}</b>
 									<small>
 										{participantUserID(participant) === expense.user_id
-											? "Оплатил расход"
+											? "Автор расхода"
 											: participant.status === "invited"
 												? "Приглашение отправлено"
 												: participant.status === "placeholder"
@@ -17912,7 +18156,7 @@ const ExpenseSplitEditor = ({
 						className="mini-delete"
 						type="button"
 						disabled={saving}
-						onClick={() => onSave([])}
+						onClick={() => onSave([], payerParticipantID)}
 					>
 						Сбросить
 					</button>
@@ -17927,6 +18171,7 @@ const ExpenseSplitEditor = ({
 								space_participant_id: participantID,
 								amount: amounts.get(participantID) || 0,
 							})),
+							payerParticipantID,
 						)
 					}
 				>

@@ -2614,18 +2614,22 @@ export interface paths {
             requestBody: {
                 content: {
                     "application/json": {
-                        space_participant_id: number;
-                        amount: number;
-                    }[];
+                        payer_participant_id: number;
+                        splits: components["schemas"]["ExpenseSplitInputLine"][];
+                    } | components["schemas"]["ExpenseSplitInputLine"][];
                 };
             };
             responses: {
-                /** @description Saved */
-                204: {
+                /** @description Saved split rows, including payer and settlement state */
+                200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            splits?: components["schemas"]["ExpenseSplitLine"][];
+                        };
+                    };
                 };
                 /** @description Invalid split rows */
                 400: {
@@ -2655,6 +2659,74 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/splits/{splitId}/settlement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Mark one participant share as settled or reopen it
+         * @description Updates the settlement state for a split share. The payer, debtor, or expense author can confirm the settlement.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                    splitId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        settled: boolean;
+                    };
+                };
+            };
+            responses: {
+                /** @description Settlement state updated */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description The payer share cannot become a debt */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot update this settlement */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense or split row was not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/spaces/{spaceId}/plans": {
@@ -9545,16 +9617,27 @@ export interface components {
         };
         ExpenseSplitLine: {
             /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
             user_id?: number;
             /** Format: int64 */
             space_participant_id?: number;
             participant?: components["schemas"]["SpaceParticipant"];
+            /** Format: int64 */
+            payer_participant_id?: number;
+            payer?: components["schemas"]["SpaceParticipant"];
+            /** @enum {string} */
+            settlement_status?: "unpaid" | "sent" | "confirmed";
             /**
              * Format: int64
              * @description Source capture that projected these split rows, when available.
              */
             source_document_id?: number;
             amount?: number;
+        };
+        ExpenseSplitInputLine: {
+            space_participant_id: number;
+            amount: number;
         };
         InviteSpaceParticipantResponse: {
             token?: string;
