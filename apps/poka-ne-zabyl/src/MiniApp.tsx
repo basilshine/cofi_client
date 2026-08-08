@@ -97,6 +97,11 @@ import {
 	periodBounds,
 } from "./expense-period";
 import {
+	equalSplitAmounts,
+	fullSplitAmount,
+	splitDistributionIsValid,
+} from "./expense-split";
+import {
 	hashtagAtCursor,
 	hashtagSuggestions,
 	hashtagsFromText,
@@ -5924,10 +5929,18 @@ export const MiniApp = ({
 				};
 			});
 			setSplitEditorExpense(null);
+			const soleParticipant =
+				lines.length === 1
+					? eligibleParticipants.find(
+							(participant) => participant.id === lines[0].space_participant_id,
+						)
+					: undefined;
 			setNotice(
-				lines.length > 0
-					? "Расход разделён между участниками"
-					: "Разделение расхода сброшено",
+				soleParticipant
+					? `Вся сумма назначена: ${soleParticipant.display_name}`
+					: lines.length > 0
+						? "Расход разделён между участниками"
+						: "Разделение расхода сброшено",
 			);
 		} catch (err) {
 			setNotice(
@@ -18123,20 +18136,6 @@ const ExpenseDetail = ({
 	);
 };
 
-const equalSplitAmounts = (total: number, participantIDs: number[]) => {
-	const amounts = new Map<number, number>();
-	if (participantIDs.length === 0) return amounts;
-	const cents = Math.round(total * 100);
-	const base = Math.floor(cents / participantIDs.length);
-	let remainder = cents - base * participantIDs.length;
-	for (const participantID of participantIDs) {
-		const amount = base + (remainder > 0 ? 1 : 0);
-		if (remainder > 0) remainder -= 1;
-		amounts.set(participantID, amount / 100);
-	}
-	return amounts;
-};
-
 const ExpenseSplitEditor = ({
 	expense,
 	participants,
@@ -18186,18 +18185,28 @@ const ExpenseSplitEditor = ({
 		0,
 	);
 	const remaining = Math.round((money.amount - distributed) * 100) / 100;
-	const valid =
-		payerParticipantID > 0 &&
-		selectedIDs.length >= 2 &&
-		Math.abs(remaining) <= 0.02;
+	const valid = splitDistributionIsValid(
+		money.amount,
+		amounts,
+		payerParticipantID,
+	);
 	const distributeEqually = (ids = selectedIDs) =>
 		setAmounts(equalSplitAmounts(money.amount, ids));
+	const assignFullAmount = (participantID: number) =>
+		setAmounts(fullSplitAmount(money.amount, participantID));
 	const toggleParticipant = (participantID: number) => {
 		const nextIDs = amounts.has(participantID)
 			? selectedIDs.filter((id) => id !== participantID)
 			: [...selectedIDs, participantID];
 		distributeEqually(nextIDs);
 	};
+	const soleParticipant =
+		selectedIDs.length === 1
+			? participants.find((participant) => participant.id === selectedIDs[0])
+			: undefined;
+	const payerParticipant = participants.find(
+		(participant) => participant.id === payerParticipantID,
+	);
 	return (
 		<Modal title="Разделить расход" variant="editor" onClose={onClose}>
 			<div className="mini-split-editor-summary">
@@ -18236,8 +18245,8 @@ const ExpenseSplitEditor = ({
 			</section>
 			<div className="mini-split-editor-toolbar">
 				<span>
-					<b>Доли участников</b>
-					<small>Выберите минимум двух</small>
+					<b>На кого относится расход</b>
+					<small>Можно назначить всю сумму одному</small>
 				</span>
 				<button
 					type="button"
@@ -18253,6 +18262,7 @@ const ExpenseSplitEditor = ({
 					return (
 						<div className={selected ? "is-selected" : ""} key={participant.id}>
 							<button
+								className="mini-split-participant-toggle"
 								type="button"
 								aria-pressed={selected}
 								onClick={() => toggleParticipant(participant.id)}
@@ -18274,25 +18284,36 @@ const ExpenseSplitEditor = ({
 									{selected && <Check size={15} weight="bold" />}
 								</span>
 							</button>
-							<label>
-								<input
-									aria-label={`Доля ${participant.display_name}`}
-									inputMode="decimal"
-									disabled={!selected}
-									value={selected ? amounts.get(participant.id) || "" : ""}
-									onChange={(event) => {
-										const value = Number(event.target.value.replace(",", "."));
-										if (!Number.isFinite(value) || value < 0) return;
-										setAmounts((current) =>
-											new Map(current).set(
-												participant.id,
-												Math.round(value * 100) / 100,
-											),
-										);
-									}}
-								/>
-								<span>{money.currency}</span>
-							</label>
+							<div className="mini-split-amount-control">
+								<label>
+									<input
+										aria-label={`Доля ${participant.display_name}`}
+										inputMode="decimal"
+										disabled={!selected}
+										value={selected ? amounts.get(participant.id) || "" : ""}
+										onChange={(event) => {
+											const value = Number(
+												event.target.value.replace(",", "."),
+											);
+											if (!Number.isFinite(value) || value < 0) return;
+											setAmounts((current) =>
+												new Map(current).set(
+													participant.id,
+													Math.round(value * 100) / 100,
+												),
+											);
+										}}
+									/>
+									<span>{money.currency}</span>
+								</label>
+								<button
+									className="mini-split-full-button"
+									type="button"
+									onClick={() => assignFullAmount(participant.id)}
+								>
+									Вся сумма
+								</button>
+							</div>
 						</div>
 					);
 				})}
@@ -18309,6 +18330,19 @@ const ExpenseSplitEditor = ({
 					<b>{formatMoney(Math.abs(remaining), money.currency)}</b>
 				</span>
 			</div>
+			{soleParticipant && payerParticipant && valid && (
+				<div className="mini-split-editor-outcome">
+					<span>
+						<small>После сохранения</small>
+						<b>
+							{soleParticipant.id === payerParticipant.id
+								? "Долга между участниками не будет"
+								: `Долг: ${soleParticipant.display_name} → ${payerParticipant.display_name}`}
+						</b>
+					</span>
+					<strong>{formatMoney(money.amount, money.currency)}</strong>
+				</div>
+			)}
 			<div className="mini-modal-actions mini-split-editor-actions">
 				{splits.length > 0 && (
 					<button
