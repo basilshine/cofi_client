@@ -6816,7 +6816,7 @@
 }
 .mini-record-split-payer {
 	display: grid;
-	grid-template-columns: 30px minmax(0, 1fr);
+	grid-template-columns: 30px minmax(0, 1fr) auto;
 	align-items: center;
 	gap: 9px;
 	padding: 9px 11px;
@@ -6844,6 +6844,92 @@
 }
 .mini-record-split-payer b {
 	font-size: 12px;
+}
+.mini-record-split-payer button {
+	min-height: 30px;
+	padding: 0 9px;
+	border: 1px solid color-mix(in srgb, var(--mini-green) 24%, var(--mini-line));
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--mini-green) 5%, var(--mini-paper));
+	color: var(--mini-green);
+	font-size: 10px;
+	font-weight: 750;
+}
+.mini-expense-payer-field {
+	display: grid;
+	gap: 10px;
+	padding: 13px;
+	border: 1px solid color-mix(in srgb, var(--mini-green) 18%, var(--mini-line));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--mini-green) 4%, var(--mini-paper));
+}
+.mini-expense-payer-field-head {
+	display: grid;
+	grid-template-columns: 30px minmax(0, 1fr);
+	align-items: center;
+	gap: 9px;
+}
+.mini-expense-payer-field-head > span {
+	display: grid;
+	width: 30px;
+	height: 30px;
+	place-items: center;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--mini-green) 10%, var(--mini-paper));
+	color: var(--mini-green);
+}
+.mini-expense-payer-field-head > div {
+	display: grid;
+	gap: 2px;
+}
+.mini-expense-payer-field-head b {
+	font-size: 13px;
+}
+.mini-expense-payer-field-head small {
+	color: var(--mini-muted);
+	font-size: 10px;
+	line-height: 1.35;
+}
+.mini-expense-payer-field > div {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 7px;
+}
+.mini-expense-payer-field button {
+	display: grid;
+	grid-template-columns: 27px minmax(0, 1fr) 15px;
+	min-height: 42px;
+	align-items: center;
+	gap: 7px;
+	padding: 6px 8px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	text-align: left;
+}
+.mini-expense-payer-field button.is-selected {
+	border-color: color-mix(in srgb, var(--mini-green) 45%, var(--mini-line));
+	background: color-mix(in srgb, var(--mini-green) 7%, var(--mini-paper));
+	color: var(--mini-green);
+}
+.mini-expense-payer-field button i {
+	display: grid;
+	width: 27px;
+	height: 27px;
+	place-items: center;
+	border-radius: 50%;
+	background: #e8ecfa;
+	font-size: 8px;
+	font-style: normal;
+	font-weight: 800;
+}
+.mini-expense-payer-field button span {
+	overflow: hidden;
+	font-size: 11px;
+	font-weight: 750;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .mini-split-editor-toolbar {
 	display: flex;

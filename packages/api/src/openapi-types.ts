@@ -9789,6 +9789,11 @@ export interface components {
             expense_date?: string;
             /** @description Allowed saved-record statuses are approved or cancelled. */
             status?: string;
+            /**
+             * Format: int64
+             * @description Active participant of the current Space who paid the receipt.
+             */
+            payer_participant_id?: number;
             /** Format: int64 */
             vendor_id?: number;
             /** @description When true, clears vendor_id on the expense. */
@@ -9804,6 +9809,11 @@ export interface components {
             id?: number;
             /** Format: int64 */
             user_id?: number;
+            /**
+             * Format: int64
+             * @description Participant who paid the receipt; independent from who created it.
+             */
+            payer_participant_id?: number;
             /** Format: int64 */
             tenant_id?: number;
             /** @description Sum of line item amounts (server-computed on reads). */

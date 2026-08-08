@@ -625,6 +625,7 @@ type ExpenseItem = {
 type Expense = {
 	id: number;
 	user_id: number;
+	payer_participant_id?: number;
 	title: string;
 	payee_text?: string;
 	vendor_id?: number;
@@ -813,7 +814,11 @@ const splitBalanceRows = (
 		const debtorUserID = split.user_id || participantUserID(split.participant);
 		const amount = splitDisplayMoney(split, targetCurrency).amount;
 		const fallbackPayer = participantByUserID.get(expense?.user_id || 0);
+		const receiptPayer = expense?.payer_participant_id
+			? participantByID.get(expense.payer_participant_id)
+			: undefined;
 		const payer =
+			receiptPayer ||
 			split.payer ||
 			(split.payer_participant_id
 				? participantByID.get(split.payer_participant_id)
@@ -5823,6 +5828,27 @@ export const MiniApp = ({
 				...current.filter((split) => split.expense_id !== expense.id),
 				...savedLines.map((line) => ({ ...line, expense_id: expense.id })),
 			]);
+			const withPayer = (current: Expense) =>
+				current.id === expense.id
+					? { ...current, payer_participant_id: payerParticipantID }
+					: current;
+			setExpenses((current) => current.map(withPayer));
+			setSplitExpenses((current) => current.map(withPayer));
+			setRecordDetail((current) => {
+				if (
+					!current ||
+					(current.kind !== "expense" && current.kind !== "expense-item") ||
+					current.expense.id !== expense.id
+				)
+					return current;
+				return {
+					...current,
+					expense: {
+						...current.expense,
+						payer_participant_id: payerParticipantID,
+					},
+				};
+			});
 			setSplitEditorExpense(null);
 			setNotice(
 				lines.length > 0
@@ -6099,6 +6125,18 @@ export const MiniApp = ({
 					saveNotice = budgetWarningText(projected.budget_warnings[0]);
 				}
 				savedExpenseID = projected.expense.id;
+				if (editingExpense.payer_participant_id) {
+					await apiRequest(
+						`/spaces/${spaceID}/expenses/${savedExpenseID}`,
+						token,
+						{
+							method: "PUT",
+							body: JSON.stringify({
+								payer_participant_id: editingExpense.payer_participant_id,
+							}),
+						},
+					);
+				}
 				trackFirstExpenseGoal(user?.id, expenses.length);
 			} else {
 				await apiRequest(
@@ -6108,6 +6146,7 @@ export const MiniApp = ({
 						method: "PUT",
 						body: JSON.stringify({
 							title: editingExpense.title,
+							payer_participant_id: editingExpense.payer_participant_id,
 							payee_text: sellerName,
 							vendor_id: vendorID || undefined,
 							vendor_id_clear: !vendorID,
@@ -9537,6 +9576,7 @@ export const MiniApp = ({
 				<ExpenseEditor
 					expense={editingExpense}
 					language={language}
+					participants={eligibleParticipants}
 					categories={categories}
 					vendors={vendors}
 					itemNameSuggestions={itemNameSuggestions}
@@ -17729,12 +17769,23 @@ const ExpenseDetail = ({
 		: undefined;
 	const notes = notesWithTags(item?.notes || "", []);
 	const author = sharedRecordAuthor(members, expense.user_id);
+	const creatorParticipant = participants.find(
+		(participant) => participantUserID(participant) === expense.user_id,
+	);
 	const splitPayer =
+		participants.find(
+			(participant) => participant.id === expense.payer_participant_id,
+		) ||
 		splits[0]?.payer ||
 		participants.find(
 			(participant) => participant.id === splits[0]?.payer_participant_id,
-		);
-	const splitPayerID = splitPayer?.id || splits[0]?.payer_participant_id || 0;
+		) ||
+		creatorParticipant;
+	const splitPayerID =
+		splitPayer?.id ||
+		expense.payer_participant_id ||
+		splits[0]?.payer_participant_id ||
+		0;
 	const allSplitDebtsSettled =
 		splits.length > 0 &&
 		splits
@@ -17863,30 +17914,38 @@ const ExpenseDetail = ({
 							<UsersThree size={19} weight="fill" />
 						</span>
 						<div>
-							<b>{splits.length > 0 ? "Расход разделён" : "Общий расход"}</b>
+							<b>{uiText(language, "receiptSettlement")}</b>
 							<small>
 								{allSplitDebtsSettled
-									? "Все расчёты закрыты"
+									? uiText(language, "allSettled")
 									: splits.length > 0
-										? `${splits.length} ${splits.length === 1 ? "участник" : "участника"}`
+										? uiText(language, "receiptSharesConfigured").replace(
+												"{count}",
+												String(splits.length),
+											)
 										: canSplit
-											? "Сейчас вся сумма закреплена за вами"
-											: "Автор пока отвечает за всю сумму"}
+											? uiText(language, "receiptNotSplit")
+											: uiText(language, "receiptPayerOnly")}
 							</small>
 						</div>
 						{canSplit && (
 							<button type="button" onClick={onSplit}>
-								{splits.length > 0 ? "Изменить" : "Разделить"}
+								{uiText(language, splits.length > 0 ? "shares" : "split")}
 							</button>
 						)}
 					</div>
-					{splitPayer && splits.length > 0 && (
+					{splitPayer && (
 						<div className="mini-record-split-payer">
 							<i>{participantInitials(splitPayer.display_name)}</i>
 							<span>
-								<small>Оплатил расход</small>
+								<small>{uiText(language, "receiptPaidBy")}</small>
 								<b>{splitPayer.display_name}</b>
 							</span>
+							{canSplit && (
+								<button type="button" onClick={onEdit}>
+									{uiText(language, "change")}
+								</button>
+							)}
 						</div>
 					)}
 					{splits.length > 0 && (
@@ -18013,6 +18072,7 @@ const ExpenseSplitEditor = ({
 	});
 	const [payerParticipantID, setPayerParticipantID] = useState(
 		() =>
+			expense.payer_participant_id ||
 			splits[0]?.payer_participant_id ||
 			splits[0]?.payer?.id ||
 			creatorParticipant?.id ||
@@ -18885,6 +18945,7 @@ const PlanEditor = ({
 const ExpenseEditor = ({
 	expense,
 	language,
+	participants,
 	categories,
 	vendors,
 	itemNameSuggestions,
@@ -18903,6 +18964,7 @@ const ExpenseEditor = ({
 }: {
 	expense: Expense;
 	language: UILanguage;
+	participants: SpaceParticipant[];
 	categories: Category[];
 	vendors: Vendor[];
 	itemNameSuggestions: string[];
@@ -18920,6 +18982,11 @@ const ExpenseEditor = ({
 	onDelete?: () => void;
 }) => {
 	const itemNameListID = useId();
+	const creatorParticipant = participants.find(
+		(participant) => participantUserID(participant) === expense.user_id,
+	);
+	const payerParticipantID =
+		expense.payer_participant_id || creatorParticipant?.id || 0;
 	const fallbackVendorName = vendorFieldValue(
 		expense.vendor_name,
 		expense.payee_text,
@@ -19045,6 +19112,43 @@ const ExpenseEditor = ({
 						}
 					/>
 				</label>
+			)}
+			{participants.length > 1 && (
+				<section className="mini-expense-payer-field">
+					<div className="mini-expense-payer-field-head">
+						<span>
+							<UsersThree size={18} weight="fill" />
+						</span>
+						<div>
+							<b>{uiText(language, "receiptPayer")}</b>
+							<small>{uiText(language, "receiptPayerHint")}</small>
+						</div>
+					</div>
+					<div>
+						{participants.map((participant) => (
+							<button
+								className={
+									payerParticipantID === participant.id ? "is-selected" : ""
+								}
+								key={participant.id}
+								type="button"
+								aria-pressed={payerParticipantID === participant.id}
+								onClick={() =>
+									onChange({
+										...expense,
+										payer_participant_id: participant.id,
+									})
+								}
+							>
+								<i>{participantInitials(participant.display_name)}</i>
+								<span>{participant.display_name}</span>
+								{payerParticipantID === participant.id && (
+									<Check size={14} weight="bold" />
+								)}
+							</button>
+						))}
+					</div>
+				</section>
 			)}
 			<div className="mini-editor-items">
 				{!creating && <span>{uiText(language, "items")}</span>}
