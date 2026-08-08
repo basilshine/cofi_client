@@ -2675,8 +2675,9 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Mark one participant share as settled or reopen it
-         * @description Updates the settlement state for a split share. The payer, debtor, or expense author can confirm the settlement.
+         * Resolve one previously submitted split settlement
+         * @deprecated
+         * @description Compatibility route for older clients. It cannot close an unpaid obligation directly; only the actual receipt payer can confirm or reject a previously submitted settlement.
          */
         patch: {
             parameters: {
@@ -2727,6 +2728,149 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/split-settlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit proof that split debts were paid
+         * @description The debtor submits one text note, one private image, or both for a batch of obligations owed to the same receipt payer. The debts remain open in sent state until that payer confirms receipt.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /** @description JSON-encoded array of SplitSettlementObligation objects. */
+                        obligations: string;
+                        note?: string;
+                        /**
+                         * Format: binary
+                         * @description Optional private transfer screenshot, no larger than 8 MB. A note or proof is required.
+                         */
+                        proof?: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description Settlement proof submitted for payer review */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SplitSettlementResponse"];
+                    };
+                };
+                /** @description Invalid obligations or missing text/image proof */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not the debtor for every obligation */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense or split row was not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/spaces/{spaceId}/split-settlements/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or reject a submitted split settlement
+         * @description Only the actual receipt payer for every obligation can confirm receipt or mark the transfer as not received.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Space ID */
+                    spaceId: components["parameters"]["SpaceId"];
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ResolveSplitSettlementRequest"];
+                };
+            };
+            responses: {
+                /** @description Settlement state updated */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SplitSettlementResponse"];
+                    };
+                };
+                /** @description Settlement is not awaiting confirmation */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user is not the receipt payer */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense or split row was not found in this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/spaces/{spaceId}/plans": {
@@ -9627,13 +9771,44 @@ export interface components {
             payer_participant_id?: number;
             payer?: components["schemas"]["SpaceParticipant"];
             /** @enum {string} */
-            settlement_status?: "unpaid" | "sent" | "confirmed";
+            settlement_status?: "unpaid" | "sent" | "confirmed" | "disputed";
+            settlement_note?: string;
+            /** Format: int64 */
+            settlement_media_object_id?: number;
+            /** Format: date-time */
+            settlement_sent_at?: string;
             /**
              * Format: int64
              * @description Source capture that projected these split rows, when available.
              */
             source_document_id?: number;
             amount?: number;
+        };
+        SplitSettlementObligation: {
+            /** Format: int64 */
+            expense_id: number;
+            /** Format: int64 */
+            split_id: number;
+        };
+        SplitSettlementState: {
+            /** Format: int64 */
+            expense_id: number;
+            /** Format: int64 */
+            split_id: number;
+            /** @enum {string} */
+            settlement_status: "sent" | "confirmed" | "disputed";
+            settlement_note?: string;
+            /** Format: int64 */
+            settlement_media_object_id?: number;
+            /** Format: date-time */
+            settlement_sent_at?: string;
+        };
+        SplitSettlementResponse: {
+            settlements: components["schemas"]["SplitSettlementState"][];
+        };
+        ResolveSplitSettlementRequest: {
+            obligations: components["schemas"]["SplitSettlementObligation"][];
+            confirmed: boolean;
         };
         ExpenseSplitInputLine: {
             space_participant_id: number;

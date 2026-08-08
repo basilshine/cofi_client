@@ -1737,6 +1737,119 @@
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
+.mini-settlement-summary {
+	display: grid;
+	grid-template-columns: 42px minmax(0, 1fr);
+	align-items: center;
+	gap: 11px;
+	padding: 13px;
+	border-radius: 8px;
+	background: var(--mini-green);
+	color: var(--mini-paper);
+}
+.mini-settlement-summary-icon {
+	display: grid;
+	width: 40px;
+	height: 40px;
+	place-items: center;
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.16);
+}
+.mini-settlement-summary > span:last-child {
+	display: grid;
+	gap: 2px;
+}
+.mini-settlement-summary small {
+	color: rgba(255, 255, 255, 0.76);
+	font-size: 11px;
+}
+.mini-settlement-summary b {
+	font-size: 22px;
+	font-variant-numeric: tabular-nums;
+}
+.mini-settlement-compose,
+.mini-settlement-proof {
+	display: grid;
+	gap: 10px;
+}
+.mini-settlement-compose > p {
+	margin: 0;
+	color: var(--mini-muted);
+	font-size: 12px;
+	line-height: 1.45;
+}
+.mini-settlement-compose textarea {
+	min-height: 100px;
+}
+.mini-settlement-attachment {
+	display: inline-flex;
+	min-height: 42px;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border: 1px dashed color-mix(in srgb, var(--mini-green) 38%, var(--mini-line));
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--mini-green) 5%, var(--mini-paper));
+	color: var(--mini-green);
+	font-size: 12px;
+	font-weight: 800;
+}
+.mini-settlement-compose img,
+.mini-settlement-proof img {
+	display: block;
+	width: 100%;
+	max-height: 42dvh;
+	object-fit: contain;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: #eef0f4;
+}
+.mini-settlement-status {
+	display: grid;
+	grid-template-columns: 34px minmax(0, 1fr);
+	align-items: center;
+	gap: 9px;
+	padding: 10px;
+	border: 1px solid #c9d4ed;
+	border-radius: 8px;
+	background: #eef3fb;
+	color: #31527f;
+}
+.mini-settlement-status > span {
+	display: grid;
+	gap: 2px;
+}
+.mini-settlement-status b {
+	font-size: 12px;
+}
+.mini-settlement-status small {
+	font-size: 10px;
+}
+.mini-settlement-proof > p {
+	margin: 0;
+	padding: 11px 12px;
+	border-left: 3px solid #8097c0;
+	background: var(--mini-soft);
+	font-size: 12px;
+	line-height: 1.45;
+	white-space: pre-wrap;
+}
+.mini-settlement-error {
+	margin: 0;
+	padding: 9px 10px;
+	border: 1px solid color-mix(in srgb, var(--mini-red) 35%, var(--mini-line));
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--mini-red) 6%, var(--mini-paper));
+	color: var(--mini-red);
+	font-size: 11px;
+}
+.mini-settlement-actions button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+}
 .mini-split-expenses {
 	display: grid;
 	gap: 9px;
@@ -6791,6 +6904,10 @@
 }
 .mini-record-split-amount small.is-settled {
 	color: var(--mini-success);
+	font-weight: 750;
+}
+.mini-record-split-amount small.is-pending {
+	color: #5f74a4;
 	font-weight: 750;
 }
 .mini-split-editor-summary {

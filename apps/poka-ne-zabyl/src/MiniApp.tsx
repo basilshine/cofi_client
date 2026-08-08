@@ -441,6 +441,9 @@ type ExpenseSplit = {
 	payer_participant_id?: number;
 	payer?: SpaceParticipant;
 	settlement_status?: string;
+	settlement_note?: string;
+	settlement_media_object_id?: number;
+	settlement_sent_at?: string;
 	amount: number;
 	reporting_amount?: number;
 	reporting_currency?: string;
@@ -807,6 +810,19 @@ type SplitBalanceRow = {
 	creditorParticipantID: number;
 	amount: number;
 	obligations: { expenseID: number; splitID: number }[];
+	settlementStatus: "open" | "sent";
+	settlementNote?: string;
+	settlementMediaObjectID?: number;
+	settlementSentAt?: string;
+};
+
+type SplitSettlementState = {
+	expense_id: number;
+	split_id: number;
+	settlement_status: string;
+	settlement_note?: string;
+	settlement_media_object_id?: number;
+	settlement_sent_at?: string;
 };
 
 const splitBalanceRows = (
@@ -844,6 +860,8 @@ const splitBalanceRows = (
 			fallbackPayer;
 		const payerParticipantID = payer?.id || split.payer_participant_id || 0;
 		const payerUserID = participantUserID(payer) || expense?.user_id || 0;
+		const settlementStatus =
+			split.settlement_status === "sent" ? "sent" : "open";
 		if (
 			!expense ||
 			!split.id ||
@@ -860,7 +878,7 @@ const splitBalanceRows = (
 			payer?.display_name ||
 			participantByUserID.get(payerUserID)?.display_name ||
 			"Плательщик";
-		const key = `${split.space_participant_id}:${payerParticipantID}`;
+		const key = `${split.space_participant_id}:${payerParticipantID}:${settlementStatus}`;
 		const current = balances.get(key);
 		balances.set(key, {
 			key,
@@ -871,6 +889,11 @@ const splitBalanceRows = (
 			creditorUserID: payerUserID,
 			creditorParticipantID: payerParticipantID,
 			amount: (current?.amount || 0) + amount,
+			settlementStatus,
+			settlementNote: split.settlement_note || current?.settlementNote,
+			settlementMediaObjectID:
+				split.settlement_media_object_id || current?.settlementMediaObjectID,
+			settlementSentAt: split.settlement_sent_at || current?.settlementSentAt,
 			obligations: [
 				...(current?.obligations || []),
 				{ expenseID: expense.id, splitID: split.id },
@@ -2137,6 +2160,7 @@ const requestedPreviewLanguage = normalizeUILanguage(
 	requestedQuery.get("lang") ?? undefined,
 );
 const requestedExpenseID = Number(requestedQuery.get("expense_id"));
+const requestedExpenseSection = requestedQuery.get("section");
 const requestedReportID = Number(requestedQuery.get("report_id"));
 const requestedFeedbackID = Number(requestedQuery.get("feedback"));
 const requestedInviteToken = (
@@ -2198,6 +2222,8 @@ export const MiniApp = ({
 	const [participants, setParticipants] = useState<SpaceParticipant[]>([]);
 	const [expenseSplits, setExpenseSplits] = useState<ExpenseSplit[]>([]);
 	const [splitExpenses, setSplitExpenses] = useState<Expense[]>([]);
+	const [settlementBalance, setSettlementBalance] =
+		useState<SplitBalanceRow | null>(null);
 	const [expenses, setExpenses] = useState<Expense[]>([]);
 	const [plans, setPlans] = useState<PurchasePlan[]>([]);
 	const [expensePage, setExpensePage] = useState({
@@ -2447,7 +2473,12 @@ export const MiniApp = ({
 	const [groupByExpense, setGroupByExpense] = useState(false);
 	const [query, setQuery] = useState("");
 	const [expenseSection, setExpenseSection] = useState<ExpenseSection>(
-		requestedPlan ? "plans" : "history",
+		requestedPlan
+			? "plans"
+			: requestedExpenseSection === "plans" ||
+					requestedExpenseSection === "splits"
+				? requestedExpenseSection
+				: "history",
 	);
 	const [planInitialPeriod, setPlanInitialPeriod] = useState<Period>("all");
 	const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -6032,36 +6063,131 @@ export const MiniApp = ({
 		}
 	};
 
-	const settleSplitBalance = async (balance: SplitBalanceRow) => {
-		if (splitSaving || balance.obligations.length === 0) return;
+	const applySplitSettlementStates = (states: SplitSettlementState[]) => {
+		const bySplitID = new Map(states.map((state) => [state.split_id, state]));
+		setExpenseSplits((current) =>
+			current.map((split) => {
+				if (!split.id) return split;
+				const state = bySplitID.get(split.id);
+				if (!state) return split;
+				return {
+					...split,
+					settlement_status: state.settlement_status,
+					settlement_note: state.settlement_note,
+					settlement_media_object_id: state.settlement_media_object_id,
+					settlement_sent_at: state.settlement_sent_at,
+				};
+			}),
+		);
+	};
+
+	const submitSplitSettlement = async (
+		balance: SplitBalanceRow,
+		note: string,
+		proof?: File,
+	) => {
+		if (splitSaving || balance.obligations.length === 0) return false;
 		setSplitSaving(true);
 		try {
-			if (!previewMode) {
-				await Promise.all(
-					balance.obligations.map(({ expenseID, splitID }) =>
-						apiRequest(
-							`/spaces/${spaceID}/expenses/${expenseID}/splits/${splitID}/settlement`,
+			const submittedAt = new Date().toISOString();
+			const states = previewMode
+				? balance.obligations.map(({ expenseID, splitID }) => ({
+						expense_id: expenseID,
+						split_id: splitID,
+						settlement_status: "sent",
+						settlement_note: note.trim(),
+						settlement_sent_at: submittedAt,
+					}))
+				: (
+						await apiRequest<{ settlements: SplitSettlementState[] }>(
+							`/spaces/${spaceID}/split-settlements`,
 							token,
-							{ method: "PATCH", body: JSON.stringify({ settled: true }) },
-						),
-					),
-				);
-			}
-			const settledIDs = new Set(
-				balance.obligations.map(({ splitID }) => splitID),
-			);
-			setExpenseSplits((current) =>
-				current.map((split) =>
-					split.id && settledIDs.has(split.id)
-						? { ...split, settlement_status: "confirmed" }
-						: split,
-				),
-			);
-			setNotice("Расчёт отмечен. Долг закрыт");
+							{
+								method: "POST",
+								body: (() => {
+									const data = new FormData();
+									data.set(
+										"obligations",
+										JSON.stringify(
+											balance.obligations.map(({ expenseID, splitID }) => ({
+												expense_id: expenseID,
+												split_id: splitID,
+											})),
+										),
+									);
+									data.set("note", note.trim());
+									if (proof) data.set("proof", proof, proof.name);
+									return data;
+								})(),
+							},
+						)
+					).settlements;
+			applySplitSettlementStates(states);
+			setSettlementBalance(null);
+			setNotice(uiText(language, "settlementSubmittedNotice"));
+			return true;
 		} catch (err) {
 			setNotice(
-				err instanceof Error ? err.message : "Не удалось отметить расчёт",
+				err instanceof Error
+					? err.message
+					: uiText(language, "settlementSubmitFailed"),
 			);
+			return false;
+		} finally {
+			setSplitSaving(false);
+		}
+	};
+
+	const resolveSplitSettlement = async (
+		balance: SplitBalanceRow,
+		confirmed: boolean,
+	) => {
+		if (splitSaving || balance.obligations.length === 0) return false;
+		setSplitSaving(true);
+		try {
+			const states = previewMode
+				? balance.obligations.map(({ expenseID, splitID }) => ({
+						expense_id: expenseID,
+						split_id: splitID,
+						settlement_status: confirmed ? "confirmed" : "disputed",
+						settlement_note: balance.settlementNote,
+						settlement_media_object_id: balance.settlementMediaObjectID,
+						settlement_sent_at: balance.settlementSentAt,
+					}))
+				: (
+						await apiRequest<{ settlements: SplitSettlementState[] }>(
+							`/spaces/${spaceID}/split-settlements/resolve`,
+							token,
+							{
+								method: "POST",
+								body: JSON.stringify({
+									obligations: balance.obligations.map(
+										({ expenseID, splitID }) => ({
+											expense_id: expenseID,
+											split_id: splitID,
+										}),
+									),
+									confirmed,
+								}),
+							},
+						)
+					).settlements;
+			applySplitSettlementStates(states);
+			setSettlementBalance(null);
+			setNotice(
+				uiText(
+					language,
+					confirmed ? "settlementConfirmedNotice" : "settlementRejectedNotice",
+				),
+			);
+			return true;
+		} catch (err) {
+			setNotice(
+				err instanceof Error
+					? err.message
+					: uiText(language, "settlementResolveFailed"),
+			);
+			return false;
 		} finally {
 			setSplitSaving(false);
 		}
@@ -8856,7 +8982,7 @@ export const MiniApp = ({
 									setExpenseSection("splits");
 									setView("expenses");
 								}}
-								onSettleSplit={(balance) => void settleSplitBalance(balance)}
+								onSettleSplit={setSettlementBalance}
 								splitSaving={splitSaving}
 								onPlans={(initialPeriod = "all") => {
 									setPlanInitialPeriod(initialPeriod);
@@ -8936,7 +9062,7 @@ export const MiniApp = ({
 								}
 								onBuyPlan={openPlanPurchase}
 								onCancelPlan={(plan) => void deletePlan(plan)}
-								onSettleSplit={(balance) => void settleSplitBalance(balance)}
+								onSettleSplit={setSettlementBalance}
 								splitSaving={splitSaving}
 								onUpgrade={() => setView("subscription")}
 								coachmark={activeCoachmark}
@@ -9521,6 +9647,23 @@ export const MiniApp = ({
 						);
 					}}
 					onChoose={choosePlanPurchaseMethod}
+				/>
+			)}
+			{settlementBalance && (
+				<SplitSettlementDialog
+					balance={settlementBalance}
+					currentUserID={user?.id || 0}
+					currency={currency}
+					language={language}
+					token={token}
+					saving={splitSaving}
+					onClose={() => setSettlementBalance(null)}
+					onSubmit={(note, proof) =>
+						submitSplitSettlement(settlementBalance, note, proof)
+					}
+					onResolve={(confirmed) =>
+						resolveSplitSettlement(settlementBalance, confirmed)
+					}
 				/>
 			)}
 			{captureOpen && (
@@ -12186,9 +12329,10 @@ const Overview = ({
 								<span className="mini-home-splits-copy">
 									{splitBalances.length > 0 ? (
 										splitBalances.slice(0, 2).map((balance) => {
-											const canSettle =
+											const canOpenSettlement =
 												balance.debtorUserID === currentUserID ||
-												balance.creditorUserID === currentUserID;
+												(balance.settlementStatus === "sent" &&
+													balance.creditorUserID === currentUserID);
 											return (
 												<span key={balance.key}>
 													<span>
@@ -12209,14 +12353,26 @@ const Overview = ({
 															{formatMoney(balance.amount, currency)}
 														</strong>
 													</span>
-													{canSettle && (
+													{canOpenSettlement && (
 														<button
 															type="button"
 															disabled={splitSaving}
 															onClick={() => onSettleSplit(balance)}
 														>
-															<Check size={13} weight="bold" />
-															Рассчитались
+															{balance.settlementStatus === "sent" ? (
+																balance.creditorUserID === currentUserID ? (
+																	<Check size={13} weight="bold" />
+																) : (
+																	<PaperPlaneTilt size={13} weight="fill" />
+																)
+															) : (
+																<PaperPlaneTilt size={13} weight="bold" />
+															)}
+															{balance.settlementStatus === "sent"
+																? balance.creditorUserID === currentUserID
+																	? uiText(language, "settlementConfirmShort")
+																	: uiText(language, "settlementWaitingShort")
+																: uiText(language, "settlementSubmitShort")}
 														</button>
 													)}
 												</span>
@@ -13037,9 +13193,10 @@ const SplitsView = ({
 				<section className="mini-split-balances">
 					<h2>{uiText(language, "whoOwesWhom")}</h2>
 					{balances.map((balance) => {
-						const canSettle =
+						const canOpenSettlement =
 							balance.debtorUserID === currentUserID ||
-							balance.creditorUserID === currentUserID;
+							(balance.settlementStatus === "sent" &&
+								balance.creditorUserID === currentUserID);
 						return (
 							<div key={balance.key}>
 								<span className="mini-split-avatar">
@@ -13061,17 +13218,33 @@ const SplitsView = ({
 														.replace("{debtor}", balance.debtorName)
 														.replace("{creditor}", balance.creditorName)}
 									</b>
-									<small>{uiText(language, "splitBalanceHint")}</small>
+									<small>
+										{balance.settlementStatus === "sent"
+											? uiText(language, "settlementPending")
+											: uiText(language, "splitBalanceHint")}
+									</small>
 								</span>
 								<strong>{formatMoney(balance.amount, currency)}</strong>
-								{canSettle && (
+								{canOpenSettlement && (
 									<button
 										type="button"
 										disabled={settling}
 										onClick={() => onSettle(balance)}
 									>
-										<Check size={15} weight="bold" />
-										Рассчитались
+										{balance.settlementStatus === "sent" ? (
+											balance.creditorUserID === currentUserID ? (
+												<Check size={15} weight="bold" />
+											) : (
+												<PaperPlaneTilt size={15} weight="fill" />
+											)
+										) : (
+											<PaperPlaneTilt size={15} weight="bold" />
+										)}
+										{balance.settlementStatus === "sent"
+											? balance.creditorUserID === currentUserID
+												? uiText(language, "settlementReview")
+												: uiText(language, "settlementView")
+											: uiText(language, "settlementSubmit")}
 									</button>
 								)}
 							</div>
@@ -18222,6 +18395,10 @@ const ExpenseDetail = ({
 											<small>Оплатил</small>
 										) : split.settlement_status === "confirmed" ? (
 											<small className="is-settled">Рассчитались</small>
+										) : split.settlement_status === "sent" ? (
+											<small className="is-pending">
+												{uiText(language, "settlementPending")}
+											</small>
 										) : null}
 									</span>
 								</div>
@@ -18274,6 +18451,220 @@ const ExpenseDetail = ({
 					<Trash size={18} />
 					{item ? uiText(language, "deleteExpenseItem") : "Удалить расход"}
 				</button>
+			</div>
+		</Modal>
+	);
+};
+
+const SplitSettlementDialog = ({
+	balance,
+	currentUserID,
+	currency,
+	language,
+	token,
+	saving,
+	onClose,
+	onSubmit,
+	onResolve,
+}: {
+	balance: SplitBalanceRow;
+	currentUserID: number;
+	currency: string;
+	language: UILanguage;
+	token: string;
+	saving: boolean;
+	onClose: () => void;
+	onSubmit: (note: string, proof?: File) => Promise<boolean>;
+	onResolve: (confirmed: boolean) => Promise<boolean>;
+}) => {
+	const proofInput = useRef<HTMLInputElement | null>(null);
+	const [note, setNote] = useState("");
+	const [proof, setProof] = useState<File>();
+	const [proofURL, setProofURL] = useState("");
+	const [proofLoading, setProofLoading] = useState(false);
+	const [localError, setLocalError] = useState("");
+	const pending = balance.settlementStatus === "sent";
+	const creditor = balance.creditorUserID === currentUserID;
+
+	useEffect(() => {
+		if (!proof) return;
+		const nextURL = URL.createObjectURL(proof);
+		setProofURL(nextURL);
+		return () => URL.revokeObjectURL(nextURL);
+	}, [proof]);
+
+	const selectProof = (file?: File) => {
+		if (!file) return;
+		if (file.size > 8 * 1024 * 1024) {
+			setLocalError(uiText(language, "settlementImageTooLarge"));
+			return;
+		}
+		if (!file.type.startsWith("image/")) {
+			setLocalError(uiText(language, "settlementImageOnly"));
+			return;
+		}
+		setLocalError("");
+		setProof(file);
+	};
+
+	const openStoredProof = async () => {
+		if (!balance.settlementMediaObjectID || proofLoading) return;
+		setProofLoading(true);
+		setLocalError("");
+		try {
+			const response = await fetch(
+				`/api/v1/media/${balance.settlementMediaObjectID}`,
+				{
+					headers: token ? { Authorization: `Bearer ${token}` } : {},
+					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+				},
+			);
+			if (!response.ok)
+				throw new Error(uiText(language, "settlementImageOpenFailed"));
+			const nextURL = URL.createObjectURL(await response.blob());
+			setProofURL((current) => {
+				if (current) URL.revokeObjectURL(current);
+				return nextURL;
+			});
+		} catch (err) {
+			setLocalError(
+				err instanceof Error
+					? err.message
+					: uiText(language, "settlementImageOpenFailed"),
+			);
+		} finally {
+			setProofLoading(false);
+		}
+	};
+
+	useEffect(
+		() => () => {
+			if (proofURL && !proof) URL.revokeObjectURL(proofURL);
+		},
+		[proofURL, proof],
+	);
+
+	const submit = async () => {
+		if (!note.trim() && !proof) {
+			setLocalError(uiText(language, "settlementNeedProof"));
+			return;
+		}
+		setLocalError("");
+		await onSubmit(note, proof);
+	};
+
+	return (
+		<Modal title={uiText(language, "settlementTitle")} onClose={onClose}>
+			<div className="mini-settlement-summary">
+				<span className="mini-settlement-summary-icon">
+					<ArrowsLeftRight size={21} weight="bold" />
+				</span>
+				<span>
+					<small>
+						{uiText(
+							language,
+							pending ? "settlementFrom" : "settlementPaidTo",
+						).replace(
+							"{name}",
+							pending ? balance.debtorName : balance.creditorName,
+						)}
+					</small>
+					<b>{formatMoney(balance.amount, currency)}</b>
+				</span>
+			</div>
+
+			{pending ? (
+				<div className="mini-settlement-proof">
+					<div className="mini-settlement-status">
+						<PaperPlaneTilt size={18} weight="fill" />
+						<span>
+							<b>{uiText(language, "settlementPending")}</b>
+							<small>{uiText(language, "settlementAwaiting")}</small>
+						</span>
+					</div>
+					{balance.settlementNote && <p>{balance.settlementNote}</p>}
+					{balance.settlementMediaObjectID && !proofURL && (
+						<button
+							className="mini-settlement-attachment"
+							type="button"
+							disabled={proofLoading}
+							onClick={() => void openStoredProof()}
+						>
+							<ImageSquare size={19} />
+							{proofLoading
+								? uiText(language, "openingSource")
+								: uiText(language, "settlementViewImage")}
+						</button>
+					)}
+					{proofURL && <img src={proofURL} alt="" />}
+				</div>
+			) : (
+				<div className="mini-settlement-compose">
+					<p>{uiText(language, "settlementProofHint")}</p>
+					<textarea
+						value={note}
+						maxLength={1000}
+						placeholder={uiText(language, "settlementNotePlaceholder")}
+						onChange={(event) => setNote(event.target.value)}
+					/>
+					<input
+						ref={proofInput}
+						type="file"
+						accept="image/*"
+						hidden
+						onChange={(event) => selectProof(event.target.files?.[0])}
+					/>
+					<button
+						className="mini-settlement-attachment"
+						type="button"
+						disabled={saving}
+						onClick={() => proofInput.current?.click()}
+					>
+						<ImageSquare size={19} />
+						{uiText(language, proof ? "settlementReplace" : "settlementAttach")}
+					</button>
+					{proofURL && <img src={proofURL} alt="" />}
+				</div>
+			)}
+
+			{localError && <p className="mini-settlement-error">{localError}</p>}
+			<div className="mini-modal-actions mini-settlement-actions">
+				{pending && creditor ? (
+					<>
+						<button
+							className="mini-delete"
+							type="button"
+							disabled={saving}
+							onClick={() => void onResolve(false)}
+						>
+							<X size={17} />
+							{uiText(language, "settlementNotReceived")}
+						</button>
+						<button
+							className="mini-save"
+							type="button"
+							disabled={saving}
+							onClick={() => void onResolve(true)}
+						>
+							<Check size={18} weight="bold" />
+							{uiText(language, "settlementConfirmReceived")}
+						</button>
+					</>
+				) : pending ? (
+					<button className="mini-save" type="button" onClick={onClose}>
+						{uiText(language, "done")}
+					</button>
+				) : (
+					<button
+						className="mini-save"
+						type="button"
+						disabled={saving}
+						onClick={() => void submit()}
+					>
+						<PaperPlaneTilt size={18} weight="bold" />
+						{uiText(language, "settlementSend")}
+					</button>
+				)}
 			</div>
 		</Modal>
 	);
