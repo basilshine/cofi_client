@@ -4127,8 +4127,6 @@
 	gap: 8px;
 }
 .mini-spaces article {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) 48px;
 	overflow: hidden;
 	border: 1px solid var(--mini-line);
 	border-radius: 8px;
@@ -4138,19 +4136,46 @@
 	border-color: var(--mini-green);
 }
 .mini-spaces article > button:first-child {
-	display: flex;
+	display: grid;
+	width: 100%;
 	min-height: 68px;
+	grid-template-columns: 40px minmax(0, 1fr) auto;
 	align-items: center;
-	justify-content: space-between;
+	gap: 11px;
 	padding: 12px 15px;
 	border: 0;
 	background: transparent;
 	color: var(--mini-ink);
 	text-align: left;
 }
-.mini-spaces article > button:first-child span {
+.mini-space-settings-copy {
 	display: grid;
+	min-width: 0;
 	gap: 4px;
+}
+.mini-space-settings-copy b,
+.mini-space-settings-copy small {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-space-settings-icon {
+	display: grid;
+	width: 40px;
+	height: 40px;
+	place-items: center;
+	border-radius: 7px;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+}
+.mini-space-settings-action {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	color: var(--mini-muted);
+}
+.mini-space-settings-action svg:first-child:not(:last-child) {
+	color: var(--mini-green);
 }
 .mini-spaces small,
 .mini-members small {
@@ -4207,6 +4232,44 @@
 	background: var(--mini-paper);
 	color: var(--mini-ink);
 	font-size: 12px;
+}
+.mini-space-editor-section {
+	display: grid;
+	gap: 13px;
+	padding: 14px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+}
+.mini-space-editor-section.is-members {
+	background: color-mix(in srgb, var(--mini-soft) 45%, var(--mini-paper));
+}
+.mini-space-editor-heading {
+	display: grid;
+	grid-template-columns: 38px minmax(0, 1fr);
+	align-items: center;
+	gap: 10px;
+}
+.mini-space-editor-heading > span {
+	display: grid;
+	width: 38px;
+	height: 38px;
+	place-items: center;
+	border-radius: 7px;
+	background: var(--mini-soft);
+	color: var(--mini-green);
+}
+.mini-space-editor-heading > div {
+	display: grid;
+	gap: 2px;
+}
+.mini-space-editor-heading small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	line-height: 1.35;
+}
+.mini-space-editor-section .mini-members {
+	background: var(--mini-paper);
 }
 .business-organization-card {
 	display: grid;

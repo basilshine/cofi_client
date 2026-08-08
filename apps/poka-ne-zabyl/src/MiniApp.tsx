@@ -2491,6 +2491,14 @@ export const MiniApp = ({
 	const [packPickerOpen, setPackPickerOpen] = useState(false);
 	const [billingLoading, setBillingLoading] = useState(false);
 	const [editingSpace, setEditingSpace] = useState<Space | null>(null);
+	const [editingSpaceMembers, setEditingSpaceMembers] = useState<SpaceMember[]>(
+		[],
+	);
+	const [editingSpaceMembersLoading, setEditingSpaceMembersLoading] =
+		useState(false);
+	const [editingSpaceCanManageMembers, setEditingSpaceCanManageMembers] =
+		useState(false);
+	const editingSpaceMembersRequest = useRef(0);
 	const [invitingSpace, setInvitingSpace] = useState<Space | null>(null);
 	const [invitingOrganization, setInvitingOrganization] =
 		useState<Organization | null>(null);
@@ -5711,6 +5719,79 @@ export const MiniApp = ({
 	const ownedSpacesCount = shellSpaces.filter(
 		(space) => space.owner_user_id === user?.id,
 	).length;
+	useEffect(() => {
+		const requestID = ++editingSpaceMembersRequest.current;
+		if (!editingSpace?.id) {
+			setEditingSpaceMembers([]);
+			setEditingSpaceMembersLoading(false);
+			setEditingSpaceCanManageMembers(false);
+			return;
+		}
+		if (previewMode) {
+			const previewMembers =
+				editingSpace.id === spaceID
+					? members
+					: [
+							{
+								user_id: editingSpace.owner_user_id,
+								name:
+									editingSpace.owner_display_name || user?.name || "Владелец",
+								email: user?.email || "",
+								role: "owner",
+							},
+							...(Number(editingSpace.member_count || 1) > 1
+								? [
+										{
+											user_id: 2,
+											name: "Наталья",
+											email: "natalya@example.com",
+											role: "member",
+										},
+									]
+								: []),
+						];
+			setEditingSpaceMembers(previewMembers);
+			setEditingSpaceMembersLoading(false);
+			setEditingSpaceCanManageMembers(editingSpace.owner_user_id === user?.id);
+			return;
+		}
+		if (!token) return;
+		setEditingSpaceMembers([]);
+		setEditingSpaceMembersLoading(true);
+		void apiRequest<{
+			members: SpaceMember[];
+			can_manage_member_roles?: boolean;
+		}>(`/spaces/${editingSpace.id}/members`, token)
+			.then((response) => {
+				if (requestID !== editingSpaceMembersRequest.current) return;
+				setEditingSpaceMembers(response.members || []);
+				setEditingSpaceCanManageMembers(
+					Boolean(response.can_manage_member_roles),
+				);
+			})
+			.catch(() => {
+				if (requestID !== editingSpaceMembersRequest.current) return;
+				setEditingSpaceMembers([]);
+				setEditingSpaceCanManageMembers(false);
+			})
+			.finally(() => {
+				if (requestID === editingSpaceMembersRequest.current) {
+					setEditingSpaceMembersLoading(false);
+				}
+			});
+	}, [
+		editingSpace?.id,
+		editingSpace?.member_count,
+		editingSpace?.owner_display_name,
+		editingSpace?.owner_user_id,
+		members,
+		previewMode,
+		spaceID,
+		token,
+		user?.email,
+		user?.id,
+		user?.name,
+	]);
 	const openNewSpaceEditor = () => {
 		setSpaceMenuOpen(false);
 		setEditingSpace({
@@ -7156,7 +7237,6 @@ export const MiniApp = ({
 					? [...current, saved]
 					: current.map((space) => (space.id === saved.id ? saved : space)),
 			);
-			setSpaceID(saved.id);
 			setEditingSpace(null);
 			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
 			return;
@@ -7225,7 +7305,6 @@ export const MiniApp = ({
 					),
 				);
 			}
-			setSpaceID(visibleSaved.id);
 			setEditingSpace(null);
 			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
 		} catch (err) {
@@ -7302,17 +7381,17 @@ export const MiniApp = ({
 		setNotice(owned ? "Пространство удалено" : "Вы покинули пространство");
 	};
 
-	const removeSpaceMember = async (member: SpaceMember) => {
+	const removeSpaceMember = async (space: Space, member: SpaceMember) => {
 		if (
-			!activeSpace ||
-			activeSpace.owner_user_id !== user?.id ||
-			member.user_id === activeSpace.owner_user_id ||
+			!space.id ||
+			!editingSpaceCanManageMembers ||
+			member.user_id === space.owner_user_id ||
 			saving
 		)
 			return;
 		if (
 			!window.confirm(
-				`Удалить ${member.name || "участника"} из пространства «${activeSpace.name}»?`,
+				`Удалить ${member.name || "участника"} из пространства «${space.name}»?`,
 			)
 		)
 			return;
@@ -7320,18 +7399,79 @@ export const MiniApp = ({
 		try {
 			if (!previewMode) {
 				await apiRequest(
-					`/spaces/${activeSpace.id}/members/${member.user_id}`,
+					`/spaces/${space.id}/members/${member.user_id}`,
 					token,
 					{ method: "DELETE" },
 				);
 			}
-			setMembers((current) =>
+			setEditingSpaceMembers((current) =>
 				current.filter((item) => item.user_id !== member.user_id),
+			);
+			if (space.id === spaceID) {
+				setMembers((current) =>
+					current.filter((item) => item.user_id !== member.user_id),
+				);
+			}
+			setSpaces((current) =>
+				current.map((item) =>
+					item.id === space.id
+						? {
+								...item,
+								member_count: Math.max(1, Number(item.member_count || 1) - 1),
+							}
+						: item,
+				),
 			);
 			setNotice(`${member.name || "Участник"} удалён из пространства`);
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : "Не удалось удалить участника",
+			);
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const updateSpaceMemberRole = async (
+		space: Space,
+		member: SpaceMember,
+		role: string,
+	) => {
+		if (
+			!space.id ||
+			!editingSpaceCanManageMembers ||
+			member.user_id === space.owner_user_id ||
+			saving
+		)
+			return;
+		setSaving(true);
+		try {
+			const updated = previewMode
+				? { ...member, role }
+				: await apiRequest<SpaceMember>(
+						`/spaces/${space.id}/members/${member.user_id}`,
+						token,
+						{
+							method: "PATCH",
+							body: JSON.stringify({ role }),
+						},
+					);
+			setEditingSpaceMembers((current) =>
+				current.map((item) =>
+					item.user_id === updated.user_id ? updated : item,
+				),
+			);
+			if (space.id === spaceID) {
+				setMembers((current) =>
+					current.map((item) =>
+						item.user_id === updated.user_id ? updated : item,
+					),
+				);
+			}
+			setNotice(`Роль ${member.name || "участника"} обновлена`);
+		} catch (err) {
+			setNotice(
+				err instanceof Error ? err.message : "Не удалось изменить роль",
 			);
 		} finally {
 			setSaving(false);
@@ -8865,16 +9005,13 @@ export const MiniApp = ({
 								members={businessApp ? organizationMembers : members}
 								currentUserID={user?.id || 0}
 								canManageMembers={
-									businessApp
-										? Boolean(activeOrganization?.can_manage)
-										: activeSpace?.owner_user_id === user?.id
+									businessApp ? Boolean(activeOrganization?.can_manage) : false
 								}
 								saving={saving}
-								onSelect={setSpaceID}
 								onBack={() => setView("profile")}
 								onEdit={(space) => setEditingSpace({ ...space })}
 								onRemoveMember={
-									businessApp ? removeOrganizationMember : removeSpaceMember
+									businessApp ? removeOrganizationMember : undefined
 								}
 								onChangeMemberRole={
 									businessApp ? updateOrganizationMemberRole : undefined
@@ -8893,11 +9030,7 @@ export const MiniApp = ({
 										? activeOrganization?.can_manage && activeOrganization
 											? () => setInvitingOrganization(activeOrganization)
 											: undefined
-										: activeSpace &&
-												!activeSpace.is_personal &&
-												activeSpace.owner_user_id === user?.id
-											? setInvitingSpace
-											: undefined
+										: undefined
 								}
 								inviting={Boolean(invitingSpace || invitingOrganization)}
 								onAdd={
@@ -9961,6 +10094,10 @@ export const MiniApp = ({
 							? Boolean(activeOrganization?.can_manage)
 							: editingSpace.owner_user_id === user?.id
 					}
+					members={editingSpaceMembers}
+					membersLoading={editingSpaceMembersLoading}
+					canManageMembers={editingSpaceCanManageMembers}
+					currentUserID={user?.id || 0}
 					saving={saving}
 					onChange={setEditingSpace}
 					onClose={() => setEditingSpace(null)}
@@ -9969,9 +10106,15 @@ export const MiniApp = ({
 						!businessApp &&
 						editingSpace.id &&
 						!editingSpace.is_personal &&
-						editingSpace.owner_user_id === user?.id
+						editingSpaceCanManageMembers
 							? () => setInvitingSpace(editingSpace)
 							: undefined
+					}
+					onRemoveMember={(member) =>
+						void removeSpaceMember(editingSpace, member)
+					}
+					onChangeMemberRole={(member, role) =>
+						void updateSpaceMemberRole(editingSpace, member, role)
 					}
 					onDelete={
 						!businessApp && editingSpace.id && !editingSpace.is_personal
@@ -14326,7 +14469,6 @@ const SpacesView = ({
 	members,
 	currentUserID,
 	canManageMembers,
-	onSelect,
 	onBack,
 	onEdit,
 	onRemoveMember,
@@ -14349,10 +14491,9 @@ const SpacesView = ({
 	members: SpaceMember[];
 	currentUserID: number;
 	canManageMembers: boolean;
-	onSelect: (id: number) => void;
 	onBack: () => void;
 	onEdit: (space: Space) => void;
-	onRemoveMember: (member: SpaceMember) => void;
+	onRemoveMember?: (member: SpaceMember) => void;
 	onChangeMemberRole?: (member: SpaceMember, role: string) => void;
 	onEditOrganization?: () => void;
 	onUpgrade: () => void;
@@ -14445,107 +14586,109 @@ const SpacesView = ({
 						className={space.id === activeSpaceID ? "active" : ""}
 						key={space.id}
 					>
-						<button type="button" onClick={() => onSelect(space.id)}>
-							<span>
-								<b>{organizationSpaceName(space, organization)}</b>
-								<small>{space.currency}</small>
+						<button type="button" onClick={() => onEdit(space)}>
+							<span className="mini-space-settings-icon">
+								<GearSix size={20} />
 							</span>
-							{space.id === activeSpaceID && <Check size={18} weight="bold" />}
-						</button>
-						{(!businessApp || canManageMembers) && (
-							<button
-								className="mini-icon-button"
-								type="button"
-								aria-label={uiText(language, "configureSpace").replace(
-									"{name}",
-									space.name,
+							<span className="mini-space-settings-copy">
+								<b>{organizationSpaceName(space, organization)}</b>
+								<small>
+									{space.currency} ·{" "}
+									{spaceMemberCountText(
+										Number(space.member_count || 1),
+										language,
+									)}
+								</small>
+							</span>
+							<span className="mini-space-settings-action">
+								{space.id === activeSpaceID && (
+									<Check
+										size={16}
+										weight="bold"
+										aria-label={uiText(language, "currentSpace")}
+									/>
 								)}
-								onClick={() => onEdit(space)}
-							>
-								<GearSix size={19} />
-							</button>
-						)}
+								<CaretRight size={18} weight="bold" />
+							</span>
+						</button>
 					</article>
 				))}
 			</div>
 			{spaces.length === 0 && (
 				<Empty text={uiText(language, "createFirstSpace")} />
 			)}
-			<div className="mini-section-head">
-				<h2>
-					{businessApp
-						? `Команда · ${members.length}`
-						: uiText(language, "membersCount").replace(
-								"{count}",
-								String(members.length),
-							)}
-				</h2>
-				{onInvite && activeSpace && (
-					<button
-						type="button"
-						disabled={inviting}
-						onClick={() => onInvite(activeSpace)}
-					>
-						<PaperPlaneTilt size={17} weight="bold" />
-						{uiText(language, "invite")}
-					</button>
-				)}
-			</div>
-			<div className="mini-members">
-				{members.map((member) => {
-					const canRemove =
-						canManageMembers &&
-						member.role !== "owner" &&
-						member.user_id !== currentUserID;
-					return (
-						<div key={member.user_id}>
-							<span>
-								{(member.name || uiText(language, "user"))
-									.slice(0, 1)
-									.toUpperCase()}
-							</span>
-							<p>
-								<b>{member.name || uiText(language, "user")}</b>
-								<small>
-									{businessApp
-										? organizationRoleLabel(member.role)
-										: memberRole(member.role, language)}
-								</small>
-							</p>
-							{businessApp && onChangeMemberRole && canRemove && (
-								<select
-									aria-label={`Роль: ${member.name}`}
-									value={member.role}
-									disabled={saving}
-									onChange={(event) =>
-										onChangeMemberRole(member, event.target.value)
-									}
-								>
-									{organization?.role === "owner" && (
-										<option value="admin">Администратор</option>
-									)}
-									<option value="member">Участник</option>
-									<option value="viewer">Наблюдатель</option>
-								</select>
-							)}
-							{canRemove && (
-								<button
-									className="mini-icon-button mini-member-remove"
-									type="button"
-									disabled={saving}
-									aria-label={uiText(language, "removeMember").replace(
-										"{name}",
-										member.name || uiText(language, "participant"),
-									)}
-									onClick={() => onRemoveMember(member)}
-								>
-									<Trash size={18} />
-								</button>
-							)}
-						</div>
-					);
-				})}
-			</div>
+			{businessApp && (
+				<div className="mini-section-head">
+					<h2>{`Команда · ${members.length}`}</h2>
+					{onInvite && activeSpace && (
+						<button
+							type="button"
+							disabled={inviting}
+							onClick={() => onInvite(activeSpace)}
+						>
+							<PaperPlaneTilt size={17} weight="bold" />
+							{uiText(language, "invite")}
+						</button>
+					)}
+				</div>
+			)}
+			{businessApp && (
+				<div className="mini-members">
+					{members.map((member) => {
+						const canRemove =
+							canManageMembers &&
+							member.role !== "owner" &&
+							member.user_id !== currentUserID;
+						return (
+							<div key={member.user_id}>
+								<span>
+									{(member.name || uiText(language, "user"))
+										.slice(0, 1)
+										.toUpperCase()}
+								</span>
+								<p>
+									<b>{member.name || uiText(language, "user")}</b>
+									<small>
+										{businessApp
+											? organizationRoleLabel(member.role)
+											: memberRole(member.role, language)}
+									</small>
+								</p>
+								{businessApp && onChangeMemberRole && canRemove && (
+									<select
+										aria-label={`Роль: ${member.name}`}
+										value={member.role}
+										disabled={saving}
+										onChange={(event) =>
+											onChangeMemberRole(member, event.target.value)
+										}
+									>
+										{organization?.role === "owner" && (
+											<option value="admin">Администратор</option>
+										)}
+										<option value="member">Участник</option>
+										<option value="viewer">Наблюдатель</option>
+									</select>
+								)}
+								{canRemove && onRemoveMember && (
+									<button
+										className="mini-icon-button mini-member-remove"
+										type="button"
+										disabled={saving}
+										aria-label={uiText(language, "removeMember").replace(
+											"{name}",
+											member.name || uiText(language, "participant"),
+										)}
+										onClick={() => onRemoveMember(member)}
+									>
+										<Trash size={18} />
+									</button>
+								)}
+							</div>
+						);
+					})}
+				</div>
+			)}
 		</section>
 	);
 };
@@ -20699,123 +20842,240 @@ const SpaceEditor = ({
 	language,
 	space,
 	canEditCurrency,
+	members,
+	membersLoading,
+	canManageMembers,
+	currentUserID,
 	saving,
 	onChange,
 	onClose,
 	onSave,
 	onInvite,
+	onRemoveMember,
+	onChangeMemberRole,
 	onDelete,
 }: {
 	language: UILanguage;
 	space: Space;
 	canEditCurrency: boolean;
+	members: SpaceMember[];
+	membersLoading: boolean;
+	canManageMembers: boolean;
+	currentUserID: number;
 	saving: boolean;
 	onChange: (space: Space) => void;
 	onClose: () => void;
 	onSave: () => void;
 	onInvite?: () => void;
+	onRemoveMember: (member: SpaceMember) => void;
+	onChangeMemberRole: (member: SpaceMember, role: string) => void;
 	onDelete?: () => void;
-}) => (
-	<Modal
-		title={uiText(language, space.id ? "spaceSettings" : "newSpace")}
-		variant="editor"
-		onClose={onClose}
-	>
-		<label>
-			{uiText(language, "spaceName")}
-			<input
-				disabled={space.is_personal}
-				maxLength={120}
-				value={space.name}
-				onChange={(event) => onChange({ ...space, name: event.target.value })}
-			/>
-		</label>
-		<label>
-			{uiText(language, "spaceCurrency")}
-			<select
-				disabled={!canEditCurrency}
-				value={space.currency}
-				onChange={(event) =>
-					onChange({ ...space, currency: event.target.value })
-				}
-			>
-				{!currencyOptions.some(([code]) => code === space.currency) && (
-					<option value={space.currency}>{space.currency}</option>
-				)}
-				{currencyOptions.map(([code]) => (
-					<option key={code} value={code}>
-						{code} — {localizedCurrencyName(code, language)}
-					</option>
-				))}
-			</select>
-		</label>
-		<p className="mini-field-note">
-			{uiText(
-				language,
-				canEditCurrency ? "currencyConvertHint" : "ownerCurrencyOnly",
-			)}
-		</p>
-		<div className="mini-field mini-device-notifications">
-			<button
-				type="button"
-				className={space.settings?.period_reports_enabled ? "active" : ""}
-				disabled={!canEditCurrency || saving}
-				aria-pressed={Boolean(space.settings?.period_reports_enabled)}
-				onClick={() =>
-					onChange({
-						...space,
-						settings: {
-							...space.settings,
-							period_reports_enabled: !space.settings?.period_reports_enabled,
-						},
-					})
-				}
-			>
-				<BellRinging size={21} />
-				<span>
-					<b>{uiText(language, "periodicReports")}</b>
-					<small>{uiText(language, "periodicReportsHint")}</small>
-				</span>
-				<i />
-			</button>
-		</div>
-		{onInvite && (
-			<div className="mini-invite-block">
-				<div>
-					<b>{uiText(language, "participant")}</b>
-					<small>{uiText(language, "invitePeopleHint")}</small>
+}) => {
+	const existingSpace = Boolean(space.id);
+	return (
+		<Modal
+			title={uiText(language, existingSpace ? "spaceSettings" : "newSpace")}
+			variant="editor"
+			onClose={onClose}
+		>
+			<div className="mini-space-editor-section">
+				<div className="mini-space-editor-heading">
+					<span>
+						<GearSix size={20} />
+					</span>
+					<div>
+						<b>{uiText(language, "spaceDetails")}</b>
+						<small>{uiText(language, "spaceDetailsHint")}</small>
+					</div>
 				</div>
-				<button type="button" disabled={saving} onClick={onInvite}>
-					<PaperPlaneTilt size={18} weight="bold" />
-					{uiText(language, "invite")}
-				</button>
+				<label>
+					{uiText(language, "spaceName")}
+					<input
+						disabled={space.is_personal || !canEditCurrency}
+						maxLength={120}
+						value={space.name}
+						onChange={(event) =>
+							onChange({ ...space, name: event.target.value })
+						}
+					/>
+				</label>
+				<label>
+					{uiText(language, "spaceCurrency")}
+					<select
+						disabled={!canEditCurrency}
+						value={space.currency}
+						onChange={(event) =>
+							onChange({ ...space, currency: event.target.value })
+						}
+					>
+						{!currencyOptions.some(([code]) => code === space.currency) && (
+							<option value={space.currency}>{space.currency}</option>
+						)}
+						{currencyOptions.map(([code]) => (
+							<option key={code} value={code}>
+								{code} — {localizedCurrencyName(code, language)}
+							</option>
+						))}
+					</select>
+				</label>
+				<p className="mini-field-note">
+					{uiText(
+						language,
+						canEditCurrency ? "currencyConvertHint" : "ownerCurrencyOnly",
+					)}
+				</p>
+				<div className="mini-field mini-device-notifications">
+					<button
+						type="button"
+						className={space.settings?.period_reports_enabled ? "active" : ""}
+						disabled={!canEditCurrency || saving}
+						aria-pressed={Boolean(space.settings?.period_reports_enabled)}
+						onClick={() =>
+							onChange({
+								...space,
+								settings: {
+									...space.settings,
+									period_reports_enabled:
+										!space.settings?.period_reports_enabled,
+								},
+							})
+						}
+					>
+						<BellRinging size={21} />
+						<span>
+							<b>{uiText(language, "periodicReports")}</b>
+							<small>{uiText(language, "periodicReportsHint")}</small>
+						</span>
+						<i />
+					</button>
+				</div>
 			</div>
-		)}
-		<div className="mini-modal-actions">
-			<button
-				className="mini-save"
-				type="button"
-				disabled={
-					saving || !space.name.trim() || space.currency.trim().length !== 3
-				}
-				onClick={onSave}
-			>
-				{uiText(language, saving ? "saving" : space.id ? "save" : "create")}
-			</button>
-			{onDelete && (
-				<button
-					className="mini-delete"
-					type="button"
-					disabled={saving}
-					onClick={onDelete}
-				>
-					<Trash size={18} />
-					{uiText(language, canEditCurrency ? "deleteSpace" : "leaveSpace")}
-				</button>
+			{existingSpace && (
+				<div className="mini-space-editor-section is-members">
+					<div className="mini-space-editor-heading">
+						<span>
+							<UsersThree size={20} />
+						</span>
+						<div>
+							<b>
+								{uiText(language, "membersCount").replace(
+									"{count}",
+									String(members.length),
+								)}
+							</b>
+							<small>{uiText(language, "spaceMembersHint")}</small>
+						</div>
+					</div>
+					{onInvite && (
+						<div className="mini-invite-block">
+							<div>
+								<b>{uiText(language, "inviteToSpace")}</b>
+								<small>{uiText(language, "invitePeopleHint")}</small>
+							</div>
+							<button type="button" disabled={saving} onClick={onInvite}>
+								<PaperPlaneTilt size={18} weight="bold" />
+								{uiText(language, "invite")}
+							</button>
+						</div>
+					)}
+					{membersLoading ? (
+						<LoadingRows />
+					) : (
+						<div className="mini-members">
+							{members.map((member) => {
+								const canEditMember =
+									canManageMembers &&
+									member.role !== "owner" &&
+									member.user_id !== currentUserID;
+								return (
+									<div key={member.user_id}>
+										<span>
+											{(member.name || uiText(language, "user"))
+												.slice(0, 1)
+												.toUpperCase()}
+										</span>
+										<p>
+											<b>{member.name || uiText(language, "user")}</b>
+											<small>{memberRole(member.role, language)}</small>
+										</p>
+										{canEditMember && (
+											<select
+												aria-label={uiText(language, "memberRoleLabel").replace(
+													"{name}",
+													member.name || uiText(language, "participant"),
+												)}
+												value={member.role}
+												disabled={saving}
+												onChange={(event) =>
+													onChangeMemberRole(member, event.target.value)
+												}
+											>
+												<option value="admin">
+													{uiText(language, "spaceAdmin")}
+												</option>
+												<option value="editor">
+													{uiText(language, "spaceEditor")}
+												</option>
+												<option value="member">
+													{uiText(language, "spaceMember")}
+												</option>
+												<option value="viewer">
+													{uiText(language, "spaceViewer")}
+												</option>
+											</select>
+										)}
+										{canEditMember && (
+											<button
+												className="mini-icon-button mini-member-remove"
+												type="button"
+												disabled={saving}
+												aria-label={uiText(language, "removeMember").replace(
+													"{name}",
+													member.name || uiText(language, "participant"),
+												)}
+												onClick={() => onRemoveMember(member)}
+											>
+												<Trash size={18} />
+											</button>
+										)}
+									</div>
+								);
+							})}
+						</div>
+					)}
+				</div>
 			)}
-		</div>
-	</Modal>
-);
+			<div className="mini-modal-actions">
+				{canEditCurrency && (
+					<button
+						className="mini-save"
+						type="button"
+						disabled={
+							saving || !space.name.trim() || space.currency.trim().length !== 3
+						}
+						onClick={onSave}
+					>
+						{uiText(
+							language,
+							saving ? "saving" : existingSpace ? "save" : "create",
+						)}
+					</button>
+				)}
+				{onDelete && (
+					<button
+						className="mini-delete"
+						type="button"
+						disabled={saving}
+						onClick={onDelete}
+					>
+						<Trash size={18} />
+						{uiText(language, canEditCurrency ? "deleteSpace" : "leaveSpace")}
+					</button>
+				)}
+			</div>
+		</Modal>
+	);
+};
 
 const notificationTitle = (
 	type: string,
@@ -23346,8 +23606,9 @@ const memberRole = (role: string, language: UILanguage) =>
 				owner: "spaceOwner",
 				admin: "spaceAdmin",
 				editor: "spaceEditor",
+				viewer: "spaceViewer",
 			} as const
-		)[role as "owner" | "admin" | "editor"] || "spaceMember",
+		)[role as "owner" | "admin" | "editor" | "viewer"] || "spaceMember",
 	);
 const organizationRoleLabel = (role: string) =>
 	({
