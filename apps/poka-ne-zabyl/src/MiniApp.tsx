@@ -14458,6 +14458,8 @@ const CategoriesView = ({
 	onUpgrade: () => void;
 	onAdd: () => void;
 }) => {
+	const summaryRef = useRef<HTMLElement>(null);
+	const [summaryCompact, setSummaryCompact] = useState(false);
 	const customCategoryCount = categories.filter(
 		(category) => !category.is_system && !category.is_preset,
 	).length;
@@ -14484,6 +14486,29 @@ const CategoriesView = ({
 		year: "numeric",
 	}).format(new Date(`${shiftCategoryMonth(month, 1)}-01T12:00:00`));
 	const summaryOverLimit = summary.limit > 0 && summary.remaining < 0;
+	useEffect(() => {
+		let frame = 0;
+		const updateSummaryState = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(() => {
+				const element = summaryRef.current;
+				if (!element) return;
+				const stickyTop = Number.parseFloat(getComputedStyle(element).top) || 0;
+				setSummaryCompact(
+					(document.scrollingElement?.scrollTop || window.scrollY) > 0 &&
+						element.getBoundingClientRect().top <= stickyTop + 1,
+				);
+			});
+		};
+		updateSummaryState();
+		window.addEventListener("scroll", updateSummaryState, { passive: true });
+		window.addEventListener("resize", updateSummaryState);
+		return () => {
+			cancelAnimationFrame(frame);
+			window.removeEventListener("scroll", updateSummaryState);
+			window.removeEventListener("resize", updateSummaryState);
+		};
+	}, []);
 	const orderedCategories = [...categories].sort((left, right) => {
 		const leftAmounts = categoryDisplayAmounts(left, currency);
 		const rightAmounts = categoryDisplayAmounts(right, currency);
@@ -14506,7 +14531,8 @@ const CategoriesView = ({
 			</div>
 			<p className="mini-intro">{uiText(language, "categoriesIntro")}</p>
 			<section
-				className={`mini-category-summary${summaryOverLimit ? " is-over" : ""}${loading ? " is-loading" : ""}`}
+				ref={summaryRef}
+				className={`mini-category-summary${summaryOverLimit ? " is-over" : ""}${loading ? " is-loading" : ""}${summaryCompact ? " is-compact" : ""}`}
 				aria-busy={loading}
 			>
 				<div className="mini-category-period">

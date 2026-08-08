@@ -2712,11 +2712,19 @@
 	box-shadow: 0 0 0 1px rgba(23, 27, 45, 0.07), 0 4px 10px
 		rgba(23, 27, 45, 0.06), 0 14px 30px rgba(41, 69, 199, 0.08);
 	backdrop-filter: blur(16px);
-	transition-property: opacity, box-shadow;
+	transition-property: opacity, box-shadow, padding, gap, border-radius;
 	transition-duration: 160ms;
+	transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 .mini-category-summary.is-loading {
 	opacity: 0.68;
+}
+.mini-category-summary.is-compact {
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 6px 10px;
+	padding: 7px 8px 8px;
+	border-radius: 10px;
+	box-shadow: 0 0 0 1px rgba(23, 27, 45, 0.08), 0 6px 18px rgba(23, 27, 45, 0.1);
 }
 .mini-category-period {
 	display: grid;
@@ -2761,9 +2769,42 @@
 	text-transform: capitalize;
 	white-space: nowrap;
 }
+.mini-category-summary.is-compact .mini-category-period {
+	grid-template-columns: 32px minmax(82px, 1fr) 32px;
+	gap: 4px;
+}
+.mini-category-summary.is-compact .mini-category-period button {
+	width: 32px;
+	height: 32px;
+}
+.mini-category-summary.is-compact .mini-category-period small {
+	display: none;
+}
+.mini-category-summary.is-compact .mini-category-period b {
+	font-size: 13px;
+}
 .mini-category-summary-metrics {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.mini-category-summary.is-compact .mini-category-summary-metrics {
+	display: block;
+	align-self: center;
+	text-align: right;
+}
+.mini-category-summary.is-compact .mini-category-summary-metrics > span {
+	gap: 0;
+}
+.mini-category-summary.is-compact
+	.mini-category-summary-metrics
+	> span:not(:first-child) {
+	display: none;
+}
+.mini-category-summary.is-compact .mini-category-summary-metrics small {
+	font-size: 9px;
+}
+.mini-category-summary.is-compact .mini-category-summary-metrics strong {
+	font-size: 14px;
 }
 .mini-category-summary-metrics > span {
 	display: grid;
@@ -2798,6 +2839,10 @@
 	border-radius: 3px;
 	background: var(--mini-line);
 }
+.mini-category-summary.is-compact .mini-category-summary-progress {
+	grid-column: 1 / -1;
+	height: 3px;
+}
 .mini-category-summary-progress i {
 	display: block;
 	height: 100%;
@@ -2810,6 +2855,10 @@
 .mini-category-summary-note {
 	margin-top: -4px;
 	text-align: center;
+}
+.mini-category-summary.is-compact .mini-category-summary-note,
+.mini-category-summary.is-compact .mini-category-clone {
+	display: none;
 }
 .mini-category-clone {
 	display: grid;
