@@ -1022,6 +1022,7 @@ type DeveloperUserSummary = {
 	last_input_at?: string | null;
 	last_session_at?: string | null;
 	inputs_total?: number;
+	ai_requests_total?: number;
 	inputs_30_days: number;
 	quota_units_30_days: number;
 	confirmed_results?: number;
@@ -3158,6 +3159,7 @@ export const MiniApp = ({
 							last_input_at: isoDay(0),
 							last_session_at: isoDay(0),
 							inputs_total: 18,
+							ai_requests_total: 18,
 							inputs_30_days: 6,
 							quota_units_30_days: 11,
 							confirmed_results: 15,
@@ -3174,6 +3176,7 @@ export const MiniApp = ({
 							last_input_at: isoDay(-2),
 							last_session_at: isoDay(-1),
 							inputs_total: 2,
+							ai_requests_total: 2,
 							inputs_30_days: 2,
 							quota_units_30_days: 2,
 							confirmed_results: 0,
@@ -3187,6 +3190,7 @@ export const MiniApp = ({
 							created_at: isoDay(-4),
 							last_session_at: isoDay(-4),
 							inputs_total: 0,
+							ai_requests_total: 0,
 							inputs_30_days: 0,
 							quota_units_30_days: 0,
 							confirmed_results: 0,
@@ -16680,8 +16684,11 @@ const DeveloperUserRow = ({
 				</span>
 				{variant === "catalog" ? (
 					<span className="mini-dev-user-row-stats">
-						<small>
-							<b>{recentUser.inputs_total || 0}</b> вводов
+						<small title="Уникальные разборы, в которых вызывалась AI-модель; внутренние повторы не считаются">
+							<b>
+								{recentUser.ai_requests_total ?? recentUser.inputs_total ?? 0}
+							</b>{" "}
+							AI-запросов
 						</small>
 						<small>
 							<b>{recentUser.confirmed_results || 0}</b> сохранено
