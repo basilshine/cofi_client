@@ -1344,7 +1344,8 @@
 .mini-expense-card {
 	grid-template-areas:
 		"icon title amount"
-		"icon context context";
+		"icon context context"
+		"icon meta meta";
 	row-gap: 3px;
 	transition: background-color 160ms ease, transform 160ms ease;
 }
@@ -1398,6 +1399,14 @@
 	overflow: visible;
 	text-overflow: clip;
 	white-space: normal;
+}
+.mini-expense-card > .mini-expense-meta {
+	min-width: 0;
+	grid-area: meta;
+	overflow: hidden;
+	font-size: 10px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 .mini-expense-context > span {
 	min-width: 0;
@@ -7991,6 +8000,24 @@
 	font-size: 12px;
 	line-height: 1.35;
 	overflow-wrap: anywhere;
+}
+.mini-record-items-section {
+	display: grid;
+	gap: 7px;
+}
+.mini-record-section-title {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 0 2px;
+}
+.mini-record-section-title b {
+	font-size: 12px;
+}
+.mini-record-section-title small {
+	color: var(--mini-muted);
+	font-size: 10px;
 }
 .mini-record-lines {
 	display: grid;

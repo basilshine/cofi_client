@@ -13594,6 +13594,11 @@ const PlanRecordCard = ({
 	const author = sharedRecordAuthor(members, plan.created_by_user_id);
 	const itemCount = purchasePlanItems(plan).length;
 	const forecastAmount = amount * occurrenceCount;
+	const showVendor = Boolean(
+		vendorName &&
+			vendorName.trim().toLocaleLowerCase() !==
+				plan.title.trim().toLocaleLowerCase(),
+	);
 	const dueLabel = plan.due_date
 		? formatPlanDueDate(plan.due_date, language)
 		: uiText(language, "someday");
@@ -13639,7 +13644,13 @@ const PlanRecordCard = ({
 				<small className="mini-plan-record-context">
 					<span className={dueClassName}>{dueLabel}</span>
 					<span className="mini-plan-record-separator" />
-					<span>{vendorName || itemCountText(itemCount, language)}</span>
+					{showVendor && (
+						<>
+							<span>{vendorName}</span>
+							<span className="mini-plan-record-separator" />
+						</>
+					)}
+					<span>{itemCountText(itemCount, language)}</span>
 				</small>
 				{(plan.recurrence_interval || author) && (
 					<small className="mini-plan-record-meta">
@@ -14348,13 +14359,22 @@ const ExpenseRecordCard = ({
 	originalMoney?: { amount: number; currency: string } | null;
 	onOpen: () => void;
 }) => {
+	const title = expense.title || expense.items[0]?.name || "Расход";
+	const seller = expenseSellerName(expense);
+	const hasSeller = Boolean(
+		expense.vendor_name ||
+			expense.vendor?.name ||
+			expense.items.some((item) => item.vendor_name || item.vendor?.name) ||
+			expense.payee_text,
+	);
 	const payer =
 		participants.length > 1
 			? expensePayerParticipant(expense, participants)
 			: undefined;
-	const context = payer
-		? `${uiText(language, "receiptPaidBy")} ${payer.display_name}`
-		: itemCountText(itemCount, language);
+	const showSeller = Boolean(
+		hasSeller &&
+			seller.trim().toLocaleLowerCase() !== title.trim().toLocaleLowerCase(),
+	);
 
 	return (
 		<button className="mini-expense-card" type="button" onClick={onOpen}>
@@ -14362,7 +14382,7 @@ const ExpenseRecordCard = ({
 				<SourceIcon capture={capture} size={19} />
 			</span>
 			<span className="mini-expense-copy">
-				<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
+				<b>{title}</b>
 			</span>
 			<span className="mini-expense-amount">
 				<b>{formatMoney(amount, currency)}</b>
@@ -14376,10 +14396,19 @@ const ExpenseRecordCard = ({
 			<small className="mini-expense-context">
 				<span>{formatDate(expense.expense_date, language)}</span>
 				<span className="mini-expense-context-separator" />
-				<span className={payer ? "mini-record-payer" : undefined}>
-					{context}
-				</span>
+				{showSeller && (
+					<>
+						<span>{seller}</span>
+						<span className="mini-expense-context-separator" />
+					</>
+				)}
+				<span>{itemCountText(itemCount, language)}</span>
 			</small>
+			{payer && (
+				<small className="mini-expense-meta mini-record-payer">
+					{uiText(language, "receiptPaidBy")} {payer.display_name}
+				</small>
+			)}
 		</button>
 	);
 };
@@ -19346,29 +19375,35 @@ const ExpenseDetail = ({
 					{notes && <p className="mini-record-note">{notes}</p>}
 				</>
 			) : (
-				<div className="mini-record-lines">
-					{expense.items.map((current, index) => {
-						const currentMoney = itemDisplayMoney(
-							current,
-							expense,
-							money.currency,
-						);
-						return (
-							<button
-								key={current.id || index}
-								type="button"
-								onClick={() => onOpenItem(index)}
-							>
-								<span>{index + 1}</span>
-								<b>{current.name}</b>
-								<strong>
-									{formatMoney(currentMoney.amount, currentMoney.currency)}
-								</strong>
-								<ArrowRight size={15} />
-							</button>
-						);
-					})}
-				</div>
+				<section className="mini-record-items-section">
+					<div className="mini-record-section-title">
+						<b>{uiText(language, "items")}</b>
+						<small>{itemCountText(expense.items.length, language)}</small>
+					</div>
+					<div className="mini-record-lines">
+						{expense.items.map((current, index) => {
+							const currentMoney = itemDisplayMoney(
+								current,
+								expense,
+								money.currency,
+							);
+							return (
+								<button
+									key={current.id || index}
+									type="button"
+									onClick={() => onOpenItem(index)}
+								>
+									<span>{index + 1}</span>
+									<b>{current.name}</b>
+									<strong>
+										{formatMoney(currentMoney.amount, currentMoney.currency)}
+									</strong>
+									<ArrowRight size={15} />
+								</button>
+							);
+						})}
+					</div>
+				</section>
 			)}
 			{itemIndex === undefined && participants.length > 1 && (
 				<section className="mini-record-split">
@@ -20350,14 +20385,16 @@ const PlanDetail = ({
 						<b>{planRecurrenceText(plan, language)}</b>
 					</div>
 				)}
-				<div>
-					<small>{uiText(language, "category")}</small>
-					<b>
-						{category
-							? localizedCategoryName(category, language)
-							: uiText(language, "categoryNotSet")}
-					</b>
-				</div>
+				{(item || items.length === 1) && (
+					<div>
+						<small>{uiText(language, "category")}</small>
+						<b>
+							{category
+								? localizedCategoryName(category, language)
+								: uiText(language, "categoryNotSet")}
+						</b>
+					</div>
+				)}
 				<div>
 					<small>{uiText(language, "planVendor")}</small>
 					<b>{seller}</b>
@@ -20400,27 +20437,33 @@ const PlanDetail = ({
 					<ArrowRight size={17} />
 				</button>
 			) : (
-				<div className="mini-record-lines">
-					{items.map((current, index) => {
-						const itemMoney = planDisplayMoney(plan, currency, current);
-						return (
-							<button
-								key={current.id || index}
-								type="button"
-								onClick={() => onOpenItem(index)}
-							>
-								<span>{index + 1}</span>
-								<b>{current.name}</b>
-								<strong>
-									{itemMoney.amount
-										? formatMoney(itemMoney.amount, itemMoney.currency)
-										: "—"}
-								</strong>
-								<ArrowRight size={15} />
-							</button>
-						);
-					})}
-				</div>
+				<section className="mini-record-items-section">
+					<div className="mini-record-section-title">
+						<b>{uiText(language, "items")}</b>
+						<small>{itemCountText(items.length, language)}</small>
+					</div>
+					<div className="mini-record-lines">
+						{items.map((current, index) => {
+							const itemMoney = planDisplayMoney(plan, currency, current);
+							return (
+								<button
+									key={current.id || index}
+									type="button"
+									onClick={() => onOpenItem(index)}
+								>
+									<span>{index + 1}</span>
+									<b>{current.name}</b>
+									<strong>
+										{itemMoney.amount
+											? formatMoney(itemMoney.amount, itemMoney.currency)
+											: "—"}
+									</strong>
+									<ArrowRight size={15} />
+								</button>
+							);
+						})}
+					</div>
+				</section>
 			)}
 			<MoveRecordControl
 				language={language}
