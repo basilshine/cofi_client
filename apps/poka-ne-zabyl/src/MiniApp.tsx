@@ -45,6 +45,7 @@ import {
 } from "@phosphor-icons/react";
 import WebApp from "@twa-dev/sdk";
 import {
+	type FormEvent,
 	type PointerEvent as ReactPointerEvent,
 	type TouchEvent,
 	useCallback,
@@ -201,6 +202,7 @@ type View =
 	| "spaces"
 	| "subscription"
 	| "profile"
+	| "developer-users"
 	| "review";
 
 type TelegramWidgetUser = {
@@ -1012,6 +1014,31 @@ type AppNotification = {
 	created_at: string;
 };
 
+type DeveloperUserSummary = {
+	id: number;
+	name: string;
+	auth_type: string;
+	created_at: string;
+	last_input_at?: string | null;
+	last_session_at?: string | null;
+	inputs_total?: number;
+	inputs_30_days: number;
+	quota_units_30_days: number;
+	confirmed_results?: number;
+	expenses_total?: number;
+	plans_total?: number;
+	pwa_installed_at?: string | null;
+	pwa_last_seen_at?: string | null;
+};
+
+type DeveloperUserList = {
+	users: DeveloperUserSummary[];
+	total: number;
+	limit: number;
+	offset: number;
+	has_more: boolean;
+};
+
 type DeveloperDashboard = {
 	user_id: number;
 	period_days: number;
@@ -1064,17 +1091,7 @@ type DeveloperDashboard = {
 		pwa_installed_users: number;
 		pwa_active_30_days: number;
 		average_inputs_per_active_user: number;
-		recent_users: {
-			id: number;
-			name: string;
-			auth_type: string;
-			created_at: string;
-			last_input_at?: string | null;
-			inputs_30_days: number;
-			quota_units_30_days: number;
-			pwa_installed_at?: string | null;
-			pwa_last_seen_at?: string | null;
-		}[];
+		recent_users: DeveloperUserSummary[];
 	};
 	incomplete_registrations: {
 		id: number;
@@ -2185,7 +2202,8 @@ const initialView = (): View => {
 		requested === "vendors" ||
 		requested === "spaces" ||
 		requested === "subscription" ||
-		requested === "profile"
+		requested === "profile" ||
+		requested === "developer-users"
 		? requested
 		: "overview";
 };
@@ -3088,8 +3106,13 @@ export const MiniApp = ({
 							auth_type: "telegram",
 							created_at: isoDay(-1),
 							last_input_at: isoDay(0),
+							last_session_at: isoDay(0),
+							inputs_total: 18,
 							inputs_30_days: 6,
 							quota_units_30_days: 11,
+							confirmed_results: 15,
+							expenses_total: 23,
+							plans_total: 4,
 							pwa_installed_at: isoDay(-1),
 							pwa_last_seen_at: isoDay(0),
 						},
@@ -3099,8 +3122,26 @@ export const MiniApp = ({
 							auth_type: "email",
 							created_at: isoDay(-3),
 							last_input_at: isoDay(-2),
+							last_session_at: isoDay(-1),
+							inputs_total: 2,
 							inputs_30_days: 2,
 							quota_units_30_days: 2,
+							confirmed_results: 0,
+							expenses_total: 0,
+							plans_total: 0,
+						},
+						{
+							id: 16,
+							name: "Ирина",
+							auth_type: "phone",
+							created_at: isoDay(-4),
+							last_session_at: isoDay(-4),
+							inputs_total: 0,
+							inputs_30_days: 0,
+							quota_units_30_days: 0,
+							confirmed_results: 0,
+							expenses_total: 0,
+							plans_total: 0,
 						},
 					],
 				},
@@ -9265,6 +9306,7 @@ export const MiniApp = ({
 								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
 								onManageSpaces={() => setView("spaces")}
+								onManageDeveloperUsers={() => setView("developer-users")}
 								onLinkPhone={() =>
 									user?.phone
 										? setPhoneManageOpen(true)
@@ -9302,6 +9344,15 @@ export const MiniApp = ({
 								onGenerateActivationCode={(rewardType) =>
 									void generateActivationCode(rewardType)
 								}
+							/>
+						)}
+						{view === "developer-users" && (
+							<DeveloperUsersView
+								token={token}
+								previewUsers={developerDashboard?.product.recent_users || []}
+								previewTotal={developerDashboard?.product.total_users || 0}
+								onBack={() => setView("profile")}
+								onRefreshDashboard={() => void refreshDeveloperDashboard()}
 							/>
 						)}
 						{view === "subscription" && (
@@ -9623,7 +9674,12 @@ export const MiniApp = ({
 					}}
 				/>
 				<NavButton
-					active={view === "profile" || view === "vendors" || view === "spaces"}
+					active={
+						view === "profile" ||
+						view === "vendors" ||
+						view === "spaces" ||
+						view === "developer-users"
+					}
 					label={uiText(language, "settings")}
 					icon={<GearSix />}
 					onClick={() => {
@@ -15611,6 +15667,7 @@ const ProfileView = ({
 	onReviewCompletionBehavior,
 	onManageVendors,
 	onManageSpaces,
+	onManageDeveloperUsers,
 	onLinkPhone,
 	onLinkEmail,
 	onLinkTelegram,
@@ -15654,6 +15711,7 @@ const ProfileView = ({
 	onReviewCompletionBehavior: (value: ReviewCompletionBehavior) => void;
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
+	onManageDeveloperUsers: () => void;
 	onLinkPhone: () => void;
 	onLinkEmail: () => void;
 	onLinkTelegram: () => void;
@@ -16003,6 +16061,7 @@ const ProfileView = ({
 							registrationRecoverySendingID={registrationRecoverySendingID}
 							generatedActivationCode={generatedActivationCode}
 							onGenerateActivationCode={onGenerateActivationCode}
+							onManageUsers={onManageDeveloperUsers}
 						/>
 					)}
 					{quota?.system_admin_enabled && (
@@ -16057,7 +16116,7 @@ const developerInputLabel = (input: string) =>
 				: input;
 
 const previewDeveloperUser = (
-	recentUser: DeveloperDashboard["product"]["recent_users"][number],
+	recentUser: DeveloperUserSummary,
 ): DeveloperUserDetail => ({
 	id: recentUser.id,
 	name: recentUser.name,
@@ -16119,10 +16178,12 @@ const DeveloperUserRow = ({
 	recentUser,
 	token,
 	onRefresh,
+	variant = "recent",
 }: {
-	recentUser: DeveloperDashboard["product"]["recent_users"][number];
+	recentUser: DeveloperUserSummary;
 	token: string;
 	onRefresh: () => void;
+	variant?: "recent" | "catalog";
 }) => {
 	const [open, setOpen] = useState(false);
 	const [detail, setDetail] = useState<DeveloperUserDetail | null>(null);
@@ -16256,31 +16317,75 @@ const DeveloperUserRow = ({
 				} => Boolean(row),
 			)
 		: [];
+	const status =
+		(recentUser.inputs_total || 0) === 0
+			? { label: "Без разборов", tone: "idle" }
+			: (recentUser.confirmed_results || 0) === 0
+				? { label: "Не сохранено", tone: "attention" }
+				: recentUser.inputs_30_days > 0
+					? { label: "Активен", tone: "active" }
+					: { label: "Нет активности", tone: "idle" };
+	const lastActivity =
+		recentUser.last_input_at ||
+		recentUser.last_session_at ||
+		recentUser.created_at;
 
 	return (
 		<>
-			<button className="mini-dev-user-row" type="button" onClick={loadDetail}>
+			<button
+				className={`mini-dev-user-row${variant === "catalog" ? " is-catalog" : ""}`}
+				type="button"
+				onClick={loadDetail}
+			>
 				<span>
-					<b>{recentUser.name || `Пользователь #${recentUser.id}`}</b>
+					<span className="mini-dev-user-name">
+						<b>{recentUser.name || `Пользователь #${recentUser.id}`}</b>
+						{variant === "catalog" && (
+							<em className={`is-${status.tone}`}>{status.label}</em>
+						)}
+					</span>
 					<small>
 						#{recentUser.id} · {recentUser.auth_type || "unknown"} ·{" "}
 						{formatDateTime(recentUser.created_at, "ru")}
 					</small>
-					{recentUser.last_input_at && (
+					{variant === "recent" && recentUser.last_input_at && (
 						<small>
 							Последний ввод: {formatDateTime(recentUser.last_input_at, "ru")}
 						</small>
 					)}
-					<small>
-						{recentUser.pwa_last_seen_at
-							? `PWA: ${formatDateTime(recentUser.pwa_last_seen_at, "ru")}`
-							: "PWA: установка не подтверждена"}
-					</small>
+					{variant === "recent" ? (
+						<small>
+							{recentUser.pwa_last_seen_at
+								? `PWA: ${formatDateTime(recentUser.pwa_last_seen_at, "ru")}`
+								: "PWA: установка не подтверждена"}
+						</small>
+					) : (
+						<small>
+							Последнее действие: {formatDateTime(lastActivity, "ru")}
+						</small>
+					)}
 				</span>
-				<strong>
-					{recentUser.inputs_30_days}
-					<small>{recentUser.quota_units_30_days} разборов</small>
-				</strong>
+				{variant === "catalog" ? (
+					<span className="mini-dev-user-row-stats">
+						<small>
+							<b>{recentUser.inputs_total || 0}</b> вводов
+						</small>
+						<small>
+							<b>{recentUser.confirmed_results || 0}</b> сохранено
+						</small>
+						<small>
+							<b>{recentUser.expenses_total || 0}</b> расходов
+						</small>
+						<small>
+							<b>{recentUser.plans_total || 0}</b> планов
+						</small>
+					</span>
+				) : (
+					<strong>
+						{recentUser.inputs_30_days}
+						<small>{recentUser.quota_units_30_days} разборов</small>
+					</strong>
+				)}
 				<ArrowRight size={16} />
 			</button>
 			{open && (
@@ -16535,6 +16640,208 @@ const DeveloperUserRow = ({
 	);
 };
 
+const DeveloperUsersView = ({
+	token,
+	previewUsers,
+	previewTotal,
+	onBack,
+	onRefreshDashboard,
+}: {
+	token: string;
+	previewUsers: DeveloperUserSummary[];
+	previewTotal: number;
+	onBack: () => void;
+	onRefreshDashboard: () => void;
+}) => {
+	const [users, setUsers] = useState<DeveloperUserSummary[]>([]);
+	const [total, setTotal] = useState(0);
+	const [query, setQuery] = useState("");
+	const [appliedQuery, setAppliedQuery] = useState("");
+	const [loading, setLoading] = useState(true);
+	const [loadingMore, setLoadingMore] = useState(false);
+	const [hasMore, setHasMore] = useState(false);
+	const [error, setError] = useState("");
+
+	const loadUsers = async (offset: number, search: string, append: boolean) => {
+		append ? setLoadingMore(true) : setLoading(true);
+		setError("");
+		try {
+			if (token === "preview") {
+				const normalized = search.trim().toLowerCase();
+				const filtered = normalized
+					? previewUsers.filter(
+							(user) =>
+								user.name.toLowerCase().includes(normalized) ||
+								String(user.id) === normalized,
+						)
+					: previewUsers;
+				setUsers(filtered);
+				setTotal(normalized ? filtered.length : previewTotal);
+				setHasMore(false);
+				return;
+			}
+			const params = new URLSearchParams({
+				limit: "20",
+				offset: String(offset),
+			});
+			if (search.trim()) params.set("q", search.trim());
+			const response = await apiRequest<DeveloperUserList>(
+				`/quota/developer-users?${params.toString()}`,
+				token,
+			);
+			setUsers((current) =>
+				append ? [...current, ...response.users] : response.users,
+			);
+			setTotal(response.total);
+			setHasMore(response.has_more);
+		} catch (requestError) {
+			setError(
+				requestError instanceof Error
+					? requestError.message
+					: "Не удалось загрузить пользователей",
+			);
+		} finally {
+			setLoading(false);
+			setLoadingMore(false);
+		}
+	};
+
+	useEffect(() => {
+		void loadUsers(0, "", false);
+	}, [token]);
+
+	const submitSearch = (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault();
+		const nextQuery = query.trim();
+		setAppliedQuery(nextQuery);
+		void loadUsers(0, nextQuery, false);
+	};
+
+	const resetSearch = () => {
+		setQuery("");
+		setAppliedQuery("");
+		void loadUsers(0, "", false);
+	};
+
+	return (
+		<section className="mini-view mini-developer-users-view">
+			<button className="mini-back-link" type="button" onClick={onBack}>
+				<ArrowLeft size={18} />
+				Настройки
+			</button>
+			<div className="mini-developer-users-head">
+				<div>
+					<span className="mini-developer-users-kicker">Администрирование</span>
+					<h1>Пользователи</h1>
+					<p>Регистрации и фактическая активность в продукте</p>
+				</div>
+				<button
+					type="button"
+					aria-label="Обновить список"
+					title="Обновить список"
+					disabled={loading || loadingMore}
+					onClick={() => {
+						void loadUsers(0, appliedQuery, false);
+						onRefreshDashboard();
+					}}
+				>
+					<ArrowClockwise size={18} />
+				</button>
+			</div>
+
+			<form className="mini-developer-users-search" onSubmit={submitSearch}>
+				<MagnifyingGlass size={18} />
+				<input
+					type="search"
+					value={query}
+					maxLength={100}
+					placeholder="Имя, контакт или ID"
+					aria-label="Поиск пользователей"
+					onChange={(event) => setQuery(event.currentTarget.value)}
+				/>
+				{query && (
+					<button
+						type="button"
+						aria-label="Очистить поиск"
+						title="Очистить поиск"
+						onClick={resetSearch}
+					>
+						<X size={16} />
+					</button>
+				)}
+				<button type="submit" disabled={loading}>
+					Найти
+				</button>
+			</form>
+
+			<div className="mini-developer-users-summary" aria-live="polite">
+				<strong>{total}</strong>
+				<span>{appliedQuery ? "найдено" : "зарегистрировано"}</span>
+				{appliedQuery && <small>по запросу «{appliedQuery}»</small>}
+			</div>
+
+			{loading ? (
+				<div
+					className="mini-developer-users-skeleton"
+					aria-label="Загружаю пользователей"
+				>
+					<span />
+					<span />
+					<span />
+				</div>
+			) : error ? (
+				<div className="mini-developer-users-error" role="alert">
+					<WarningCircle size={20} />
+					<span>{error}</span>
+					<button
+						type="button"
+						onClick={() => void loadUsers(0, appliedQuery, false)}
+					>
+						Повторить
+					</button>
+				</div>
+			) : users.length === 0 ? (
+				<div className="mini-developer-users-empty">
+					<UsersThree size={24} />
+					<strong>Никого не нашли</strong>
+					<span>Проверьте имя, контакт или номер пользователя.</span>
+					{appliedQuery && (
+						<button type="button" onClick={resetSearch}>
+							Показать всех
+						</button>
+					)}
+				</div>
+			) : (
+				<div className="mini-developer-users-list">
+					{users.map((userSummary) => (
+						<DeveloperUserRow
+							key={userSummary.id}
+							recentUser={userSummary}
+							token={token}
+							variant="catalog"
+							onRefresh={() => {
+								void loadUsers(0, appliedQuery, false);
+								onRefreshDashboard();
+							}}
+						/>
+					))}
+				</div>
+			)}
+
+			{!loading && !error && hasMore && (
+				<button
+					className="mini-developer-users-more"
+					type="button"
+					disabled={loadingMore}
+					onClick={() => void loadUsers(users.length, appliedQuery, true)}
+				>
+					{loadingMore ? "Загружаю…" : "Показать ещё"}
+				</button>
+			)}
+		</section>
+	);
+};
+
 const BillingDeveloperTools = ({
 	quota,
 	token,
@@ -16553,6 +16860,7 @@ const BillingDeveloperTools = ({
 	registrationRecoverySendingID,
 	generatedActivationCode,
 	onGenerateActivationCode,
+	onManageUsers,
 }: {
 	quota: Quota;
 	token: string;
@@ -16573,6 +16881,7 @@ const BillingDeveloperTools = ({
 	onGenerateActivationCode: (
 		rewardType: ActivationCodeResponse["reward_type"],
 	) => void;
+	onManageUsers: () => void;
 }) => (
 	<details className="mini-dev-tools">
 		<summary>
@@ -16740,6 +17049,20 @@ const BillingDeveloperTools = ({
 									<small>запускали за 30 дней</small>
 								</p>
 							</div>
+							<button
+								className="mini-dev-users-link"
+								type="button"
+								onClick={onManageUsers}
+							>
+								<span>
+									<UsersThree size={18} />
+									<span>
+										<strong>Все пользователи</strong>
+										<small>Поиск, активность и личные карточки</small>
+									</span>
+								</span>
+								<ArrowRight size={17} />
+							</button>
 							{dashboard.product.recent_users.length > 0 && (
 								<div className="mini-dev-users">
 									<strong>Последние регистрации</strong>
