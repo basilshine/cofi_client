@@ -7796,6 +7796,11 @@ export const MiniApp = ({
 	const savePlan = async () => {
 		if (!editingPlan) return;
 		const planSpaceID = editingPlan.space_id || spaceID;
+		const planItems = purchasePlanItems(editingPlan);
+		const normalizedTitle =
+			planItems.length === 1
+				? planItems[0].name.trim()
+				: editingPlan.title.trim();
 		const vendorName = (
 			editingPlan.vendor_name ||
 			vendors.find((vendor) => vendor.id === editingPlan.vendor_id)?.name ||
@@ -7804,13 +7809,13 @@ export const MiniApp = ({
 		let vendorID =
 			editingPlan.vendor_id || findVendorByName(vendors, vendorName)?.id;
 		const payload = {
-			title: editingPlan.title.trim(),
+			title: normalizedTitle,
 			expected_amount: editingPlan.expected_amount || null,
 			category_id: editingPlan.category_id || null,
 			vendor_id: vendorID || null,
 			due_date: editingPlan.due_date?.slice(0, 10) || "",
 			recurrence_interval: editingPlan.recurrence_interval || "",
-			items: purchasePlanItems(editingPlan).map((item) => ({
+			items: planItems.map((item) => ({
 				name: item.name.trim(),
 				expected_amount: item.expected_amount || null,
 				category_id: item.category_id || null,
@@ -7818,9 +7823,10 @@ export const MiniApp = ({
 			})),
 		};
 		if (previewMode) {
+			const normalizedPlan = { ...editingPlan, title: normalizedTitle };
 			const saved = editingPlan.id
-				? editingPlan
-				: { ...editingPlan, id: Date.now() };
+				? normalizedPlan
+				: { ...normalizedPlan, id: Date.now() };
 			setPlans((current) =>
 				editingPlan.id
 					? current.map((plan) => (plan.id === saved.id ? saved : plan))
@@ -19606,18 +19612,31 @@ const PlanEditor = ({
 	onDeleteSeries?: () => void;
 }) => {
 	const items = purchasePlanItems(plan);
+	const singleItemPlan = items.length === 1;
 	const validationRootRef = useRef<HTMLElement>(null);
 	const titleErrorID = useId();
 	const recurrenceErrorID = useId();
 	const itemErrorID = useId();
 	const [saveAttempted, setSaveAttempted] = useState(false);
-	const titleInvalid = !plan.title.trim();
+	const titleInvalid = singleItemPlan
+		? !items[0]?.name.trim()
+		: !plan.title.trim();
 	const recurrenceInvalid = Boolean(plan.recurrence_interval && !plan.due_date);
 	const invalidItemIndexes = new Set(
 		items.flatMap((item, index) => (!item.name.trim() ? [index] : [])),
 	);
-	const updateItems = (nextItems: PurchasePlanItem[]) =>
-		onChange(withPurchasePlanItems(plan, nextItems));
+	const updateItems = (nextItems: PurchasePlanItem[]) => {
+		let nextPlan = plan;
+		if (nextItems.length === 1) {
+			nextPlan = { ...plan, title: nextItems[0]?.name || "" };
+		} else if (
+			items.length === 1 &&
+			(!plan.title.trim() || plan.title.trim() === items[0]?.name.trim())
+		) {
+			nextPlan = { ...plan, title: uiText(language, "planListDefaultName") };
+		}
+		onChange(withPurchasePlanItems(nextPlan, nextItems));
+	};
 	const handleSave = () => {
 		setSaveAttempted(true);
 		if (titleInvalid || recurrenceInvalid || invalidItemIndexes.size > 0) {
@@ -19660,24 +19679,41 @@ const PlanEditor = ({
 			)}
 			<p className="mini-field-note">{uiText(language, "planEditorHint")}</p>
 			<section className="mini-editor-section" ref={validationRootRef}>
-				<h3>{uiText(language, "editorListDetails")}</h3>
+				<h3>
+					{uiText(
+						language,
+						singleItemPlan ? "editorPurchaseDetails" : "editorListDetails",
+					)}
+				</h3>
 				<div className="mini-editor-section-fields">
 					<label>
 						<RequiredFieldLabel language={language}>
-							{uiText(language, "planListName")}
+							{uiText(language, singleItemPlan ? "planWhat" : "planListName")}
 						</RequiredFieldLabel>
 						<input
 							aria-describedby={
 								saveAttempted && titleInvalid ? titleErrorID : undefined
 							}
 							aria-invalid={saveAttempted && titleInvalid}
-							aria-label={uiText(language, "planListName")}
+							aria-label={uiText(
+								language,
+								singleItemPlan ? "planWhat" : "planListName",
+							)}
 							required
-							value={plan.title}
-							placeholder={uiText(language, "planListNamePlaceholder")}
-							onChange={(event) =>
-								onChange({ ...plan, title: event.target.value })
-							}
+							value={singleItemPlan ? items[0]?.name || "" : plan.title}
+							placeholder={uiText(
+								language,
+								singleItemPlan
+									? "planWhatPlaceholder"
+									: "planListNamePlaceholder",
+							)}
+							onChange={(event) => {
+								if (singleItemPlan) {
+									updateItems([{ ...items[0], name: event.target.value }]);
+									return;
+								}
+								onChange({ ...plan, title: event.target.value });
+							}}
 						/>
 						<EditorFieldError
 							id={titleErrorID}
@@ -19776,60 +19812,69 @@ const PlanEditor = ({
 			</section>
 			<div className="mini-plan-editor-items">
 				<div className="mini-plan-editor-head">
-					<span>{uiText(language, "planItems")}</span>
+					<span>
+						{uiText(
+							language,
+							singleItemPlan ? "planPurchaseDetails" : "planItems",
+						)}
+					</span>
 					{plan.expected_amount != null && (
 						<strong>{formatMoney(plan.expected_amount, plan.currency)}</strong>
 					)}
 				</div>
 				{items.map((item, index) => (
 					<div className="mini-plan-editor-item" key={item.id || index}>
-						<div className="mini-plan-item-name">
-							<span className="mini-editor-label">
-								<RequiredFieldLabel language={language}>
-									{uiText(language, "planItemName")} {index + 1}
-								</RequiredFieldLabel>
-							</span>
-							<input
-								aria-describedby={
-									saveAttempted && invalidItemIndexes.has(index)
-										? `${itemErrorID}-${index}`
-										: undefined
-								}
-								aria-invalid={saveAttempted && invalidItemIndexes.has(index)}
-								aria-label={uiText(language, "planItemName")}
-								required
-								value={item.name}
-								placeholder={uiText(language, "planItemNamePlaceholder")}
-								onChange={(event) =>
-									updateItems(
-										items.map((current, itemIndex) =>
-											itemIndex === index
-												? { ...current, name: event.target.value }
-												: current,
-										),
-									)
-								}
-							/>
-							{items.length > 1 && (
-								<button
-									type="button"
-									aria-label={uiText(language, "removePlanItem")}
-									onClick={() =>
-										updateItems(
-											items.filter((_, itemIndex) => itemIndex !== index),
-										)
-									}
+						{!singleItemPlan && (
+							<>
+								<div className="mini-plan-item-name">
+									<span className="mini-editor-label">
+										<RequiredFieldLabel language={language}>
+											{uiText(language, "planItemName")} {index + 1}
+										</RequiredFieldLabel>
+									</span>
+									<input
+										aria-describedby={
+											saveAttempted && invalidItemIndexes.has(index)
+												? `${itemErrorID}-${index}`
+												: undefined
+										}
+										aria-invalid={
+											saveAttempted && invalidItemIndexes.has(index)
+										}
+										aria-label={uiText(language, "planItemName")}
+										required
+										value={item.name}
+										placeholder={uiText(language, "planItemNamePlaceholder")}
+										onChange={(event) =>
+											updateItems(
+												items.map((current, itemIndex) =>
+													itemIndex === index
+														? { ...current, name: event.target.value }
+														: current,
+												),
+											)
+										}
+									/>
+									<button
+										type="button"
+										aria-label={uiText(language, "removePlanItem")}
+										onClick={() =>
+											updateItems(
+												items.filter((_, itemIndex) => itemIndex !== index),
+											)
+										}
+									>
+										<Trash size={17} />
+									</button>
+								</div>
+								<EditorFieldError
+									id={`${itemErrorID}-${index}`}
+									visible={saveAttempted && invalidItemIndexes.has(index)}
 								>
-									<Trash size={17} />
-								</button>
-							)}
-						</div>
-						<EditorFieldError
-							id={`${itemErrorID}-${index}`}
-							visible={saveAttempted && invalidItemIndexes.has(index)}
-						>
-							{uiText(language, "fieldRequired")}
-						</EditorFieldError>
+									{uiText(language, "fieldRequired")}
+								</EditorFieldError>
+							</>
+						)}
 						<div className="mini-plan-item-fields">
 							<div className="mini-plan-item-field">
 								<span>{uiText(language, "expectedAmount")}</span>
@@ -20003,10 +20048,12 @@ const ExpenseEditor = ({
 	const itemNameListID = useId();
 	const validationRootRef = useRef<HTMLElement>(null);
 	const titleErrorID = useId();
+	const dateErrorID = useId();
 	const itemNameErrorID = useId();
 	const itemAmountErrorID = useId();
 	const [saveAttempted, setSaveAttempted] = useState(false);
 	const titleInvalid = !expense.title.trim();
+	const dateInvalid = !expense.expense_date.trim();
 	const invalidItemNameIndexes = new Set(
 		expense.items.flatMap((item, index) => (!item.name.trim() ? [index] : [])),
 	);
@@ -20036,6 +20083,7 @@ const ExpenseEditor = ({
 		setSaveAttempted(true);
 		if (
 			titleInvalid ||
+			dateInvalid ||
 			invalidItemNameIndexes.size > 0 ||
 			invalidItemAmountIndexes.size > 0
 		) {
@@ -20163,18 +20211,40 @@ const ExpenseEditor = ({
 							</small>
 						)}
 					</div>
-					{!creating && (
-						<label>
-							{uiText(language, "date")}
-							<input
-								type="date"
-								value={expense.expense_date.slice(0, 10)}
-								onChange={(event) =>
-									onChange({ ...expense, expense_date: event.target.value })
-								}
-							/>
-						</label>
-					)}
+					<label>
+						<RequiredFieldLabel language={language}>
+							{uiText(language, "purchaseDate")}
+						</RequiredFieldLabel>
+						<input
+							aria-describedby={
+								[
+									creating ? `${dateErrorID}-hint` : "",
+									saveAttempted && dateInvalid ? dateErrorID : "",
+								]
+									.filter(Boolean)
+									.join(" ") || undefined
+							}
+							aria-invalid={saveAttempted && dateInvalid}
+							aria-label={uiText(language, "purchaseDate")}
+							required
+							type="date"
+							value={expense.expense_date.slice(0, 10)}
+							onChange={(event) =>
+								onChange({ ...expense, expense_date: event.target.value })
+							}
+						/>
+						{creating && (
+							<small className="mini-field-hint" id={`${dateErrorID}-hint`}>
+								{uiText(language, "purchaseDateHint")}
+							</small>
+						)}
+						<EditorFieldError
+							id={dateErrorID}
+							visible={saveAttempted && dateInvalid}
+						>
+							{uiText(language, "fieldRequired")}
+						</EditorFieldError>
+					</label>
 				</div>
 			</section>
 			{participants.length > 1 && (

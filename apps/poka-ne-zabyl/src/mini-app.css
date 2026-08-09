@@ -5590,8 +5590,8 @@
 .mini-modal.is-editor > .mini-field-note {
 	margin: -2px 0 0;
 	padding: 10px 12px;
-	border-left: 3px solid color-mix(in srgb, var(--mini-green) 62%, white);
-	border-radius: 0 7px 7px 0;
+	border: 1px solid color-mix(in srgb, var(--mini-green) 18%, var(--mini-line));
+	border-radius: 7px;
 	background: color-mix(in srgb, var(--mini-green) 5%, var(--mini-paper));
 	color: color-mix(in srgb, var(--mini-muted) 88%, var(--mini-ink));
 }
