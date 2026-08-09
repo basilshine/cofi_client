@@ -1267,6 +1267,34 @@
 	color: var(--mini-ink);
 	text-align: left;
 }
+.mini-expense-card {
+	grid-template-areas:
+		"icon title amount"
+		"icon context context";
+	row-gap: 3px;
+	transition: background-color 160ms ease, transform 160ms ease;
+}
+.mini-expense-card > .mini-expense-icon {
+	grid-area: icon;
+}
+.mini-expense-card > .mini-expense-copy {
+	grid-area: title;
+}
+.mini-expense-card > .mini-expense-amount {
+	grid-area: amount;
+}
+.mini-expense-card:hover {
+	background: color-mix(in srgb, var(--mini-green) 3%, var(--mini-paper));
+}
+.mini-expense-card:active {
+	transform: scale(0.995);
+}
+.mini-expense-card:focus-visible {
+	position: relative;
+	z-index: 1;
+	outline: 2px solid color-mix(in srgb, var(--mini-green) 55%, transparent);
+	outline-offset: -2px;
+}
 .mini-expense-icon {
 	display: grid;
 	width: 38px;
@@ -1286,6 +1314,29 @@
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+.mini-expense-card > .mini-expense-context {
+	display: flex;
+	min-width: 0;
+	grid-area: context;
+	align-items: center;
+	gap: 6px;
+	overflow: visible;
+	text-overflow: clip;
+	white-space: normal;
+}
+.mini-expense-context > span {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-expense-context > .mini-expense-context-separator {
+	width: 3px;
+	height: 3px;
+	flex: none;
+	border-radius: 50%;
+	background: color-mix(in srgb, var(--mini-muted) 55%, transparent);
 }
 .mini-expense-copy b {
 	display: -webkit-box;
@@ -1311,7 +1362,7 @@
 }
 .mini-record-payer {
 	color: var(--mini-green) !important;
-	font-size: 10px !important;
+	font-size: inherit !important;
 	font-weight: 650;
 }
 .mini-original-money {
@@ -1322,6 +1373,8 @@
 }
 .mini-expense-amount {
 	justify-items: end;
+	align-self: center;
+	white-space: nowrap;
 }
 .mini-search {
 	display: flex;
@@ -2541,75 +2594,6 @@
 	padding: 0 13px;
 	background: var(--mini-green);
 	color: var(--mini-paper);
-}
-.mini-expense-groups {
-	display: grid;
-	gap: 18px;
-}
-.mini-expense-groups > section {
-	display: grid;
-	gap: 1px;
-	overflow: hidden;
-	border: 1px solid var(--mini-line);
-	border-radius: 8px;
-	background: var(--mini-line);
-}
-.mini-expense-groups > section > header {
-	display: flex;
-	min-width: 0;
-	align-items: center;
-	justify-content: space-between;
-	gap: 12px;
-	min-height: 58px;
-	padding: 9px 12px;
-	background: color-mix(in srgb, var(--mini-green) 3%, var(--mini-paper));
-}
-.mini-expense-groups > section > .mini-expenses {
-	border: 0;
-	border-radius: 0;
-}
-.mini-expense-group-copy {
-	display: grid;
-	min-width: 0;
-	gap: 2px;
-	padding: 0;
-	border: 0;
-	background: transparent;
-	color: var(--mini-ink);
-	text-align: left;
-}
-.mini-expense-group-copy b {
-	display: -webkit-box;
-	overflow: hidden;
-	font-size: 14px;
-	line-height: 1.3;
-	overflow-wrap: anywhere;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 2;
-}
-.mini-expense-group-copy small {
-	color: var(--mini-muted);
-	font-size: 11px;
-}
-.mini-expense-groups header strong {
-	flex: none;
-	font-size: 14px;
-}
-.mini-expense-group-actions {
-	display: flex;
-	flex: none;
-	align-items: center;
-	gap: 8px;
-}
-.mini-expense-group-actions button {
-	display: grid;
-	width: 34px;
-	height: 34px;
-	place-items: center;
-	border: 1px solid var(--mini-line);
-	border-radius: 50%;
-	background: var(--mini-soft);
-	color: var(--mini-green);
 }
 .mini-link-button,
 .mini-back-link {

@@ -12508,7 +12508,6 @@ const Overview = ({
 					<ExpenseList
 						expenses={latestExpenses.slice(0, 4)}
 						captures={captures}
-						members={members}
 						participants={participants}
 						language={language}
 						currency={currency}
@@ -13200,11 +13199,9 @@ const ExpensesView = ({
 						<GroupedExpenseItemList
 							items={items}
 							captures={captures}
-							members={members}
 							participants={participants}
 							language={language}
 							currency={currency}
-							onSource={onSource}
 							onOpenExpense={onOpenExpense}
 						/>
 					) : (
@@ -14121,80 +14118,45 @@ const ExpenseItemList = ({
 const GroupedExpenseItemList = ({
 	items,
 	captures,
-	members,
 	participants,
 	language,
 	currency,
-	onSource,
 	onOpenExpense,
 }: {
 	items: ExpenseItemRow[];
 	captures: CapturePacket[];
-	members: SpaceMember[];
 	participants: SpaceParticipant[];
 	language: UILanguage;
 	currency: string;
-	onSource: (expense: Expense) => void;
 	onOpenExpense: (expense: Expense) => void;
 }) => {
 	const groups = groupRowsByExpense(items);
 	return (
-		<div className="mini-expense-groups">
+		<div className="mini-expenses">
 			{groups.map((rows) => {
 				const expense = rows[0].expense;
-				const author = sharedRecordAuthor(members, expense.user_id);
-				const payer =
-					participants.length > 1
-						? expensePayerParticipant(expense, participants)
-						: undefined;
 				const total = rows.reduce(
 					(sum, row) =>
 						sum + (itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
 					0,
 				);
+				const originalMoney =
+					rows.length === expense.items.length
+						? expenseOriginalMoney(expense, currency)
+						: undefined;
 				return (
-					<section key={expense.id}>
-						<header>
-							<button
-								className="mini-expense-group-copy"
-								type="button"
-								onClick={() => onOpenExpense(expense)}
-							>
-								<b>
-									{expense.title ||
-										rows[0].item.name ||
-										uiText(language, "viewExpense")}
-								</b>
-								<small>
-									{formatDate(expense.expense_date, language)} ·{" "}
-									{itemCountText(rows.length, language)}
-								</small>
-								{author && (
-									<small className="mini-record-author">
-										{uiText(language, "addedBy")} {author}
-									</small>
-								)}
-								{payer && (
-									<small className="mini-record-payer">
-										{uiText(language, "receiptPaidBy")} {payer.display_name}
-									</small>
-								)}
-							</button>
-							<div className="mini-expense-group-actions">
-								<button
-									type="button"
-									aria-label={uiText(language, "viewSource")}
-									onClick={() => onSource(expense)}
-								>
-									<SourceIcon
-										capture={captureForExpense(expense, captures)}
-										size={17}
-									/>
-								</button>
-								<strong>{formatMoney(total, currency)}</strong>
-							</div>
-						</header>
-					</section>
+					<ExpenseRecordCard
+						key={expense.id}
+						expense={expense}
+						capture={captureForExpense(expense, captures)}
+						participants={participants}
+						language={language}
+						amount={total}
+						currency={currency}
+						itemCount={rows.length}
+						originalMoney={originalMoney}
+						onOpen={() => onOpenExpense(expense)}
+					/>
 				);
 			})}
 			{groups.length === 0 && <Empty text="Ничего не найдено" />}
@@ -14202,10 +14164,66 @@ const GroupedExpenseItemList = ({
 	);
 };
 
+const ExpenseRecordCard = ({
+	expense,
+	capture,
+	participants,
+	language,
+	amount,
+	currency,
+	itemCount,
+	originalMoney,
+	onOpen,
+}: {
+	expense: Expense;
+	capture?: CapturePacket;
+	participants: SpaceParticipant[];
+	language: UILanguage;
+	amount: number;
+	currency: string;
+	itemCount: number;
+	originalMoney?: { amount: number; currency: string } | null;
+	onOpen: () => void;
+}) => {
+	const payer =
+		participants.length > 1
+			? expensePayerParticipant(expense, participants)
+			: undefined;
+	const context = payer
+		? `${uiText(language, "receiptPaidBy")} ${payer.display_name}`
+		: itemCountText(itemCount, language);
+
+	return (
+		<button className="mini-expense-card" type="button" onClick={onOpen}>
+			<span className="mini-expense-icon">
+				<SourceIcon capture={capture} size={19} />
+			</span>
+			<span className="mini-expense-copy">
+				<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
+			</span>
+			<span className="mini-expense-amount">
+				<b>{formatMoney(amount, currency)}</b>
+				{originalMoney && originalMoney.amount > 0 && (
+					<small className="mini-original-money">
+						{uiText(language, "originalAmount")}{" "}
+						{formatMoney(originalMoney.amount, originalMoney.currency)}
+					</small>
+				)}
+			</span>
+			<small className="mini-expense-context">
+				<span>{formatDate(expense.expense_date, language)}</span>
+				<span className="mini-expense-context-separator" />
+				<span className={payer ? "mini-record-payer" : undefined}>
+					{context}
+				</span>
+			</small>
+		</button>
+	);
+};
+
 const ExpenseList = ({
 	expenses,
 	captures,
-	members,
 	participants,
 	language,
 	currency,
@@ -14213,7 +14231,6 @@ const ExpenseList = ({
 }: {
 	expenses: Expense[];
 	captures: CapturePacket[];
-	members: SpaceMember[];
 	participants: SpaceParticipant[];
 	language: UILanguage;
 	currency: string;
@@ -14223,49 +14240,20 @@ const ExpenseList = ({
 		{expenses.map((expense) => {
 			const money = expenseDisplayMoney(expense, currency);
 			const originalMoney = expenseOriginalMoney(expense, money.currency);
-			const seller = expenseSellerName(expense);
 			const capture = captureForExpense(expense, captures);
-			const author = sharedRecordAuthor(members, expense.user_id);
-			const payer =
-				participants.length > 1
-					? expensePayerParticipant(expense, participants)
-					: undefined;
 			return (
-				<button key={expense.id} type="button" onClick={() => onEdit(expense)}>
-					<span className="mini-expense-icon">
-						<SourceIcon capture={capture} size={19} />
-					</span>
-					<span className="mini-expense-copy">
-						<b>{expense.title || expense.items[0]?.name || "Расход"}</b>
-						<small>
-							<span className="mini-vendor-chip">{seller}</span>
-							{expense.items
-								.map((item) => item.name)
-								.slice(0, 2)
-								.join(", ") || formatDate(expense.expense_date, language)}
-						</small>
-						{author && (
-							<small className="mini-record-author">
-								{uiText(language, "addedBy")} {author}
-							</small>
-						)}
-						{payer && (
-							<small className="mini-record-payer">
-								{uiText(language, "receiptPaidBy")} {payer.display_name}
-							</small>
-						)}
-					</span>
-					<span className="mini-expense-amount">
-						<b>{formatMoney(money.amount, money.currency)}</b>
-						{originalMoney && originalMoney.amount > 0 && (
-							<small className="mini-original-money">
-								{uiText(language, "originalAmount")}{" "}
-								{formatMoney(originalMoney.amount, originalMoney.currency)}
-							</small>
-						)}
-						<small>{formatDate(expense.expense_date, language)}</small>
-					</span>
-				</button>
+				<ExpenseRecordCard
+					key={expense.id}
+					expense={expense}
+					capture={capture}
+					participants={participants}
+					language={language}
+					amount={money.amount}
+					currency={money.currency}
+					itemCount={expense.items.length}
+					originalMoney={originalMoney}
+					onOpen={() => onEdit(expense)}
+				/>
 			);
 		})}
 		{expenses.length === 0 && <Empty text="Ничего не найдено" />}
