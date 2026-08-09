@@ -19211,11 +19211,39 @@ const ExpenseDetail = ({
 		expense.payer_participant_id ||
 		splits[0]?.payer_participant_id ||
 		0;
-	const allSplitDebtsSettled =
+	const splitDebts = splits.filter(
+		(split) => split.space_participant_id !== splitPayerID,
+	);
+	const splitPayerShare = splits.find(
+		(split) => split.space_participant_id === splitPayerID,
+	);
+	const currentParticipant = participants.find(
+		(participant) => participantUserID(participant) === currentUserID,
+	);
+	const currentParticipantSplit = currentParticipant
+		? splits.find(
+				(split) => split.space_participant_id === currentParticipant.id,
+			)
+		: undefined;
+	const currentUserShareMissing = Boolean(
 		splits.length > 0 &&
-		splits
-			.filter((split) => split.space_participant_id !== splitPayerID)
-			.every((split) => split.settlement_status === "confirmed");
+			currentParticipant &&
+			currentParticipant.id !== splitPayerID &&
+			!currentParticipantSplit,
+	);
+	const allSplitDebtsSettled =
+		splitDebts.length > 0 &&
+		splitDebts.every((split) => split.settlement_status === "confirmed");
+	const splitSummaryKey =
+		splits.length === 0
+			? "receiptSettlementUnconfigured"
+			: currentUserShareMissing
+				? "receiptSettlementNeedsReview"
+				: splitDebts.length === 0
+					? "receiptSettlementNoDebt"
+					: allSplitDebtsSettled
+						? "allSettled"
+						: "receiptSettlementOpen";
 	const canSplit =
 		itemIndex === undefined &&
 		participants.length > 1 &&
@@ -19343,67 +19371,158 @@ const ExpenseDetail = ({
 						</span>
 						<div>
 							<b>{uiText(language, "receiptSettlement")}</b>
-							<small>
-								{allSplitDebtsSettled
-									? uiText(language, "allSettled")
-									: splits.length > 0
-										? uiText(language, "receiptSharesConfigured").replace(
-												"{count}",
-												String(splits.length),
-											)
-										: canSplit
-											? uiText(language, "receiptNotSplit")
-											: uiText(language, "receiptPayerOnly")}
-							</small>
+							<small>{uiText(language, splitSummaryKey)}</small>
 						</div>
 						{canSplit && (
 							<button type="button" onClick={onSplit}>
-								{uiText(language, splits.length > 0 ? "shares" : "split")}
+								{uiText(
+									language,
+									splits.length > 0
+										? "receiptEditSettlement"
+										: "receiptConfigureSettlement",
+								)}
 							</button>
 						)}
 					</div>
 					{splitPayer && (
-						<div className="mini-record-split-payer">
+						<div className="mini-record-split-payment">
 							<i>{participantInitials(splitPayer.display_name)}</i>
 							<span>
-								<small>{uiText(language, "receiptPaidBy")}</small>
+								<small>{uiText(language, "receiptPaidReceipt")}</small>
 								<b>{splitPayer.display_name}</b>
+								{author && author !== splitPayer.display_name && (
+									<em>
+										{uiText(language, "addedBy")}: {author}
+									</em>
+								)}
 							</span>
-							{canSplit && (
-								<button type="button" onClick={onSplit}>
-									{uiText(language, "change")}
-								</button>
-							)}
+							<span className="mini-record-split-payment-total">
+								<strong>{formatMoney(money.amount, money.currency)}</strong>
+								{splitPayerShare && (
+									<small>
+										{uiText(language, "receiptOwnShare")}:{" "}
+										{formatMoney(
+											splitDisplayMoney(splitPayerShare, currency).amount,
+											money.currency,
+										)}
+									</small>
+								)}
+							</span>
 						</div>
 					)}
-					{splits.length > 0 && (
-						<div className="mini-record-split-lines">
-							{splits.map((split) => (
-								<div key={split.space_participant_id}>
-									<i>
-										{participantInitials(split.participant?.display_name || "")}
-									</i>
-									<span>{split.participant?.display_name || "Участник"}</span>
-									<span className="mini-record-split-amount">
-										<b>
-											{formatMoney(
-												splitDisplayMoney(split, currency).amount,
-												money.currency,
+					{splits.length === 0 ? (
+						<div className="mini-record-split-note is-unconfigured">
+							<WarningCircle size={18} weight="fill" />
+							<span>
+								<b>{uiText(language, "receiptDebtNotCalculated")}</b>
+								<small>
+									{uiText(language, "receiptDebtNotCalculatedHint").replace(
+										"{name}",
+										splitPayer?.display_name || uiText(language, "participant"),
+									)}
+								</small>
+							</span>
+						</div>
+					) : (
+						<>
+							<div className="mini-record-split-section-label">
+								<span>{uiText(language, "receiptWhoOwesWhom")}</span>
+								<small>
+									{uiText(language, "receiptSharesConfigured").replace(
+										"{count}",
+										String(splits.length),
+									)}
+								</small>
+							</div>
+							{splitDebts.length > 0 ? (
+								<div className="mini-record-split-lines">
+									{splitDebts.map((split) => {
+										const debtor =
+											split.participant ||
+											participants.find(
+												(participant) =>
+													participant.id === split.space_participant_id,
+											);
+										const debtorName =
+											debtor?.display_name || uiText(language, "participant");
+										const debtorUserID =
+											split.user_id || participantUserID(debtor);
+										const relation =
+											debtorUserID === currentUserID
+												? uiText(language, "youOwe").replace(
+														"{name}",
+														splitPayer?.display_name ||
+															uiText(language, "participant"),
+													)
+												: participantUserID(splitPayer) === currentUserID
+													? uiText(language, "owesYou").replace(
+															"{name}",
+															debtorName,
+														)
+													: uiText(language, "owesAnother")
+															.replace("{debtor}", debtorName)
+															.replace(
+																"{creditor}",
+																splitPayer?.display_name ||
+																	uiText(language, "participant"),
+															);
+										const statusKey =
+											split.settlement_status === "confirmed"
+												? "receiptDebtSettled"
+												: split.settlement_status === "sent"
+													? "settlementPending"
+													: split.settlement_status === "disputed"
+														? "receiptDebtDisputed"
+														: "receiptDebtOpen";
+										return (
+											<div key={split.space_participant_id}>
+												<i>{participantInitials(debtorName)}</i>
+												<span className="mini-record-split-person">
+													<b>{relation}</b>
+													<small
+														className={
+															split.settlement_status === "confirmed"
+																? "is-settled"
+																: split.settlement_status === "sent"
+																	? "is-pending"
+																	: undefined
+														}
+													>
+														{uiText(language, statusKey)}
+													</small>
+												</span>
+												<strong>
+													{formatMoney(
+														splitDisplayMoney(split, currency).amount,
+														money.currency,
+													)}
+												</strong>
+											</div>
+										);
+									})}
+								</div>
+							) : (
+								<p className="mini-record-split-empty">
+									{uiText(language, "receiptNoMutualDebtHint")}
+								</p>
+							)}
+							{currentUserShareMissing && (
+								<div className="mini-record-split-note is-missing">
+									<WarningCircle size={18} weight="fill" />
+									<span>
+										<b>{uiText(language, "receiptCurrentShareMissing")}</b>
+										<small>
+											{uiText(
+												language,
+												canSplit
+													? "receiptCurrentShareMissingHint"
+													: "receiptCurrentShareMissingReadonlyHint",
 											)}
-										</b>
-										{split.space_participant_id === splitPayerID ? (
-											<small>Оплатил</small>
-										) : split.settlement_status === "confirmed" ? (
-											<small className="is-settled">Рассчитались</small>
-										) : split.settlement_status === "sent" ? (
-											<small className="is-pending">
-												{uiText(language, "settlementPending")}
-											</small>
-										) : null}
+										</small>
 									</span>
 								</div>
-							))}
-						</div>
+							)}
+						</>
 					)}
 				</section>
 			)}
