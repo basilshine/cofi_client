@@ -7401,9 +7401,7 @@ export const MiniApp = ({
 		if (
 			!creating &&
 			previousSpace?.currency !== editingSpace.currency &&
-			!window.confirm(
-				"Новые записи будут сохраняться в новой валюте. Валюта старых расходов и планов сохранится, а итоги и лимиты будут пересчитаны.",
-			)
+			!window.confirm(uiText(language, "currencyChangeConfirm"))
 		)
 			return;
 		if (previewMode) {
@@ -7419,7 +7417,9 @@ export const MiniApp = ({
 					: current.map((space) => (space.id === saved.id ? saved : space)),
 			);
 			setEditingSpace(null);
-			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
+			setNotice(
+				uiText(language, creating ? "spaceCreatedNotice" : "spaceSavedNotice"),
+			);
 			return;
 		}
 		setSaving(true);
@@ -7487,18 +7487,21 @@ export const MiniApp = ({
 				);
 			}
 			setEditingSpace(null);
-			setNotice(creating ? "Пространство создано" : "Пространство сохранено");
+			setNotice(
+				uiText(language, creating ? "spaceCreatedNotice" : "spaceSavedNotice"),
+			);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "";
 			setNotice(
 				message.includes("participant splits")
-					? "Сначала удалите разделение расходов между участниками"
+					? uiText(language, "removeSplitsFirst")
 					: message.includes("currency exchange rate unavailable")
-						? "Не удалось получить курс валют. Попробуйте позже"
+						? uiText(language, "exchangeRateUnavailable")
 						: message ||
-							(creating
-								? "Не удалось создать пространство"
-								: "Не удалось сохранить пространство"),
+							uiText(
+								language,
+								creating ? "spaceCreateFailed" : "spaceSaveFailed",
+							),
 			);
 		} finally {
 			setSaving(false);
@@ -7511,8 +7514,14 @@ export const MiniApp = ({
 		if (
 			!window.confirm(
 				owned
-					? `Удалить «${editingSpace.name}»? Расходы и записи будут перенесены в «Личное».`
-					: `Покинуть пространство «${editingSpace.name}»?`,
+					? uiText(language, "spaceDeleteConfirm").replace(
+							"{name}",
+							editingSpace.name,
+						)
+					: uiText(language, "spaceLeaveConfirm").replace(
+							"{name}",
+							editingSpace.name,
+						),
 			)
 		)
 			return;
@@ -7533,7 +7542,7 @@ export const MiniApp = ({
 				setNotice(
 					err instanceof Error
 						? err.message
-						: "Не удалось удалить пространство",
+						: uiText(language, "spaceDeleteFailed"),
 				);
 				setSaving(false);
 				return;
@@ -7559,7 +7568,9 @@ export const MiniApp = ({
 			setPlanTotalCount(0);
 		}
 		setEditingSpace(null);
-		setNotice(owned ? "Пространство удалено" : "Вы покинули пространство");
+		setNotice(
+			uiText(language, owned ? "spaceDeletedNotice" : "spaceLeftNotice"),
+		);
 	};
 
 	const removeSpaceMember = async (space: Space, member: SpaceMember) => {
@@ -7572,7 +7583,9 @@ export const MiniApp = ({
 			return;
 		if (
 			!window.confirm(
-				`Удалить ${member.name || "участника"} из пространства «${space.name}»?`,
+				uiText(language, "removeMemberConfirm")
+					.replace("{name}", member.name || uiText(language, "participant"))
+					.replace("{space}", space.name),
 			)
 		)
 			return;
@@ -7603,10 +7616,17 @@ export const MiniApp = ({
 						: item,
 				),
 			);
-			setNotice(`${member.name || "Участник"} удалён из пространства`);
+			setNotice(
+				uiText(language, "memberRemovedNotice").replace(
+					"{name}",
+					member.name || uiText(language, "participant"),
+				),
+			);
 		} catch (err) {
 			setNotice(
-				err instanceof Error ? err.message : "Не удалось удалить участника",
+				err instanceof Error
+					? err.message
+					: uiText(language, "memberRemoveFailed"),
 			);
 		} finally {
 			setSaving(false);
@@ -7649,10 +7669,17 @@ export const MiniApp = ({
 					),
 				);
 			}
-			setNotice(`Роль ${member.name || "участника"} обновлена`);
+			setNotice(
+				uiText(language, "memberRoleUpdated").replace(
+					"{name}",
+					member.name || uiText(language, "participant"),
+				),
+			);
 		} catch (err) {
 			setNotice(
-				err instanceof Error ? err.message : "Не удалось изменить роль",
+				err instanceof Error
+					? err.message
+					: uiText(language, "memberRoleUpdateFailed"),
 			);
 		} finally {
 			setSaving(false);
@@ -21919,13 +21946,29 @@ const SpaceEditor = ({
 	onDelete?: () => void;
 }) => {
 	const existingSpace = Boolean(space.id);
+	const validationRootRef = useRef<HTMLElement>(null);
+	const nameErrorID = useId();
+	const [saveAttempted, setSaveAttempted] = useState(false);
+	const nameInvalid = !space.name.trim();
+	const submit = () => {
+		setSaveAttempted(true);
+		if (nameInvalid) {
+			focusFirstInvalidEditorField(validationRootRef.current);
+			return;
+		}
+		onSave();
+	};
 	return (
 		<Modal
 			title={uiText(language, existingSpace ? "spaceSettings" : "newSpace")}
+			closeLabel={uiText(language, "close")}
 			variant="editor"
 			onClose={onClose}
 		>
-			<div className="mini-space-editor-section">
+			<section
+				className="mini-editor-section mini-space-editor-section"
+				ref={validationRootRef}
+			>
 				<div className="mini-space-editor-heading">
 					<span>
 						<GearSix size={20} />
@@ -21935,70 +21978,85 @@ const SpaceEditor = ({
 						<small>{uiText(language, "spaceDetailsHint")}</small>
 					</div>
 				</div>
-				<label>
-					{uiText(language, "spaceName")}
-					<input
-						disabled={space.is_personal || !canEditCurrency}
-						maxLength={120}
-						value={space.name}
-						onChange={(event) =>
-							onChange({ ...space, name: event.target.value })
-						}
-					/>
-				</label>
-				<label>
-					{uiText(language, "spaceCurrency")}
-					<select
-						disabled={!canEditCurrency}
-						value={space.currency}
-						onChange={(event) =>
-							onChange({ ...space, currency: event.target.value })
-						}
-					>
-						{!currencyOptions.some(([code]) => code === space.currency) && (
-							<option value={space.currency}>{space.currency}</option>
-						)}
-						{currencyOptions.map(([code]) => (
-							<option key={code} value={code}>
-								{code} — {localizedCurrencyName(code, language)}
-							</option>
-						))}
-					</select>
-				</label>
-				<p className="mini-field-note">
-					{uiText(
-						language,
-						canEditCurrency ? "currencyConvertHint" : "ownerCurrencyOnly",
-					)}
-				</p>
-				<div className="mini-field mini-device-notifications">
-					<button
-						type="button"
-						className={space.settings?.period_reports_enabled ? "active" : ""}
-						disabled={!canEditCurrency || saving}
-						aria-pressed={Boolean(space.settings?.period_reports_enabled)}
-						onClick={() =>
-							onChange({
-								...space,
-								settings: {
-									...space.settings,
-									period_reports_enabled:
-										!space.settings?.period_reports_enabled,
-								},
-							})
-						}
-					>
-						<BellRinging size={21} />
-						<span>
-							<b>{uiText(language, "periodicReports")}</b>
-							<small>{uiText(language, "periodicReportsHint")}</small>
-						</span>
-						<i />
-					</button>
+				<div className="mini-editor-section-fields">
+					<label>
+						<RequiredFieldLabel language={language}>
+							{uiText(language, "spaceName")}
+						</RequiredFieldLabel>
+						<input
+							aria-describedby={
+								saveAttempted && nameInvalid ? nameErrorID : undefined
+							}
+							aria-invalid={saveAttempted && nameInvalid}
+							disabled={space.is_personal || !canEditCurrency}
+							maxLength={120}
+							required
+							value={space.name}
+							onChange={(event) =>
+								onChange({ ...space, name: event.target.value })
+							}
+						/>
+						<EditorFieldError
+							id={nameErrorID}
+							visible={saveAttempted && nameInvalid}
+						>
+							{uiText(language, "fieldRequired")}
+						</EditorFieldError>
+					</label>
+					<label>
+						{uiText(language, "spaceCurrency")}
+						<select
+							disabled={!canEditCurrency}
+							value={space.currency}
+							onChange={(event) =>
+								onChange({ ...space, currency: event.target.value })
+							}
+						>
+							{!currencyOptions.some(([code]) => code === space.currency) && (
+								<option value={space.currency}>{space.currency}</option>
+							)}
+							{currencyOptions.map(([code]) => (
+								<option key={code} value={code}>
+									{code} — {localizedCurrencyName(code, language)}
+								</option>
+							))}
+						</select>
+						<small className="mini-field-note">
+							{uiText(
+								language,
+								canEditCurrency ? "currencyConvertHint" : "ownerCurrencyOnly",
+							)}
+						</small>
+					</label>
+					<div className="mini-field mini-device-notifications">
+						<button
+							type="button"
+							className={space.settings?.period_reports_enabled ? "active" : ""}
+							disabled={!canEditCurrency || saving}
+							aria-pressed={Boolean(space.settings?.period_reports_enabled)}
+							onClick={() =>
+								onChange({
+									...space,
+									settings: {
+										...space.settings,
+										period_reports_enabled:
+											!space.settings?.period_reports_enabled,
+									},
+								})
+							}
+						>
+							<BellRinging size={21} />
+							<span>
+								<b>{uiText(language, "periodicReports")}</b>
+								<small>{uiText(language, "periodicReportsHint")}</small>
+							</span>
+							<i />
+						</button>
+					</div>
 				</div>
-			</div>
+			</section>
 			{existingSpace && (
-				<div className="mini-space-editor-section is-members">
+				<section className="mini-editor-section mini-space-editor-section is-members">
 					<div className="mini-space-editor-heading">
 						<span>
 							<UsersThree size={20} />
@@ -22043,7 +22101,13 @@ const SpaceEditor = ({
 										</span>
 										<p>
 											<b>{member.name || uiText(language, "user")}</b>
-											<small>{memberRole(member.role, language)}</small>
+											<small>
+												{canEditMember
+													? member.email || memberRole(member.role, language)
+													: [member.email, memberRole(member.role, language)]
+															.filter(Boolean)
+															.join(" · ")}
+											</small>
 										</p>
 										{canEditMember && (
 											<select
@@ -22090,25 +22154,10 @@ const SpaceEditor = ({
 							})}
 						</div>
 					)}
-				</div>
+				</section>
 			)}
-			<div className="mini-modal-actions">
-				{canEditCurrency && (
-					<button
-						className="mini-save"
-						type="button"
-						disabled={
-							saving || !space.name.trim() || space.currency.trim().length !== 3
-						}
-						onClick={onSave}
-					>
-						{uiText(
-							language,
-							saving ? "saving" : existingSpace ? "save" : "create",
-						)}
-					</button>
-				)}
-				{onDelete && (
+			{onDelete && (
+				<div className="mini-space-editor-danger">
 					<button
 						className="mini-delete"
 						type="button"
@@ -22118,8 +22167,23 @@ const SpaceEditor = ({
 						<Trash size={18} />
 						{uiText(language, canEditCurrency ? "deleteSpace" : "leaveSpace")}
 					</button>
-				)}
-			</div>
+				</div>
+			)}
+			{canEditCurrency && (
+				<div className="mini-modal-actions mini-editor-actions mini-space-editor-actions">
+					<button
+						className="mini-save"
+						type="button"
+						disabled={saving}
+						onClick={submit}
+					>
+						{uiText(
+							language,
+							saving ? "saving" : existingSpace ? "save" : "create",
+						)}
+					</button>
+				</div>
+			)}
 		</Modal>
 	);
 };
