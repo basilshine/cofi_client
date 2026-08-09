@@ -8356,7 +8356,11 @@ export const MiniApp = ({
 				setRecordDetail({ kind: "expense", expense });
 				if (
 					requestedQuery.get("split") === "1" &&
-					expense.user_id === user?.id &&
+					(expense.user_id === user?.id ||
+						participantUserID(
+							expensePayerParticipant(expense, eligibleParticipants),
+						) === user?.id ||
+						activeSpace?.owner_user_id === user?.id) &&
 					eligibleParticipants.length > 1
 				) {
 					setSplitEditorExpense(expense);
@@ -8370,6 +8374,7 @@ export const MiniApp = ({
 	}, [
 		spaceID,
 		expenses,
+		activeSpace?.owner_user_id,
 		user?.id,
 		eligibleParticipants,
 		language,
@@ -9941,6 +9946,7 @@ export const MiniApp = ({
 					participants={eligibleParticipants}
 					splits={splitsByExpense.get(recordDetail.expense.id) || []}
 					currentUserID={user?.id || 0}
+					canManageSplits={activeSpace?.owner_user_id === user?.id}
 					capture={captureForExpense(recordDetail.expense, captures)}
 					sourceLoading={sourceLoading}
 					moveTargets={shellSpaces.filter(
@@ -19139,6 +19145,7 @@ const ExpenseDetail = ({
 	participants = [],
 	splits = [],
 	currentUserID = 0,
+	canManageSplits = false,
 	capture,
 	sourceLoading,
 	moveTargets,
@@ -19162,6 +19169,7 @@ const ExpenseDetail = ({
 	participants?: SpaceParticipant[];
 	splits?: ExpenseSplit[];
 	currentUserID?: number;
+	canManageSplits?: boolean;
 	capture?: CapturePacket;
 	sourceLoading: boolean;
 	moveTargets: Space[];
@@ -19211,7 +19219,9 @@ const ExpenseDetail = ({
 	const canSplit =
 		itemIndex === undefined &&
 		participants.length > 1 &&
-		expense.user_id === currentUserID &&
+		(expense.user_id === currentUserID ||
+			participantUserID(splitPayer) === currentUserID ||
+			canManageSplits) &&
 		Boolean(onSplit);
 	return (
 		<Modal
@@ -19360,7 +19370,7 @@ const ExpenseDetail = ({
 								<b>{splitPayer.display_name}</b>
 							</span>
 							{canSplit && (
-								<button type="button" onClick={onEdit}>
+								<button type="button" onClick={onSplit}>
 									{uiText(language, "change")}
 								</button>
 							)}
