@@ -1039,6 +1039,27 @@ type DeveloperUserList = {
 	has_more: boolean;
 };
 
+type DeveloperUserStatus =
+	| "all"
+	| "no_input"
+	| "awaiting_confirmation"
+	| "active"
+	| "inactive";
+
+type DeveloperUserFunnel = {
+	period_days: number;
+	cohort_started_at: string;
+	registered_users: number;
+	started_users: number;
+	processed_users: number;
+	review_ready_users: number;
+	confirmed_users: number;
+	repeated_users: number;
+	no_input_users: number;
+	without_result_users: number;
+	awaiting_confirmation_users: number;
+};
+
 type DeveloperDashboard = {
 	user_id: number;
 	period_days: number;
@@ -1155,6 +1176,11 @@ type DeveloperUserDetail = {
 		quota_units_total: number;
 		quota_units_30_days: number;
 		confirmed_results: number;
+		edited_results: number;
+		deleted_results: number;
+		failed_inputs: number;
+		pending_reviews: number;
+		average_confirmation_ms: number;
 		active_sessions: number;
 		last_input_at?: string | null;
 		last_session_at?: string | null;
@@ -1165,6 +1191,30 @@ type DeveloperUserDetail = {
 		role: string;
 		is_personal: boolean;
 		member_count: number;
+	}[];
+	activity: {
+		id: string;
+		type: "registration" | "session" | "capture";
+		occurred_at: string;
+		source_document_id?: number | null;
+		space_id?: number | null;
+		space_name?: string;
+		input_kind?: string;
+		capture_module?: string;
+		processing_status?: string;
+		outcome?:
+			| "registered"
+			| "signed_in"
+			| "processing"
+			| "pending_review"
+			| "confirmed"
+			| "edited"
+			| "deleted"
+			| "failed";
+		total_latency_ms?: number;
+		processing_attempts?: number;
+		fields_changed_count?: number;
+		error?: string;
 	}[];
 };
 
@@ -16093,9 +16143,11 @@ const developerPercent = (value: number) =>
 	`${(Math.max(0, value) * 100).toFixed(1)}%`;
 
 const developerDuration = (milliseconds: number) =>
-	milliseconds >= 1000
-		? `${(milliseconds / 1000).toFixed(milliseconds >= 10_000 ? 0 : 1)} с`
-		: `${Math.round(milliseconds)} мс`;
+	milliseconds >= 60_000
+		? `${(milliseconds / 60_000).toFixed(milliseconds >= 600_000 ? 0 : 1)} мин`
+		: milliseconds >= 1000
+			? `${(milliseconds / 1000).toFixed(milliseconds >= 10_000 ? 0 : 1)} с`
+			: `${Math.round(milliseconds)} мс`;
 
 const developerBytes = (bytes: number) => {
 	if (bytes < 1024) return `${bytes} Б`;
@@ -16114,6 +16166,221 @@ const developerInputLabel = (input: string) =>
 			: input === "text"
 				? "Текст"
 				: input;
+
+const developerUserStage = (
+	user: DeveloperUserSummary,
+): Exclude<DeveloperUserStatus, "all"> =>
+	(user.inputs_total || 0) === 0
+		? "no_input"
+		: (user.confirmed_results || 0) === 0
+			? "awaiting_confirmation"
+			: user.inputs_30_days > 0
+				? "active"
+				: "inactive";
+
+const developerUserStageMeta: Record<
+	Exclude<DeveloperUserStatus, "all">,
+	{ label: string; tone: string }
+> = {
+	no_input: { label: "Без разборов", tone: "idle" },
+	awaiting_confirmation: { label: "Не сохранено", tone: "attention" },
+	active: { label: "Активен", tone: "active" },
+	inactive: { label: "Нет активности", tone: "idle" },
+};
+
+const developerUserFilters: {
+	value: DeveloperUserStatus;
+	label: string;
+}[] = [
+	{ value: "all", label: "Все" },
+	{ value: "no_input", label: "Не начали" },
+	{ value: "awaiting_confirmation", label: "Не сохранили" },
+	{ value: "active", label: "Активные" },
+	{ value: "inactive", label: "Уснули" },
+];
+
+const previewDeveloperFunnel = (total: number): DeveloperUserFunnel => {
+	const registered = Math.max(total, 0);
+	const started = Math.min(registered, Math.round(registered * 0.72));
+	const processed = Math.min(started, Math.round(registered * 0.67));
+	const reviewReady = Math.min(processed, Math.round(registered * 0.61));
+	const confirmed = Math.min(reviewReady, Math.round(registered * 0.56));
+	return {
+		period_days: 30,
+		cohort_started_at: new Date(Date.now() - 30 * 86_400_000).toISOString(),
+		registered_users: registered,
+		started_users: started,
+		processed_users: processed,
+		review_ready_users: reviewReady,
+		confirmed_users: confirmed,
+		repeated_users: Math.min(confirmed, Math.round(registered * 0.39)),
+		no_input_users: registered - started,
+		without_result_users: started - reviewReady,
+		awaiting_confirmation_users: reviewReady - confirmed,
+	};
+};
+
+const DeveloperUserFunnelCard = ({
+	funnel,
+}: {
+	funnel: DeveloperUserFunnel;
+}) => {
+	const stages = [
+		{ label: "Регистрация", value: funnel.registered_users },
+		{ label: "Начали разбор", value: funnel.started_users },
+		{ label: "Получили результат", value: funnel.review_ready_users },
+		{ label: "Сохранили", value: funnel.confirmed_users },
+		{ label: "Повторили ввод", value: funnel.repeated_users },
+	];
+	const baseline = Math.max(funnel.registered_users, 1);
+	return (
+		<section className="mini-developer-funnel">
+			<div className="mini-developer-funnel-head">
+				<span>
+					<strong>Первый разбор</strong>
+					<small>Когорта за {funnel.period_days} дней</small>
+				</span>
+				<ChartLineUp size={20} />
+			</div>
+			<div className="mini-developer-funnel-stages">
+				{stages.map((stage) => {
+					const percent = Math.round((stage.value / baseline) * 100);
+					return (
+						<div key={stage.label}>
+							<span>
+								<small>{stage.label}</small>
+								<b>{stage.value}</b>
+								<em>{percent}%</em>
+							</span>
+							<i>
+								<b style={{ width: `${Math.max(percent, 3)}%` }} />
+							</i>
+						</div>
+					);
+				})}
+			</div>
+			<div className="mini-developer-funnel-dropoffs">
+				<p>
+					<b>{funnel.no_input_users}</b>
+					<span>не начали</span>
+				</p>
+				<p>
+					<b>{funnel.without_result_users}</b>
+					<span>без результата</span>
+				</p>
+				<p>
+					<b>{funnel.awaiting_confirmation_users}</b>
+					<span>не подтвердили</span>
+				</p>
+			</div>
+		</section>
+	);
+};
+
+const developerActivityMeta = (
+	item: DeveloperUserDetail["activity"][number],
+) => {
+	if (item.type === "registration") {
+		return {
+			title: "Регистрация завершена",
+			status: "Аккаунт создан",
+			tone: "neutral",
+		};
+	}
+	if (item.type === "session") {
+		return {
+			title: "Вход в приложение",
+			status: "Авторизован",
+			tone: "neutral",
+		};
+	}
+	const title =
+		item.capture_module === "plan" ? "Разбор плана" : "Разбор расхода";
+	switch (item.outcome) {
+		case "confirmed":
+			return { title, status: "Сохранено", tone: "success" };
+		case "edited":
+			return { title, status: "Исправлено и сохранено", tone: "success" };
+		case "deleted":
+			return { title, status: "Удалено", tone: "neutral" };
+		case "failed":
+			return { title, status: "Ошибка обработки", tone: "danger" };
+		case "processing":
+			return { title, status: "Обрабатывается", tone: "progress" };
+		default:
+			return { title, status: "Ждёт подтверждения", tone: "attention" };
+	}
+};
+
+const DeveloperUserTimeline = ({
+	activity,
+}: {
+	activity: DeveloperUserDetail["activity"];
+}) => {
+	const sortedActivity = [...activity].sort(
+		(left, right) =>
+			new Date(right.occurred_at).getTime() -
+			new Date(left.occurred_at).getTime(),
+	);
+	return (
+		<section className="mini-dev-user-timeline-section">
+			<div className="mini-dev-user-section-head">
+				<strong>Хронология</strong>
+				<small>Последние {sortedActivity.length} действий</small>
+			</div>
+			{sortedActivity.length > 0 ? (
+				<div className="mini-dev-user-timeline">
+					{sortedActivity.map((item) => {
+						const meta = developerActivityMeta(item);
+						const detail = [
+							item.input_kind ? developerInputLabel(item.input_kind) : "",
+							item.space_name || "",
+						]
+							.filter(Boolean)
+							.join(" · ");
+						return (
+							<article key={item.id} className={`is-${meta.tone}`}>
+								<span className="mini-dev-user-timeline-icon">
+									{item.type === "registration" ? (
+										<Star size={15} />
+									) : item.type === "session" ? (
+										<ArrowRight size={15} />
+									) : (
+										<Receipt size={15} />
+									)}
+								</span>
+								<div>
+									<span>
+										<strong>{meta.title}</strong>
+										<em>{meta.status}</em>
+									</span>
+									{detail && <small>{detail}</small>}
+									{item.error && <p>{item.error}</p>}
+									{item.type === "capture" && (
+										<small>
+											{item.total_latency_ms
+												? developerDuration(item.total_latency_ms)
+												: "Время не зафиксировано"}
+											{item.processing_attempts && item.processing_attempts > 1
+												? ` · ${item.processing_attempts} попытки`
+												: ""}
+											{item.fields_changed_count
+												? ` · исправлено полей: ${item.fields_changed_count}`
+												: ""}
+										</small>
+									)}
+									<time>{formatDateTime(item.occurred_at, "ru")}</time>
+								</div>
+							</article>
+						);
+					})}
+				</div>
+			) : (
+				<p className="mini-dev-user-empty">Действий пока нет.</p>
+			)}
+		</section>
+	);
+};
 
 const previewDeveloperUser = (
 	recentUser: DeveloperUserSummary,
@@ -16145,13 +16412,25 @@ const previewDeveloperUser = (
 		additional_units: 100,
 	},
 	stats: {
-		expenses_total: 48,
-		plans_total: 7,
-		inputs_total: 31,
+		expenses_total: recentUser.expenses_total || 0,
+		plans_total: recentUser.plans_total || 0,
+		inputs_total: recentUser.inputs_total || 0,
 		inputs_30_days: recentUser.inputs_30_days,
-		quota_units_total: 67,
+		quota_units_total: recentUser.quota_units_30_days,
 		quota_units_30_days: recentUser.quota_units_30_days,
-		confirmed_results: 27,
+		confirmed_results: recentUser.confirmed_results || 0,
+		edited_results: recentUser.confirmed_results
+			? Math.min(6, recentUser.confirmed_results)
+			: 0,
+		deleted_results: 0,
+		failed_inputs:
+			(recentUser.inputs_total || 0) > 0 && !recentUser.confirmed_results
+				? 1
+				: 0,
+		pending_reviews: recentUser.confirmed_results
+			? 0
+			: recentUser.inputs_total || 0,
+		average_confirmation_ms: recentUser.confirmed_results ? 84_000 : 0,
 		active_sessions: 2,
 		last_input_at: recentUser.last_input_at,
 		last_session_at: recentUser.last_input_at,
@@ -16170,6 +16449,41 @@ const previewDeveloperUser = (
 			role: "member",
 			is_personal: false,
 			member_count: 3,
+		},
+	],
+	activity: [
+		...(recentUser.inputs_total
+			? [
+					{
+						id: `capture-${recentUser.id}`,
+						type: "capture" as const,
+						occurred_at: recentUser.last_input_at || recentUser.created_at,
+						source_document_id: 104,
+						space_id: 1,
+						space_name: "Личные расходы",
+						input_kind: "image",
+						capture_module: "expense",
+						processing_status: "succeeded",
+						outcome: recentUser.confirmed_results
+							? ("edited" as const)
+							: ("pending_review" as const),
+						total_latency_ms: 12_400,
+						processing_attempts: 1,
+						fields_changed_count: recentUser.confirmed_results ? 2 : 0,
+					},
+				]
+			: []),
+		{
+			id: `session-${recentUser.id}`,
+			type: "session",
+			occurred_at: recentUser.last_session_at || recentUser.created_at,
+			outcome: "signed_in",
+		},
+		{
+			id: `registration-${recentUser.id}`,
+			type: "registration",
+			occurred_at: recentUser.created_at,
+			outcome: "registered",
 		},
 	],
 });
@@ -16317,14 +16631,7 @@ const DeveloperUserRow = ({
 				} => Boolean(row),
 			)
 		: [];
-	const status =
-		(recentUser.inputs_total || 0) === 0
-			? { label: "Без разборов", tone: "idle" }
-			: (recentUser.confirmed_results || 0) === 0
-				? { label: "Не сохранено", tone: "attention" }
-				: recentUser.inputs_30_days > 0
-					? { label: "Активен", tone: "active" }
-					: { label: "Нет активности", tone: "idle" };
+	const status = developerUserStageMeta[developerUserStage(recentUser)];
 	const lastActivity =
 		recentUser.last_input_at ||
 		recentUser.last_session_at ||
@@ -16492,6 +16799,38 @@ const DeveloperUserRow = ({
 										<b>{detail.stats.confirmed_results}</b>
 									</p>
 									<p>
+										<span>Исправлено перед сохранением</span>
+										<b>{detail.stats.edited_results}</b>
+									</p>
+									{detail.stats.pending_reviews > 0 && (
+										<p className="is-attention">
+											<span>Ждут подтверждения</span>
+											<b>{detail.stats.pending_reviews}</b>
+										</p>
+									)}
+									{detail.stats.failed_inputs > 0 && (
+										<p className="is-danger">
+											<span>Ошибки обработки</span>
+											<b>{detail.stats.failed_inputs}</b>
+										</p>
+									)}
+									{detail.stats.deleted_results > 0 && (
+										<p>
+											<span>Удалено после разбора</span>
+											<b>{detail.stats.deleted_results}</b>
+										</p>
+									)}
+									{detail.stats.average_confirmation_ms > 0 && (
+										<p>
+											<span>Среднее время до сохранения</span>
+											<b>
+												{developerDuration(
+													detail.stats.average_confirmation_ms,
+												)}
+											</b>
+										</p>
+									)}
+									<p>
 										<span>Активные сессии</span>
 										<b>{detail.stats.active_sessions}</b>
 									</p>
@@ -16525,6 +16864,8 @@ const DeveloperUserRow = ({
 									)}
 								</div>
 							</section>
+
+							<DeveloperUserTimeline activity={detail.activity} />
 
 							<section>
 								<div className="mini-dev-user-section-head">
@@ -16661,28 +17002,40 @@ const DeveloperUsersView = ({
 	const [loadingMore, setLoadingMore] = useState(false);
 	const [hasMore, setHasMore] = useState(false);
 	const [error, setError] = useState("");
+	const [status, setStatus] = useState<DeveloperUserStatus>("all");
+	const [funnel, setFunnel] = useState<DeveloperUserFunnel | null>(null);
+	const [funnelLoading, setFunnelLoading] = useState(true);
+	const [funnelError, setFunnelError] = useState("");
 
-	const loadUsers = async (offset: number, search: string, append: boolean) => {
+	const loadUsers = async (
+		offset: number,
+		search: string,
+		filter: DeveloperUserStatus,
+		append: boolean,
+	) => {
 		append ? setLoadingMore(true) : setLoading(true);
 		setError("");
 		try {
 			if (token === "preview") {
 				const normalized = search.trim().toLowerCase();
-				const filtered = normalized
-					? previewUsers.filter(
-							(user) =>
-								user.name.toLowerCase().includes(normalized) ||
-								String(user.id) === normalized,
-						)
-					: previewUsers;
+				const filtered = previewUsers.filter(
+					(user) =>
+						(filter === "all" || developerUserStage(user) === filter) &&
+						(!normalized ||
+							user.name.toLowerCase().includes(normalized) ||
+							String(user.id) === normalized),
+				);
 				setUsers(filtered);
-				setTotal(normalized ? filtered.length : previewTotal);
+				setTotal(
+					filter === "all" && !normalized ? previewTotal : filtered.length,
+				);
 				setHasMore(false);
 				return;
 			}
 			const params = new URLSearchParams({
 				limit: "20",
 				offset: String(offset),
+				status: filter,
 			});
 			if (search.trim()) params.set("q", search.trim());
 			const response = await apiRequest<DeveloperUserList>(
@@ -16706,21 +17059,50 @@ const DeveloperUsersView = ({
 		}
 	};
 
+	const loadFunnel = async () => {
+		setFunnelLoading(true);
+		setFunnelError("");
+		try {
+			setFunnel(
+				token === "preview"
+					? previewDeveloperFunnel(previewTotal)
+					: await apiRequest<DeveloperUserFunnel>(
+							"/quota/developer-users/funnel?period_days=30",
+							token,
+						),
+			);
+		} catch (requestError) {
+			setFunnelError(
+				requestError instanceof Error
+					? requestError.message
+					: "Не удалось загрузить воронку",
+			);
+		} finally {
+			setFunnelLoading(false);
+		}
+	};
+
 	useEffect(() => {
-		void loadUsers(0, "", false);
+		void loadUsers(0, "", "all", false);
+		void loadFunnel();
 	}, [token]);
 
 	const submitSearch = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		const nextQuery = query.trim();
 		setAppliedQuery(nextQuery);
-		void loadUsers(0, nextQuery, false);
+		void loadUsers(0, nextQuery, status, false);
 	};
 
 	const resetSearch = () => {
 		setQuery("");
 		setAppliedQuery("");
-		void loadUsers(0, "", false);
+		void loadUsers(0, "", status, false);
+	};
+
+	const applyStatus = (nextStatus: DeveloperUserStatus) => {
+		setStatus(nextStatus);
+		void loadUsers(0, appliedQuery, nextStatus, false);
 	};
 
 	return (
@@ -16741,13 +17123,30 @@ const DeveloperUsersView = ({
 					title="Обновить список"
 					disabled={loading || loadingMore}
 					onClick={() => {
-						void loadUsers(0, appliedQuery, false);
+						void loadUsers(0, appliedQuery, status, false);
+						void loadFunnel();
 						onRefreshDashboard();
 					}}
 				>
 					<ArrowClockwise size={18} />
 				</button>
 			</div>
+
+			{funnelLoading ? (
+				<div
+					className="mini-developer-funnel-skeleton"
+					aria-label="Загружаю воронку"
+				/>
+			) : funnel ? (
+				<DeveloperUserFunnelCard funnel={funnel} />
+			) : (
+				<div className="mini-developer-funnel-error" role="alert">
+					<span>{funnelError || "Воронка пока недоступна"}</span>
+					<button type="button" onClick={() => void loadFunnel()}>
+						Повторить
+					</button>
+				</div>
+			)}
 
 			<form className="mini-developer-users-search" onSubmit={submitSearch}>
 				<MagnifyingGlass size={18} />
@@ -16774,6 +17173,23 @@ const DeveloperUsersView = ({
 				</button>
 			</form>
 
+			<div
+				className="mini-developer-users-filters"
+				aria-label="Этап пользователя"
+			>
+				{developerUserFilters.map((filter) => (
+					<button
+						key={filter.value}
+						type="button"
+						className={status === filter.value ? "is-active" : ""}
+						aria-pressed={status === filter.value}
+						onClick={() => applyStatus(filter.value)}
+					>
+						{filter.label}
+					</button>
+				))}
+			</div>
+
 			<div className="mini-developer-users-summary" aria-live="polite">
 				<strong>{total}</strong>
 				<span>{appliedQuery ? "найдено" : "зарегистрировано"}</span>
@@ -16795,7 +17211,7 @@ const DeveloperUsersView = ({
 					<span>{error}</span>
 					<button
 						type="button"
-						onClick={() => void loadUsers(0, appliedQuery, false)}
+						onClick={() => void loadUsers(0, appliedQuery, status, false)}
 					>
 						Повторить
 					</button>
@@ -16804,12 +17220,22 @@ const DeveloperUsersView = ({
 				<div className="mini-developer-users-empty">
 					<UsersThree size={24} />
 					<strong>Никого не нашли</strong>
-					<span>Проверьте имя, контакт или номер пользователя.</span>
-					{appliedQuery && (
-						<button type="button" onClick={resetSearch}>
-							Показать всех
-						</button>
-					)}
+					<span>
+						{appliedQuery
+							? "Проверьте имя, контакт или номер пользователя."
+							: "На этом этапе пользователей пока нет."}
+					</span>
+					<button
+						type="button"
+						onClick={() => {
+							setQuery("");
+							setAppliedQuery("");
+							setStatus("all");
+							void loadUsers(0, "", "all", false);
+						}}
+					>
+						Показать всех
+					</button>
 				</div>
 			) : (
 				<div className="mini-developer-users-list">
@@ -16820,7 +17246,8 @@ const DeveloperUsersView = ({
 							token={token}
 							variant="catalog"
 							onRefresh={() => {
-								void loadUsers(0, appliedQuery, false);
+								void loadUsers(0, appliedQuery, status, false);
+								void loadFunnel();
 								onRefreshDashboard();
 							}}
 						/>
@@ -16833,7 +17260,9 @@ const DeveloperUsersView = ({
 					className="mini-developer-users-more"
 					type="button"
 					disabled={loadingMore}
-					onClick={() => void loadUsers(users.length, appliedQuery, true)}
+					onClick={() =>
+						void loadUsers(users.length, appliedQuery, status, true)
+					}
 				>
 					{loadingMore ? "Загружаю…" : "Показать ещё"}
 				</button>

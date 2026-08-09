@@ -4022,6 +4022,12 @@
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
+.mini-dev-user-lines p.is-attention b {
+	color: var(--mini-signal);
+}
+.mini-dev-user-lines p.is-danger b {
+	color: var(--mini-red);
+}
 .mini-dev-user-locale,
 .mini-dev-user-empty {
 	margin: 0;
@@ -4073,6 +4079,99 @@
 .mini-dev-user-spaces small {
 	color: var(--mini-muted);
 	font-size: 9px;
+}
+.mini-dev-user-timeline {
+	display: grid;
+}
+.mini-dev-user-timeline article {
+	position: relative;
+	display: grid;
+	grid-template-columns: 32px minmax(0, 1fr);
+	gap: 9px;
+	padding: 0 0 14px;
+}
+.mini-dev-user-timeline article:not(:last-child)::before {
+	position: absolute;
+	top: 30px;
+	bottom: 0;
+	left: 15px;
+	width: 1px;
+	background: var(--mini-line);
+	content: "";
+}
+.mini-dev-user-timeline-icon {
+	display: grid;
+	width: 32px;
+	height: 32px;
+	place-items: center;
+	border: 1px solid var(--mini-line);
+	border-radius: 50%;
+	background: var(--mini-paper);
+	color: var(--mini-muted);
+}
+.mini-dev-user-timeline article.is-success .mini-dev-user-timeline-icon {
+	border-color: color-mix(in srgb, var(--mini-success) 28%, var(--mini-line));
+	color: var(--mini-success);
+}
+.mini-dev-user-timeline article.is-attention .mini-dev-user-timeline-icon,
+.mini-dev-user-timeline article.is-progress .mini-dev-user-timeline-icon {
+	border-color: color-mix(in srgb, var(--mini-signal) 28%, var(--mini-line));
+	color: var(--mini-signal);
+}
+.mini-dev-user-timeline article.is-danger .mini-dev-user-timeline-icon {
+	border-color: color-mix(in srgb, var(--mini-red) 28%, var(--mini-line));
+	color: var(--mini-red);
+}
+.mini-dev-user-timeline article > div {
+	display: grid;
+	min-width: 0;
+	gap: 3px;
+	padding-top: 1px;
+}
+.mini-dev-user-timeline article > div > span {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 9px;
+}
+.mini-dev-user-timeline strong {
+	font-size: 11px;
+}
+.mini-dev-user-timeline em {
+	color: var(--mini-muted);
+	font-size: 8px;
+	font-style: normal;
+	font-weight: 750;
+	text-align: right;
+}
+.mini-dev-user-timeline article.is-success em {
+	color: var(--mini-success);
+}
+.mini-dev-user-timeline article.is-attention em,
+.mini-dev-user-timeline article.is-progress em {
+	color: var(--mini-signal);
+}
+.mini-dev-user-timeline article.is-danger em {
+	color: var(--mini-red);
+}
+.mini-dev-user-timeline small,
+.mini-dev-user-timeline time,
+.mini-dev-user-timeline p {
+	margin: 0;
+	color: var(--mini-muted);
+	font-size: 9px;
+	font-style: normal;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
+.mini-dev-user-timeline p {
+	padding: 6px 8px;
+	border-left: 2px solid var(--mini-red);
+	background: color-mix(in srgb, var(--mini-red) 6%, var(--mini-paper));
+	color: var(--mini-red);
+}
+.mini-dev-user-timeline time {
+	font-size: 8px;
 }
 .mini-dev-user-actions label {
 	display: grid;
@@ -4168,6 +4267,134 @@
 .mini-developer-users-head > button:disabled {
 	opacity: 0.5;
 }
+.mini-developer-funnel {
+	display: grid;
+	gap: 13px;
+	padding: 14px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-paper);
+}
+.mini-developer-funnel-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+}
+.mini-developer-funnel-head > span {
+	display: grid;
+	gap: 2px;
+}
+.mini-developer-funnel-head strong {
+	font-size: 12px;
+}
+.mini-developer-funnel-head small {
+	color: var(--mini-muted);
+	font-size: 9px;
+}
+.mini-developer-funnel-head > svg {
+	color: var(--mini-green);
+}
+.mini-developer-funnel-stages {
+	display: grid;
+	gap: 9px;
+}
+.mini-developer-funnel-stages > div {
+	display: grid;
+	gap: 4px;
+}
+.mini-developer-funnel-stages > div > span {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto 30px;
+	align-items: baseline;
+	gap: 7px;
+}
+.mini-developer-funnel-stages small,
+.mini-developer-funnel-stages em {
+	color: var(--mini-muted);
+	font-size: 8px;
+	font-style: normal;
+}
+.mini-developer-funnel-stages b {
+	font-size: 11px;
+}
+.mini-developer-funnel-stages em {
+	text-align: right;
+}
+.mini-developer-funnel-stages i {
+	display: block;
+	height: 4px;
+	overflow: hidden;
+	border-radius: 2px;
+	background: var(--mini-soft);
+}
+.mini-developer-funnel-stages i b {
+	display: block;
+	height: 100%;
+	max-width: 100%;
+	border-radius: inherit;
+	background: var(--mini-green);
+}
+.mini-developer-funnel-stages > div:nth-child(4) i b,
+.mini-developer-funnel-stages > div:nth-child(5) i b {
+	background: var(--mini-success);
+}
+.mini-developer-funnel-dropoffs {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	border-top: 1px solid var(--mini-line);
+}
+.mini-developer-funnel-dropoffs p {
+	display: grid;
+	gap: 1px;
+	margin: 0;
+	padding: 10px 5px 0;
+	text-align: center;
+}
+.mini-developer-funnel-dropoffs p + p {
+	border-left: 1px solid var(--mini-line);
+}
+.mini-developer-funnel-dropoffs b {
+	font-size: 13px;
+}
+.mini-developer-funnel-dropoffs span {
+	color: var(--mini-muted);
+	font-size: 8px;
+}
+.mini-developer-funnel-skeleton {
+	height: 250px;
+	border-radius: 7px;
+	background: linear-gradient(
+		90deg,
+		var(--mini-soft),
+		var(--mini-paper),
+		var(--mini-soft)
+	);
+	background-size: 220% 100%;
+	animation: mini-user-skeleton 1.2s ease-in-out infinite;
+}
+.mini-developer-funnel-error {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px;
+	border: 1px solid color-mix(in srgb, var(--mini-red) 22%, var(--mini-line));
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--mini-red) 5%, var(--mini-paper));
+	color: var(--mini-red);
+	font-size: 9px;
+}
+.mini-developer-funnel-error button {
+	min-height: 32px;
+	padding: 0 10px;
+	border: 1px solid currentcolor;
+	border-radius: 5px;
+	background: transparent;
+	color: inherit;
+	font-size: 9px;
+	font-weight: 750;
+}
 .mini-developer-users-search {
 	display: grid;
 	grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -4210,6 +4437,32 @@
 }
 .mini-developer-users-search button:disabled {
 	opacity: 0.5;
+}
+.mini-developer-users-filters {
+	display: flex;
+	gap: 6px;
+	overflow-x: auto;
+	padding-bottom: 2px;
+	scrollbar-width: none;
+}
+.mini-developer-users-filters::-webkit-scrollbar {
+	display: none;
+}
+.mini-developer-users-filters button {
+	min-height: 34px;
+	flex: 0 0 auto;
+	padding: 0 11px;
+	border: 1px solid var(--mini-line);
+	border-radius: 5px;
+	background: var(--mini-paper);
+	color: var(--mini-muted);
+	font-size: 9px;
+	font-weight: 700;
+}
+.mini-developer-users-filters button.is-active {
+	border-color: var(--mini-green);
+	background: var(--mini-green);
+	color: var(--mini-paper);
 }
 .mini-developer-users-summary {
 	display: flex;
