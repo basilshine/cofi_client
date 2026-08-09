@@ -12257,102 +12257,26 @@ const Overview = ({
 										plan.vendor_name ||
 										vendors.find((vendor) => vendor.id === plan.vendor_id)
 											?.name;
-									const dueToday = isPlanDueToday(plan.due_date);
-									const overdue = isPlanOverdue(plan.due_date);
 									const planMoney = planDisplayMoney(plan, currency);
 									const originalMoney = planOriginalMoney(
 										plan,
 										planMoney.currency,
 									);
 									return (
-										<div
-											className={
-												dueToday
-													? "is-today"
-													: overdue
-														? "is-overdue"
-														: undefined
-											}
+										<PlanRecordCard
 											key={plan.id}
-										>
-											<button type="button" onClick={() => onEditPlan(plan)}>
-												<span className="mini-home-plan-title">
-													<b>{plan.title}</b>
-													{planMoney.amount > 0 && (
-														<strong>
-															{formatMoney(
-																planMoney.amount,
-																planMoney.currency,
-															)}
-														</strong>
-													)}
-												</span>
-												{originalMoney && originalMoney.amount > 0 && (
-													<small className="mini-original-money">
-														{uiText(language, "originalAmount")}{" "}
-														{formatMoney(
-															originalMoney.amount,
-															originalMoney.currency,
-														)}
-													</small>
-												)}
-												{(plan.due_date || vendorName) && (
-													<small>
-														{plan.due_date && (
-															<span
-																className={
-																	dueToday
-																		? "mini-plan-due-today"
-																		: overdue
-																			? "mini-plan-due-overdue"
-																			: undefined
-																}
-															>
-																{formatPlanDueDate(plan.due_date, language)}
-															</span>
-														)}
-														{plan.due_date && vendorName ? " · " : ""}
-														{vendorName}
-													</small>
-												)}
-												{sharedRecordAuthor(
-													members,
-													plan.created_by_user_id,
-												) && (
-													<small className="mini-record-author">
-														{uiText(language, "addedBy")}{" "}
-														{sharedRecordAuthor(
-															members,
-															plan.created_by_user_id,
-														)}
-													</small>
-												)}
-												{plan.recurrence_interval && (
-													<small className="mini-plan-recurrence">
-														<ArrowClockwise size={12} />
-														{planRecurrenceText(plan, language)}
-													</small>
-												)}
-											</button>
-											<div className="mini-home-plan-actions">
-												<button
-													className="mini-home-plan-buy"
-													type="button"
-													onClick={() => onBuyPlan(plan)}
-													aria-label={uiText(language, "bought")}
-												>
-													<Check size={17} weight="bold" />
-												</button>
-												<button
-													className="mini-home-plan-cancel"
-													type="button"
-													onClick={() => onCancelPlan(plan)}
-													aria-label={uiText(language, "skipPlan")}
-												>
-													<X size={16} weight="bold" />
-												</button>
-											</div>
-										</div>
+											plan={plan}
+											capture={captureForPlan(plan, captures)}
+											members={members}
+											language={language}
+											amount={planMoney.amount}
+											currency={planMoney.currency}
+											originalMoney={originalMoney}
+											vendorName={vendorName}
+											onOpen={() => onEditPlan(plan)}
+											onBuy={() => onBuyPlan(plan)}
+											onCancel={() => onCancelPlan(plan)}
+										/>
 									);
 								})}
 							</div>
@@ -13442,6 +13366,124 @@ const SplitsView = ({
 	);
 };
 
+const PlanRecordCard = ({
+	plan,
+	capture,
+	members,
+	language,
+	amount,
+	currency,
+	originalMoney,
+	occurrenceCount = 1,
+	vendorName,
+	onOpen,
+	onBuy,
+	onCancel,
+}: {
+	plan: PurchasePlan;
+	capture?: CapturePacket;
+	members: SpaceMember[];
+	language: UILanguage;
+	amount: number;
+	currency: string;
+	originalMoney?: { amount: number; currency: string } | null;
+	occurrenceCount?: number;
+	vendorName?: string;
+	onOpen: () => void;
+	onBuy: () => void;
+	onCancel?: () => void;
+}) => {
+	const dueToday = isPlanDueToday(plan.due_date);
+	const overdue = isPlanOverdue(plan.due_date);
+	const author = sharedRecordAuthor(members, plan.created_by_user_id);
+	const itemCount = purchasePlanItems(plan).length;
+	const forecastAmount = amount * occurrenceCount;
+	const dueLabel = plan.due_date
+		? formatPlanDueDate(plan.due_date, language)
+		: uiText(language, "someday");
+	const dueClassName = dueToday
+		? "mini-plan-due-today"
+		: overdue
+			? "mini-plan-due-overdue"
+			: undefined;
+
+	return (
+		<article
+			className={`mini-plan-record-card${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
+		>
+			<button className="mini-plan-record-main" type="button" onClick={onOpen}>
+				<span className="mini-plan-record-icon">
+					{plan.source_document_id ? (
+						<SourceIcon capture={capture} size={19} />
+					) : (
+						<ShoppingBagOpen size={19} />
+					)}
+				</span>
+				<span className="mini-plan-record-title">
+					<b>{plan.title}</b>
+				</span>
+				<span className="mini-plan-record-amount">
+					{amount > 0 ? (
+						<>
+							<strong>{formatMoney(forecastAmount, currency)}</strong>
+							{originalMoney && originalMoney.amount > 0 && (
+								<small className="mini-original-money">
+									{uiText(language, "originalAmount")}{" "}
+									{formatMoney(
+										originalMoney.amount * occurrenceCount,
+										originalMoney.currency,
+									)}
+								</small>
+							)}
+						</>
+					) : (
+						<small>{uiText(language, "amountNotSet")}</small>
+					)}
+				</span>
+				<small className="mini-plan-record-context">
+					<span className={dueClassName}>{dueLabel}</span>
+					<span className="mini-plan-record-separator" />
+					<span>{vendorName || itemCountText(itemCount, language)}</span>
+				</small>
+				{(plan.recurrence_interval || author) && (
+					<small className="mini-plan-record-meta">
+						{plan.recurrence_interval && (
+							<span className="mini-plan-recurrence">
+								<ArrowClockwise size={12} />
+								{planRecurrenceText(plan, language)}
+								{occurrenceCount > 1 && amount > 0
+									? ` · ${formatMoney(amount, currency)} × ${occurrenceCount}`
+									: ""}
+							</span>
+						)}
+						{author && (
+							<span className="mini-record-author">
+								{uiText(language, "addedBy")} {author}
+							</span>
+						)}
+					</small>
+				)}
+			</button>
+			<div className="mini-plan-record-actions">
+				<button type="button" onClick={onBuy}>
+					<Check size={15} weight="bold" />
+					{uiText(language, "bought")}
+				</button>
+				{onCancel && (
+					<button
+						className="mini-plan-record-cancel"
+						type="button"
+						onClick={onCancel}
+						aria-label={uiText(language, "skipPlan")}
+					>
+						<X size={15} weight="bold" />
+					</button>
+				)}
+			</div>
+		</article>
+	);
+};
+
 const PlansView = ({
 	plans,
 	totalCount,
@@ -13591,106 +13633,31 @@ const PlansView = ({
 	const authorLine = (plan: PurchasePlan) =>
 		sharedRecordAuthor(members, plan.created_by_user_id);
 	const renderPlan = (plan: PurchasePlan) => {
-		const planItems = purchasePlanItems(plan);
 		const vendorName =
 			plan.vendor_name ||
 			vendors.find((item) => item.id === plan.vendor_id)?.name;
-		const dueToday = isPlanDueToday(plan.due_date);
-		const overdue = isPlanOverdue(plan.due_date);
 		const money = planDisplayMoney(plan, currency);
 		const originalMoney = planOriginalMoney(plan, money.currency);
 		const occurrenceCount = Math.max(
 			1,
 			purchasePlanOccurrenceCount(plan, bounds.from, bounds.to),
 		);
-		const forecastAmount = money.amount * occurrenceCount;
 		return (
-			<div
-				className={`mini-plan-row${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
+			<PlanRecordCard
 				key={plan.id}
-			>
-				{sourceButton(plan)}
-				<button
-					className="mini-plan-copy"
-					type="button"
-					onClick={() => onOpenPlan(plan)}
-				>
-					<b>{plan.title}</b>
-					{planItems.length > 1 && (
-						<small>{planItems.map((item) => item.name).join(", ")}</small>
-					)}
-					<small>
-						{categoryLabel(planItems.map((item) => item.category_id))}
-						{vendorName ? ` · ${vendorName}` : ""}
-						{plan.due_date && (
-							<>
-								{" · "}
-								<span
-									className={
-										dueToday
-											? "mini-plan-due-today"
-											: overdue
-												? "mini-plan-due-overdue"
-												: undefined
-									}
-								>
-									{formatPlanDueDate(plan.due_date, language)}
-								</span>
-							</>
-						)}
-					</small>
-					{plan.recurrence_interval && (
-						<small className="mini-plan-recurrence">
-							<ArrowClockwise size={12} />
-							{planRecurrenceText(plan, language)}
-							{occurrenceCount > 1 ? ` · × ${occurrenceCount}` : ""}
-						</small>
-					)}
-					{authorLine(plan) && (
-						<small className="mini-record-author">
-							{uiText(language, "addedBy")} {authorLine(plan)}
-						</small>
-					)}
-				</button>
-				<div className="mini-plan-actions">
-					{money.amount > 0 ? (
-						<>
-							{occurrenceCount > 1 && (
-								<small>
-									{formatMoney(money.amount, money.currency)} ×{" "}
-									{occurrenceCount}
-								</small>
-							)}
-							<strong>{formatMoney(forecastAmount, money.currency)}</strong>
-							{originalMoney && originalMoney.amount > 0 && (
-								<small className="mini-original-money">
-									{uiText(language, "originalAmount")}{" "}
-									{formatMoney(
-										originalMoney.amount * occurrenceCount,
-										originalMoney.currency,
-									)}
-								</small>
-							)}
-						</>
-					) : (
-						<small>{uiText(language, "amountNotSet")}</small>
-					)}
-					<div className="mini-plan-action-buttons">
-						<button type="button" onClick={() => onBuy(plan)}>
-							<Check size={15} weight="bold" />
-							{uiText(language, "bought")}
-						</button>
-						<button
-							className="mini-plan-cancel"
-							type="button"
-							aria-label={uiText(language, "skipPlan")}
-							onClick={() => onCancel(plan)}
-						>
-							<X size={15} weight="bold" />
-						</button>
-					</div>
-				</div>
-			</div>
+				plan={plan}
+				capture={captureForPlan(plan, captures)}
+				members={members}
+				language={language}
+				amount={money.amount}
+				currency={money.currency}
+				originalMoney={originalMoney}
+				occurrenceCount={occurrenceCount}
+				vendorName={vendorName}
+				onOpen={() => onOpenPlan(plan)}
+				onBuy={() => onBuy(plan)}
+				onCancel={() => onCancel(plan)}
+			/>
 		);
 	};
 	const renderPlanItem = ({
