@@ -10460,23 +10460,32 @@ const focusNextFieldOnEnter = (event: React.KeyboardEvent<HTMLElement>) => {
 
 const AmountInput = ({
 	amount,
+	ariaDescribedBy,
+	ariaInvalid,
 	ariaLabel,
 	currency,
 	id,
+	required,
 	onChange,
 }: {
 	amount: number;
+	ariaDescribedBy?: string;
+	ariaInvalid?: boolean;
 	ariaLabel: string;
 	currency?: string;
 	id?: string;
+	required?: boolean;
 	onChange: (amount: number) => void;
 }) => {
 	const [value, setValue] = useState(() => (amount > 0 ? String(amount) : ""));
 	const input = (
 		<input
+			aria-describedby={ariaDescribedBy}
+			aria-invalid={ariaInvalid}
 			aria-label={currency ? `${ariaLabel}, ${currency}` : ariaLabel}
 			id={id}
 			inputMode="decimal"
+			required={required}
 			value={value}
 			onChange={(event) => {
 				const next = event.target.value.replace(",", ".");
@@ -10506,6 +10515,44 @@ const AmountInput = ({
 			<span aria-hidden="true">{currencyMark}</span>
 		</span>
 	);
+};
+
+const RequiredFieldLabel = ({
+	children,
+	language,
+}: {
+	children: React.ReactNode;
+	language: UILanguage;
+}) => (
+	<span className="mini-required-label">
+		<span>{children}</span>
+		<small>{uiText(language, "requiredField")}</small>
+	</span>
+);
+
+const EditorFieldError = ({
+	id,
+	visible,
+	children,
+}: {
+	id: string;
+	visible: boolean;
+	children: React.ReactNode;
+}) =>
+	visible ? (
+		<small className="mini-field-error" id={id}>
+			{children}
+		</small>
+	) : null;
+
+const focusFirstInvalidEditorField = (origin: HTMLElement | null) => {
+	window.requestAnimationFrame(() => {
+		const field = origin
+			?.closest(".mini-modal")
+			?.querySelector<HTMLElement>('[aria-invalid="true"]');
+		field?.focus();
+		field?.scrollIntoView({ block: "nearest", inline: "nearest" });
+	});
 };
 
 const reviewExpenseFromDraft = (
@@ -19559,8 +19606,26 @@ const PlanEditor = ({
 	onDeleteSeries?: () => void;
 }) => {
 	const items = purchasePlanItems(plan);
+	const validationRootRef = useRef<HTMLElement>(null);
+	const titleErrorID = useId();
+	const recurrenceErrorID = useId();
+	const itemErrorID = useId();
+	const [saveAttempted, setSaveAttempted] = useState(false);
+	const titleInvalid = !plan.title.trim();
+	const recurrenceInvalid = Boolean(plan.recurrence_interval && !plan.due_date);
+	const invalidItemIndexes = new Set(
+		items.flatMap((item, index) => (!item.name.trim() ? [index] : [])),
+	);
 	const updateItems = (nextItems: PurchasePlanItem[]) =>
 		onChange(withPurchasePlanItems(plan, nextItems));
+	const handleSave = () => {
+		setSaveAttempted(true);
+		if (titleInvalid || recurrenceInvalid || invalidItemIndexes.size > 0) {
+			focusFirstInvalidEditorField(validationRootRef.current);
+			return;
+		}
+		onSave();
+	};
 	return (
 		<Modal
 			title={
@@ -19594,18 +19659,32 @@ const PlanEditor = ({
 				</div>
 			)}
 			<p className="mini-field-note">{uiText(language, "planEditorHint")}</p>
-			<section className="mini-editor-section">
+			<section className="mini-editor-section" ref={validationRootRef}>
 				<h3>{uiText(language, "editorListDetails")}</h3>
 				<div className="mini-editor-section-fields">
 					<label>
-						{uiText(language, "planListName")}
+						<RequiredFieldLabel language={language}>
+							{uiText(language, "planListName")}
+						</RequiredFieldLabel>
 						<input
+							aria-describedby={
+								saveAttempted && titleInvalid ? titleErrorID : undefined
+							}
+							aria-invalid={saveAttempted && titleInvalid}
+							aria-label={uiText(language, "planListName")}
+							required
 							value={plan.title}
 							placeholder={uiText(language, "planListNamePlaceholder")}
 							onChange={(event) =>
 								onChange({ ...plan, title: event.target.value })
 							}
 						/>
+						<EditorFieldError
+							id={titleErrorID}
+							visible={saveAttempted && titleInvalid}
+						>
+							{uiText(language, "fieldRequired")}
+						</EditorFieldError>
 					</label>
 					<div className="mini-field">
 						<span>{uiText(language, "planVendor")}</span>
@@ -19636,15 +19715,28 @@ const PlanEditor = ({
 				<h3>{uiText(language, "editorPlanTiming")}</h3>
 				<div className="mini-editor-section-fields">
 					<label>
-						{uiText(language, "plannedDate")}
+						{plan.recurrence_interval ? (
+							<RequiredFieldLabel language={language}>
+								{uiText(language, "plannedDate")}
+							</RequiredFieldLabel>
+						) : (
+							uiText(language, "plannedDate")
+						)}
 						<input
+							aria-describedby={
+								recurrenceInvalid
+									? `${recurrenceErrorID} ${recurrenceErrorID}-hint`
+									: `${recurrenceErrorID}-hint`
+							}
+							aria-invalid={recurrenceInvalid}
+							required={Boolean(plan.recurrence_interval)}
 							type="date"
 							value={plan.due_date?.slice(0, 10) || ""}
 							onChange={(event) =>
 								onChange({ ...plan, due_date: event.target.value || null })
 							}
 						/>
-						<small className="mini-field-hint">
+						<small className="mini-field-hint" id={`${recurrenceErrorID}-hint`}>
 							{uiText(language, "plannedDateHint")}
 						</small>
 					</label>
@@ -19671,8 +19763,11 @@ const PlanEditor = ({
 								{uiText(language, "planRepeatsMonthly")}
 							</option>
 						</select>
-						{plan.recurrence_interval && !plan.due_date && (
-							<small className="mini-field-hint is-error">
+						{recurrenceInvalid && (
+							<small
+								className="mini-field-hint is-error"
+								id={recurrenceErrorID}
+							>
 								{uiText(language, "planRecurrenceNeedsDate")}
 							</small>
 						)}
@@ -19690,10 +19785,19 @@ const PlanEditor = ({
 					<div className="mini-plan-editor-item" key={item.id || index}>
 						<div className="mini-plan-item-name">
 							<span className="mini-editor-label">
-								{uiText(language, "planItemName")} {index + 1}
+								<RequiredFieldLabel language={language}>
+									{uiText(language, "planItemName")} {index + 1}
+								</RequiredFieldLabel>
 							</span>
 							<input
+								aria-describedby={
+									saveAttempted && invalidItemIndexes.has(index)
+										? `${itemErrorID}-${index}`
+										: undefined
+								}
+								aria-invalid={saveAttempted && invalidItemIndexes.has(index)}
 								aria-label={uiText(language, "planItemName")}
+								required
 								value={item.name}
 								placeholder={uiText(language, "planItemNamePlaceholder")}
 								onChange={(event) =>
@@ -19720,6 +19824,12 @@ const PlanEditor = ({
 								</button>
 							)}
 						</div>
+						<EditorFieldError
+							id={`${itemErrorID}-${index}`}
+							visible={saveAttempted && invalidItemIndexes.has(index)}
+						>
+							{uiText(language, "fieldRequired")}
+						</EditorFieldError>
 						<div className="mini-plan-item-fields">
 							<div className="mini-plan-item-field">
 								<span>{uiText(language, "expectedAmount")}</span>
@@ -19809,13 +19919,8 @@ const PlanEditor = ({
 				<button
 					className="mini-save"
 					type="button"
-					disabled={
-						saving ||
-						!plan.title.trim() ||
-						Boolean(plan.recurrence_interval && !plan.due_date) ||
-						items.some((item) => !item.name.trim())
-					}
-					onClick={onSave}
+					disabled={saving}
+					onClick={handleSave}
 				>
 					{saving ? uiText(language, "saving") : uiText(language, "save")}
 				</button>
@@ -19896,6 +20001,18 @@ const ExpenseEditor = ({
 	onDelete?: () => void;
 }) => {
 	const itemNameListID = useId();
+	const validationRootRef = useRef<HTMLElement>(null);
+	const titleErrorID = useId();
+	const itemNameErrorID = useId();
+	const itemAmountErrorID = useId();
+	const [saveAttempted, setSaveAttempted] = useState(false);
+	const titleInvalid = !expense.title.trim();
+	const invalidItemNameIndexes = new Set(
+		expense.items.flatMap((item, index) => (!item.name.trim() ? [index] : [])),
+	);
+	const invalidItemAmountIndexes = new Set(
+		expense.items.flatMap((item, index) => (item.amount <= 0 ? [index] : [])),
+	);
 	const creatorParticipant = participants.find(
 		(participant) => participantUserID(participant) === expense.user_id,
 	);
@@ -19915,6 +20032,18 @@ const ExpenseEditor = ({
 			fallbackVendorName,
 		);
 	const sharedVendorName = commonVendorName(expense.items.map(itemVendorName));
+	const handleSave = () => {
+		setSaveAttempted(true);
+		if (
+			titleInvalid ||
+			invalidItemNameIndexes.size > 0 ||
+			invalidItemAmountIndexes.size > 0
+		) {
+			focusFirstInvalidEditorField(validationRootRef.current);
+			return;
+		}
+		onSave();
+	};
 	const updateItemVendor = (index: number, vendorName: string) => {
 		const items = expense.items.map((item, itemIndex) =>
 			itemIndex === index
@@ -19960,13 +20089,21 @@ const ExpenseEditor = ({
 					<SourceExpiryNote capture={capture} language={language} />
 				</div>
 			)}
-			<section className="mini-editor-section">
+			<section className="mini-editor-section" ref={validationRootRef}>
 				<h3>{uiText(language, "editorExpenseDetails")}</h3>
 				<div className="mini-editor-section-fields">
 					<label>
-						{uiText(language, creating ? "spentOn" : "title")}
+						<RequiredFieldLabel language={language}>
+							{uiText(language, creating ? "spentOn" : "title")}
+						</RequiredFieldLabel>
 						<input
+							aria-describedby={
+								saveAttempted && titleInvalid ? titleErrorID : undefined
+							}
+							aria-invalid={saveAttempted && titleInvalid}
+							aria-label={uiText(language, creating ? "spentOn" : "title")}
 							list={itemNameListID}
+							required
 							value={expense.title}
 							onChange={(event) =>
 								onChange({
@@ -19987,6 +20124,12 @@ const ExpenseEditor = ({
 								<option key={name} value={name} />
 							))}
 						</datalist>
+						<EditorFieldError
+							id={titleErrorID}
+							visible={saveAttempted && titleInvalid}
+						>
+							{uiText(language, "fieldRequired")}
+						</EditorFieldError>
 					</label>
 					<div className="mini-field">
 						<span>{uiText(language, "purchasePlace")}</span>
@@ -20081,12 +20224,23 @@ const ExpenseEditor = ({
 						{!creating && (
 							<label className="mini-editor-field">
 								<span className="mini-editor-label">
-									{uiText(language, "itemName").replace(
-										"{number}",
-										String(index + 1),
-									)}
+									<RequiredFieldLabel language={language}>
+										{uiText(language, "itemName").replace(
+											"{number}",
+											String(index + 1),
+										)}
+									</RequiredFieldLabel>
 								</span>
 								<input
+									aria-describedby={
+										saveAttempted && invalidItemNameIndexes.has(index)
+											? `${itemNameErrorID}-${index}`
+											: undefined
+									}
+									aria-invalid={
+										saveAttempted && invalidItemNameIndexes.has(index)
+									}
+									required
 									value={item.name}
 									onChange={(event) =>
 										onChange({
@@ -20099,23 +20253,40 @@ const ExpenseEditor = ({
 										})
 									}
 								/>
+								<EditorFieldError
+									id={`${itemNameErrorID}-${index}`}
+									visible={saveAttempted && invalidItemNameIndexes.has(index)}
+								>
+									{uiText(language, "fieldRequired")}
+								</EditorFieldError>
 							</label>
 						)}
 						{!creating && (
 							<div className="mini-editor-field">
 								<span className="mini-editor-label">
-									{uiText(language, "itemPrice").replace(
-										"{number}",
-										String(index + 1),
-									)}
+									<RequiredFieldLabel language={language}>
+										{uiText(language, "itemPrice").replace(
+											"{number}",
+											String(index + 1),
+										)}
+									</RequiredFieldLabel>
 								</span>
 								<AmountInput
+									ariaDescribedBy={
+										saveAttempted && invalidItemAmountIndexes.has(index)
+											? `${itemAmountErrorID}-${index}`
+											: undefined
+									}
+									ariaInvalid={
+										saveAttempted && invalidItemAmountIndexes.has(index)
+									}
 									ariaLabel={uiText(language, "itemPrice").replace(
 										"{number}",
 										String(index + 1),
 									)}
 									amount={item.amount}
 									currency={expense.currency}
+									required
 									onChange={(amount) =>
 										onChange({
 											...expense,
@@ -20125,18 +20296,35 @@ const ExpenseEditor = ({
 										})
 									}
 								/>
+								<EditorFieldError
+									id={`${itemAmountErrorID}-${index}`}
+									visible={saveAttempted && invalidItemAmountIndexes.has(index)}
+								>
+									{uiText(language, "positiveAmountRequired")}
+								</EditorFieldError>
 							</div>
 						)}
 						{creating && (
 							<label className="mini-editor-field" htmlFor="new-expense-amount">
 								<span className="mini-editor-label">
-									{uiText(language, "amount")}
+									<RequiredFieldLabel language={language}>
+										{uiText(language, "amount")}
+									</RequiredFieldLabel>
 								</span>
 								<AmountInput
+									ariaDescribedBy={
+										saveAttempted && invalidItemAmountIndexes.has(index)
+											? `${itemAmountErrorID}-${index}`
+											: undefined
+									}
+									ariaInvalid={
+										saveAttempted && invalidItemAmountIndexes.has(index)
+									}
 									ariaLabel={uiText(language, "amount")}
 									amount={item.amount}
 									currency={expense.currency}
 									id="new-expense-amount"
+									required
 									onChange={(amount) =>
 										onChange({
 											...expense,
@@ -20146,6 +20334,12 @@ const ExpenseEditor = ({
 										})
 									}
 								/>
+								<EditorFieldError
+									id={`${itemAmountErrorID}-${index}`}
+									visible={saveAttempted && invalidItemAmountIndexes.has(index)}
+								>
+									{uiText(language, "positiveAmountRequired")}
+								</EditorFieldError>
 							</label>
 						)}
 						<label className="mini-editor-field mini-editor-field--wide">
@@ -20260,12 +20454,8 @@ const ExpenseEditor = ({
 				<button
 					className="mini-save"
 					type="button"
-					disabled={
-						saving ||
-						!expense.title.trim() ||
-						expense.items.some((item) => !item.name.trim() || item.amount <= 0)
-					}
-					onClick={onSave}
+					disabled={saving}
+					onClick={handleSave}
 				>
 					{uiText(language, saving ? "saving" : "save")}
 				</button>
@@ -20634,6 +20824,9 @@ const CategoryEditor = ({
 	onDelete?: () => void;
 }) => {
 	const [targetCategoryID, setTargetCategoryID] = useState(0);
+	const [saveAttempted, setSaveAttempted] = useState(false);
+	const validationRootRef = useRef<HTMLLabelElement>(null);
+	const nameErrorID = useId();
 	const mergeTargets = categories.filter((item) => item.id !== category.id);
 	const canDestructivelyChange = category.can_delete !== false;
 	const creating = category.id === 0;
@@ -20642,6 +20835,15 @@ const CategoryEditor = ({
 		month: "long",
 		year: "numeric",
 	}).format(new Date(`${month}-01T12:00:00`));
+	const nameInvalid = !category.name.trim();
+	const handleSave = () => {
+		setSaveAttempted(true);
+		if (nameInvalid) {
+			focusFirstInvalidEditorField(validationRootRef.current);
+			return;
+		}
+		onSave();
+	};
 	return (
 		<Modal
 			title={uiText(
@@ -20652,15 +20854,29 @@ const CategoryEditor = ({
 			variant="editor"
 			onClose={onClose}
 		>
-			<label>
-				{uiText(language, "name")}
+			<label ref={validationRootRef}>
+				<RequiredFieldLabel language={language}>
+					{uiText(language, "name")}
+				</RequiredFieldLabel>
 				<input
+					aria-describedby={
+						saveAttempted && nameInvalid ? nameErrorID : undefined
+					}
+					aria-invalid={saveAttempted && nameInvalid}
+					aria-label={uiText(language, "name")}
 					maxLength={80}
+					required
 					value={category.name}
 					onChange={(event) =>
 						onChange({ ...category, name: event.target.value })
 					}
 				/>
+				<EditorFieldError
+					id={nameErrorID}
+					visible={saveAttempted && nameInvalid}
+				>
+					{uiText(language, "fieldRequired")}
+				</EditorFieldError>
 			</label>
 			<div className="mini-category-recognition">
 				{creating && (
@@ -20723,8 +20939,8 @@ const CategoryEditor = ({
 				<button
 					className="mini-save"
 					type="button"
-					disabled={saving || !category.name.trim()}
-					onClick={onSave}
+					disabled={saving}
+					onClick={handleSave}
 				>
 					{uiText(language, saving ? "saving" : "save")}
 				</button>

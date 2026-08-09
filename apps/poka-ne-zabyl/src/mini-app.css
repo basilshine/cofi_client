@@ -5498,6 +5498,32 @@
 .mini-editor-section-fields > .mini-field > small {
 	font-weight: 500;
 }
+.mini-required-label {
+	display: flex;
+	min-width: 0;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 10px;
+}
+.mini-required-label > span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.mini-required-label > small {
+	flex: none;
+	color: var(--mini-muted);
+	font-size: 10px;
+	font-weight: 650;
+	line-height: 1.3;
+}
+.mini-field-error {
+	margin: 0;
+	color: var(--mini-red);
+	font-size: 11px;
+	font-weight: 650;
+	line-height: 1.4;
+	overflow-wrap: anywhere;
+}
 .mini-modal.is-editor > label > small,
 .mini-modal.is-editor > .mini-field > small {
 	font-weight: 500;
@@ -5551,6 +5577,12 @@
 	background: var(--mini-paper);
 	box-shadow: inset 0 0 0 1px var(--mini-green), 0 0 0 3px
 		rgba(41, 69, 199, 0.11);
+}
+.mini-modal.is-editor input[aria-invalid="true"],
+.mini-modal.is-editor select[aria-invalid="true"],
+.mini-modal.is-editor textarea[aria-invalid="true"] {
+	box-shadow: inset 0 0 0 1px var(--mini-red), 0 0 0 3px
+		color-mix(in srgb, var(--mini-red) 10%, transparent);
 }
 .mini-modal.is-editor textarea {
 	min-height: 118px;
@@ -10249,12 +10281,6 @@
 	}
 	.mini-modal:has(.vendor-autocomplete-list) .mini-modal-actions {
 		opacity: 0;
-		pointer-events: none;
-	}
-	.mini-modal.is-editor:has(input:focus, textarea:focus, select:focus)
-		.mini-modal-actions {
-		opacity: 0;
-		transform: translateY(calc(100% + var(--mini-safe-bottom)));
 		pointer-events: none;
 	}
 	.review-meta {
