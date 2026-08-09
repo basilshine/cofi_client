@@ -8350,7 +8350,8 @@
 	display: grid;
 	gap: 8px;
 	padding: 11px 12px;
-	border-left: 3px solid var(--mini-green);
+	border: 1px solid color-mix(in srgb, var(--mini-green) 18%, var(--mini-line));
+	border-radius: 7px;
 	background: var(--mini-soft);
 }
 .mini-vendor-examples strong {

@@ -20580,12 +20580,26 @@ const ExpenseItemEditor = ({
 	onMove: (spaceID: number, operation: TransferOperation) => void;
 	onDelete?: () => void;
 }) => {
+	const validationRootRef = useRef<HTMLElement>(null);
+	const nameErrorID = useId();
+	const amountErrorID = useId();
+	const [saveAttempted, setSaveAttempted] = useState(false);
+	const nameInvalid = !item.name.trim();
+	const amountInvalid = item.amount <= 0;
 	const vendorName = vendorFieldValue(
 		item.vendor_name,
 		item.vendor?.name,
 		vendors.find((vendor) => vendor.id === item.vendor_id)?.name,
 		expenseItemSellerName(item, expense),
 	);
+	const handleSave = () => {
+		setSaveAttempted(true);
+		if (nameInvalid || amountInvalid) {
+			focusFirstInvalidEditorField(validationRootRef.current);
+			return;
+		}
+		onSave();
+	};
 
 	return (
 		<Modal
@@ -20611,77 +20625,120 @@ const ExpenseItemEditor = ({
 					<SourceExpiryNote capture={capture} language={language} />
 				</div>
 			)}
-			<label>
-				{uiText(language, "title")}
-				<input
-					value={item.name}
-					onChange={(event) => onChange({ ...item, name: event.target.value })}
-				/>
-			</label>
-			<label htmlFor="expense-item-amount">
-				{uiText(language, "amount")}
-				<AmountInput
-					ariaLabel={uiText(language, "amount")}
-					amount={item.amount}
-					currency={expense.currency}
-					id="expense-item-amount"
-					onChange={(amount) => onChange({ ...item, amount })}
-				/>
-			</label>
-			<label>
-				{uiText(language, "category")}
-				<select
-					value={item.category_id || 0}
-					onChange={(event) => {
-						const category = categories.find(
-							(current) => current.id === Number(event.target.value),
-						);
-						onChange({
-							...item,
-							category_id: category?.id,
-							category_name: category?.name,
-							category: category
-								? { id: category.id, name: category.name }
-								: undefined,
-						});
-					}}
-				>
-					{categories.map((category) => (
-						<option key={category.id} value={category.id}>
-							{localizedCategoryName(category, language)}
-						</option>
-					))}
-				</select>
-			</label>
-			<div className="mini-field">
-				<span>{uiText(language, "whereBought")}</span>
-				<VendorAutocomplete
-					vendors={vendors}
-					ariaLabel={uiText(language, "whereBought")}
-					placeholder={uiText(language, "undetermined")}
-					value={vendorName}
-					onChange={(value) => {
-						onChange({
-							...item,
-							vendor_id: undefined,
-							vendor_name: value,
-							vendor: undefined,
-						});
-					}}
-				/>
-			</div>
-			<HashtagNotesInput
-				language={language}
-				value={item.notes || ""}
-				suggestions={tagSuggestions}
-				onChange={(notes) =>
-					onChange({
-						...item,
-						notes,
-						tags: tagsAfterNotesEdit(item.tags || [], item.notes || "", notes),
-					})
-				}
-			/>
+			<section className="mini-editor-section" ref={validationRootRef}>
+				<h3>{uiText(language, "editorPurchaseDetails")}</h3>
+				<div className="mini-editor-section-fields">
+					<label>
+						<RequiredFieldLabel language={language}>
+							{uiText(language, "title")}
+						</RequiredFieldLabel>
+						<input
+							aria-describedby={
+								saveAttempted && nameInvalid ? nameErrorID : undefined
+							}
+							aria-invalid={saveAttempted && nameInvalid}
+							aria-label={uiText(language, "title")}
+							required
+							value={item.name}
+							onChange={(event) =>
+								onChange({ ...item, name: event.target.value })
+							}
+						/>
+						<EditorFieldError
+							id={nameErrorID}
+							visible={saveAttempted && nameInvalid}
+						>
+							{uiText(language, "fieldRequired")}
+						</EditorFieldError>
+					</label>
+					<label htmlFor="expense-item-amount">
+						<RequiredFieldLabel language={language}>
+							{uiText(language, "amount")}
+						</RequiredFieldLabel>
+						<AmountInput
+							ariaDescribedBy={
+								saveAttempted && amountInvalid ? amountErrorID : undefined
+							}
+							ariaInvalid={saveAttempted && amountInvalid}
+							ariaLabel={uiText(language, "amount")}
+							amount={item.amount}
+							currency={expense.currency}
+							id="expense-item-amount"
+							required
+							onChange={(amount) => onChange({ ...item, amount })}
+						/>
+						<EditorFieldError
+							id={amountErrorID}
+							visible={saveAttempted && amountInvalid}
+						>
+							{uiText(language, "positiveAmountRequired")}
+						</EditorFieldError>
+					</label>
+				</div>
+			</section>
+			<section className="mini-editor-section">
+				<h3>{uiText(language, "editorPurchaseContext")}</h3>
+				<div className="mini-editor-section-fields">
+					<label>
+						{uiText(language, "category")}
+						<select
+							value={item.category_id || 0}
+							onChange={(event) => {
+								const category = categories.find(
+									(current) => current.id === Number(event.target.value),
+								);
+								onChange({
+									...item,
+									category_id: category?.id,
+									category_name: category?.name,
+									category: category
+										? { id: category.id, name: category.name }
+										: undefined,
+								});
+							}}
+						>
+							{categories.map((category) => (
+								<option key={category.id} value={category.id}>
+									{localizedCategoryName(category, language)}
+								</option>
+							))}
+						</select>
+					</label>
+					<div className="mini-field">
+						<span>{uiText(language, "whereBought")}</span>
+						<VendorAutocomplete
+							vendors={vendors}
+							ariaLabel={uiText(language, "whereBought")}
+							placeholder={uiText(language, "undetermined")}
+							value={vendorName}
+							onChange={(value) => {
+								onChange({
+									...item,
+									vendor_id: undefined,
+									vendor_name: value,
+									vendor: undefined,
+								});
+							}}
+						/>
+					</div>
+					<HashtagNotesInput
+						language={language}
+						value={item.notes || ""}
+						suggestions={tagSuggestions}
+						onChange={(notes) =>
+							onChange({
+								...item,
+								notes,
+								tags: tagsAfterNotesEdit(
+									item.tags || [],
+									item.notes || "",
+									notes,
+								),
+							})
+						}
+					/>
+				</div>
+			</section>
 			<MoveRecordControl
 				language={language}
 				targets={moveTargets}
@@ -20690,12 +20747,12 @@ const ExpenseItemEditor = ({
 				cloneHint={uiText(language, "cloneExpenseItemHint")}
 				onMove={onMove}
 			/>
-			<div className="mini-modal-actions">
+			<div className="mini-modal-actions mini-editor-actions">
 				<button
 					className="mini-save"
 					type="button"
-					disabled={saving || !item.name.trim() || item.amount <= 0}
-					onClick={onSave}
+					disabled={saving}
+					onClick={handleSave}
 				>
 					{uiText(language, saving ? "saving" : "save")}
 				</button>
@@ -20739,6 +20796,10 @@ const VendorEditor = ({
 	onDelete: () => void;
 }) => {
 	const [targetVendorID, setTargetVendorID] = useState(0);
+	const [saveAttempted, setSaveAttempted] = useState(false);
+	const validationRootRef = useRef<HTMLElement>(null);
+	const nameErrorID = useId();
+	const nameInvalid = !vendor.name.trim();
 	const mergeTargets = vendors.filter((item) => item.id !== vendor.id);
 	const purchaseExamples = Array.from(
 		new Set(
@@ -20760,6 +20821,14 @@ const VendorEditor = ({
 				),
 		),
 	).slice(0, 3);
+	const handleSave = () => {
+		setSaveAttempted(true);
+		if (nameInvalid) {
+			focusFirstInvalidEditorField(validationRootRef.current);
+			return;
+		}
+		onSave();
+	};
 	return (
 		<Modal
 			title={uiText(
@@ -20769,16 +20838,35 @@ const VendorEditor = ({
 			variant="editor"
 			onClose={onClose}
 		>
-			<label>
-				{uiText(language, "vendorListName")}
-				<input
-					maxLength={120}
-					value={vendor.name}
-					onChange={(event) =>
-						onChange({ ...vendor, name: event.target.value })
-					}
-				/>
-			</label>
+			<section className="mini-editor-section" ref={validationRootRef}>
+				<h3>{uiText(language, "editorVendorDetails")}</h3>
+				<div className="mini-editor-section-fields">
+					<label>
+						<RequiredFieldLabel language={language}>
+							{uiText(language, "vendorListName")}
+						</RequiredFieldLabel>
+						<input
+							aria-describedby={
+								saveAttempted && nameInvalid ? nameErrorID : undefined
+							}
+							aria-invalid={saveAttempted && nameInvalid}
+							aria-label={uiText(language, "vendorListName")}
+							maxLength={120}
+							required
+							value={vendor.name}
+							onChange={(event) =>
+								onChange({ ...vendor, name: event.target.value })
+							}
+						/>
+						<EditorFieldError
+							id={nameErrorID}
+							visible={saveAttempted && nameInvalid}
+						>
+							{uiText(language, "fieldRequired")}
+						</EditorFieldError>
+					</label>
+				</div>
+			</section>
 			{purchaseExamples.length > 0 && (
 				<div className="mini-vendor-examples">
 					<strong>
@@ -20792,34 +20880,41 @@ const VendorEditor = ({
 					</ul>
 				</div>
 			)}
-			<label>
-				{uiText(language, "receiptAliases")}
-				<textarea
-					rows={4}
-					placeholder={"ИП Иванов Иван Иванович\nООО «С Блеском»"}
-					value={(vendor.aliases || []).map((alias) => alias.alias).join("\n")}
-					onChange={(event) =>
-						onChange({
-							...vendor,
-							aliases: event.target.value
-								.split("\n")
-								.map((alias) => ({ alias })),
-						})
-					}
-				/>
-			</label>
-			<p className="mini-field-note">
-				{uiText(language, "aliasFuture").replace(
-					"{name}",
-					vendor.name || uiText(language, "title"),
-				)}
-			</p>
-			<div className="mini-modal-actions">
+			<section className="mini-editor-section">
+				<h3>{uiText(language, "editorVendorRecognition")}</h3>
+				<div className="mini-editor-section-fields">
+					<label>
+						{uiText(language, "receiptAliases")}
+						<textarea
+							rows={4}
+							placeholder={uiText(language, "receiptAliasesPlaceholder")}
+							value={(vendor.aliases || [])
+								.map((alias) => alias.alias)
+								.join("\n")}
+							onChange={(event) =>
+								onChange({
+									...vendor,
+									aliases: event.target.value
+										.split("\n")
+										.map((alias) => ({ alias })),
+								})
+							}
+						/>
+					</label>
+					<p className="mini-field-note">
+						{uiText(language, "aliasFuture").replace(
+							"{name}",
+							vendor.name || uiText(language, "title"),
+						)}
+					</p>
+				</div>
+			</section>
+			<div className="mini-modal-actions mini-editor-actions">
 				<button
 					className="mini-save"
 					type="button"
-					disabled={saving || !vendor.name.trim()}
-					onClick={onSave}
+					disabled={saving}
+					onClick={handleSave}
 				>
 					{uiText(language, saving ? "saving" : "save")}
 				</button>
