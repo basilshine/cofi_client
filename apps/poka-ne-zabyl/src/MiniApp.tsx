@@ -20921,6 +20921,12 @@ const PlanEditor = ({
 	);
 };
 
+const manualExpenseTitle = (items: ExpenseItem[]) => {
+	const names = items.map((item) => item.name.trim()).filter(Boolean);
+	const visibleNames = names.slice(0, 3).join(", ");
+	return names.length > 3 ? `${visibleNames}…` : visibleNames;
+};
+
 const ExpenseEditor = ({
 	expense,
 	language,
@@ -20967,7 +20973,9 @@ const ExpenseEditor = ({
 	const itemNameErrorID = useId();
 	const itemAmountErrorID = useId();
 	const [saveAttempted, setSaveAttempted] = useState(false);
-	const titleInvalid = !expense.title.trim();
+	const titleInvalid = creating
+		? !manualExpenseTitle(expense.items)
+		: !expense.title.trim();
 	const dateInvalid = !expense.expense_date.trim();
 	const invalidItemNameIndexes = new Set(
 		expense.items.flatMap((item, index) => (!item.name.trim() ? [index] : [])),
@@ -20994,6 +21002,12 @@ const ExpenseEditor = ({
 			fallbackVendorName,
 		);
 	const sharedVendorName = commonVendorName(expense.items.map(itemVendorName));
+	const updateItems = (items: ExpenseItem[]) =>
+		onChange({
+			...expense,
+			title: creating ? manualExpenseTitle(items) : expense.title,
+			items,
+		});
 	const handleSave = () => {
 		setSaveAttempted(true);
 		if (
@@ -21055,45 +21069,37 @@ const ExpenseEditor = ({
 			<section className="mini-editor-section" ref={validationRootRef}>
 				<h3>{uiText(language, "editorExpenseDetails")}</h3>
 				<div className="mini-editor-section-fields">
-					<label>
-						<RequiredFieldLabel language={language}>
-							{uiText(language, creating ? "spentOn" : "title")}
-						</RequiredFieldLabel>
-						<input
-							aria-describedby={
-								saveAttempted && titleInvalid ? titleErrorID : undefined
-							}
-							aria-invalid={saveAttempted && titleInvalid}
-							aria-label={uiText(language, creating ? "spentOn" : "title")}
-							list={itemNameListID}
-							required
-							value={expense.title}
-							onChange={(event) =>
-								onChange({
-									...expense,
-									title: event.target.value,
-									items: creating
-										? expense.items.map((item, index) =>
-												index === 0
-													? { ...item, name: event.target.value }
-													: item,
-											)
-										: expense.items,
-								})
-							}
-						/>
-						<datalist id={itemNameListID}>
-							{itemNameSuggestions.map((name) => (
-								<option key={name} value={name} />
-							))}
-						</datalist>
-						<EditorFieldError
-							id={titleErrorID}
-							visible={saveAttempted && titleInvalid}
-						>
-							{uiText(language, "fieldRequired")}
-						</EditorFieldError>
-					</label>
+					{!creating && (
+						<label>
+							<RequiredFieldLabel language={language}>
+								{uiText(language, "title")}
+							</RequiredFieldLabel>
+							<input
+								aria-describedby={
+									saveAttempted && titleInvalid ? titleErrorID : undefined
+								}
+								aria-invalid={saveAttempted && titleInvalid}
+								aria-label={uiText(language, "title")}
+								list={itemNameListID}
+								required
+								value={expense.title}
+								onChange={(event) =>
+									onChange({ ...expense, title: event.target.value })
+								}
+							/>
+							<EditorFieldError
+								id={titleErrorID}
+								visible={saveAttempted && titleInvalid}
+							>
+								{uiText(language, "fieldRequired")}
+							</EditorFieldError>
+						</label>
+					)}
+					<datalist id={itemNameListID}>
+						{itemNameSuggestions.map((name) => (
+							<option key={name} value={name} />
+						))}
+					</datalist>
 					<div className="mini-field">
 						<span>{uiText(language, "purchasePlace")}</span>
 						<VendorAutocomplete
@@ -21200,141 +21206,120 @@ const ExpenseEditor = ({
 				</section>
 			)}
 			<div className="mini-editor-items">
-				{!creating && <span>{uiText(language, "items")}</span>}
+				<span>{uiText(language, "items")}</span>
 				{expense.items.map((item, index) => (
-					<div
-						key={item.id || index}
-						className={`mini-editor-item${creating ? " mini-editor-item--new" : ""}`}
-					>
-						{!creating && (
-							<div className="mini-editor-item-head">
-								<span>{index + 1}</span>
-								<div>
-									<small>{uiText(language, "item")}</small>
-									<b>{item.name || uiText(language, "undetermined")}</b>
-								</div>
+					<div key={item.id || index} className="mini-editor-item">
+						<div className="mini-editor-item-head">
+							<span>{index + 1}</span>
+							<div>
+								{creating ? (
+									<b>{uiText(language, "item")}</b>
+								) : (
+									<>
+										<small>{uiText(language, "item")}</small>
+										<b>{item.name || uiText(language, "undetermined")}</b>
+									</>
+								)}
+							</div>
+							{creating && expense.items.length > 1 && (
+								<button
+									className="mini-editor-item-remove"
+									type="button"
+									aria-label={uiText(language, "removeItem").replace(
+										"{number}",
+										String(index + 1),
+									)}
+									onClick={() =>
+										updateItems(
+											expense.items.filter(
+												(_, itemIndex) => itemIndex !== index,
+											),
+										)
+									}
+								>
+									<Trash size={16} />
+								</button>
+							)}
+							{!creating && (
 								<strong>{formatMoney(item.amount, expense.currency)}</strong>
-							</div>
-						)}
-						{!creating && (
-							<label className="mini-editor-field mini-editor-item-name">
-								<span className="mini-editor-label">
-									<RequiredFieldLabel language={language}>
-										{uiText(language, "name")}
-									</RequiredFieldLabel>
-								</span>
-								<input
-									aria-label={uiText(language, "itemName").replace(
-										"{number}",
-										String(index + 1),
-									)}
-									aria-describedby={
-										saveAttempted && invalidItemNameIndexes.has(index)
-											? `${itemNameErrorID}-${index}`
-											: undefined
-									}
-									aria-invalid={
-										saveAttempted && invalidItemNameIndexes.has(index)
-									}
-									required
-									value={item.name}
-									onChange={(event) =>
-										onChange({
-											...expense,
-											items: expense.items.map((current, itemIndex) =>
-												itemIndex === index
-													? { ...current, name: event.target.value }
-													: current,
-											),
-										})
-									}
-								/>
-								<EditorFieldError
-									id={`${itemNameErrorID}-${index}`}
-									visible={saveAttempted && invalidItemNameIndexes.has(index)}
-								>
-									{uiText(language, "fieldRequired")}
-								</EditorFieldError>
-							</label>
-						)}
-						{!creating && (
-							<div className="mini-editor-field mini-editor-item-price">
-								<span className="mini-editor-label">
-									<RequiredFieldLabel language={language}>
-										{uiText(language, "price")}
-									</RequiredFieldLabel>
-								</span>
-								<AmountInput
-									ariaDescribedBy={
-										saveAttempted && invalidItemAmountIndexes.has(index)
-											? `${itemAmountErrorID}-${index}`
-											: undefined
-									}
-									ariaInvalid={
-										saveAttempted && invalidItemAmountIndexes.has(index)
-									}
-									ariaLabel={uiText(language, "itemPrice").replace(
-										"{number}",
-										String(index + 1),
-									)}
-									amount={item.amount}
-									currency={expense.currency}
-									required
-									onChange={(amount) =>
-										onChange({
-											...expense,
-											items: expense.items.map((current, itemIndex) =>
-												itemIndex === index ? { ...current, amount } : current,
-											),
-										})
-									}
-								/>
-								<EditorFieldError
-									id={`${itemAmountErrorID}-${index}`}
-									visible={saveAttempted && invalidItemAmountIndexes.has(index)}
-								>
-									{uiText(language, "positiveAmountRequired")}
-								</EditorFieldError>
-							</div>
-						)}
-						{creating && (
-							<label className="mini-editor-field" htmlFor="new-expense-amount">
-								<span className="mini-editor-label">
-									<RequiredFieldLabel language={language}>
-										{uiText(language, "amount")}
-									</RequiredFieldLabel>
-								</span>
-								<AmountInput
-									ariaDescribedBy={
-										saveAttempted && invalidItemAmountIndexes.has(index)
-											? `${itemAmountErrorID}-${index}`
-											: undefined
-									}
-									ariaInvalid={
-										saveAttempted && invalidItemAmountIndexes.has(index)
-									}
-									ariaLabel={uiText(language, "amount")}
-									amount={item.amount}
-									currency={expense.currency}
-									id="new-expense-amount"
-									required
-									onChange={(amount) =>
-										onChange({
-											...expense,
-											items: expense.items.map((current, itemIndex) =>
-												itemIndex === index ? { ...current, amount } : current,
-											),
-										})
-									}
-								/>
-								<EditorFieldError
-									id={`${itemAmountErrorID}-${index}`}
-									visible={saveAttempted && invalidItemAmountIndexes.has(index)}
-								>
-									{uiText(language, "positiveAmountRequired")}
-								</EditorFieldError>
-							</label>
-						)}
+							)}
+						</div>
+						<label className="mini-editor-field mini-editor-item-name">
+							<span className="mini-editor-label">
+								<RequiredFieldLabel language={language}>
+									{uiText(language, creating ? "spentOn" : "name")}
+								</RequiredFieldLabel>
+							</span>
+							<input
+								aria-label={uiText(language, "itemName").replace(
+									"{number}",
+									String(index + 1),
+								)}
+								aria-describedby={
+									saveAttempted && invalidItemNameIndexes.has(index)
+										? `${itemNameErrorID}-${index}`
+										: undefined
+								}
+								aria-invalid={
+									saveAttempted && invalidItemNameIndexes.has(index)
+								}
+								required
+								list={itemNameListID}
+								value={item.name}
+								onChange={(event) =>
+									updateItems(
+										expense.items.map((current, itemIndex) =>
+											itemIndex === index
+												? { ...current, name: event.target.value }
+												: current,
+										),
+									)
+								}
+							/>
+							<EditorFieldError
+								id={`${itemNameErrorID}-${index}`}
+								visible={saveAttempted && invalidItemNameIndexes.has(index)}
+							>
+								{uiText(language, "fieldRequired")}
+							</EditorFieldError>
+						</label>
+						<div className="mini-editor-field mini-editor-item-price">
+							<span className="mini-editor-label">
+								<RequiredFieldLabel language={language}>
+									{uiText(language, "price")}
+								</RequiredFieldLabel>
+							</span>
+							<AmountInput
+								ariaDescribedBy={
+									saveAttempted && invalidItemAmountIndexes.has(index)
+										? `${itemAmountErrorID}-${index}`
+										: undefined
+								}
+								ariaInvalid={
+									saveAttempted && invalidItemAmountIndexes.has(index)
+								}
+								ariaLabel={uiText(language, "itemPrice").replace(
+									"{number}",
+									String(index + 1),
+								)}
+								amount={item.amount}
+								currency={expense.currency}
+								required
+								onChange={(amount) =>
+									updateItems(
+										expense.items.map((current, itemIndex) =>
+											itemIndex === index ? { ...current, amount } : current,
+										),
+									)
+								}
+							/>
+							<EditorFieldError
+								id={`${itemAmountErrorID}-${index}`}
+								visible={saveAttempted && invalidItemAmountIndexes.has(index)}
+							>
+								{uiText(language, "positiveAmountRequired")}
+							</EditorFieldError>
+						</div>
 						<label className="mini-editor-field mini-editor-field--wide">
 							<span className="mini-editor-label">
 								{uiText(language, "category")}
@@ -21346,9 +21331,8 @@ const ExpenseEditor = ({
 								)}
 								value={item.category_id || 0}
 								onChange={(event) =>
-									onChange({
-										...expense,
-										items: expense.items.map((current, itemIndex) =>
+									updateItems(
+										expense.items.map((current, itemIndex) =>
 											itemIndex === index
 												? {
 														...current,
@@ -21356,7 +21340,7 @@ const ExpenseEditor = ({
 													}
 												: current,
 										),
-									})
+									)
 								}
 							>
 								{categories.map((category) => (
@@ -21386,53 +21370,65 @@ const ExpenseEditor = ({
 								/>
 							</div>
 						)}
+						{creating && (
+							<div className="mini-editor-item-notes">
+								<HashtagNotesInput
+									language={language}
+									value={item.notes || ""}
+									suggestions={tagSuggestions}
+									onChange={(notes) =>
+										updateItems(
+											expense.items.map((current, itemIndex) =>
+												itemIndex === index
+													? {
+															...current,
+															notes,
+															tags: tagsAfterNotesEdit(
+																current.tags || [],
+																current.notes || "",
+																notes,
+															),
+														}
+													: current,
+											),
+										)
+									}
+								/>
+							</div>
+						)}
 					</div>
 				))}
-				{!creating && (
-					<button
-						className="mini-plan-add-item"
-						type="button"
-						disabled={expense.items.length >= 100}
-						onClick={() =>
-							onChange({
-								...expense,
-								items: [
-									...expense.items,
-									{ name: "", amount: 0, category_id: categories[0]?.id },
-								],
-							})
-						}
-					>
-						<Plus size={17} weight="bold" />
-						{uiText(language, "addItem")}
-					</button>
-				)}
-			</div>
-			{creating && expense.items[0] && (
-				<HashtagNotesInput
-					language={language}
-					value={expense.items[0].notes || ""}
-					suggestions={tagSuggestions}
-					onChange={(notes) =>
-						onChange({
-							...expense,
-							items: expense.items.map((item, index) =>
-								index === 0
-									? {
-											...item,
-											notes,
-											tags: tagsAfterNotesEdit(
-												item.tags || [],
-												item.notes || "",
-												notes,
-											),
-										}
-									: item,
-							),
-						})
+				<button
+					className="mini-plan-add-item"
+					type="button"
+					disabled={expense.items.length >= 100}
+					onClick={() =>
+						updateItems([
+							...expense.items,
+							{
+								name: "",
+								amount: 0,
+								category_id:
+									expense.items[expense.items.length - 1]?.category_id ||
+									categories.find((category) => category.key === "other")?.id ||
+									categories[0]?.id,
+							},
+						])
 					}
-				/>
-			)}
+				>
+					<Plus size={17} weight="bold" />
+					{uiText(language, "addItem")}
+				</button>
+				<div className="mini-editor-items-total">
+					<span>{uiText(language, "total")}</span>
+					<strong>
+						{formatMoney(
+							expense.items.reduce((sum, item) => sum + item.amount, 0),
+							expense.currency,
+						)}
+					</strong>
+				</div>
+			</div>
 			{!creating && (
 				<MoveRecordControl
 					language={language}
