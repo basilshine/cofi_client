@@ -19594,79 +19594,91 @@ const PlanEditor = ({
 				</div>
 			)}
 			<p className="mini-field-note">{uiText(language, "planEditorHint")}</p>
-			<label>
-				{uiText(language, "planListName")}
-				<input
-					value={plan.title}
-					placeholder={uiText(language, "planListNamePlaceholder")}
-					onChange={(event) => onChange({ ...plan, title: event.target.value })}
-				/>
-			</label>
-			<div className="mini-field">
-				<span>{uiText(language, "planVendor")}</span>
-				<VendorAutocomplete
-					vendors={vendors}
-					ariaLabel={uiText(language, "planVendor")}
-					placeholder={uiText(language, "planVendorPlaceholder")}
-					value={
-						plan.vendor_name ??
-						vendors.find((vendor) => vendor.id === plan.vendor_id)?.name ??
-						""
-					}
-					onChange={(vendorName) =>
-						onChange({
-							...plan,
-							vendor_name: vendorName,
-							vendor_id: findVendorByName(vendors, vendorName)?.id || null,
-						})
-					}
-				/>
-				<small className="mini-field-hint">
-					{uiText(language, "planVendorHint")}
-				</small>
-			</div>
-			<label>
-				{uiText(language, "plannedDate")}
-				<input
-					type="date"
-					value={plan.due_date?.slice(0, 10) || ""}
-					onChange={(event) =>
-						onChange({ ...plan, due_date: event.target.value || null })
-					}
-				/>
-				<small className="mini-field-hint">
-					{uiText(language, "plannedDateHint")}
-				</small>
-			</label>
-			<label>
-				{uiText(language, "planRecurrence")}
-				<select
-					disabled={plan.id > 0 && isRecurringPlan(plan)}
-					value={plan.recurrence_interval || ""}
-					onChange={(event) =>
-						onChange({
-							...plan,
-							recurrence_interval: event.target.value as
-								| ""
-								| "weekly"
-								| "monthly",
-						})
-					}
-				>
-					<option value="">{uiText(language, "planDoesNotRepeat")}</option>
-					<option value="weekly">
-						{uiText(language, "planRepeatsWeekly")}
-					</option>
-					<option value="monthly">
-						{uiText(language, "planRepeatsMonthly")}
-					</option>
-				</select>
-				{plan.recurrence_interval && !plan.due_date && (
-					<small className="mini-field-hint is-error">
-						{uiText(language, "planRecurrenceNeedsDate")}
-					</small>
-				)}
-			</label>
+			<section className="mini-editor-section">
+				<h3>{uiText(language, "editorListDetails")}</h3>
+				<div className="mini-editor-section-fields">
+					<label>
+						{uiText(language, "planListName")}
+						<input
+							value={plan.title}
+							placeholder={uiText(language, "planListNamePlaceholder")}
+							onChange={(event) =>
+								onChange({ ...plan, title: event.target.value })
+							}
+						/>
+					</label>
+					<div className="mini-field">
+						<span>{uiText(language, "planVendor")}</span>
+						<VendorAutocomplete
+							vendors={vendors}
+							ariaLabel={uiText(language, "planVendor")}
+							placeholder={uiText(language, "planVendorPlaceholder")}
+							value={
+								plan.vendor_name ??
+								vendors.find((vendor) => vendor.id === plan.vendor_id)?.name ??
+								""
+							}
+							onChange={(vendorName) =>
+								onChange({
+									...plan,
+									vendor_name: vendorName,
+									vendor_id: findVendorByName(vendors, vendorName)?.id || null,
+								})
+							}
+						/>
+						<small className="mini-field-hint">
+							{uiText(language, "planVendorHint")}
+						</small>
+					</div>
+				</div>
+			</section>
+			<section className="mini-editor-section">
+				<h3>{uiText(language, "editorPlanTiming")}</h3>
+				<div className="mini-editor-section-fields">
+					<label>
+						{uiText(language, "plannedDate")}
+						<input
+							type="date"
+							value={plan.due_date?.slice(0, 10) || ""}
+							onChange={(event) =>
+								onChange({ ...plan, due_date: event.target.value || null })
+							}
+						/>
+						<small className="mini-field-hint">
+							{uiText(language, "plannedDateHint")}
+						</small>
+					</label>
+					<label>
+						{uiText(language, "planRecurrence")}
+						<select
+							disabled={plan.id > 0 && isRecurringPlan(plan)}
+							value={plan.recurrence_interval || ""}
+							onChange={(event) =>
+								onChange({
+									...plan,
+									recurrence_interval: event.target.value as
+										| ""
+										| "weekly"
+										| "monthly",
+								})
+							}
+						>
+							<option value="">{uiText(language, "planDoesNotRepeat")}</option>
+							<option value="weekly">
+								{uiText(language, "planRepeatsWeekly")}
+							</option>
+							<option value="monthly">
+								{uiText(language, "planRepeatsMonthly")}
+							</option>
+						</select>
+						{plan.recurrence_interval && !plan.due_date && (
+							<small className="mini-field-hint is-error">
+								{uiText(language, "planRecurrenceNeedsDate")}
+							</small>
+						)}
+					</label>
+				</div>
+			</section>
 			<div className="mini-plan-editor-items">
 				<div className="mini-plan-editor-head">
 					<span>{uiText(language, "planItems")}</span>
@@ -19948,73 +19960,80 @@ const ExpenseEditor = ({
 					<SourceExpiryNote capture={capture} language={language} />
 				</div>
 			)}
-			<label>
-				{uiText(language, creating ? "spentOn" : "title")}
-				<input
-					list={itemNameListID}
-					value={expense.title}
-					onChange={(event) =>
-						onChange({
-							...expense,
-							title: event.target.value,
-							items: creating
-								? expense.items.map((item, index) =>
-										index === 0 ? { ...item, name: event.target.value } : item,
-									)
-								: expense.items,
-						})
-					}
-				/>
-				<datalist id={itemNameListID}>
-					{itemNameSuggestions.map((name) => (
-						<option key={name} value={name} />
-					))}
-				</datalist>
-			</label>
-			<div className="mini-field">
-				<span>{uiText(language, "purchasePlace")}</span>
-				<VendorAutocomplete
-					vendors={vendors}
-					ariaLabel={uiText(language, "purchasePlace")}
-					placeholder={uiText(
-						language,
-						sharedVendorName === null ? "multipleVendors" : "undetermined",
+			<section className="mini-editor-section">
+				<h3>{uiText(language, "editorExpenseDetails")}</h3>
+				<div className="mini-editor-section-fields">
+					<label>
+						{uiText(language, creating ? "spentOn" : "title")}
+						<input
+							list={itemNameListID}
+							value={expense.title}
+							onChange={(event) =>
+								onChange({
+									...expense,
+									title: event.target.value,
+									items: creating
+										? expense.items.map((item, index) =>
+												index === 0
+													? { ...item, name: event.target.value }
+													: item,
+											)
+										: expense.items,
+								})
+							}
+						/>
+						<datalist id={itemNameListID}>
+							{itemNameSuggestions.map((name) => (
+								<option key={name} value={name} />
+							))}
+						</datalist>
+					</label>
+					<div className="mini-field">
+						<span>{uiText(language, "purchasePlace")}</span>
+						<VendorAutocomplete
+							vendors={vendors}
+							ariaLabel={uiText(language, "purchasePlace")}
+							placeholder={uiText(
+								language,
+								sharedVendorName === null ? "multipleVendors" : "undetermined",
+							)}
+							value={sharedVendorName ?? ""}
+							onChange={(vendorName) => {
+								onChange({
+									...expense,
+									payee_text: vendorName,
+									vendor_name: vendorName,
+									vendor_id: undefined,
+									vendor: undefined,
+									items: expense.items.map((item) => ({
+										...item,
+										vendor_id: undefined,
+										vendor_name: vendorName,
+										vendor: undefined,
+									})),
+								});
+							}}
+						/>
+						{!creating && expense.items.length > 1 && (
+							<small className="mini-field-hint">
+								{uiText(language, "applyVendorToAll")}
+							</small>
+						)}
+					</div>
+					{!creating && (
+						<label>
+							{uiText(language, "date")}
+							<input
+								type="date"
+								value={expense.expense_date.slice(0, 10)}
+								onChange={(event) =>
+									onChange({ ...expense, expense_date: event.target.value })
+								}
+							/>
+						</label>
 					)}
-					value={sharedVendorName ?? ""}
-					onChange={(vendorName) => {
-						onChange({
-							...expense,
-							payee_text: vendorName,
-							vendor_name: vendorName,
-							vendor_id: undefined,
-							vendor: undefined,
-							items: expense.items.map((item) => ({
-								...item,
-								vendor_id: undefined,
-								vendor_name: vendorName,
-								vendor: undefined,
-							})),
-						});
-					}}
-				/>
-				{!creating && expense.items.length > 1 && (
-					<small className="mini-field-hint">
-						{uiText(language, "applyVendorToAll")}
-					</small>
-				)}
-			</div>
-			{!creating && (
-				<label>
-					{uiText(language, "date")}
-					<input
-						type="date"
-						value={expense.expense_date.slice(0, 10)}
-						onChange={(event) =>
-							onChange({ ...expense, expense_date: event.target.value })
-						}
-					/>
-				</label>
-			)}
+				</div>
+			</section>
 			{participants.length > 1 && (
 				<section className="mini-expense-payer-field">
 					<div className="mini-expense-payer-field-head">
@@ -22265,6 +22284,7 @@ const Modal = ({
 	onClose: () => void;
 }) => {
 	const modalRef = useRef<HTMLElement>(null);
+	const titleID = useId();
 	const dragRef = useRef<{
 		pointerID: number;
 		x: number;
@@ -22361,7 +22381,7 @@ const Modal = ({
 				className={`mini-modal${variant === "editor" ? " is-editor" : ""}${variant === "record" ? " is-record" : ""}${sheetState === "peek" ? " is-peek" : ""}${dragY ? " is-dragging" : ""}`}
 				role="dialog"
 				aria-modal="true"
-				aria-label={title}
+				aria-labelledby={titleID}
 				style={{ transform: `translateY(${dragY}px)` }}
 				onPointerDown={beginDrag}
 				onPointerMove={moveDrag}
@@ -22369,7 +22389,7 @@ const Modal = ({
 				onPointerCancel={endDrag}
 			>
 				<header>
-					<h2>{title}</h2>
+					<h2 id={titleID}>{title}</h2>
 					<button type="button" aria-label={closeLabel} onClick={onClose}>
 						<X size={21} />
 					</button>
