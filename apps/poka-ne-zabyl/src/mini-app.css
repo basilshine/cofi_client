@@ -7581,9 +7581,62 @@
 .mini-editor-item {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(124px, 0.56fr);
-	gap: 7px;
+	gap: 9px 10px;
 	padding-bottom: 10px;
 	border-bottom: 1px solid var(--mini-line);
+}
+.mini-editor-item-head {
+	display: grid;
+	grid-column: 1 / -1;
+	grid-template-columns: 30px minmax(0, 1fr) max-content;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	padding: 9px 10px;
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--mini-green) 6%, var(--mini-paper));
+}
+.mini-editor-item-head > span {
+	display: grid;
+	width: 30px;
+	height: 30px;
+	place-items: center;
+	border-radius: 50%;
+	background: var(--mini-green);
+	color: var(--mini-paper);
+	font-size: 12px;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+}
+.mini-editor-item-head > div {
+	min-width: 0;
+}
+.mini-editor-item-head small,
+.mini-editor-item-head b {
+	display: block;
+}
+.mini-editor-item-head small {
+	margin-bottom: 2px;
+	color: var(--mini-muted);
+	font-size: 10px;
+	font-weight: 650;
+	text-transform: uppercase;
+}
+.mini-editor-item-head b {
+	color: var(--mini-ink);
+	font-size: 13px;
+	line-height: 1.3;
+	overflow-wrap: anywhere;
+}
+.mini-editor-item-head strong {
+	color: var(--mini-green);
+	font-size: 13px;
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+.mini-editor-item-name input,
+.mini-editor-item-price input {
+	font-variant-numeric: tabular-nums;
 }
 .mini-editor-vendor {
 	grid-column: 1 / -1;
@@ -10866,6 +10919,30 @@
 	.mini-editor-field,
 	.mini-editor-field--wide {
 		grid-column: 1;
+	}
+	.mini-editor-item:not(.mini-editor-item--new) {
+		grid-template-columns: minmax(0, 1fr) minmax(108px, 0.5fr);
+	}
+	.mini-editor-item:not(.mini-editor-item--new) .mini-editor-item-head,
+	.mini-editor-item:not(.mini-editor-item--new) .mini-editor-field--wide {
+		grid-column: 1 / -1;
+	}
+	.mini-editor-item:not(.mini-editor-item--new) .mini-editor-item-name {
+		grid-column: 1;
+	}
+	.mini-editor-item:not(.mini-editor-item--new) .mini-editor-item-price {
+		grid-column: 2;
+	}
+	.mini-editor-item-head {
+		grid-template-columns: 28px minmax(0, 1fr);
+		padding: 8px;
+	}
+	.mini-editor-item-head > span {
+		width: 28px;
+		height: 28px;
+	}
+	.mini-editor-item-head > strong {
+		grid-column: 2;
 	}
 }
 @media (max-width: 359px) {

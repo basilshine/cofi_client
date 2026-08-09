@@ -21081,16 +21081,27 @@ const ExpenseEditor = ({
 						className={`mini-editor-item${creating ? " mini-editor-item--new" : ""}`}
 					>
 						{!creating && (
-							<label className="mini-editor-field">
+							<div className="mini-editor-item-head">
+								<span>{index + 1}</span>
+								<div>
+									<small>{uiText(language, "item")}</small>
+									<b>{item.name || uiText(language, "undetermined")}</b>
+								</div>
+								<strong>{formatMoney(item.amount, expense.currency)}</strong>
+							</div>
+						)}
+						{!creating && (
+							<label className="mini-editor-field mini-editor-item-name">
 								<span className="mini-editor-label">
 									<RequiredFieldLabel language={language}>
-										{uiText(language, "itemName").replace(
-											"{number}",
-											String(index + 1),
-										)}
+										{uiText(language, "name")}
 									</RequiredFieldLabel>
 								</span>
 								<input
+									aria-label={uiText(language, "itemName").replace(
+										"{number}",
+										String(index + 1),
+									)}
 									aria-describedby={
 										saveAttempted && invalidItemNameIndexes.has(index)
 											? `${itemNameErrorID}-${index}`
@@ -21121,13 +21132,10 @@ const ExpenseEditor = ({
 							</label>
 						)}
 						{!creating && (
-							<div className="mini-editor-field">
+							<div className="mini-editor-field mini-editor-item-price">
 								<span className="mini-editor-label">
 									<RequiredFieldLabel language={language}>
-										{uiText(language, "itemPrice").replace(
-											"{number}",
-											String(index + 1),
-										)}
+										{uiText(language, "price")}
 									</RequiredFieldLabel>
 								</span>
 								<AmountInput

@@ -288,6 +288,7 @@ const messages = {
 		newCategory: "Новая категория",
 		editCategory: "Настройки категории",
 		name: "Название",
+		price: "Цена",
 		synonyms: "Синонимы для распознавания",
 		synonymsPlaceholder: "Например: уход за собой, маникюр, салон красоты",
 		synonymsHint:
@@ -999,6 +1000,7 @@ const messages = {
 		newCategory: "New category",
 		editCategory: "Category settings",
 		name: "Name",
+		price: "Price",
 		synonyms: "Recognition synonyms",
 		synonymsPlaceholder: "For example: self-care, manicure, beauty salon",
 		synonymsHint:
@@ -1711,6 +1713,7 @@ const messages = {
 		newCategory: "Nueva categoría",
 		editCategory: "Ajustes de categoría",
 		name: "Nombre",
+		price: "Precio",
 		synonyms: "Sinónimos para reconocimiento",
 		synonymsPlaceholder:
 			"Por ejemplo: cuidado personal, manicura, salón de belleza",
