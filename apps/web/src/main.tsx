@@ -13,10 +13,7 @@ initTheme();
 ReactDOM.createRoot(rootElement).render(
 	<React.StrictMode>
 		<MotionConfig reducedMotion="user">
-			<BrowserRouter
-				basename={import.meta.env.BASE_URL}
-				future={{ v7_relativeSplatPath: true }}
-			>
+			<BrowserRouter basename={import.meta.env.BASE_URL}>
 				<WebApp />
 			</BrowserRouter>
 		</MotionConfig>

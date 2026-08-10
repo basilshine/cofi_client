@@ -11,10 +11,7 @@ if (!rootElement) throw new Error("Root element not found");
 ReactDOM.createRoot(rootElement).render(
 	<React.StrictMode>
 		<MotionConfig reducedMotion="user">
-			<BrowserRouter
-				basename={import.meta.env.BASE_URL}
-				future={{ v7_relativeSplatPath: true }}
-			>
+			<BrowserRouter basename={import.meta.env.BASE_URL}>
 				<MarketingApp />
 			</BrowserRouter>
 		</MotionConfig>
