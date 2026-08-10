@@ -16,6 +16,8 @@ import {
 	ChatCircleText,
 	Check,
 	Copy,
+	CornersIn,
+	CornersOut,
 	EnvelopeSimple,
 	FunnelSimple,
 	GearSix,
@@ -14501,62 +14503,184 @@ const CaptureSourceViewer = ({
 	onClose: () => void;
 }) => {
 	const kind = captureSourceKind(viewer.capture);
+	const [zoomedMediaIndex, setZoomedMediaIndex] = useState<number | null>(null);
+	const [showActualSize, setShowActualSize] = useState(false);
+	const zoomedMedia =
+		zoomedMediaIndex === null ? undefined : viewer.media[zoomedMediaIndex];
+	const closeZoom = () => {
+		setZoomedMediaIndex(null);
+		setShowActualSize(false);
+	};
+	const moveZoom = (direction: -1 | 1) => {
+		setZoomedMediaIndex((current) => {
+			if (current === null || viewer.media.length < 2) return current;
+			return (current + direction + viewer.media.length) % viewer.media.length;
+		});
+		setShowActualSize(false);
+	};
+	useEffect(() => {
+		if (zoomedMediaIndex === null) return;
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				event.preventDefault();
+				setZoomedMediaIndex(null);
+				setShowActualSize(false);
+				return;
+			}
+			if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+			event.preventDefault();
+			setZoomedMediaIndex((current) => {
+				if (current === null || viewer.media.length < 2) return current;
+				const direction = event.key === "ArrowLeft" ? -1 : 1;
+				return (
+					(current + direction + viewer.media.length) % viewer.media.length
+				);
+			});
+			setShowActualSize(false);
+		};
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [zoomedMediaIndex, viewer.media.length]);
 	return (
-		<Modal title="Исходный материал" onClose={onClose}>
-			<div className="mini-source-summary">
-				<span>
-					<SourceIcon capture={viewer.capture} size={22} />
-				</span>
-				<div>
-					<b>{captureSourceLabel(viewer.capture)}</b>
-					{viewer.capture.created_at && (
-						<small>{formatDate(viewer.capture.created_at, language)}</small>
-					)}
-					<SourceExpiryNote capture={viewer.capture} language={language} />
+		<>
+			<Modal title="Исходный материал" onClose={onClose}>
+				<div className="mini-source-summary">
+					<span>
+						<SourceIcon capture={viewer.capture} size={22} />
+					</span>
+					<div>
+						<b>{captureSourceLabel(viewer.capture)}</b>
+						{viewer.capture.created_at && (
+							<small>{formatDate(viewer.capture.created_at, language)}</small>
+						)}
+						<SourceExpiryNote capture={viewer.capture} language={language} />
+					</div>
 				</div>
-			</div>
-			{kind === "image" && viewer.media.length > 0 && (
+				{kind === "image" && viewer.media.length > 0 && (
+					<div
+						className={`mini-source-gallery${viewer.media.length === 1 ? " single" : ""}`}
+					>
+						{viewer.media.map((media, index) => (
+							<figure key={media.id}>
+								<button
+									className="mini-source-image-open"
+									type="button"
+									aria-label={`${uiText(language, "sourceImageOpen")} ${index + 1}`}
+									onClick={() => {
+										setZoomedMediaIndex(index);
+										setShowActualSize(false);
+									}}
+								>
+									<img
+										className="mini-source-image"
+										src={media.url}
+										alt={`Исходное изображение ${index + 1} из ${viewer.media.length}`}
+									/>
+									<span aria-hidden="true">
+										<CornersOut size={19} weight="bold" />
+									</span>
+								</button>
+								{viewer.media.length > 1 && (
+									<figcaption>
+										{index + 1} / {viewer.media.length}
+									</figcaption>
+								)}
+							</figure>
+						))}
+					</div>
+				)}
+				{kind === "voice" && viewer.media[0]?.url && (
+					<>
+						{/* biome-ignore lint/a11y/useMediaCaption: transcript is rendered below when the provider returned one. */}
+						<audio
+							className="mini-source-audio"
+							controls
+							src={viewer.media[0].url}
+						/>
+					</>
+				)}
+				{viewer.capture.source_text && (
+					<div className="mini-source-text">
+						<small>
+							{kind === "text" ? "Исходный текст" : "Распознанный текст"}
+						</small>
+						<p>{viewer.capture.source_text}</p>
+					</div>
+				)}
+				{viewer.media.length === 0 && !viewer.capture.source_text && (
+					<Empty text="Исходный материал недоступен" />
+				)}
+			</Modal>
+			{zoomedMedia && zoomedMediaIndex !== null && (
 				<div
-					className={`mini-source-gallery${viewer.media.length === 1 ? " single" : ""}`}
+					className="mini-source-lightbox"
+					role="dialog"
+					aria-modal="true"
+					aria-label={uiText(language, "sourceImageViewer")}
 				>
-					{viewer.media.map((media, index) => (
-						<figure key={media.id}>
-							<img
-								className="mini-source-image"
-								src={media.url}
-								alt={`Исходное изображение ${index + 1} из ${viewer.media.length}`}
-							/>
-							{viewer.media.length > 1 && (
-								<figcaption>
-									{index + 1} / {viewer.media.length}
-								</figcaption>
-							)}
-						</figure>
-					))}
+					<header>
+						<strong>
+							{zoomedMediaIndex + 1} / {viewer.media.length}
+						</strong>
+						<div>
+							<button
+								type="button"
+								aria-pressed={showActualSize}
+								aria-label={uiText(
+									language,
+									showActualSize ? "sourceImageFit" : "sourceImageActualSize",
+								)}
+								title={uiText(
+									language,
+									showActualSize ? "sourceImageFit" : "sourceImageActualSize",
+								)}
+								onClick={() => setShowActualSize((current) => !current)}
+							>
+								{showActualSize ? (
+									<CornersIn size={21} weight="bold" />
+								) : (
+									<CornersOut size={21} weight="bold" />
+								)}
+							</button>
+							<button
+								type="button"
+								aria-label={uiText(language, "close")}
+								title={uiText(language, "close")}
+								onClick={closeZoom}
+							>
+								<X size={22} weight="bold" />
+							</button>
+						</div>
+					</header>
+					<div
+						className={`mini-source-lightbox-viewport${showActualSize ? " is-actual-size" : ""}`}
+					>
+						<img
+							src={zoomedMedia.url}
+							alt={`Исходное изображение ${zoomedMediaIndex + 1} из ${viewer.media.length}`}
+						/>
+					</div>
+					{viewer.media.length > 1 && (
+						<nav aria-label={uiText(language, "sourceImageNavigation")}>
+							<button
+								type="button"
+								aria-label={uiText(language, "previousImage")}
+								onClick={() => moveZoom(-1)}
+							>
+								<ArrowLeft size={22} weight="bold" />
+							</button>
+							<button
+								type="button"
+								aria-label={uiText(language, "nextImage")}
+								onClick={() => moveZoom(1)}
+							>
+								<ArrowRight size={22} weight="bold" />
+							</button>
+						</nav>
+					)}
 				</div>
 			)}
-			{kind === "voice" && viewer.media[0]?.url && (
-				<>
-					{/* biome-ignore lint/a11y/useMediaCaption: transcript is rendered below when the provider returned one. */}
-					<audio
-						className="mini-source-audio"
-						controls
-						src={viewer.media[0].url}
-					/>
-				</>
-			)}
-			{viewer.capture.source_text && (
-				<div className="mini-source-text">
-					<small>
-						{kind === "text" ? "Исходный текст" : "Распознанный текст"}
-					</small>
-					<p>{viewer.capture.source_text}</p>
-				</div>
-			)}
-			{viewer.media.length === 0 && !viewer.capture.source_text && (
-				<Empty text="Исходный материал недоступен" />
-			)}
-		</Modal>
+		</>
 	);
 };
 
