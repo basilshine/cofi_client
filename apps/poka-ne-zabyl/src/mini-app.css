@@ -2184,6 +2184,16 @@
 	line-height: 1.45;
 	white-space: pre-wrap;
 }
+.mini-settlement-proof-list {
+	display: grid;
+	gap: 9px;
+}
+.mini-settlement-proof-list > header {
+	color: var(--mini-muted);
+	font-size: 10px;
+	font-weight: 800;
+	text-transform: uppercase;
+}
 .mini-settlement-proof-media {
 	display: grid;
 	overflow: hidden;
@@ -2223,6 +2233,14 @@
 }
 .mini-settlement-proof-media > .mini-settlement-attachment {
 	margin: 10px;
+}
+.mini-settlement-proof-media > p {
+	margin: 0;
+	padding: 10px 11px;
+	border-top: 1px solid var(--mini-line);
+	font-size: 11px;
+	line-height: 1.45;
+	white-space: pre-wrap;
 }
 .mini-settlement-proof-media > img {
 	border: 0;

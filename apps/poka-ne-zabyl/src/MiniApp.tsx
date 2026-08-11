@@ -182,6 +182,10 @@ import {
 	preferredSpaceID,
 } from "./space-context";
 import { spaceScopedItems } from "./space-scoped-data";
+import {
+	type SplitSettlementEvidence,
+	mergeSplitSettlementEvidence,
+} from "./split-settlement";
 import { isSubscriptionExpired } from "./subscription";
 import { homeScreenPlatform, shouldUseFullscreen } from "./telegram-platform";
 import {
@@ -822,9 +826,7 @@ type SplitBalanceRow = {
 	amount: number;
 	obligations: { expenseID: number; splitID: number; amount: number }[];
 	settlementStatus: "open" | "sent";
-	settlementNote?: string;
-	settlementMediaObjectID?: number;
-	settlementSentAt?: string;
+	settlements: SplitSettlementEvidence[];
 };
 
 type SplitSettlementState = {
@@ -891,6 +893,16 @@ const splitBalanceRows = (
 			"Плательщик";
 		const key = `${split.space_participant_id}:${payerParticipantID}:${settlementStatus}`;
 		const current = balances.get(key);
+		const settlements =
+			settlementStatus === "sent"
+				? mergeSplitSettlementEvidence(current?.settlements || [], {
+						splitID: split.id,
+						amount,
+						note: split.settlement_note,
+						mediaObjectID: split.settlement_media_object_id,
+						sentAt: split.settlement_sent_at,
+					})
+				: [];
 		balances.set(key, {
 			key,
 			debtorName,
@@ -901,10 +913,7 @@ const splitBalanceRows = (
 			creditorParticipantID: payerParticipantID,
 			amount: (current?.amount || 0) + amount,
 			settlementStatus,
-			settlementNote: split.settlement_note || current?.settlementNote,
-			settlementMediaObjectID:
-				split.settlement_media_object_id || current?.settlementMediaObjectID,
-			settlementSentAt: split.settlement_sent_at || current?.settlementSentAt,
+			settlements,
 			obligations: [
 				...(current?.obligations || []),
 				{ expenseID: expense.id, splitID: split.id, amount },
@@ -6313,14 +6322,15 @@ export const MiniApp = ({
 		if (splitSaving || balance.obligations.length === 0) return false;
 		setSplitSaving(true);
 		try {
+			const latestSettlement = balance.settlements[0];
 			const states = previewMode
 				? balance.obligations.map(({ expenseID, splitID }) => ({
 						expense_id: expenseID,
 						split_id: splitID,
 						settlement_status: confirmed ? "confirmed" : "disputed",
-						settlement_note: balance.settlementNote,
-						settlement_media_object_id: balance.settlementMediaObjectID,
-						settlement_sent_at: balance.settlementSentAt,
+						settlement_note: latestSettlement?.note,
+						settlement_media_object_id: latestSettlement?.mediaObjectID,
+						settlement_sent_at: latestSettlement?.sentAt,
 					}))
 				: (
 						await apiRequest<{ settlements: SplitSettlementState[] }>(
@@ -19754,6 +19764,118 @@ const ExpenseDetail = ({
 	);
 };
 
+const StoredSettlementProof = ({
+	settlement,
+	index,
+	total,
+	currency,
+	language,
+	token,
+}: {
+	settlement: SplitSettlementEvidence;
+	index: number;
+	total: number;
+	currency: string;
+	language: UILanguage;
+	token: string;
+}) => {
+	const [imageURL, setImageURL] = useState("");
+	const [loading, setLoading] = useState(Boolean(settlement.mediaObjectID));
+	const [error, setError] = useState("");
+	const [loadAttempt, setLoadAttempt] = useState(0);
+
+	useEffect(() => {
+		if (!settlement.mediaObjectID) return;
+		let cancelled = false;
+		setLoading(true);
+		setError("");
+		void (async () => {
+			try {
+				const response = await fetch(
+					`/api/v1/media/${settlement.mediaObjectID}`,
+					{
+						headers: token ? { Authorization: `Bearer ${token}` } : {},
+						signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+					},
+				);
+				if (
+					!response.ok ||
+					!response.headers.get("content-type")?.startsWith("image/")
+				)
+					throw new Error(uiText(language, "settlementImageOpenFailed"));
+				const nextURL = URL.createObjectURL(await response.blob());
+				if (cancelled) {
+					URL.revokeObjectURL(nextURL);
+					return;
+				}
+				setImageURL(nextURL);
+			} catch (err) {
+				if (!cancelled) {
+					setError(
+						err instanceof Error
+							? err.message
+							: uiText(language, "settlementImageOpenFailed"),
+					);
+				}
+			} finally {
+				if (!cancelled) setLoading(false);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, [language, loadAttempt, settlement.mediaObjectID, token]);
+
+	useEffect(
+		() => () => {
+			if (imageURL) URL.revokeObjectURL(imageURL);
+		},
+		[imageURL],
+	);
+
+	return (
+		<section className="mini-settlement-proof-media">
+			<header>
+				<span className="mini-settlement-proof-media-icon">
+					<ImageSquare size={18} weight="duotone" />
+				</span>
+				<span>
+					<b>
+						{uiText(language, "settlementProofImage")}
+						{total > 1 ? ` ${index + 1}` : ""}
+					</b>
+					<small>
+						{formatMoney(settlement.amount, currency)}
+						{settlement.sentAt
+							? ` · ${formatDateTime(settlement.sentAt, language)}`
+							: ""}
+					</small>
+				</span>
+			</header>
+			{settlement.note && <p>{settlement.note}</p>}
+			{settlement.mediaObjectID && imageURL && (
+				<img
+					src={imageURL}
+					alt={`${uiText(language, "settlementProofImage")} ${index + 1}`}
+				/>
+			)}
+			{settlement.mediaObjectID && !imageURL && (
+				<button
+					className="mini-settlement-attachment"
+					type="button"
+					disabled={loading}
+					onClick={() => setLoadAttempt((current) => current + 1)}
+				>
+					<ImageSquare size={19} />
+					{loading
+						? uiText(language, "openingSource")
+						: error || uiText(language, "settlementViewImage")}
+				</button>
+			)}
+		</section>
+	);
+};
+
 const SplitSettlementDialog = ({
 	balance,
 	expenses,
@@ -19778,11 +19900,9 @@ const SplitSettlementDialog = ({
 	onResolve: (confirmed: boolean) => Promise<boolean>;
 }) => {
 	const proofInput = useRef<HTMLInputElement | null>(null);
-	const automaticallyLoadedProofID = useRef(0);
 	const [note, setNote] = useState("");
 	const [proof, setProof] = useState<File>();
 	const [proofURL, setProofURL] = useState("");
-	const [proofLoading, setProofLoading] = useState(false);
 	const [localError, setLocalError] = useState("");
 	const pending = balance.settlementStatus === "sent";
 	const creditor = balance.creditorUserID === currentUserID;
@@ -19813,60 +19933,6 @@ const SplitSettlementDialog = ({
 		setLocalError("");
 		setProof(file);
 	};
-
-	const openStoredProof = async () => {
-		if (!balance.settlementMediaObjectID || proofLoading) return;
-		setProofLoading(true);
-		setLocalError("");
-		try {
-			const response = await fetch(
-				`/api/v1/media/${balance.settlementMediaObjectID}`,
-				{
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
-					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-				},
-			);
-			if (
-				!response.ok ||
-				!response.headers.get("content-type")?.startsWith("image/")
-			)
-				throw new Error(uiText(language, "settlementImageOpenFailed"));
-			const nextURL = URL.createObjectURL(await response.blob());
-			setProofURL((current) => {
-				if (current) URL.revokeObjectURL(current);
-				return nextURL;
-			});
-		} catch (err) {
-			setLocalError(
-				err instanceof Error
-					? err.message
-					: uiText(language, "settlementImageOpenFailed"),
-			);
-		} finally {
-			setProofLoading(false);
-		}
-	};
-
-	useEffect(() => {
-		if (
-			!pending ||
-			!balance.settlementMediaObjectID ||
-			proofURL ||
-			proofLoading
-		)
-			return;
-		if (automaticallyLoadedProofID.current === balance.settlementMediaObjectID)
-			return;
-		automaticallyLoadedProofID.current = balance.settlementMediaObjectID;
-		void openStoredProof();
-	}, [balance.settlementMediaObjectID, pending, proofLoading, proofURL]);
-
-	useEffect(
-		() => () => {
-			if (proofURL && !proof) URL.revokeObjectURL(proofURL);
-		},
-		[proofURL, proof],
-	);
 
 	const submit = async () => {
 		if (!note.trim() && !proof) {
@@ -19933,37 +19999,26 @@ const SplitSettlementDialog = ({
 							<small>{uiText(language, "settlementAwaiting")}</small>
 						</span>
 					</div>
-					{balance.settlementNote && <p>{balance.settlementNote}</p>}
-					{balance.settlementMediaObjectID && (
-						<section className="mini-settlement-proof-media">
+					{balance.settlements.length > 0 && (
+						<div className="mini-settlement-proof-list">
 							<header>
-								<span className="mini-settlement-proof-media-icon">
-									<ImageSquare size={18} weight="duotone" />
-								</span>
-								<span>
-									<b>{uiText(language, "settlementProofImage")}</b>
-									<small>{uiText(language, "settlementProofImageHint")}</small>
-								</span>
+								{uiText(language, "settlementProofs").replace(
+									"{count}",
+									String(balance.settlements.length),
+								)}
 							</header>
-							{proofURL ? (
-								<img
-									src={proofURL}
-									alt={uiText(language, "settlementProofImage")}
+							{balance.settlements.map((settlement, index) => (
+								<StoredSettlementProof
+									key={settlement.key}
+									settlement={settlement}
+									index={index}
+									total={balance.settlements.length}
+									currency={currency}
+									language={language}
+									token={token}
 								/>
-							) : (
-								<button
-									className="mini-settlement-attachment"
-									type="button"
-									disabled={proofLoading}
-									onClick={() => void openStoredProof()}
-								>
-									<ImageSquare size={19} />
-									{proofLoading
-										? uiText(language, "openingSource")
-										: uiText(language, "settlementViewImage")}
-								</button>
-							)}
-						</section>
+							))}
+						</div>
 					)}
 				</div>
 			) : (
