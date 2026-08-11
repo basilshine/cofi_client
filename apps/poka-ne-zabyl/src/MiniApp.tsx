@@ -100,6 +100,10 @@ import {
 	periodBounds,
 } from "./expense-period";
 import {
+	normalizeExpenseRecord,
+	normalizeExpenseRecords,
+} from "./expense-record";
+import {
 	equalSplitAmounts,
 	fullSplitAmount,
 	splitDistributionIsValid,
@@ -4230,7 +4234,7 @@ export const MiniApp = ({
 				).catch(() => ({ reports: [] })),
 			]);
 			if (requestID !== loadSequence.current) return;
-			setExpenses(expenseData.expenses || []);
+			setExpenses(normalizeExpenseRecords(expenseData.expenses));
 			setExpensePage({
 				hasMore: Boolean(expenseData.has_more),
 				nextOffset: expenseData.next_offset || 20,
@@ -4481,7 +4485,10 @@ export const MiniApp = ({
 			)
 				return;
 			setExpenses((current) => {
-				return appendUniquePage(current, data.expenses || []);
+				return appendUniquePage(
+					current,
+					normalizeExpenseRecords(data.expenses),
+				);
 			});
 			setExpensePage({
 				hasMore: Boolean(data.has_more),
@@ -5256,9 +5263,11 @@ export const MiniApp = ({
 						candidate.projected_expense_id
 					) {
 						try {
-							const expense = await apiRequest<Expense>(
-								`/spaces/${pending.spaceID}/expenses/${candidate.projected_expense_id}`,
-								token,
+							const expense = normalizeExpenseRecord(
+								await apiRequest<Expense>(
+									`/spaces/${pending.spaceID}/expenses/${candidate.projected_expense_id}`,
+									token,
+								),
 							);
 							if (cancelled) return;
 							if (sameSpace) {
@@ -5363,9 +5372,11 @@ export const MiniApp = ({
 				if (added) {
 					const expenseID = Number(added.metadata.expense_id);
 					if (expenseID > 0) {
-						const expense = await apiRequest<Expense>(
-							`/spaces/${spaceID}/expenses/${expenseID}`,
-							token,
+						const expense = normalizeExpenseRecord(
+							await apiRequest<Expense>(
+								`/spaces/${spaceID}/expenses/${expenseID}`,
+								token,
+							),
 						);
 						if (cancelled) return;
 						const money = expenseDisplayMoney(
@@ -5688,12 +5699,13 @@ export const MiniApp = ({
 				token,
 				{ method: "POST", body: JSON.stringify(payload) },
 			);
-			setSavedReviewExpense(result.expense);
+			const savedExpense = normalizeExpenseRecord(result.expense);
+			setSavedReviewExpense(savedExpense);
 			trackFirstExpenseGoal(user?.id, expenses.length);
 			if (targetSpaceID === spaceID)
 				setExpenses((current) => [
-					result.expense,
-					...current.filter((expense) => expense.id !== result.expense.id),
+					savedExpense,
+					...current.filter((expense) => expense.id !== savedExpense.id),
 				]);
 			setReviewCandidates((current) =>
 				current.filter((candidate) => candidate.id !== reviewDraft.candidateID),
@@ -5705,7 +5717,7 @@ export const MiniApp = ({
 						targetSpaceID,
 						completingPlanID,
 						completingPlanItemIDs,
-						result.expense.id,
+						savedExpense.id,
 					);
 				} catch {
 					planCompletionFailed = true;
@@ -8346,12 +8358,13 @@ export const MiniApp = ({
 		openedRequestedExpense.current = true;
 		void (async () => {
 			try {
-				const expense =
+				const expense = normalizeExpenseRecord(
 					expenses.find((item) => item.id === requestedExpenseID) ||
-					(await apiRequest<Expense>(
-						`/spaces/${spaceID}/expenses/${requestedExpenseID}`,
-						token,
-					));
+						(await apiRequest<Expense>(
+							`/spaces/${spaceID}/expenses/${requestedExpenseID}`,
+							token,
+						)),
+				);
 				setExpenses((current) =>
 					current.some(({ id }) => id === expense.id)
 						? current
