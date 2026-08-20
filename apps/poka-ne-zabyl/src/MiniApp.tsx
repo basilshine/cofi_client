@@ -2788,6 +2788,7 @@ export const MiniApp = ({
 	const showReadyCandidate =
 		readyCandidate &&
 		view !== "review" &&
+		view !== "overview" &&
 		readyCandidate.source_document_id !== dismissedCaptureSourceID;
 	const quotaLevel: QuotaLevel | null = forcedQuotaLevel
 		? forcedQuotaLevel
@@ -4151,8 +4152,6 @@ export const MiniApp = ({
 	);
 
 	useEffect(() => {
-		setCaptures([]);
-		setReviewCandidates([]);
 		setDismissedCaptureSourceID(0);
 		setCaptureFailure("");
 		expensePageLoadSequence.current += 1;
@@ -4163,7 +4162,13 @@ export const MiniApp = ({
 		setLoadingMorePlans(false);
 		setExpensePageError("");
 		setPlanPageError("");
-		if (previewMode) return;
+		if (previewMode) {
+			setCaptures(previewCaptures);
+			setReviewCandidates(previewReviewCandidates);
+			return;
+		}
+		setCaptures([]);
+		setReviewCandidates([]);
 		setExpenses([]);
 		setPlans([]);
 		setMembers([]);
@@ -12311,7 +12316,16 @@ const Overview = ({
 	onManual: () => void;
 	onConfigureLocale: () => void;
 }) => {
-	const [openFolder, setOpenFolder] = useState<string | null>(null);
+	const [openFolder, setOpenFolder] = useState<string | null>(() =>
+		pendingCandidates.length > 0 ? "reviews" : null,
+	);
+	const previousPendingCount = useRef(pendingCandidates.length);
+	useEffect(() => {
+		if (pendingCandidates.length > previousPendingCount.current) {
+			setOpenFolder("reviews");
+		}
+		previousPendingCount.current = pendingCandidates.length;
+	}, [pendingCandidates.length]);
 	if (!hasAnyExpenses && plans.length === 0 && pendingCandidates.length === 0) {
 		return (
 			<FirstExpenseEmpty
