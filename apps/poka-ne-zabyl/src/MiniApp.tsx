@@ -206,6 +206,7 @@ import {
 
 type View =
 	| "overview"
+	| "reports"
 	| "report"
 	| "expenses"
 	| "vendors"
@@ -215,6 +216,8 @@ type View =
 	| "profile"
 	| "developer-users"
 	| "review";
+
+type ReportPeriodPreset = "month" | "3m" | "6m" | "12m" | "custom";
 
 type TelegramWidgetUser = {
 	id?: number;
@@ -533,7 +536,7 @@ type PeriodReport = {
 	id: number;
 	tenant_id: number;
 	space_id: number;
-	kind: "week" | "month";
+	kind: "week" | "month" | "range";
 	period_start: string;
 	period_end: string;
 	revision: number;
@@ -1754,6 +1757,20 @@ const previewReports: PeriodReport[] = [
 	previewReport,
 	{
 		...previewReport,
+		id: 899,
+		kind: "range",
+		period_start: "2026-05-01",
+		period_end: "2026-07-31",
+		facts: {
+			...previewReport.facts,
+			total_spent: 235_050,
+			previous_total: 211_400,
+			delta_ratio: 0.112,
+		},
+		advice: undefined,
+	},
+	{
+		...previewReport,
 		id: 900,
 		period_start: "2026-06-01",
 		period_end: "2026-06-30",
@@ -2337,6 +2354,7 @@ const initialView = (): View => {
 	if (requestedFeedbackID > 0) return "profile";
 	const requested = new URLSearchParams(window.location.search).get("view");
 	return requested === "expenses" ||
+		requested === "reports" ||
 		requested === "report" ||
 		requested === "categories" ||
 		requested === "vendors" ||
@@ -2434,10 +2452,21 @@ export const MiniApp = ({
 	const [notifications, setNotifications] = useState<AppNotification[]>([]);
 	const [reports, setReports] = useState<PeriodReport[]>([]);
 	const [reportID, setReportID] = useState(requestedReportID);
+	const [reportReturnView, setReportReturnView] = useState<
+		"overview" | "reports"
+	>("overview");
 	const [reportLoading, setReportLoading] = useState(false);
 	const [reportAdviceLoading, setReportAdviceLoading] = useState(false);
 	const [reportMonthOpen, setReportMonthOpen] = useState(false);
 	const [reportMonth, setReportMonth] = useState(latestCompletedReportMonth);
+	const [reportPeriodPreset, setReportPeriodPreset] =
+		useState<ReportPeriodPreset>("month");
+	const [reportRangeStart, setReportRangeStart] = useState(
+		() => reportPresetRange("3m").start,
+	);
+	const [reportRangeEnd, setReportRangeEnd] = useState(
+		() => reportPresetRange("3m").end,
+	);
 	const [reportGenerating, setReportGenerating] = useState(false);
 	const knownNotificationIDs = useRef<Set<number> | null>(null);
 	const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
@@ -4259,7 +4288,7 @@ export const MiniApp = ({
 					() => null,
 				),
 				apiRequest<{ reports: PeriodReport[] }>(
-					`/spaces/${spaceID}/reports?limit=12&currency=${encodeURIComponent(reportingCurrency)}`,
+					`/spaces/${spaceID}/reports?limit=50&currency=${encodeURIComponent(reportingCurrency)}`,
 					token,
 				).catch(() => ({ reports: [] })),
 			]);
@@ -4354,6 +4383,7 @@ export const MiniApp = ({
 	};
 
 	const openPeriodReport = (id: number) => {
+		setReportReturnView(view === "reports" ? "reports" : "overview");
 		setReportID(id);
 		setView("report");
 		const query = new URLSearchParams(window.location.search);
@@ -4362,12 +4392,29 @@ export const MiniApp = ({
 		query.set("report_id", String(id));
 		window.history.replaceState(null, "", `/app?${query.toString()}`);
 	};
-	const generateMonthlyReport = async () => {
-		if (!reportMonth || reportGenerating) return;
+	const openReportsArchive = () => {
+		setReportID(0);
+		setView("reports");
+		const query = new URLSearchParams(window.location.search);
+		query.set("view", "reports");
+		query.set("space_id", String(spaceID));
+		query.delete("report_id");
+		window.history.replaceState(null, "", `/app?${query.toString()}`);
+	};
+	const generatePeriodReport = async () => {
+		const selectedPeriod = reportPeriodSelection(
+			reportPeriodPreset,
+			reportMonth,
+			reportRangeStart,
+			reportRangeEnd,
+		);
+		if (!selectedPeriod || reportGenerating) return;
 		if (previewMode) {
 			const report = reports.find(
 				(item) =>
-					item.kind === "month" && item.period_start.startsWith(reportMonth),
+					item.kind === selectedPeriod.kind &&
+					item.period_start === selectedPeriod.start &&
+					item.period_end === selectedPeriod.end,
 			);
 			setReportMonthOpen(false);
 			if (report) openPeriodReport(report.id);
@@ -4381,7 +4428,17 @@ export const MiniApp = ({
 			const report = await apiRequest<PeriodReport>(
 				`/spaces/${spaceID}/reports?currency=${encodeURIComponent(reportingCurrency)}`,
 				token,
-				{ method: "POST", body: JSON.stringify({ month: reportMonth }) },
+				{
+					method: "POST",
+					body: JSON.stringify(
+						selectedPeriod.kind === "month"
+							? { month: reportMonth }
+							: {
+									start_date: selectedPeriod.start,
+									end_date: selectedPeriod.end,
+								},
+					),
+				},
 			);
 			setReports((current) =>
 				[
@@ -4391,7 +4448,8 @@ export const MiniApp = ({
 							item.id !== report.id &&
 							!(
 								item.kind === report.kind &&
-								item.period_start === report.period_start
+								item.period_start === report.period_start &&
+								item.period_end === report.period_end
 							),
 					),
 				].sort(
@@ -4412,9 +4470,11 @@ export const MiniApp = ({
 			setError(
 				err instanceof ApiError && err.code === "period_report_empty"
 					? uiText(language, "reportEmpty")
-					: err instanceof Error
-						? err.message
-						: "Не удалось сформировать сводку",
+					: err instanceof ApiError && err.code === "invalid_report_period"
+						? uiText(language, "reportPeriodInvalid")
+						: err instanceof Error
+							? err.message
+							: "Не удалось сформировать сводку",
 			);
 		} finally {
 			setReportGenerating(false);
@@ -4422,9 +4482,9 @@ export const MiniApp = ({
 	};
 	const closePeriodReport = () => {
 		setReportID(0);
-		setView("overview");
+		setView(reportReturnView);
 		const query = new URLSearchParams(window.location.search);
-		query.set("view", "overview");
+		query.set("view", reportReturnView);
 		query.delete("report_id");
 		window.history.replaceState(null, "", `/app?${query.toString()}`);
 	};
@@ -9145,6 +9205,29 @@ export const MiniApp = ({
 					<LoadingRows label={contentLoadingLabel} />
 				) : (
 					<>
+						{view === "reports" && (
+							<PeriodReportsArchive
+								reports={reports}
+								language={language}
+								onBack={() => {
+									setView("overview");
+									const query = new URLSearchParams(window.location.search);
+									query.set("view", "overview");
+									window.history.replaceState(
+										null,
+										"",
+										`/app?${query.toString()}`,
+									);
+								}}
+								onOpen={openPeriodReport}
+								onCreate={() => {
+									setError("");
+									setReportMonth(latestCompletedReportMonth());
+									setReportPeriodPreset("month");
+									setReportMonthOpen(true);
+								}}
+							/>
+						)}
 						{view === "report" && (
 							<PeriodReportView
 								report={selectedReport || null}
@@ -9153,6 +9236,7 @@ export const MiniApp = ({
 								adviceLoading={reportAdviceLoading}
 								hasPlus={activeSpaceHasPlus}
 								language={language}
+								backToArchive={reportReturnView === "reports"}
 								onBack={closePeriodReport}
 								onExpenses={() => {
 									if (!selectedReport) return;
@@ -9207,10 +9291,13 @@ export const MiniApp = ({
 								hasAnyExpenses={expenses.length > 0}
 								pendingCandidates={pendingReviewCandidates}
 								latestReport={latestReport}
+								reports={reports}
 								onReport={openPeriodReport}
+								onReports={openReportsArchive}
 								onCreateReport={() => {
 									setError("");
 									setReportMonth(latestCompletedReportMonth());
+									setReportPeriodPreset("month");
 									setReportMonthOpen(true);
 								}}
 								onConfigureLocale={openProfileEditor}
@@ -9747,7 +9834,9 @@ export const MiniApp = ({
 				aria-label={uiText(language, "navLabel")}
 			>
 				<NavButton
-					active={view === "overview" || view === "report"}
+					active={
+						view === "overview" || view === "reports" || view === "report"
+					}
 					label={uiText(language, "navOverview")}
 					icon={<House />}
 					onClick={() => {
@@ -10532,12 +10621,27 @@ export const MiniApp = ({
 			{reportMonthOpen && (
 				<ReportMonthDialog
 					language={language}
+					preset={reportPeriodPreset}
 					month={reportMonth}
+					minMonth={earliestCompletedReportMonth()}
 					maxMonth={latestCompletedReportMonth()}
+					startDate={reportRangeStart}
+					endDate={reportRangeEnd}
+					minDate={earliestReportRangeDate()}
+					maxDate={latestReportRangeDate()}
 					generating={reportGenerating}
 					error={error}
+					onPreset={setReportPeriodPreset}
 					onMonth={setReportMonth}
-					onGenerate={() => void generateMonthlyReport()}
+					onStartDate={(value) => {
+						setReportRangeStart(value);
+						if (value && value > reportRangeEnd) setReportRangeEnd(value);
+					}}
+					onEndDate={(value) => {
+						setReportRangeEnd(value);
+						if (value && value < reportRangeStart) setReportRangeStart(value);
+					}}
+					onGenerate={() => void generatePeriodReport()}
 					onClose={() => setReportMonthOpen(false)}
 				/>
 			)}
@@ -11754,21 +11858,41 @@ const ReviewSaved = ({
 
 const reportKindTitle = (kind: PeriodReport["kind"], language: UILanguage) => {
 	if (language === "en")
-		return kind === "week" ? "Weekly summary" : "Monthly summary";
+		return kind === "week"
+			? "Weekly summary"
+			: kind === "range"
+				? "Period summary"
+				: "Monthly summary";
 	if (language === "es")
-		return kind === "week" ? "Resumen semanal" : "Resumen mensual";
-	return kind === "week" ? "Сводка за неделю" : "Сводка за месяц";
+		return kind === "week"
+			? "Resumen semanal"
+			: kind === "range"
+				? "Resumen del período"
+				: "Resumen mensual";
+	return kind === "week"
+		? "Сводка за неделю"
+		: kind === "range"
+			? "Сводка за период"
+			: "Сводка за месяц";
 };
 
 const reportPeriodLabel = (report: PeriodReport, language: UILanguage) => {
+	return reportDateRangeLabel(report.period_start, report.period_end, language);
+};
+
+const reportDateRangeLabel = (
+	periodStart: string,
+	periodEnd: string,
+	language: UILanguage,
+) => {
 	const locale =
 		language === "ru" ? "ru-RU" : language === "es" ? "es-ES" : "en-US";
 	const formatter = new Intl.DateTimeFormat(locale, {
 		day: "numeric",
 		month: "long",
 	});
-	const start = formatter.format(new Date(`${report.period_start}T00:00:00`));
-	const end = formatter.format(new Date(`${report.period_end}T00:00:00`));
+	const start = formatter.format(new Date(`${periodStart}T00:00:00`));
+	const end = formatter.format(new Date(`${periodEnd}T00:00:00`));
 	return `${start} — ${end}`;
 };
 
@@ -11806,6 +11930,150 @@ const reportTrendMonthsLabel = (
 	return `${months} мес`;
 };
 
+const reportChangeSummary = (report: PeriodReport, language: UILanguage) => {
+	const previous = report.facts.previous_total;
+	const ratio =
+		typeof report.facts.delta_ratio === "number"
+			? report.facts.delta_ratio
+			: previous > 0
+				? (report.facts.total_spent - previous) / previous
+				: null;
+	if (ratio === null) {
+		return {
+			label: uiText(language, "reportFirstComparison"),
+			tone: "neutral" as const,
+		};
+	}
+	if (Math.abs(ratio) < 0.005) {
+		return {
+			label: uiText(language, "reportChangeSame"),
+			tone: "neutral" as const,
+		};
+	}
+	const value = new Intl.NumberFormat(language, {
+		style: "percent",
+		maximumFractionDigits: 0,
+	}).format(Math.abs(ratio));
+	return {
+		label: uiText(
+			language,
+			ratio > 0 ? "reportChangeUp" : "reportChangeDown",
+		).replace("{value}", value),
+		tone: ratio > 0 ? ("up" as const) : ("down" as const),
+	};
+};
+
+const PeriodReportsArchive = ({
+	reports,
+	language,
+	onBack,
+	onOpen,
+	onCreate,
+}: {
+	reports: PeriodReport[];
+	language: UILanguage;
+	onBack: () => void;
+	onOpen: (id: number) => void;
+	onCreate: () => void;
+}) => {
+	const reportsByYear = reports.reduce<Map<string, PeriodReport[]>>(
+		(groups, report) => {
+			const year = report.period_end.slice(0, 4);
+			groups.set(year, [...(groups.get(year) || []), report]);
+			return groups;
+		},
+		new Map(),
+	);
+	return (
+		<section className="mini-view mini-report-archive">
+			<header className="mini-report-archive-header">
+				<div className="mini-report-archive-actions">
+					<button className="mini-report-home" type="button" onClick={onBack}>
+						<ArrowLeft size={18} weight="bold" />
+						{uiText(language, "navOverview")}
+					</button>
+					<button
+						className="mini-report-archive-create"
+						type="button"
+						onClick={onCreate}
+					>
+						<Plus size={17} weight="bold" />
+						{uiText(language, "createReport")}
+					</button>
+				</div>
+				<div className="mini-report-archive-heading">
+					<p>{uiText(language, "reportArchiveEyebrow")}</p>
+					<h1>{uiText(language, "reportArchiveTitle")}</h1>
+					<span>{uiText(language, "reportArchiveHint")}</span>
+					<small>
+						{uiText(language, "reportArchiveCount").replace(
+							"{count}",
+							String(reports.length),
+						)}
+					</small>
+				</div>
+			</header>
+
+			{reports.length > 0 ? (
+				<div className="mini-report-archive-years">
+					{[...reportsByYear.entries()].map(([year, yearReports]) => (
+						<section key={year} className="mini-report-archive-year">
+							<h2>{year}</h2>
+							<div className="mini-report-archive-list">
+								{yearReports.map((report) => {
+									const change = reportChangeSummary(report, language);
+									const topCategory = [...report.facts.categories].sort(
+										(left, right) => right.spent - left.spent,
+									)[0];
+									return (
+										<button
+											key={report.id}
+											type="button"
+											onClick={() => onOpen(report.id)}
+										>
+											<span className="mini-report-archive-icon">
+												<ChartLineUp size={21} weight="bold" />
+											</span>
+											<span className="mini-report-archive-copy">
+												<small>{reportKindTitle(report.kind, language)}</small>
+												<strong>{reportPeriodLabel(report, language)}</strong>
+												{topCategory && (
+													<span>
+														{uiText(language, "homeLeadingCategory")
+															.replace("{name}", topCategory.name)
+															.replace(
+																"{amount}",
+																formatMoney(topCategory.spent, report.currency),
+															)}
+													</span>
+												)}
+											</span>
+											<span className="mini-report-archive-total">
+												<strong>
+													{formatMoney(
+														report.facts.total_spent,
+														report.currency,
+													)}
+												</strong>
+												<small className={`is-${change.tone}`}>
+													{change.label}
+												</small>
+											</span>
+											<ArrowRight size={17} weight="bold" />
+										</button>
+									);
+								})}
+							</div>
+						</section>
+					))}
+				</div>
+			) : (
+				<Empty text={uiText(language, "createReportHint")} />
+			)}
+		</section>
+	);
+};
+
 const PeriodReportView = ({
 	report,
 	reports,
@@ -11813,6 +12081,7 @@ const PeriodReportView = ({
 	adviceLoading,
 	hasPlus,
 	language,
+	backToArchive,
 	onBack,
 	onExpenses,
 	onCategory,
@@ -11826,6 +12095,7 @@ const PeriodReportView = ({
 	adviceLoading: boolean;
 	hasPlus: boolean;
 	language: UILanguage;
+	backToArchive: boolean;
 	onBack: () => void;
 	onExpenses: () => void;
 	onCategory: (id: number) => void;
@@ -11834,16 +12104,16 @@ const PeriodReportView = ({
 	onUpgrade: () => void;
 }) => {
 	const [trendMonths, setTrendMonths] = useState<ReportTrendMonths>(6);
+	const backLabel = uiText(
+		language,
+		backToArchive ? "allReports" : "navOverview",
+	);
 	if (!report) {
 		return (
 			<section className="mini-view mini-report-view">
 				<button className="mini-report-home" type="button" onClick={onBack}>
-					<House size={18} weight="fill" />
-					{language === "ru"
-						? "На главный экран"
-						: language === "es"
-							? "A la pantalla principal"
-							: "Back to home"}
+					<ArrowLeft size={18} weight="bold" />
+					{backLabel}
 				</button>
 				{loading ? <LoadingRows /> : <Empty text="Сводка не найдена" />}
 			</section>
@@ -11875,12 +12145,8 @@ const PeriodReportView = ({
 		<section className="mini-view mini-report-view">
 			<header className="mini-report-header">
 				<button className="mini-report-home" type="button" onClick={onBack}>
-					<House size={18} weight="fill" />
-					{language === "ru"
-						? "На главный экран"
-						: language === "es"
-							? "A la pantalla principal"
-							: "Back to home"}
+					<ArrowLeft size={18} weight="bold" />
+					{backLabel}
 				</button>
 				<div className="mini-report-heading">
 					<p>{reportKindTitle(report.kind, language)}</p>
@@ -12260,7 +12526,9 @@ const Overview = ({
 	hasAnyExpenses,
 	pendingCandidates,
 	latestReport,
+	reports,
 	onReport,
+	onReports,
 	onCreateReport,
 	onCategory,
 	onManageBudgets,
@@ -12298,7 +12566,9 @@ const Overview = ({
 	hasAnyExpenses: boolean;
 	pendingCandidates: ReviewCandidate[];
 	latestReport: PeriodReport | null;
+	reports: PeriodReport[];
 	onReport: (id: number) => void;
+	onReports: () => void;
 	onCreateReport: () => void;
 	onCategory: (id: number, period?: Period) => void;
 	onManageBudgets: () => void;
@@ -12352,10 +12622,19 @@ const Overview = ({
 			return left.due_date.localeCompare(right.due_date);
 		})
 		.slice(0, 3);
-	const overduePlanCount = partitionOverduePurchasePlans(
+	const overduePlans = partitionOverduePurchasePlans(
 		planSeries,
 		localISODate(),
-	).overdue.length;
+	).overdue;
+	const overduePlanCount = overduePlans.length;
+	const overduePlanTotal = overduePlans.reduce(
+		(sum, plan) => sum + planDisplayMoney(plan, currency).amount,
+		0,
+	);
+	const todayPlanCount = planSeries.filter((plan) =>
+		isPlanDueToday(plan.due_date),
+	).length;
+	const planActionCount = overduePlanCount + todayPlanCount;
 	const monthPlanBounds = planPeriodBounds("month");
 	const monthPlans = filterPurchasePlans(planSeries, {
 		query: "",
@@ -12382,10 +12661,12 @@ const Overview = ({
 			"{count}",
 			String(upcomingPlans.length),
 		),
-		overduePlanCount > 0
-			? `${uiText(language, "planOverdue")}: ${overduePlanCount}`
+		todayPlanCount > 0
+			? `${uiText(language, "periodToday")}: ${todayPlanCount}`
 			: "",
-		formatMoney(monthPlannedTotal, currency),
+		overduePlanCount > 0
+			? `${uiText(language, "planOverdue")}: ${overduePlanCount} · ${formatMoney(overduePlanTotal, currency)}`
+			: "",
 	]
 		.filter(Boolean)
 		.join(" · ");
@@ -12405,6 +12686,13 @@ const Overview = ({
 	const owedToYouTotal = splitBalances
 		.filter((balance) => balance.creditorUserID === currentUserID)
 		.reduce((sum, balance) => sum + balance.amount, 0);
+	const splitActionCount = splitBalances.filter(
+		(balance) =>
+			(balance.debtorUserID === currentUserID &&
+				balance.settlementStatus !== "sent") ||
+			(balance.creditorUserID === currentUserID &&
+				balance.settlementStatus === "sent"),
+	).length;
 	const splitSummary =
 		youOweTotal > 0 || owedToYouTotal > 0
 			? [
@@ -12418,14 +12706,44 @@ const Overview = ({
 					.filter(Boolean)
 					.join(" · ")
 			: `${uiText(language, "homeBalanceCount").replace("{count}", String(splitBalances.length))} · ${formatMoney(splitBalanceTotal, currency)}`;
-	const categoryTotal = categories.reduce(
-		(sum, category) => sum + category.homeAmount,
-		0,
-	);
+	const leadingCategory = [...categories].sort(
+		(left, right) => right.homeAmount - left.homeAmount,
+	)[0];
 	const recentExpenses = latestExpenses.slice(0, 4);
-	const recentExpenseTotal = recentExpenses.reduce(
-		(sum, expense) => sum + expenseDisplayMoney(expense, currency).amount,
-		0,
+	const latestExpense = recentExpenses[0];
+	const latestExpenseMoney = latestExpense
+		? expenseDisplayMoney(latestExpense, currency)
+		: null;
+	const leadingCategorySummary = leadingCategory
+		? uiText(language, "homeLeadingCategory")
+				.replace("{name}", localizedCategoryName(leadingCategory, language))
+				.replace("{amount}", formatMoney(leadingCategory.homeAmount, currency))
+		: uiText(language, "homeCategoryCount").replace(
+				"{count}",
+				String(categories.length),
+			);
+	const latestExpenseSummary =
+		latestExpense && latestExpenseMoney
+			? uiText(language, "homeLatestExpense")
+					.replace(
+						"{name}",
+						latestExpense.title ||
+							latestExpense.vendor_name ||
+							latestExpense.items[0]?.name ||
+							uiText(language, "recognizedExpense"),
+					)
+					.replace(
+						"{amount}",
+						formatMoney(latestExpenseMoney.amount, latestExpenseMoney.currency),
+					)
+			: uiText(language, "homeExpenseCount").replace("{count}", "0");
+	const completedMonth = latestCompletedReportMonth();
+	const completedMonthName = new Intl.DateTimeFormat(language, {
+		month: "long",
+	}).format(new Date(`${completedMonth}-01T12:00:00`));
+	const hasCompletedMonthReport = reports.some(
+		(report) =>
+			report.kind === "month" && report.period_start.startsWith(completedMonth),
 	);
 	const toggleFolder = (folder: string) =>
 		setOpenFolder((current) => (current === folder ? null : folder));
@@ -12442,12 +12760,13 @@ const Overview = ({
 				<div className="mini-overview-summary">
 					<div className="mini-total">
 						<span className="mini-total-context" title={spaceName}>
-							{spaceName
-								? `${spaceName} · ${monthName}`
-								: uiText(language, "thisMonth")}
+							{uiText(language, "homeSpentIn").replace("{month}", month)}
 						</span>
 						<strong>{formatMoney(total, currency)}</strong>
-						<small>{expenseCountText(expenses.length, language)}</small>
+						<small title={spaceName}>
+							{expenseCountText(expenses.length, language)}
+							{spaceName ? ` · ${spaceName}` : ""}
+						</small>
 						<button
 							className="mini-total-plans"
 							type="button"
@@ -12460,346 +12779,382 @@ const Overview = ({
 							<ArrowRight size={16} />
 						</button>
 					</div>
-					<div className="mini-home-folder-stack">
-						{pendingCandidates.length > 0 && (
-							<HomeFolder
-								id="reviews"
-								title={uiText(language, "pendingReviews")}
-								summary={uiText(language, "homePendingCount").replace(
-									"{count}",
-									String(pendingCandidates.length),
-								)}
-								icon={<Sparkle size={20} weight="fill" />}
-								tone="reviews"
-								open={openFolder === "reviews"}
-								alert
-								onToggle={() => toggleFolder("reviews")}
+					<div className="mini-home-stream">
+						{!hasCompletedMonthReport && (
+							<button
+								className="mini-home-report-prompt"
+								type="button"
+								onClick={onCreateReport}
 							>
-								<div className="mini-pending-review-list">
-									{pendingCandidates.map((candidate) => {
-										const data = candidate.structured_data || {};
-										const isPlan =
-											candidate.candidate_type === "purchase_plan_candidate";
-										const amount = readNumber(
-											data,
-											"expected_amount",
-											"total",
-											"total_amount",
-											"amount",
-										);
-										const candidateCurrency =
-											readString(data, "source_currency", "currency") ||
-											currency;
-										return (
-											<button
-												key={candidate.id}
-												type="button"
-												onClick={() => onReviewCandidate(candidate)}
-											>
-												<span className="mini-pending-review-icon">
-													{isPlan ? (
-														<ShoppingBagOpen size={18} />
-													) : (
-														<Receipt size={18} />
-													)}
-												</span>
-												<span className="mini-pending-review-copy">
-													<b>
-														{candidate.title ||
-															uiText(
-																language,
-																isPlan ? "recognizedPlan" : "recognizedExpense",
-															)}
-													</b>
-													<small>
-														{uiText(
-															language,
-															isPlan ? "pendingPlan" : "notSaved",
+								<span className="mini-home-report-prompt-icon">
+									<ChartLineUp size={19} weight="bold" />
+								</span>
+								<span className="mini-home-report-prompt-copy">
+									<strong>
+										{uiText(language, "homeReportPromptTitle").replace(
+											"{month}",
+											completedMonthName,
+										)}
+									</strong>
+									<small>{uiText(language, "homeReportPromptHint")}</small>
+								</span>
+								<span className="mini-home-report-prompt-action">
+									{uiText(language, "homeReportPromptAction")}
+									<ArrowRight size={15} weight="bold" />
+								</span>
+							</button>
+						)}
+						<div className="mini-home-folder-stack">
+							{pendingCandidates.length > 0 && (
+								<HomeFolder
+									id="reviews"
+									language={language}
+									title={uiText(language, "pendingReviews")}
+									summary={uiText(language, "homePendingCount").replace(
+										"{count}",
+										String(pendingCandidates.length),
+									)}
+									icon={<Sparkle size={20} weight="fill" />}
+									tone="reviews"
+									open={openFolder === "reviews"}
+									alert
+									attentionCount={pendingCandidates.length}
+									onToggle={() => toggleFolder("reviews")}
+								>
+									<div className="mini-pending-review-list">
+										{pendingCandidates.map((candidate) => {
+											const data = candidate.structured_data || {};
+											const isPlan =
+												candidate.candidate_type === "purchase_plan_candidate";
+											const amount = readNumber(
+												data,
+												"expected_amount",
+												"total",
+												"total_amount",
+												"amount",
+											);
+											const candidateCurrency =
+												readString(data, "source_currency", "currency") ||
+												currency;
+											return (
+												<button
+													key={candidate.id}
+													type="button"
+													onClick={() => onReviewCandidate(candidate)}
+												>
+													<span className="mini-pending-review-icon">
+														{isPlan ? (
+															<ShoppingBagOpen size={18} />
+														) : (
+															<Receipt size={18} />
 														)}
+													</span>
+													<span className="mini-pending-review-copy">
+														<b>
+															{candidate.title ||
+																uiText(
+																	language,
+																	isPlan
+																		? "recognizedPlan"
+																		: "recognizedExpense",
+																)}
+														</b>
+														<small>
+															{uiText(
+																language,
+																isPlan ? "pendingPlan" : "notSaved",
+															)}
+														</small>
+													</span>
+													{amount > 0 && (
+														<strong>
+															{formatMoney(amount, candidateCurrency)}
+														</strong>
+													)}
+												</button>
+											);
+										})}
+									</div>
+								</HomeFolder>
+							)}
+							{upcomingPlans.length > 0 && (
+								<HomeFolder
+									id="plans"
+									language={language}
+									title={uiText(language, "upcomingPlans")}
+									summary={homePlanSummary}
+									icon={<ShoppingBagOpen size={20} weight="bold" />}
+									tone="plans"
+									open={openFolder === "plans"}
+									alert={planActionCount > 0}
+									critical={overduePlanCount > 0}
+									attentionCount={planActionCount}
+									onToggle={() => toggleFolder("plans")}
+									actionLabel={uiText(language, "viewAll")}
+									onAction={() => onPlans()}
+								>
+									<div className="mini-home-plan-list">
+										{upcomingPlans.map((plan) => {
+											const vendorName =
+												plan.vendor_name ||
+												vendors.find((vendor) => vendor.id === plan.vendor_id)
+													?.name;
+											const planMoney = planDisplayMoney(plan, currency);
+											const originalMoney = planOriginalMoney(
+												plan,
+												planMoney.currency,
+											);
+											return (
+												<PlanRecordCard
+													key={plan.id}
+													plan={plan}
+													capture={captureForPlan(plan, captures)}
+													members={members}
+													language={language}
+													amount={planMoney.amount}
+													currency={planMoney.currency}
+													originalMoney={originalMoney}
+													vendorName={vendorName}
+													onOpen={() => onEditPlan(plan)}
+													onBuy={() => onBuyPlan(plan)}
+													onCancel={() => onCancelPlan(plan)}
+												/>
+											);
+										})}
+									</div>
+								</HomeFolder>
+							)}
+							{participants.length > 1 && (
+								<HomeFolder
+									id="splits"
+									language={language}
+									title={uiText(language, "homeDebts")}
+									summary={splitSummary}
+									icon={<ArrowsLeftRight size={20} weight="bold" />}
+									tone="debts"
+									open={openFolder === "splits"}
+									alert={splitActionCount > 0}
+									attentionCount={splitActionCount}
+									onToggle={() => toggleFolder("splits")}
+									actionLabel={uiText(language, "viewAll")}
+									onAction={onSplits}
+								>
+									<div className="mini-home-splits-body">
+										<span className="mini-home-splits-copy">
+											{splitBalances.length > 0 ? (
+												splitBalances.slice(0, 2).map((balance) => {
+													const canOpenSettlement =
+														balance.debtorUserID === currentUserID ||
+														(balance.settlementStatus === "sent" &&
+															balance.creditorUserID === currentUserID);
+													return (
+														<span
+															key={balance.key}
+															className={`mini-home-debt-row${balance.debtorUserID === currentUserID ? " is-outgoing" : balance.creditorUserID === currentUserID ? " is-incoming" : ""}`}
+														>
+															<span className="mini-home-debt-main">
+																<span className="mini-home-debt-copy">
+																	<small>
+																		{balance.debtorUserID === currentUserID
+																			? uiText(language, "splitYouOwe")
+																			: balance.creditorUserID === currentUserID
+																				? uiText(language, "splitOwedToYou")
+																				: uiText(language, "homeDebts")}
+																	</small>
+																	<b>
+																		{balance.debtorUserID === currentUserID
+																			? balance.creditorName
+																			: balance.creditorUserID === currentUserID
+																				? balance.debtorName
+																				: `${balance.debtorName} → ${balance.creditorName}`}
+																	</b>
+																</span>
+																<strong>
+																	{formatMoney(balance.amount, currency)}
+																</strong>
+															</span>
+															{canOpenSettlement && (
+																<button
+																	type="button"
+																	disabled={splitSaving}
+																	onClick={() => onSettleSplit(balance)}
+																>
+																	{balance.settlementStatus === "sent" ? (
+																		balance.creditorUserID === currentUserID ? (
+																			<Check size={13} weight="bold" />
+																		) : (
+																			<PaperPlaneTilt size={13} weight="fill" />
+																		)
+																	) : (
+																		<PaperPlaneTilt size={13} weight="bold" />
+																	)}
+																	{balance.settlementStatus === "sent"
+																		? balance.creditorUserID === currentUserID
+																			? uiText(
+																					language,
+																					"settlementConfirmShort",
+																				)
+																			: uiText(
+																					language,
+																					"settlementWaitingShort",
+																				)
+																		: uiText(language, "settlementSubmitShort")}
+																</button>
+															)}
+														</span>
+													);
+												})
+											) : (
+												<span>
+													<b>{uiText(language, "sharedNotSplit")}</b>
+													<small>
+														{uiText(language, "openExpenseToSplit")}
 													</small>
 												</span>
-												{amount > 0 && (
+											)}
+										</span>
+									</div>
+								</HomeFolder>
+							)}
+							<HomeFolder
+								id="categories"
+								language={language}
+								title={uiText(language, "categoryOverview")}
+								summary={leadingCategorySummary}
+								icon={<Tag size={20} weight="bold" />}
+								tone="categories"
+								open={openFolder === "categories"}
+								onToggle={() => toggleFolder("categories")}
+								actionLabel={uiText(language, "viewAll")}
+								onAction={onManageBudgets}
+							>
+								<div className="mini-home-categories">
+									{categories.map((category) => {
+										const period = uiText(
+											language,
+											category.budget_period === "week"
+												? "forWeek"
+												: "forMonth",
+										);
+										const status = `${uiText(language, "limit")} ${formatMoney(category.budget_amount || 0, currency)} · ${uiText(language, category.homeOverLimit ? "overLimitBy" : "remaining")} ${formatMoney(category.homeDifference, currency)} · ${period}`;
+										return (
+											<button
+												className={category.homeOverLimit ? "is-over" : ""}
+												key={category.id}
+												type="button"
+												onClick={() => onCategory(category.id, "month")}
+											>
+												<span>
+													<span className="mini-home-category-title">
+														<b>{localizedCategoryName(category, language)}</b>
+														{category.pinned && (
+															<PushPin size={13} weight="fill" />
+														)}
+													</span>
 													<strong>
-														{formatMoney(amount, candidateCurrency)}
+														{formatMoney(category.homeAmount, currency)}
 													</strong>
+												</span>
+												{category.homeHasLimit ? (
+													<>
+														<small>{status}</small>
+														<span
+															className="mini-home-category-progress"
+															role="progressbar"
+															aria-label={status}
+															aria-valuemin={0}
+															aria-valuemax={100}
+															aria-valuenow={Math.round(category.homeProgress)}
+															tabIndex={0}
+														>
+															<i
+																style={{ width: `${category.homeProgress}%` }}
+															/>
+														</span>
+													</>
+												) : (
+													<span className="mini-home-category-no-limit">
+														<i />
+														{uiText(language, "limitNotSet")}
+													</span>
 												)}
 											</button>
 										);
 									})}
+									{categories.length === 0 && (
+										<Empty text={uiText(language, "noExpensesThisMonth")} />
+									)}
 								</div>
 							</HomeFolder>
-						)}
-						{upcomingPlans.length > 0 && (
 							<HomeFolder
-								id="plans"
-								title={uiText(language, "upcomingPlans")}
-								summary={homePlanSummary}
-								icon={<ShoppingBagOpen size={20} weight="bold" />}
-								tone="plans"
-								open={openFolder === "plans"}
-								alert={overduePlanCount > 0}
-								onToggle={() => toggleFolder("plans")}
-								actionLabel={uiText(language, "viewAll")}
-								onAction={() => onPlans()}
-							>
-								<div className="mini-home-plan-list">
-									{upcomingPlans.map((plan) => {
-										const vendorName =
-											plan.vendor_name ||
-											vendors.find((vendor) => vendor.id === plan.vendor_id)
-												?.name;
-										const planMoney = planDisplayMoney(plan, currency);
-										const originalMoney = planOriginalMoney(
-											plan,
-											planMoney.currency,
-										);
-										return (
-											<PlanRecordCard
-												key={plan.id}
-												plan={plan}
-												capture={captureForPlan(plan, captures)}
-												members={members}
-												language={language}
-												amount={planMoney.amount}
-												currency={planMoney.currency}
-												originalMoney={originalMoney}
-												vendorName={vendorName}
-												onOpen={() => onEditPlan(plan)}
-												onBuy={() => onBuyPlan(plan)}
-												onCancel={() => onCancelPlan(plan)}
-											/>
-										);
-									})}
-								</div>
-							</HomeFolder>
-						)}
-						{participants.length > 1 && (
-							<HomeFolder
-								id="splits"
-								title={uiText(language, "homeDebts")}
-								summary={splitSummary}
-								icon={<ArrowsLeftRight size={20} weight="bold" />}
-								tone="debts"
-								open={openFolder === "splits"}
-								alert={youOweTotal > 0}
-								onToggle={() => toggleFolder("splits")}
-								actionLabel={uiText(language, "viewAll")}
-								onAction={onSplits}
-							>
-								<div className="mini-home-splits-body">
-									<span className="mini-home-splits-copy">
-										{splitBalances.length > 0 ? (
-											splitBalances.slice(0, 2).map((balance) => {
-												const canOpenSettlement =
-													balance.debtorUserID === currentUserID ||
-													(balance.settlementStatus === "sent" &&
-														balance.creditorUserID === currentUserID);
-												return (
-													<span
-														key={balance.key}
-														className={`mini-home-debt-row${balance.debtorUserID === currentUserID ? " is-outgoing" : balance.creditorUserID === currentUserID ? " is-incoming" : ""}`}
-													>
-														<span className="mini-home-debt-main">
-															<span className="mini-home-debt-copy">
-																<small>
-																	{balance.debtorUserID === currentUserID
-																		? uiText(language, "splitYouOwe")
-																		: balance.creditorUserID === currentUserID
-																			? uiText(language, "splitOwedToYou")
-																			: uiText(language, "homeDebts")}
-																</small>
-																<b>
-																	{balance.debtorUserID === currentUserID
-																		? balance.creditorName
-																		: balance.creditorUserID === currentUserID
-																			? balance.debtorName
-																			: `${balance.debtorName} → ${balance.creditorName}`}
-																</b>
-															</span>
-															<strong>
-																{formatMoney(balance.amount, currency)}
-															</strong>
-														</span>
-														{canOpenSettlement && (
-															<button
-																type="button"
-																disabled={splitSaving}
-																onClick={() => onSettleSplit(balance)}
-															>
-																{balance.settlementStatus === "sent" ? (
-																	balance.creditorUserID === currentUserID ? (
-																		<Check size={13} weight="bold" />
-																	) : (
-																		<PaperPlaneTilt size={13} weight="fill" />
-																	)
-																) : (
-																	<PaperPlaneTilt size={13} weight="bold" />
-																)}
-																{balance.settlementStatus === "sent"
-																	? balance.creditorUserID === currentUserID
-																		? uiText(language, "settlementConfirmShort")
-																		: uiText(language, "settlementWaitingShort")
-																	: uiText(language, "settlementSubmitShort")}
-															</button>
-														)}
-													</span>
-												);
-											})
-										) : (
-											<span>
-												<b>{uiText(language, "sharedNotSplit")}</b>
-												<small>{uiText(language, "openExpenseToSplit")}</small>
-											</span>
-										)}
-									</span>
-								</div>
-							</HomeFolder>
-						)}
-						<HomeFolder
-							id="categories"
-							title={uiText(language, "categoryOverview")}
-							summary={`${uiText(language, "homeCategoryCount").replace("{count}", String(categories.length))} · ${formatMoney(categoryTotal, currency)}`}
-							icon={<Tag size={20} weight="bold" />}
-							tone="categories"
-							open={openFolder === "categories"}
-							onToggle={() => toggleFolder("categories")}
-							actionLabel={uiText(language, "viewAll")}
-							onAction={onManageBudgets}
-						>
-							<div className="mini-home-categories">
-								{categories.map((category) => {
-									const period = uiText(
-										language,
-										category.budget_period === "week" ? "forWeek" : "forMonth",
-									);
-									const status = `${uiText(language, "limit")} ${formatMoney(category.budget_amount || 0, currency)} · ${uiText(language, category.homeOverLimit ? "overLimitBy" : "remaining")} ${formatMoney(category.homeDifference, currency)} · ${period}`;
-									return (
-										<button
-											className={category.homeOverLimit ? "is-over" : ""}
-											key={category.id}
-											type="button"
-											onClick={() => onCategory(category.id, "month")}
-										>
-											<span>
-												<span className="mini-home-category-title">
-													<b>{localizedCategoryName(category, language)}</b>
-													{category.pinned && (
-														<PushPin size={13} weight="fill" />
-													)}
-												</span>
-												<strong>
-													{formatMoney(category.homeAmount, currency)}
-												</strong>
-											</span>
-											{category.homeHasLimit ? (
-												<>
-													<small>{status}</small>
-													<span
-														className="mini-home-category-progress"
-														role="progressbar"
-														aria-label={status}
-														aria-valuemin={0}
-														aria-valuemax={100}
-														aria-valuenow={Math.round(category.homeProgress)}
-														tabIndex={0}
-													>
-														<i style={{ width: `${category.homeProgress}%` }} />
-													</span>
-												</>
-											) : (
-												<span className="mini-home-category-no-limit">
-													<i />
-													{uiText(language, "limitNotSet")}
-												</span>
-											)}
-										</button>
-									);
-								})}
-								{categories.length === 0 && (
-									<Empty text={uiText(language, "noExpensesThisMonth")} />
-								)}
-							</div>
-						</HomeFolder>
-						<HomeFolder
-							id="recent"
-							title={uiText(language, "recentExpenses")}
-							summary={`${uiText(language, "homeExpenseCount").replace("{count}", String(recentExpenses.length))} · ${formatMoney(recentExpenseTotal, currency)}`}
-							icon={<Receipt size={20} weight="bold" />}
-							tone="recent"
-							open={openFolder === "recent"}
-							onToggle={() => toggleFolder("recent")}
-							actionLabel={uiText(language, "viewAll")}
-							onAction={onExpenses}
-						>
-							<ExpenseList
-								expenses={recentExpenses}
-								captures={captures}
-								participants={participants}
+								id="recent"
 								language={language}
-								currency={currency}
-								onEdit={onExpense}
-							/>
-						</HomeFolder>
-						<HomeFolder
-							id="reports"
-							title={uiText(language, "homeReports")}
-							summary={
-								latestReport
-									? uiText(language, "homeLatestReport").replace(
-											"{period}",
-											reportPeriodLabel(latestReport, language),
-										)
-									: uiText(language, "createReportHint")
-							}
-							icon={<ChartLineUp size={20} weight="bold" />}
-							tone="report"
-							open={openFolder === "reports"}
-							onToggle={() => toggleFolder("reports")}
-						>
-							<div className="mini-report-launch">
-								{latestReport && (
-									<button
-										className="mini-report-card"
-										type="button"
-										onClick={() => onReport(latestReport.id)}
-									>
-										<span className="mini-report-card-icon">
-											<ChartLineUp size={23} weight="bold" />
-										</span>
-										<span className="mini-report-card-copy">
-											<small>
-												{reportKindTitle(latestReport.kind, language)}
-											</small>
-											<strong>
-												{reportPeriodLabel(latestReport, language)}
-											</strong>
-											<span>{latestReport.facts.completeness_message}</span>
-										</span>
-										<span className="mini-report-card-total">
-											<strong>
-												{formatMoney(
-													latestReport.facts.total_spent,
-													latestReport.currency,
-												)}
-											</strong>
-											<ArrowRight size={17} />
-										</span>
-									</button>
-								)}
-								<button
-									className="mini-report-create"
-									type="button"
-									onClick={onCreateReport}
+								title={uiText(language, "recentExpenses")}
+								summary={latestExpenseSummary}
+								icon={<Receipt size={20} weight="bold" />}
+								tone="recent"
+								open={openFolder === "recent"}
+								onToggle={() => toggleFolder("recent")}
+								actionLabel={uiText(language, "viewAll")}
+								onAction={onExpenses}
+							>
+								<ExpenseList
+									expenses={recentExpenses}
+									captures={captures}
+									participants={participants}
+									language={language}
+									currency={currency}
+									onEdit={onExpense}
+								/>
+							</HomeFolder>
+							{latestReport && (
+								<HomeFolder
+									id="reports"
+									language={language}
+									title={uiText(language, "homeReports")}
+									summary={uiText(language, "homeLatestReport").replace(
+										"{period}",
+										reportPeriodLabel(latestReport, language),
+									)}
+									icon={<ChartLineUp size={20} weight="bold" />}
+									tone="report"
+									open={openFolder === "reports"}
+									onToggle={() => toggleFolder("reports")}
+									actionLabel={uiText(language, "allReports")}
+									onAction={onReports}
 								>
-									<CalendarBlank size={20} />
-									<span>
-										<strong>{uiText(language, "createReport")}</strong>
-										<small>{uiText(language, "createReportHint")}</small>
-									</span>
-									<ArrowRight size={17} />
-								</button>
-							</div>
-						</HomeFolder>
+									<div className="mini-report-launch">
+										<button
+											className="mini-report-card"
+											type="button"
+											onClick={() => onReport(latestReport.id)}
+										>
+											<span className="mini-report-card-icon">
+												<ChartLineUp size={23} weight="bold" />
+											</span>
+											<span className="mini-report-card-copy">
+												<small>
+													{reportKindTitle(latestReport.kind, language)}
+												</small>
+												<strong>
+													{reportPeriodLabel(latestReport, language)}
+												</strong>
+												<span>{latestReport.facts.completeness_message}</span>
+											</span>
+											<span className="mini-report-card-total">
+												<strong>
+													{formatMoney(
+														latestReport.facts.total_spent,
+														latestReport.currency,
+													)}
+												</strong>
+												<ArrowRight size={17} />
+											</span>
+										</button>
+									</div>
+								</HomeFolder>
+							)}
+						</div>
 					</div>
 				</div>
 			</div>
@@ -12815,6 +13170,9 @@ const HomeFolder = ({
 	tone,
 	open,
 	alert = false,
+	critical = false,
+	attentionCount = 0,
+	language,
 	onToggle,
 	actionLabel,
 	onAction,
@@ -12828,6 +13186,9 @@ const HomeFolder = ({
 	tone: "report" | "reviews" | "plans" | "debts" | "categories" | "recent";
 	open: boolean;
 	alert?: boolean;
+	critical?: boolean;
+	attentionCount?: number;
+	language: UILanguage;
 	onToggle: () => void;
 	actionLabel?: string;
 	onAction?: () => void;
@@ -12837,7 +13198,7 @@ const HomeFolder = ({
 	const bodyID = `home-folder-${id}`;
 	return (
 		<section
-			className={`mini-home-folder is-${tone}${open ? " is-open" : ""}${alert ? " is-alert" : ""}${className ? ` ${className}` : ""}`}
+			className={`mini-home-folder is-${tone}${open ? " is-open" : ""}${alert ? " is-alert" : ""}${critical ? " is-critical" : ""}${className ? ` ${className}` : ""}`}
 		>
 			<button
 				className="mini-home-folder-toggle"
@@ -12848,7 +13209,21 @@ const HomeFolder = ({
 			>
 				<span className="mini-home-folder-icon">{icon}</span>
 				<span className="mini-home-folder-copy">
-					<b>{title}</b>
+					<span className="mini-home-folder-heading">
+						<b>{title}</b>
+						{attentionCount > 0 && (
+							<span
+								className="mini-home-folder-signal"
+								title={uiText(language, "homeAttentionCount").replace(
+									"{count}",
+									String(attentionCount),
+								)}
+								aria-hidden="true"
+							>
+								{attentionCount}
+							</span>
+						)}
+					</span>
 					<small>{summary}</small>
 				</span>
 				<CaretDown className="mini-home-folder-caret" size={17} weight="bold" />
@@ -14739,6 +15114,125 @@ const captureSourceLabel = (capture: CapturePacket) => {
 	}
 };
 
+const FullscreenImageViewer = ({
+	src,
+	alt,
+	label,
+	language,
+	onClose,
+	onPrevious,
+	onNext,
+}: {
+	src: string;
+	alt: string;
+	label: string;
+	language: UILanguage;
+	onClose: () => void;
+	onPrevious?: () => void;
+	onNext?: () => void;
+}) => {
+	const [showActualSize, setShowActualSize] = useState(false);
+	const hasNavigation = Boolean(onPrevious && onNext);
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				event.preventDefault();
+				onClose();
+				return;
+			}
+			if (event.key === "ArrowLeft" && onPrevious) {
+				event.preventDefault();
+				onPrevious();
+				setShowActualSize(false);
+			}
+			if (event.key === "ArrowRight" && onNext) {
+				event.preventDefault();
+				onNext();
+				setShowActualSize(false);
+			}
+		};
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [onClose, onNext, onPrevious]);
+
+	return (
+		<div
+			className="mini-source-lightbox"
+			role="dialog"
+			aria-modal="true"
+			aria-label={label}
+		>
+			<header>
+				<strong>{label}</strong>
+				<div>
+					<button
+						type="button"
+						aria-pressed={showActualSize}
+						aria-label={uiText(
+							language,
+							showActualSize ? "sourceImageFit" : "sourceImageActualSize",
+						)}
+						title={uiText(
+							language,
+							showActualSize ? "sourceImageFit" : "sourceImageActualSize",
+						)}
+						onClick={() => setShowActualSize((current) => !current)}
+					>
+						{showActualSize ? (
+							<CornersIn size={21} weight="bold" />
+						) : (
+							<CornersOut size={21} weight="bold" />
+						)}
+					</button>
+					<button
+						type="button"
+						aria-label={uiText(language, "close")}
+						title={uiText(language, "close")}
+						onClick={onClose}
+					>
+						<X size={22} weight="bold" />
+					</button>
+				</div>
+			</header>
+			<div
+				className={`mini-source-lightbox-viewport${showActualSize ? " is-actual-size" : ""}`}
+				onClick={(event) => {
+					if (event.target === event.currentTarget) onClose();
+				}}
+				onKeyDown={(event) => {
+					if (
+						(event.key === "Enter" || event.key === " ") &&
+						event.target === event.currentTarget
+					)
+						onClose();
+				}}
+				tabIndex={-1}
+			>
+				<img src={src} alt={alt} />
+			</div>
+			{hasNavigation && (
+				<nav aria-label={uiText(language, "sourceImageNavigation")}>
+					<button
+						type="button"
+						aria-label={uiText(language, "previousImage")}
+						onClick={onPrevious}
+					>
+						<ArrowLeft size={22} weight="bold" />
+					</button>
+					<button
+						type="button"
+						aria-label={uiText(language, "nextImage")}
+						onClick={onNext}
+					>
+						<ArrowRight size={22} weight="bold" />
+					</button>
+				</nav>
+			)}
+		</div>
+	);
+};
+
 const CaptureSourceViewer = ({
 	viewer,
 	language,
@@ -14750,43 +15244,15 @@ const CaptureSourceViewer = ({
 }) => {
 	const kind = captureSourceKind(viewer.capture);
 	const [zoomedMediaIndex, setZoomedMediaIndex] = useState<number | null>(null);
-	const [showActualSize, setShowActualSize] = useState(false);
 	const zoomedMedia =
 		zoomedMediaIndex === null ? undefined : viewer.media[zoomedMediaIndex];
-	const closeZoom = () => {
-		setZoomedMediaIndex(null);
-		setShowActualSize(false);
-	};
+	const closeZoom = () => setZoomedMediaIndex(null);
 	const moveZoom = (direction: -1 | 1) => {
 		setZoomedMediaIndex((current) => {
 			if (current === null || viewer.media.length < 2) return current;
 			return (current + direction + viewer.media.length) % viewer.media.length;
 		});
-		setShowActualSize(false);
 	};
-	useEffect(() => {
-		if (zoomedMediaIndex === null) return;
-		const handleKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				event.preventDefault();
-				setZoomedMediaIndex(null);
-				setShowActualSize(false);
-				return;
-			}
-			if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-			event.preventDefault();
-			setZoomedMediaIndex((current) => {
-				if (current === null || viewer.media.length < 2) return current;
-				const direction = event.key === "ArrowLeft" ? -1 : 1;
-				return (
-					(current + direction + viewer.media.length) % viewer.media.length
-				);
-			});
-			setShowActualSize(false);
-		};
-		document.addEventListener("keydown", handleKeyDown);
-		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [zoomedMediaIndex, viewer.media.length]);
 	return (
 		<>
 			<Modal title="Исходный материал" onClose={onClose}>
@@ -14812,10 +15278,7 @@ const CaptureSourceViewer = ({
 									className="mini-source-image-open"
 									type="button"
 									aria-label={`${uiText(language, "sourceImageOpen")} ${index + 1}`}
-									onClick={() => {
-										setZoomedMediaIndex(index);
-										setShowActualSize(false);
-									}}
+									onClick={() => setZoomedMediaIndex(index)}
 								>
 									<img
 										className="mini-source-image"
@@ -14858,73 +15321,15 @@ const CaptureSourceViewer = ({
 				)}
 			</Modal>
 			{zoomedMedia && zoomedMediaIndex !== null && (
-				<div
-					className="mini-source-lightbox"
-					role="dialog"
-					aria-modal="true"
-					aria-label={uiText(language, "sourceImageViewer")}
-				>
-					<header>
-						<strong>
-							{zoomedMediaIndex + 1} / {viewer.media.length}
-						</strong>
-						<div>
-							<button
-								type="button"
-								aria-pressed={showActualSize}
-								aria-label={uiText(
-									language,
-									showActualSize ? "sourceImageFit" : "sourceImageActualSize",
-								)}
-								title={uiText(
-									language,
-									showActualSize ? "sourceImageFit" : "sourceImageActualSize",
-								)}
-								onClick={() => setShowActualSize((current) => !current)}
-							>
-								{showActualSize ? (
-									<CornersIn size={21} weight="bold" />
-								) : (
-									<CornersOut size={21} weight="bold" />
-								)}
-							</button>
-							<button
-								type="button"
-								aria-label={uiText(language, "close")}
-								title={uiText(language, "close")}
-								onClick={closeZoom}
-							>
-								<X size={22} weight="bold" />
-							</button>
-						</div>
-					</header>
-					<div
-						className={`mini-source-lightbox-viewport${showActualSize ? " is-actual-size" : ""}`}
-					>
-						<img
-							src={zoomedMedia.url}
-							alt={`Исходное изображение ${zoomedMediaIndex + 1} из ${viewer.media.length}`}
-						/>
-					</div>
-					{viewer.media.length > 1 && (
-						<nav aria-label={uiText(language, "sourceImageNavigation")}>
-							<button
-								type="button"
-								aria-label={uiText(language, "previousImage")}
-								onClick={() => moveZoom(-1)}
-							>
-								<ArrowLeft size={22} weight="bold" />
-							</button>
-							<button
-								type="button"
-								aria-label={uiText(language, "nextImage")}
-								onClick={() => moveZoom(1)}
-							>
-								<ArrowRight size={22} weight="bold" />
-							</button>
-						</nav>
-					)}
-				</div>
+				<FullscreenImageViewer
+					src={zoomedMedia.url}
+					alt={`Исходное изображение ${zoomedMediaIndex + 1} из ${viewer.media.length}`}
+					label={`${zoomedMediaIndex + 1} / ${viewer.media.length}`}
+					language={language}
+					onClose={closeZoom}
+					onPrevious={viewer.media.length > 1 ? () => moveZoom(-1) : undefined}
+					onNext={viewer.media.length > 1 ? () => moveZoom(1) : undefined}
+				/>
 			)}
 		</>
 	);
@@ -20006,6 +20411,7 @@ const StoredSettlementProof = ({
 	const [loading, setLoading] = useState(Boolean(settlement.mediaObjectID));
 	const [error, setError] = useState("");
 	const [loadAttempt, setLoadAttempt] = useState(0);
+	const [expanded, setExpanded] = useState(false);
 
 	useEffect(() => {
 		if (!settlement.mediaObjectID) return;
@@ -20077,10 +20483,31 @@ const StoredSettlementProof = ({
 			</header>
 			{settlement.note && <p>{settlement.note}</p>}
 			{settlement.mediaObjectID && imageURL && (
-				<img
-					src={imageURL}
-					alt={`${uiText(language, "settlementProofImage")} ${index + 1}`}
-				/>
+				<>
+					<button
+						className="mini-settlement-proof-image-open"
+						type="button"
+						aria-label={`${uiText(language, "sourceImageOpen")}: ${uiText(language, "settlementProofImage")} ${index + 1}`}
+						onClick={() => setExpanded(true)}
+					>
+						<img
+							src={imageURL}
+							alt={`${uiText(language, "settlementProofImage")} ${index + 1}`}
+						/>
+						<span aria-hidden="true">
+							<CornersOut size={19} weight="bold" />
+						</span>
+					</button>
+					{expanded && (
+						<FullscreenImageViewer
+							src={imageURL}
+							alt={`${uiText(language, "settlementProofImage")} ${index + 1}`}
+							label={uiText(language, "settlementProofImage")}
+							language={language}
+							onClose={() => setExpanded(false)}
+						/>
+					)}
+				</>
 			)}
 			{settlement.mediaObjectID && !imageURL && (
 				<button
@@ -20126,6 +20553,7 @@ const SplitSettlementDialog = ({
 	const [note, setNote] = useState("");
 	const [proof, setProof] = useState<File>();
 	const [proofURL, setProofURL] = useState("");
+	const [proofExpanded, setProofExpanded] = useState(false);
 	const [localError, setLocalError] = useState("");
 	const pending = balance.settlementStatus === "sent";
 	const creditor = balance.creditorUserID === currentUserID;
@@ -20154,6 +20582,7 @@ const SplitSettlementDialog = ({
 			return;
 		}
 		setLocalError("");
+		setProofExpanded(false);
 		setProof(file);
 	};
 
@@ -20272,7 +20701,33 @@ const SplitSettlementDialog = ({
 						<ImageSquare size={19} />
 						{uiText(language, proof ? "settlementReplace" : "settlementAttach")}
 					</button>
-					{proofURL && <img src={proofURL} alt="" />}
+					{proofURL && (
+						<>
+							<button
+								className="mini-settlement-proof-image-open"
+								type="button"
+								aria-label={`${uiText(language, "sourceImageOpen")}: ${uiText(language, "settlementProofImage")}`}
+								onClick={() => setProofExpanded(true)}
+							>
+								<img
+									src={proofURL}
+									alt={uiText(language, "settlementProofImage")}
+								/>
+								<span aria-hidden="true">
+									<CornersOut size={19} weight="bold" />
+								</span>
+							</button>
+							{proofExpanded && (
+								<FullscreenImageViewer
+									src={proofURL}
+									alt={uiText(language, "settlementProofImage")}
+									label={uiText(language, "settlementProofImage")}
+									language={language}
+									onClose={() => setProofExpanded(false)}
+								/>
+							)}
+						</>
+					)}
 				</div>
 			)}
 
@@ -23214,53 +23669,151 @@ const OrganizationInviteDialog = ({
 
 const ReportMonthDialog = ({
 	language,
+	preset,
 	month,
+	minMonth,
 	maxMonth,
+	startDate,
+	endDate,
+	minDate,
+	maxDate,
 	generating,
 	error,
+	onPreset,
 	onMonth,
+	onStartDate,
+	onEndDate,
 	onGenerate,
 	onClose,
 }: {
 	language: UILanguage;
+	preset: ReportPeriodPreset;
 	month: string;
+	minMonth: string;
 	maxMonth: string;
+	startDate: string;
+	endDate: string;
+	minDate: string;
+	maxDate: string;
 	generating: boolean;
 	error: string;
+	onPreset: (preset: ReportPeriodPreset) => void;
 	onMonth: (month: string) => void;
+	onStartDate: (date: string) => void;
+	onEndDate: (date: string) => void;
 	onGenerate: () => void;
 	onClose: () => void;
-}) => (
-	<Modal
-		title={uiText(language, "createReport")}
-		variant="editor"
-		onClose={onClose}
-	>
-		<p className="mini-field-note">{uiText(language, "reportMonthHint")}</p>
-		<label>
-			{uiText(language, "reportMonth")}
-			<input
-				type="month"
-				min="2000-01"
-				value={month}
-				max={maxMonth}
-				disabled={generating}
-				onChange={(event) => onMonth(event.target.value)}
-			/>
-		</label>
-		{error && <p className="mini-form-error">{error}</p>}
-		<div className="mini-modal-actions">
-			<button
-				className="mini-save"
-				type="button"
-				disabled={generating || !month || month > maxMonth}
-				onClick={onGenerate}
+}) => {
+	const selectedPeriod = reportPeriodSelection(
+		preset,
+		month,
+		startDate,
+		endDate,
+	);
+	const presets = [
+		{ id: "month", label: "reportPeriodMonth" },
+		{ id: "3m", label: "reportPeriodThreeMonths" },
+		{ id: "6m", label: "reportPeriodSixMonths" },
+		{ id: "12m", label: "reportPeriodTwelveMonths" },
+		{ id: "custom", label: "reportPeriodCustom" },
+	] as const;
+	return (
+		<Modal
+			title={uiText(language, "createReport")}
+			variant="editor"
+			onClose={onClose}
+		>
+			<p className="mini-field-note">{uiText(language, "reportMonthHint")}</p>
+			<div
+				className="mini-report-period-options"
+				role="group"
+				aria-label={uiText(language, "reportPeriod")}
 			>
-				{uiText(language, generating ? "generatingReport" : "generateReport")}
-			</button>
-		</div>
-	</Modal>
-);
+				{presets.map((option) => (
+					<button
+						key={option.id}
+						className={preset === option.id ? "is-active" : ""}
+						type="button"
+						aria-pressed={preset === option.id}
+						disabled={generating}
+						onClick={() => onPreset(option.id)}
+					>
+						{uiText(language, option.label)}
+					</button>
+				))}
+			</div>
+
+			{preset === "month" && (
+				<label>
+					{uiText(language, "reportMonth")}
+					<input
+						type="month"
+						min={minMonth}
+						value={month}
+						max={maxMonth}
+						disabled={generating}
+						onChange={(event) => onMonth(event.target.value)}
+					/>
+				</label>
+			)}
+
+			{preset === "custom" && (
+				<div className="mini-report-custom-dates">
+					<label>
+						{uiText(language, "dateFrom")}
+						<input
+							type="date"
+							min={minDate}
+							max={maxDate}
+							value={startDate}
+							disabled={generating}
+							onChange={(event) => onStartDate(event.target.value)}
+						/>
+					</label>
+					<label>
+						{uiText(language, "dateTo")}
+						<input
+							type="date"
+							min={minDate}
+							max={maxDate}
+							value={endDate}
+							disabled={generating}
+							onChange={(event) => onEndDate(event.target.value)}
+						/>
+					</label>
+				</div>
+			)}
+
+			{selectedPeriod && (
+				<div className="mini-report-period-preview">
+					<CalendarBlank size={20} weight="bold" />
+					<span>
+						<small>{uiText(language, "reportSelectedPeriod")}</small>
+						<strong>
+							{reportDateRangeLabel(
+								selectedPeriod.start,
+								selectedPeriod.end,
+								language,
+							)}
+						</strong>
+					</span>
+				</div>
+			)}
+
+			{error && <p className="mini-form-error">{error}</p>}
+			<div className="mini-modal-actions">
+				<button
+					className="mini-save"
+					type="button"
+					disabled={generating || !selectedPeriod}
+					onClick={onGenerate}
+				>
+					{uiText(language, generating ? "generatingReport" : "generateReport")}
+				</button>
+			</div>
+		</Modal>
+	);
+};
 
 const SpaceEditor = ({
 	language,
@@ -26174,4 +26727,67 @@ function localISODate(date = new Date()) {
 function latestCompletedReportMonth(date = new Date()) {
 	const previousMonth = new Date(date.getFullYear(), date.getMonth() - 1, 1);
 	return localISODate(previousMonth).slice(0, 7);
+}
+
+function earliestCompletedReportMonth(date = new Date()) {
+	const firstMonth = new Date(date.getFullYear(), date.getMonth() - 12, 1);
+	return localISODate(firstMonth).slice(0, 7);
+}
+
+function latestReportRangeDate(date = new Date()) {
+	return localISODate(
+		new Date(date.getFullYear(), date.getMonth(), date.getDate()),
+	);
+}
+
+function earliestReportRangeDate(date = new Date()) {
+	return localISODate(new Date(date.getFullYear(), date.getMonth() - 12, 1));
+}
+
+function reportPresetRange(preset: "3m" | "6m" | "12m", date = new Date()) {
+	const months = preset === "3m" ? 3 : preset === "6m" ? 6 : 12;
+	const endExclusive = new Date(date.getFullYear(), date.getMonth(), 1);
+	const start = new Date(date.getFullYear(), date.getMonth() - months, 1);
+	const end = new Date(endExclusive);
+	end.setDate(end.getDate() - 1);
+	return { start: localISODate(start), end: localISODate(end) };
+}
+
+function reportPeriodSelection(
+	preset: ReportPeriodPreset,
+	month: string,
+	customStart: string,
+	customEnd: string,
+): { kind: "month" | "range"; start: string; end: string } | null {
+	const minDate = earliestReportRangeDate();
+	const maxDate = latestReportRangeDate();
+	if (preset === "month") {
+		if (
+			!/^[0-9]{4}-[0-9]{2}$/.test(month) ||
+			month < earliestCompletedReportMonth() ||
+			month > latestCompletedReportMonth()
+		)
+			return null;
+		const [year, monthNumber] = month.split("-").map(Number);
+		const start = new Date(year, monthNumber - 1, 1);
+		const end = new Date(year, monthNumber, 0);
+		return {
+			kind: "month",
+			start: localISODate(start),
+			end: localISODate(end),
+		};
+	}
+	const range =
+		preset === "custom"
+			? { start: customStart, end: customEnd }
+			: reportPresetRange(preset);
+	if (
+		!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(range.start) ||
+		!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(range.end) ||
+		range.start < minDate ||
+		range.end > maxDate ||
+		range.start > range.end
+	)
+		return null;
+	return { kind: "range", ...range };
 }

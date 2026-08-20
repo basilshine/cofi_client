@@ -1,6 +1,6 @@
 export type PeriodTrendReport = {
 	id: number;
-	kind: "week" | "month";
+	kind: "week" | "month" | "range";
 	period_start: string;
 	period_end: string;
 	currency: string;
@@ -28,7 +28,9 @@ export const periodReportTrend = <T extends PeriodTrendReport>(
 		.filter(
 			(report, index, rows) =>
 				rows.findIndex(
-					(candidate) => candidate.period_start === report.period_start,
+					(candidate) =>
+						candidate.period_start === report.period_start &&
+						candidate.period_end === report.period_end,
 				) === index,
 		)
 		.sort((left, right) => left.period_end.localeCompare(right.period_end))
@@ -38,7 +40,9 @@ export const periodReportTrend = <T extends PeriodTrendReport>(
 			periodStart: report.period_start,
 			periodEnd: report.period_end,
 			total: report.facts.total_spent,
-			current: report.period_start === selected.period_start,
+			current:
+				report.period_start === selected.period_start &&
+				report.period_end === selected.period_end,
 		}));
 
 	if (!matching.some(({ current }) => current)) {

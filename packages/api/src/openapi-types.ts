@@ -2599,7 +2599,7 @@ export interface paths {
         };
         /**
          * Replace split rows for an expense in a space
-         * @description Canonical shared-space split write route. Accepts space_participant_id lines for placeholders and registered participants.
+         * @description Canonical shared-space split write route. The expense creator, linked payer, or Space owner may replace the distribution. Accepts space_participant_id lines for placeholders and registered participants.
          */
         put: {
             parameters: {
@@ -3615,7 +3615,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List completed weekly and monthly reports for the current user */
+        /** List completed weekly, monthly, and custom-range reports for the current user */
         get: {
             parameters: {
                 query?: {
@@ -3651,8 +3651,8 @@ export interface paths {
         };
         put?: never;
         /**
-         * Create or reopen a monthly report for the current user
-         * @description Only completed calendar months are accepted. Creating a new snapshot costs 30 analyses; reopening an existing snapshot is free.
+         * Create or reopen a period report for the current user
+         * @description Accepts either one completed calendar month or a custom date range inside the trailing 12-month window ending no later than today. Creating a new snapshot costs 30 analyses; reopening an existing snapshot is free.
          */
         post: {
             parameters: {
@@ -3670,12 +3670,22 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @example 2026-07 */
-                        month: string;
-                    };
+                        month?: string;
+                        /**
+                         * Format: date
+                         * @example 2026-05-01
+                         */
+                        start_date?: string;
+                        /**
+                         * Format: date
+                         * @example 2026-07-31
+                         */
+                        end_date?: string;
+                    } & (unknown | unknown);
                 };
             };
             responses: {
-                /** @description Created report or an existing report for the same user, space, and month */
+                /** @description Created report or an existing report for the same user, space, and period */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -3684,7 +3694,7 @@ export interface paths {
                         "application/json": components["schemas"]["PeriodReport"];
                     };
                 };
-                /** @description Invalid, current, or future month */
+                /** @description Invalid month or date range */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -3705,7 +3715,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description No expenses or plans exist for the selected month */
+                /** @description No expenses or plans exist for the selected period */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -6839,6 +6849,114 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quota/developer-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List users for developer tools
+         * @description Available only to the configured system administrator. Returns a paginated product-activity summary without linked contact details.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Search by user id, name, email, phone, or Telegram username. */
+                    q?: string;
+                    limit?: number;
+                    offset?: number;
+                    /** @description Filter users by their current product-activity stage. */
+                    status?: "all" | "no_input" | "awaiting_confirmation" | "active" | "inactive";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Paginated user activity summary. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeveloperUserList"];
+                    };
+                };
+                /** @description System administrator access is unavailable to the current user. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/quota/developer-users/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get the first-capture funnel for developer tools
+         * @description Available only to the configured system administrator. Aggregates existing registration, processing, candidate, and confirmation facts without exposing captured content.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    period_days?: 7 | 30 | 90;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Registration cohort and first-capture conversion counts. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeveloperUserFunnel"];
+                    };
+                };
+                /** @description Unsupported period. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description System administrator access is unavailable to the current user. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -10696,7 +10814,7 @@ export interface components {
             /** Format: int64 */
             space_id: number;
             /** @enum {string} */
-            kind: "week" | "month";
+            kind: "week" | "month" | "range";
             /** Format: date */
             period_start: string;
             /** Format: date */
@@ -11168,6 +11286,52 @@ export interface components {
                 [key: string]: unknown;
             }[];
         };
+        DeveloperUserActivity: {
+            id: string;
+            /** @enum {string} */
+            type: "registration" | "session" | "capture";
+            /** Format: date-time */
+            occurred_at: string;
+            /** Format: int64 */
+            source_document_id?: number | null;
+            /** Format: int64 */
+            space_id?: number | null;
+            space_name?: string;
+            input_kind?: string;
+            capture_module?: string;
+            processing_status?: string;
+            /** @enum {string} */
+            outcome?: "registered" | "signed_in" | "processing" | "pending_review" | "confirmed" | "edited" | "deleted" | "failed";
+            /** Format: int64 */
+            total_latency_ms?: number;
+            processing_attempts?: number;
+            fields_changed_count?: number;
+            /** @description Truncated processing error available only to the system administrator. */
+            error?: string;
+        };
+        DeveloperUserFunnel: {
+            period_days: number;
+            /** Format: date-time */
+            cohort_started_at: string;
+            /** Format: int64 */
+            registered_users: number;
+            /** Format: int64 */
+            started_users: number;
+            /** Format: int64 */
+            processed_users: number;
+            /** Format: int64 */
+            review_ready_users: number;
+            /** Format: int64 */
+            confirmed_users: number;
+            /** Format: int64 */
+            repeated_users: number;
+            /** Format: int64 */
+            no_input_users: number;
+            /** Format: int64 */
+            without_result_users: number;
+            /** Format: int64 */
+            awaiting_confirmation_users: number;
+        };
         DeveloperUserDetail: {
             /** Format: int64 */
             id: number;
@@ -11215,6 +11379,16 @@ export interface components {
                 /** Format: int64 */
                 confirmed_results: number;
                 /** Format: int64 */
+                edited_results: number;
+                /** Format: int64 */
+                deleted_results: number;
+                /** Format: int64 */
+                failed_inputs: number;
+                /** Format: int64 */
+                pending_reviews: number;
+                /** Format: int64 */
+                average_confirmation_ms: number;
+                /** Format: int64 */
                 active_sessions: number;
                 /** Format: date-time */
                 last_input_at?: string | null;
@@ -11230,6 +11404,43 @@ export interface components {
                 /** Format: int64 */
                 member_count: number;
             }[];
+            activity: components["schemas"]["DeveloperUserActivity"][];
+        };
+        DeveloperUserList: {
+            users: components["schemas"]["DeveloperUserListItem"][];
+            /** Format: int64 */
+            total: number;
+            limit: number;
+            offset: number;
+            has_more: boolean;
+        };
+        DeveloperUserListItem: {
+            /** Format: int64 */
+            id: number;
+            name: string;
+            auth_type: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            last_input_at?: string | null;
+            /** Format: int64 */
+            inputs_total: number;
+            /** Format: int64 */
+            ai_requests_total: number;
+            /** Format: int64 */
+            inputs_30_days: number;
+            /** Format: int64 */
+            quota_units_30_days: number;
+            /** Format: int64 */
+            confirmed_results: number;
+            /** Format: int64 */
+            expenses_total: number;
+            /** Format: int64 */
+            plans_total: number;
+            /** Format: date-time */
+            pwa_installed_at?: string | null;
+            /** Format: date-time */
+            pwa_last_seen_at?: string | null;
         };
         IncompleteRegistrationAttempt: {
             /** Format: int64 */
