@@ -4627,6 +4627,14 @@
 	background: var(--mini-green);
 	color: var(--mini-paper);
 }
+.mini-dev-user-actions button.is-plus-grant {
+	border-color: color-mix(in srgb, var(--mini-signal) 42%, var(--mini-line));
+	color: var(--mini-signal);
+}
+.mini-dev-user-actions button.is-plus-grant.is-confirming {
+	background: var(--mini-signal);
+	color: var(--mini-paper);
+}
 .mini-dev-user-actions button.is-quiet {
 	border-color: var(--mini-line);
 	color: var(--mini-muted);

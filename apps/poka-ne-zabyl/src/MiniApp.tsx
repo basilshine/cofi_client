@@ -17891,6 +17891,7 @@ const DeveloperUserRow = ({
 	const [actionLoading, setActionLoading] = useState(false);
 	const [actionStatus, setActionStatus] = useState("");
 	const [bonusConfirm, setBonusConfirm] = useState(false);
+	const [plusConfirm, setPlusConfirm] = useState(false);
 
 	const loadDetail = async () => {
 		setOpen(true);
@@ -17947,6 +17948,7 @@ const DeveloperUserRow = ({
 	const grantBonus = async () => {
 		if (!bonusConfirm) {
 			setBonusConfirm(true);
+			setPlusConfirm(false);
 			setActionStatus("");
 			return;
 		}
@@ -17979,6 +17981,58 @@ const DeveloperUserRow = ({
 		} catch (error) {
 			setActionStatus(
 				error instanceof Error ? error.message : "Не удалось начислить бонус",
+			);
+		} finally {
+			setActionLoading(false);
+		}
+	};
+
+	const grantPlus = async () => {
+		if (!plusConfirm) {
+			setPlusConfirm(true);
+			setBonusConfirm(false);
+			setActionStatus("");
+			return;
+		}
+		setActionLoading(true);
+		setActionStatus("");
+		try {
+			const current = detail || previewDeveloperUser(recentUser);
+			const startsAt = Math.max(
+				Date.now(),
+				current.subscription.plan_expires_at
+					? new Date(current.subscription.plan_expires_at).getTime()
+					: 0,
+			);
+			const updated =
+				token === "preview"
+					? {
+							...current,
+							subscription: {
+								...current.subscription,
+								plan: "plus",
+								plan_expires_at: new Date(
+									startsAt + 30 * 24 * 60 * 60 * 1000,
+								).toISOString(),
+								recurring_remaining: Math.max(
+									current.subscription.recurring_remaining,
+									400,
+								),
+								remaining: Math.max(current.subscription.remaining, 400),
+							},
+						}
+					: await apiRequest<DeveloperUserDetail>(
+							`/quota/developer-users/${recentUser.id}/plus`,
+							token,
+							{ method: "POST" },
+						);
+			setDetail(updated);
+			setPlusConfirm(false);
+			setActionStatus("Плюс выдан на 30 дней без оплаты.");
+			onRefresh();
+		} catch (error) {
+			setActionStatus(
+				error instanceof Error ? error.message : "Не удалось выдать Плюс",
 			);
 		} finally {
 			setActionLoading(false);
@@ -18089,6 +18143,7 @@ const DeveloperUserRow = ({
 					onClose={() => {
 						setOpen(false);
 						setBonusConfirm(false);
+						setPlusConfirm(false);
 					}}
 				>
 					{loading ? (
@@ -18340,12 +18395,24 @@ const DeveloperUserRow = ({
 										<Star size={17} />
 										{bonusConfirm ? "Подтвердить +100" : "Бонус +100"}
 									</button>
-									{bonusConfirm && (
+									<button
+										type="button"
+										className={`is-plus-grant${plusConfirm ? " is-confirming" : ""}`}
+										disabled={actionLoading}
+										onClick={() => void grantPlus()}
+									>
+										<Sparkle size={17} weight="fill" />
+										{plusConfirm ? "Подтвердить Плюс" : "Плюс на 30 дней"}
+									</button>
+									{(bonusConfirm || plusConfirm) && (
 										<button
 											type="button"
 											className="is-quiet"
 											disabled={actionLoading}
-											onClick={() => setBonusConfirm(false)}
+											onClick={() => {
+												setBonusConfirm(false);
+												setPlusConfirm(false);
+											}}
 										>
 											Отмена
 										</button>
@@ -18353,8 +18420,9 @@ const DeveloperUserRow = ({
 								</div>
 								{actionStatus && <p role="status">{actionStatus}</p>}
 								<small>
-									Сообщение появится в приложении. Другие каналы используются
-									только по настройкам самого пользователя.
+									Плюс продлевает активный срок на 30 дней, не создаёт платёж и
+									не включает автопродление. Пользователь увидит уведомление в
+									приложении.
 								</small>
 							</section>
 						</div>
@@ -24762,6 +24830,11 @@ const notificationTitle = (
 			ru: "Промокод активирован",
 			en: "Promo code activated",
 			es: "Código promocional activado",
+		},
+		admin_plus_granted: {
+			ru: "Вам подарили Плюс",
+			en: "You received Plus",
+			es: "Has recibido Plus",
 		},
 		recurring_expense: {
 			ru: "Повторяющийся расход",

@@ -7118,6 +7118,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/quota/developer-users/{user_id}/plus": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grant complimentary Plus to a user
+         * @description Grants 30 days of Plus with the normal 400-unit period to the user's personal entitlement and notifies the user. The grant creates no payment and does not enable automatic renewal.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    user_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Plus granted. Returns the refreshed user card. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeveloperUserDetail"];
+                    };
+                };
+                /** @description User not found or system administrator access is unavailable. */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/quota/test-plan": {
         parameters: {
             query?: never;
