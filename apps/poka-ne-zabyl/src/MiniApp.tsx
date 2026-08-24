@@ -1377,6 +1377,13 @@ type ReviewDraftItem = {
 	tags: string[];
 };
 
+type ReviewCategorySuggestion = {
+	name: string;
+	aliases: string[];
+	itemIndexes: number[];
+	reason: string;
+};
+
 type ReviewDraft = {
 	candidateID: number;
 	sourceDocumentID: number;
@@ -1387,6 +1394,7 @@ type ReviewDraft = {
 	sourceCurrency: string;
 	receiptTotal: number | null;
 	items: ReviewDraftItem[];
+	categorySuggestion: ReviewCategorySuggestion | null;
 };
 
 type ReviewTarget = { spaceID: number; candidateID: number };
@@ -2099,6 +2107,36 @@ const previewReviewCandidates: ReviewCandidate[] = [
 			source_currency: "RUB",
 			expense_date: localISODate(),
 			items: [{ name: "Продукты", amount: 7173.33, category_key: "groceries" }],
+			category_suggestion: {
+				name: "Автомобиль",
+				aliases: ["авторемонт", "автосервис", "запчасти"],
+				item_indexes: [0],
+				reason: "Ремонт и обслуживание автомобиля будут собраны отдельно",
+				confidence: "high",
+			},
+		},
+	},
+	{
+		id: 79,
+		source_document_id: 105,
+		candidate_type: "purchase_plan_candidate",
+		title: "Оплатить Яндекс Плюс",
+		status: "pending_review",
+		structured_data: {
+			title: "Оплатить Яндекс Плюс",
+			service_name: "Яндекс Плюс",
+			expected_amount: 399,
+			category_key: "subscriptions",
+			due_date: isoDay(30),
+			recurrence_interval: "monthly",
+			suggestion_kind: "recurring_purchase_plan",
+			items: [
+				{
+					name: "Яндекс Плюс",
+					expected_amount: 399,
+					category_key: "subscriptions",
+				},
+			],
 		},
 	},
 	{
@@ -2770,6 +2808,12 @@ export const MiniApp = ({
 	const [savedReviewExpense, setSavedReviewExpense] = useState<Expense | null>(
 		null,
 	);
+	const [reviewSuggestionSaving, setReviewSuggestionSaving] = useState<
+		"" | "category" | "plan" | "ignore"
+	>("");
+	const [reviewPlanOutcome, setReviewPlanOutcome] = useState<"" | "created">(
+		"",
+	);
 	const [deletingReview, setDeletingReview] = useState(false);
 	const [sourceViewer, setSourceViewer] = useState<SourceViewer | null>(null);
 	const [sourceLoading, setSourceLoading] = useState(false);
@@ -3317,7 +3361,7 @@ export const MiniApp = ({
 			if (requestedReview) {
 				setReviewDraft({
 					candidateID: requestedReview.candidateID,
-					sourceDocumentID: 77,
+					sourceDocumentID: 105,
 					imageType: "receipt",
 					title: "Покупки в Ленте",
 					payeeText: "Лента",
@@ -3344,6 +3388,12 @@ export const MiniApp = ({
 							tags: [],
 						},
 					],
+					categorySuggestion: {
+						name: "Домашние продукты",
+						aliases: ["продукты домой", "семейная корзина"],
+						itemIndexes: [0, 1],
+						reason: "Регулярные покупки для дома будут собраны отдельно",
+					},
 				});
 			}
 			setHomeScreenStatus(isStandaloneApp() ? "added" : "unknown");
@@ -4951,7 +5001,10 @@ export const MiniApp = ({
 				),
 				due_date:
 					readString(data, "due_date", "planned_date", "expense_date") || null,
-				recurrence_interval: "",
+				recurrence_interval: readString(data, "recurrence_interval") as
+					| ""
+					| "weekly"
+					| "monthly",
 				status: "planned",
 				source_document_id: candidate.source_document_id,
 				items:
@@ -4991,6 +5044,8 @@ export const MiniApp = ({
 		setCaptureFailure("");
 		try {
 			setSavedReviewExpense(null);
+			setReviewPlanOutcome("");
+			setReviewSuggestionSaving("");
 			setReviewDraft(null);
 			setReviewMediaURL("");
 			setView("review");
@@ -5567,6 +5622,8 @@ export const MiniApp = ({
 		reviewMediaSourceID.current = 0;
 		setReviewDraft(null);
 		setSavedReviewExpense(null);
+		setReviewPlanOutcome("");
+		setReviewSuggestionSaving("");
 		setReviewMediaURL("");
 		setCompletingPlanID(0);
 		setCompletingPlanItemIDs([]);
@@ -5841,6 +5898,220 @@ export const MiniApp = ({
 			reviewSaving.current = false;
 			setSaving(false);
 		}
+	};
+
+	const applyReviewCategorySuggestion = async () => {
+		const suggestion = reviewDraft?.categorySuggestion;
+		if (!reviewDraft || !suggestion || reviewSuggestionSaving) return;
+		const targetSpaceID = reviewSpaceID || spaceID;
+		setReviewSuggestionSaving("category");
+		setError("");
+		try {
+			let category = categories.find(
+				(current) =>
+					current.name.trim().toLocaleLowerCase("ru") ===
+					suggestion.name.trim().toLocaleLowerCase("ru"),
+			);
+			if (!category) {
+				if (previewMode) {
+					category = {
+						id: Math.max(0, ...categories.map((item) => item.id)) + 1,
+						key: `custom_${Date.now()}`,
+						name: suggestion.name,
+						aliases: suggestion.aliases,
+						count: 0,
+						total: 0,
+						is_system: false,
+						created_by_user_id: user?.id,
+						created_by_name: user?.name,
+						can_edit: true,
+						can_delete: true,
+					};
+				} else {
+					category = await apiRequest<Category>(
+						`/spaces/${targetSpaceID}/categories`,
+						token,
+						{
+							method: "POST",
+							body: JSON.stringify({
+								name: suggestion.name,
+								aliases: suggestion.aliases,
+								auto_aliases: false,
+							}),
+						},
+					);
+				}
+				setCategories((current) =>
+					current.some((item) => item.id === category?.id)
+						? current
+						: [...current, category as Category],
+				);
+			}
+			setReviewDraft((current) =>
+				current
+					? {
+							...current,
+							categorySuggestion: null,
+							items: current.items.map((item, index) =>
+								suggestion.itemIndexes.includes(index)
+									? {
+											...item,
+											category_key: category?.key || item.category_key,
+										}
+									: item,
+							),
+						}
+					: current,
+			);
+			setReviewDirty(true);
+			WebApp.HapticFeedback.notificationOccurred("success");
+		} catch (err) {
+			setError(
+				err instanceof Error
+					? err.message
+					: uiText(language, "categorySuggestionCreateFailed"),
+			);
+		} finally {
+			setReviewSuggestionSaving("");
+		}
+	};
+
+	const dismissReviewCategorySuggestion = () => {
+		setReviewDraft((current) =>
+			current ? { ...current, categorySuggestion: null } : current,
+		);
+	};
+
+	const createSuggestedPlan = async (candidate: ReviewCandidate) => {
+		if (reviewSuggestionSaving) return;
+		const targetSpaceID = reviewSpaceID || spaceID;
+		const payload = suggestedPlanPayload(candidate, categories);
+		setReviewSuggestionSaving("plan");
+		setError("");
+		try {
+			let saved: PurchasePlan;
+			if (previewMode) {
+				const reviewSpace = spaces.find((space) => space.id === targetSpaceID);
+				const dueDate = payload.due_date || localISODate();
+				saved = {
+					id: Date.now(),
+					tenant_id: reviewSpace?.tenant_id || 0,
+					space_id: targetSpaceID,
+					created_by_user_id: user?.id || 0,
+					title: payload.title,
+					expected_amount: payload.expected_amount,
+					currency: reviewSpace?.currency || currency,
+					category_id: payload.category_id,
+					vendor_id: payload.vendor_id,
+					due_date: dueDate,
+					recurrence_interval: payload.recurrence_interval as
+						| ""
+						| "weekly"
+						| "monthly",
+					status: "planned",
+					items: payload.items,
+				};
+			} else {
+				const planData = await apiRequest<{ plans: PurchasePlan[] } & PageInfo>(
+					`/spaces/${targetSpaceID}/plans?limit=100&currency=${encodeURIComponent(reportingCurrency)}`,
+					token,
+				);
+				const duplicate = matchingSuggestedPlan(
+					candidate,
+					planData.plans || [],
+				);
+				if (duplicate) {
+					await apiRequest(
+						`/spaces/${targetSpaceID}/review/candidates/${candidate.id}/ignore`,
+						token,
+						{ method: "POST" },
+					);
+					setPlans((current) =>
+						appendUniquePage(current, planData.plans || []),
+					);
+					setReviewCandidates((current) =>
+						current.filter((item) => item.id !== candidate.id),
+					);
+					openExistingSuggestedPlan(duplicate);
+					return;
+				}
+				const response = await apiRequest<{ plan: PurchasePlan }>(
+					`/spaces/${targetSpaceID}/review/candidates/${candidate.id}/create-plan`,
+					token,
+					{
+						method: "POST",
+						body: JSON.stringify({ review: payload }),
+					},
+				);
+				saved = response.plan;
+			}
+			setPlans((current) =>
+				current.some((plan) => plan.id === saved.id)
+					? current
+					: [...current, saved],
+			);
+			setReviewCandidates((current) =>
+				current.filter((item) => item.id !== candidate.id),
+			);
+			setReviewPlanOutcome("created");
+			window.requestAnimationFrame(() => {
+				document
+					.querySelector<HTMLElement>(".review-saved")
+					?.scrollTo({ top: 0 });
+			});
+			WebApp.HapticFeedback.notificationOccurred("success");
+		} catch (err) {
+			setError(
+				err instanceof Error
+					? err.message
+					: uiText(language, "planSuggestionCreateFailed"),
+			);
+		} finally {
+			setReviewSuggestionSaving("");
+		}
+	};
+
+	const ignoreSuggestedPlan = async (candidate: ReviewCandidate) => {
+		if (reviewSuggestionSaving) return;
+		const targetSpaceID = reviewSpaceID || spaceID;
+		setReviewSuggestionSaving("ignore");
+		setError("");
+		try {
+			if (!previewMode) {
+				await apiRequest(
+					`/spaces/${targetSpaceID}/review/candidates/${candidate.id}/ignore`,
+					token,
+					{ method: "POST" },
+				);
+			}
+			setReviewCandidates((current) =>
+				current.filter((item) => item.id !== candidate.id),
+			);
+		} catch (err) {
+			setError(
+				err instanceof Error
+					? err.message
+					: uiText(language, "planSuggestionIgnoreFailed"),
+			);
+		} finally {
+			setReviewSuggestionSaving("");
+		}
+	};
+
+	const editSuggestedPlan = (candidate: ReviewCandidate) => {
+		const targetSpaceID = reviewSpaceID || spaceID;
+		closeReview();
+		window.setTimeout(
+			() => void openReviewCandidate(candidate, targetSpaceID, null),
+			0,
+		);
+	};
+
+	const openExistingSuggestedPlan = (plan: PurchasePlan) => {
+		closeReview();
+		setExpenseSection("plans");
+		setView("expenses");
+		setRecordDetail({ kind: "plan", plan });
 	};
 
 	const deleteReview = async () => {
@@ -8131,14 +8402,7 @@ export const MiniApp = ({
 							body: JSON.stringify(payload),
 						},
 					);
-			let saved = "plan" in response ? response.plan : response;
-			if (editingPlanCandidate && payload.recurrence_interval) {
-				saved = await apiRequest<PurchasePlan>(
-					`/spaces/${planSpaceID}/plans/${saved.id}`,
-					token,
-					{ method: "PUT", body: JSON.stringify(payload) },
-				);
-			}
+			const saved = "plan" in response ? response.plan : response;
 			setPlans((current) =>
 				editingPlan.id
 					? current.map((plan) => (plan.id === saved.id ? saved : plan))
@@ -8724,6 +8988,17 @@ export const MiniApp = ({
 			/>
 		);
 	}
+	const reviewPlanSuggestion = reviewDraft
+		? reviewCandidates.find(
+				(candidate) =>
+					candidate.source_document_id === reviewDraft.sourceDocumentID &&
+					candidate.candidate_type === "purchase_plan_candidate" &&
+					candidate.status === "pending_review" &&
+					readString(candidate.structured_data || {}, "suggestion_kind") ===
+						"recurring_purchase_plan",
+			)
+		: undefined;
+	const existingReviewPlan = matchingSuggestedPlan(reviewPlanSuggestion, plans);
 	if (view === "review") {
 		return (
 			<div
@@ -8742,6 +9017,15 @@ export const MiniApp = ({
 						expense={savedReviewExpense}
 						language={language}
 						guided={reviewDraft?.candidateID === guidedReviewCandidateID}
+						planSuggestion={reviewPlanSuggestion}
+						existingPlan={existingReviewPlan}
+						planOutcome={reviewPlanOutcome}
+						suggestionSaving={reviewSuggestionSaving}
+						error={error}
+						onCreatePlan={createSuggestedPlan}
+						onEditPlan={editSuggestedPlan}
+						onIgnorePlan={ignoreSuggestedPlan}
+						onOpenExistingPlan={openExistingSuggestedPlan}
 						onClose={closeReview}
 					/>
 				) : reviewDraft &&
@@ -8780,8 +9064,11 @@ export const MiniApp = ({
 						mediaURL={reviewMediaURL}
 						categories={categories}
 						saving={saving}
+						suggestionSaving={reviewSuggestionSaving === "category"}
 						deleting={deletingReview}
 						error={error}
+						onAcceptCategorySuggestion={applyReviewCategorySuggestion}
+						onDismissCategorySuggestion={dismissReviewCategorySuggestion}
 						onConfirm={saveReview}
 						onEdit={editReview}
 						onDelete={deleteReview}
@@ -10702,6 +10989,7 @@ const reviewDraftFromCandidate = (
 			localISODate(),
 		sourceCurrency,
 		receiptTotal: receiptTotal > 0 ? receiptTotal : null,
+		categorySuggestion: reviewCategorySuggestionFromData(data),
 		items: rawItems.map((raw, index) => {
 			const item = objectValue(raw);
 			return {
@@ -10717,6 +11005,110 @@ const reviewDraftFromCandidate = (
 			};
 		}),
 	};
+};
+
+const reviewCategorySuggestionFromData = (
+	data: Record<string, unknown>,
+): ReviewCategorySuggestion | null => {
+	const raw = objectValue(data.category_suggestion);
+	const name = readString(raw, "name", "title");
+	const itemIndexes = Array.isArray(raw.item_indexes)
+		? raw.item_indexes
+				.map((value) => Number(value))
+				.filter((value) => Number.isInteger(value) && value >= 0)
+		: [];
+	if (!name || itemIndexes.length === 0) return null;
+	return {
+		name,
+		aliases: readStrings(raw.aliases).slice(0, 6),
+		itemIndexes: Array.from(new Set(itemIndexes)),
+		reason: readString(raw, "reason", "description"),
+	};
+};
+
+const suggestedPlanPayload = (
+	candidate: ReviewCandidate,
+	categories: Category[],
+) => {
+	const data = candidate.structured_data || {};
+	const fallbackCategory = categories.find(
+		(category) => category.key === readString(data, "category_key", "category"),
+	);
+	const items = Array.isArray(data.items)
+		? data.items
+				.map((raw) => {
+					const item = objectValue(raw);
+					const category = categories.find(
+						(current) =>
+							current.id === readNumber(item, "category_id") ||
+							current.key === readString(item, "category_key", "category"),
+					);
+					return {
+						name: readString(item, "name", "title", "description"),
+						expected_amount:
+							readNumber(
+								item,
+								"space_amount",
+								"expected_amount",
+								"line_total",
+								"amount",
+							) || null,
+						category_id: category?.id || fallbackCategory?.id || null,
+						notes: notesWithTags(
+							readString(item, "notes"),
+							readStrings(item.tags),
+						),
+					};
+				})
+				.filter((item) => item.name)
+		: [];
+	const title = readString(data, "title", "name") || candidate.title;
+	return {
+		title,
+		expected_amount:
+			readNumber(data, "expected_amount", "total", "amount") || null,
+		category_id: fallbackCategory?.id || null,
+		vendor_id: readNumber(data, "vendor_id") || null,
+		due_date: readString(data, "due_date", "planned_date", "expense_date"),
+		recurrence_interval: readString(data, "recurrence_interval"),
+		items:
+			items.length > 0
+				? items
+				: [
+						{
+							name: readString(data, "service_name") || title,
+							expected_amount:
+								readNumber(data, "expected_amount", "total", "amount") || null,
+							category_id: fallbackCategory?.id || null,
+							notes: "",
+						},
+					],
+	};
+};
+
+const matchingSuggestedPlan = (
+	candidate: ReviewCandidate | undefined,
+	plans: PurchasePlan[],
+) => {
+	if (!candidate) return undefined;
+	const payload = suggestedPlanPayload(candidate, []);
+	const normalizedTitle = payload.title
+		.toLocaleLowerCase("ru")
+		.replace(/^(оплатить|pay for|pagar)\s+/i, "")
+		.replace(/[^\p{L}\p{N}]+/gu, " ")
+		.trim();
+	return plans.find((plan) => {
+		const title = plan.title
+			.toLocaleLowerCase("ru")
+			.replace(/^(оплатить|pay for|pagar)\s+/i, "")
+			.replace(/[^\p{L}\p{N}]+/gu, " ")
+			.trim();
+		return (
+			plan.status === "planned" &&
+			title === normalizedTitle &&
+			(plan.recurrence_interval || "") === payload.recurrence_interval
+		);
+	});
 };
 
 const objectValue = (value: unknown): Record<string, unknown> =>
@@ -11174,8 +11566,11 @@ const ReviewReady = ({
 	mediaURL,
 	categories,
 	saving,
+	suggestionSaving,
 	deleting,
 	error,
+	onAcceptCategorySuggestion,
+	onDismissCategorySuggestion,
 	onConfirm,
 	onEdit,
 	onDelete,
@@ -11188,8 +11583,11 @@ const ReviewReady = ({
 	mediaURL: string;
 	categories: Category[];
 	saving: boolean;
+	suggestionSaving: boolean;
 	deleting: boolean;
 	error: string;
+	onAcceptCategorySuggestion: () => void;
+	onDismissCategorySuggestion: () => void;
 	onConfirm: () => void;
 	onEdit: () => void;
 	onDelete: () => void;
@@ -11210,6 +11608,22 @@ const ReviewReady = ({
 	const seller =
 		commonVendorName(draft.items.map((item) => item.vendor_name)) ||
 		draft.payeeText;
+	const categorySuggestion =
+		draft.categorySuggestion &&
+		!categories.some(
+			(category) =>
+				category.name.trim().toLocaleLowerCase("ru") ===
+				draft.categorySuggestion?.name.trim().toLocaleLowerCase("ru"),
+		)
+			? draft.categorySuggestion
+			: null;
+	const currentSuggestedCategory = categorySuggestion
+		? categories.find(
+				(category) =>
+					category.key ===
+					draft.items[categorySuggestion.itemIndexes[0]]?.category_key,
+			)
+		: undefined;
 	const confirm = () => {
 		if (!estimatedItemPhoto && totalMatches === false) {
 			setMismatchPromptOpen(true);
@@ -11316,6 +11730,52 @@ const ReviewReady = ({
 						);
 					})}
 				</div>
+
+				{categorySuggestion && (
+					<aside className="review-category-suggestion">
+						<span aria-hidden="true">
+							<Tag size={18} weight="fill" />
+						</span>
+						<div>
+							<small>{uiText(language, "categorySuggestionEyebrow")}</small>
+							<strong>{categorySuggestion.name}</strong>
+							<p>
+								{categorySuggestion.reason ||
+									uiText(language, "categorySuggestionBody")}
+							</p>
+							<div>
+								<button
+									type="button"
+									disabled={suggestionSaving || saving}
+									onClick={onAcceptCategorySuggestion}
+								>
+									<Plus size={15} weight="bold" />
+									{uiText(
+										language,
+										suggestionSaving
+											? "categorySuggestionAdding"
+											: "categorySuggestionAdd",
+									)}
+								</button>
+								<button
+									type="button"
+									disabled={suggestionSaving || saving}
+									onClick={onDismissCategorySuggestion}
+								>
+									{uiText(language, "categorySuggestionKeep").replace(
+										"{category}",
+										currentSuggestedCategory
+											? localizedCategoryName(
+													currentSuggestedCategory,
+													language,
+												)
+											: uiText(language, "currentCategory"),
+									)}
+								</button>
+							</div>
+						</div>
+					</aside>
+				)}
 
 				<footer>
 					<span>
@@ -11809,11 +12269,29 @@ const ReviewSaved = ({
 	expense,
 	language,
 	guided,
+	planSuggestion,
+	existingPlan,
+	planOutcome,
+	suggestionSaving,
+	error,
+	onCreatePlan,
+	onEditPlan,
+	onIgnorePlan,
+	onOpenExistingPlan,
 	onClose,
 }: {
 	expense: Expense;
 	language: UILanguage;
 	guided: boolean;
+	planSuggestion?: ReviewCandidate;
+	existingPlan?: PurchasePlan;
+	planOutcome: "" | "created";
+	suggestionSaving: "" | "category" | "plan" | "ignore";
+	error: string;
+	onCreatePlan: (candidate: ReviewCandidate) => void;
+	onEditPlan: (candidate: ReviewCandidate) => void;
+	onIgnorePlan: (candidate: ReviewCandidate) => void;
+	onOpenExistingPlan: (plan: PurchasePlan) => void;
 	onClose: () => void;
 }) => {
 	const items = Array.isArray(expense.items) ? expense.items : [];
@@ -11821,6 +12299,11 @@ const ReviewSaved = ({
 		items.length > 0
 			? items.reduce((sum, item) => sum + item.amount, 0)
 			: expense.total || expense.amount || 0;
+	const planData = planSuggestion?.structured_data || {};
+	const planAmount = readNumber(planData, "expected_amount", "amount", "total");
+	const planCurrency = readString(planData, "currency") || expense.currency;
+	const planDueDate = readString(planData, "due_date");
+	const planInterval = readString(planData, "recurrence_interval");
 	return (
 		<main className="review-saved">
 			<div className="review-saved-mark">
@@ -11849,6 +12332,94 @@ const ReviewSaved = ({
 					<strong>{formatMoney(total, expense.currency)}</strong>
 				</footer>
 			</article>
+			{planSuggestion && (
+				<section className="review-plan-suggestion" aria-live="polite">
+					<span aria-hidden="true">
+						<CalendarBlank size={21} weight="fill" />
+					</span>
+					<div>
+						<small>
+							{uiText(
+								language,
+								existingPlan
+									? "planSuggestionExistsEyebrow"
+									: "planSuggestionEyebrow",
+							)}
+						</small>
+						<strong>
+							{readString(planData, "service_name") || planSuggestion.title}
+						</strong>
+						<p>
+							{planInterval
+								? uiText(
+										language,
+										planInterval === "weekly"
+											? "planSuggestionWeekly"
+											: "planSuggestionMonthly",
+									).replace(
+										"{date}",
+										planDueDate
+											? formatDate(planDueDate, language)
+											: uiText(language, "dateNotSet"),
+									)
+								: uiText(language, "planSuggestionBody")}
+							{planAmount > 0
+								? ` · ${formatMoney(planAmount, planCurrency)}`
+								: ""}
+						</p>
+						<div>
+							{existingPlan ? (
+								<button
+									type="button"
+									onClick={() => onOpenExistingPlan(existingPlan)}
+								>
+									{uiText(language, "planSuggestionOpenExisting")}
+								</button>
+							) : (
+								<>
+									<button
+										type="button"
+										disabled={Boolean(suggestionSaving)}
+										onClick={() => onCreatePlan(planSuggestion)}
+									>
+										{uiText(
+											language,
+											suggestionSaving === "plan"
+												? "planSuggestionCreating"
+												: "planSuggestionCreate",
+										)}
+									</button>
+									<button
+										type="button"
+										disabled={Boolean(suggestionSaving)}
+										onClick={() => onEditPlan(planSuggestion)}
+									>
+										{uiText(language, "planSuggestionEdit")}
+									</button>
+								</>
+							)}
+							<button
+								type="button"
+								disabled={Boolean(suggestionSaving)}
+								onClick={() => onIgnorePlan(planSuggestion)}
+							>
+								{uiText(language, "notNow")}
+							</button>
+						</div>
+					</div>
+				</section>
+			)}
+			{planOutcome === "created" && (
+				<p className="review-plan-created" role="status">
+					<Check size={17} weight="bold" />
+					{uiText(language, "planSuggestionCreated")}
+				</p>
+			)}
+			{error && (
+				<div className="mini-alert review-saved-alert" role="alert">
+					{error}
+				</div>
+			)}
 			<button type="button" onClick={onClose}>
 				{uiText(language, "close")}
 			</button>
