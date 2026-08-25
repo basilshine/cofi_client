@@ -93,6 +93,12 @@ import {
 	categoryMonth,
 	shiftCategoryMonth,
 } from "./category-budget-summary";
+import { CategoryIcon, categoryIconTone } from "./category-icon";
+import {
+	CATEGORY_ICON_OPTIONS,
+	categoryIconLabel,
+	suggestCategoryIconKey,
+} from "./category-icon-catalog";
 import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
 import { groupRowsByExpense } from "./expense-groups";
 import {
@@ -569,6 +575,8 @@ type Category = {
 	id: number;
 	key: string;
 	name: string;
+	icon_key?: string;
+	icon_manual?: boolean;
 	count: number;
 	total: number;
 	month_spent?: number;
@@ -6732,6 +6740,7 @@ export const MiniApp = ({
 	const editCategory = (category: Category) =>
 		setEditingCategory({
 			...category,
+			icon_manual: true,
 			alias_text: category.aliases?.join(", ") || "",
 			auto_aliases: false,
 			budget_period: (category.budget_amount || 0) > 0 ? "month" : "",
@@ -7348,6 +7357,9 @@ export const MiniApp = ({
 							...current,
 							{
 								...editingCategory,
+								icon_key:
+									editingCategory.icon_key ||
+									suggestCategoryIconKey(editingCategory.name),
 								id: Math.max(0, ...current.map((category) => category.id)) + 1,
 								key: `custom_${Date.now()}`,
 								is_system: false,
@@ -7379,6 +7391,7 @@ export const MiniApp = ({
 					method: creating ? "POST" : "PUT",
 					body: JSON.stringify({
 						name: editingCategory.name,
+						icon_key: editingCategory.icon_key || undefined,
 						aliases,
 						auto_aliases: creating
 							? editingCategory.auto_aliases !== false
@@ -9699,6 +9712,8 @@ export const MiniApp = ({
 										id: 0,
 										key: "",
 										name: "",
+										icon_key: undefined,
+										icon_manual: false,
 										count: 0,
 										total: 0,
 										aliases: [],
@@ -13693,6 +13708,12 @@ const Overview = ({
 											>
 												<span>
 													<span className="mini-home-category-title">
+														<CategoryIconBadge
+															category={category}
+															language={language}
+															size={15}
+															compact
+														/>
 														<b>{localizedCategoryName(category, language)}</b>
 														{category.pinned && (
 															<PushPin size={13} weight="fill" />
@@ -13747,6 +13768,7 @@ const Overview = ({
 							>
 								<ExpenseList
 									expenses={recentExpenses}
+									categories={categories}
 									captures={captures}
 									participants={participants}
 									language={language}
@@ -14573,6 +14595,7 @@ const ExpensesView = ({
 					) : groupByExpense ? (
 						<GroupedExpenseItemList
 							items={items}
+							categories={categories}
 							captures={captures}
 							participants={participants}
 							language={language}
@@ -15469,6 +15492,81 @@ const PlansView = ({
 	);
 };
 
+const CategoryIconBadge = ({
+	category,
+	language,
+	size = 20,
+	compact = false,
+}: {
+	category: Pick<Category, "key" | "name" | "icon_key">;
+	language: UILanguage;
+	size?: number;
+	compact?: boolean;
+}) => {
+	const iconKey =
+		category.icon_key || suggestCategoryIconKey(category.name, category.key);
+	const label = localizedCategoryName(category as Category, language);
+	return (
+		<span
+			className={`mini-category-icon${compact ? " is-compact" : ""}`}
+			data-tone={categoryIconTone(iconKey)}
+			title={label}
+			aria-label={label}
+		>
+			<CategoryIcon
+				iconKey={iconKey}
+				categoryKey={category.key}
+				name={category.name}
+				size={size}
+			/>
+		</span>
+	);
+};
+
+const ExpenseCategoryIcons = ({
+	expense,
+	categories,
+	language,
+	fallback,
+}: {
+	expense: Expense;
+	categories: Category[];
+	language: UILanguage;
+	fallback: ReactNode;
+}) => {
+	const categoryRows = expense.items
+		.map((item) =>
+			categories.find((category) => category.id === item.category_id),
+		)
+		.filter((category): category is Category => Boolean(category))
+		.filter(
+			(category, index, rows) =>
+				rows.findIndex(({ id }) => id === category.id) === index,
+		)
+		.slice(0, 3);
+	if (categoryRows.length === 0) {
+		return <span className="mini-expense-icon">{fallback}</span>;
+	}
+	return (
+		<span
+			className={`mini-expense-category-icons is-${categoryRows.length}`}
+			aria-label={categoryRows
+				.map((category) => localizedCategoryName(category, language))
+				.join(", ")}
+		>
+			{categoryRows.map((category) => (
+				<CategoryIconBadge
+					key={category.id}
+					category={category}
+					language={language}
+					size={categoryRows.length === 1 ? 19 : 15}
+					compact={categoryRows.length > 1}
+				/>
+			))}
+		</span>
+	);
+};
+
 const ExpenseItemList = ({
 	items,
 	categories,
@@ -15497,11 +15595,13 @@ const ExpenseItemList = ({
 				money.currency,
 			);
 			const seller = expenseItemSellerName(row.item, row.expense);
+			const categoryRow = categories.find(
+				(current) => current.id === row.item.category_id,
+			);
 			const category =
 				row.item.category_name ||
 				row.item.category?.name ||
-				categories.find((current) => current.id === row.item.category_id)
-					?.name ||
+				categoryRow?.name ||
 				"Другое";
 			const capture = captureForExpense(row.expense, captures);
 			const author = showAuthors
@@ -15513,9 +15613,17 @@ const ExpenseItemList = ({
 					type="button"
 					onClick={() => onOpen(row)}
 				>
-					<span className="mini-expense-icon">
-						<SourceIcon capture={capture} size={19} />
-					</span>
+					{categoryRow ? (
+						<CategoryIconBadge
+							category={categoryRow}
+							language={language}
+							size={19}
+						/>
+					) : (
+						<span className="mini-expense-icon">
+							<SourceIcon capture={capture} size={19} />
+						</span>
+					)}
 					<span className="mini-expense-copy">
 						<b>{row.item.name || "Покупка"}</b>
 						<small>
@@ -15547,6 +15655,7 @@ const ExpenseItemList = ({
 
 const GroupedExpenseItemList = ({
 	items,
+	categories,
 	captures,
 	participants,
 	language,
@@ -15554,6 +15663,7 @@ const GroupedExpenseItemList = ({
 	onOpenExpense,
 }: {
 	items: ExpenseItemRow[];
+	categories: Category[];
 	captures: CapturePacket[];
 	participants: SpaceParticipant[];
 	language: UILanguage;
@@ -15578,6 +15688,7 @@ const GroupedExpenseItemList = ({
 					<ExpenseRecordCard
 						key={expense.id}
 						expense={expense}
+						categories={categories}
 						capture={captureForExpense(expense, captures)}
 						participants={participants}
 						language={language}
@@ -15596,6 +15707,7 @@ const GroupedExpenseItemList = ({
 
 const ExpenseRecordCard = ({
 	expense,
+	categories,
 	capture,
 	participants,
 	language,
@@ -15606,6 +15718,7 @@ const ExpenseRecordCard = ({
 	onOpen,
 }: {
 	expense: Expense;
+	categories: Category[];
 	capture?: CapturePacket;
 	participants: SpaceParticipant[];
 	language: UILanguage;
@@ -15645,9 +15758,12 @@ const ExpenseRecordCard = ({
 			type="button"
 			onClick={onOpen}
 		>
-			<span className="mini-expense-icon">
-				<SourceIcon capture={capture} size={19} />
-			</span>
+			<ExpenseCategoryIcons
+				expense={expense}
+				categories={categories}
+				language={language}
+				fallback={<SourceIcon capture={capture} size={19} />}
+			/>
 			<span className="mini-expense-copy">
 				<b>{title}</b>
 			</span>
@@ -15685,6 +15801,7 @@ const ExpenseRecordCard = ({
 
 const ExpenseList = ({
 	expenses,
+	categories,
 	captures,
 	participants,
 	language,
@@ -15692,6 +15809,7 @@ const ExpenseList = ({
 	onEdit,
 }: {
 	expenses: Expense[];
+	categories: Category[];
 	captures: CapturePacket[];
 	participants: SpaceParticipant[];
 	language: UILanguage;
@@ -15707,6 +15825,7 @@ const ExpenseList = ({
 				<ExpenseRecordCard
 					key={expense.id}
 					expense={expense}
+					categories={categories}
 					capture={capture}
 					participants={participants}
 					language={language}
@@ -16268,7 +16387,11 @@ const CategoriesView = ({
 								type="button"
 								onClick={() => onOpen(category.id)}
 							>
-								<span className="mini-category-dot" />
+								<CategoryIconBadge
+									category={category}
+									language={language}
+									size={20}
+								/>
 								<span className="mini-category-content">
 									<b>{localizedCategoryName(category, language)}</b>
 									<small className="mini-category-attribution">
@@ -23543,6 +23666,8 @@ const CategoryEditor = ({
 	const canDestructivelyChange = category.can_delete !== false;
 	const creating = category.id === 0;
 	const autoAliases = creating && category.auto_aliases !== false;
+	const previewIconKey =
+		category.icon_key || suggestCategoryIconKey(category.name, category.key);
 	const monthLabel = new Intl.DateTimeFormat(language, {
 		month: "long",
 		year: "numeric",
@@ -23590,6 +23715,71 @@ const CategoryEditor = ({
 					{uiText(language, "fieldRequired")}
 				</EditorFieldError>
 			</label>
+			<fieldset className="mini-category-icon-picker">
+				<legend>{uiText(language, "categoryIcon")}</legend>
+				<div className="mini-category-icon-preview">
+					<CategoryIconBadge
+						category={{
+							key: category.key,
+							name: category.name || uiText(language, "newCategory"),
+							icon_key: previewIconKey,
+						}}
+						language={language}
+						size={24}
+					/>
+					<span>
+						<strong>{categoryIconLabel(previewIconKey, language)}</strong>
+						<small>
+							{category.icon_manual
+								? uiText(language, "categoryIconSelected")
+								: uiText(language, "categoryIconAutomatic")}
+						</small>
+					</span>
+					{category.icon_manual && (
+						<button
+							type="button"
+							onClick={() =>
+								onChange({
+									...category,
+									icon_key: undefined,
+									icon_manual: false,
+								})
+							}
+						>
+							<Sparkle size={15} weight="fill" />
+							{uiText(language, "categoryIconAuto")}
+						</button>
+					)}
+				</div>
+				<div className="mini-category-icon-grid">
+					{CATEGORY_ICON_OPTIONS.map((option) => {
+						const selected =
+							previewIconKey === option.key && category.icon_manual;
+						const label = option.labels[language];
+						return (
+							<button
+								key={option.key}
+								className={selected ? "is-selected" : ""}
+								type="button"
+								aria-label={label}
+								aria-pressed={selected}
+								title={label}
+								data-tone={option.tone}
+								onClick={() =>
+									onChange({
+										...category,
+										icon_key: option.key,
+										icon_manual: true,
+									})
+								}
+							>
+								<CategoryIcon iconKey={option.key} size={20} />
+								{selected && <Check size={11} weight="bold" />}
+							</button>
+						);
+					})}
+				</div>
+			</fieldset>
 			<div className="mini-category-recognition">
 				{creating && (
 					<button

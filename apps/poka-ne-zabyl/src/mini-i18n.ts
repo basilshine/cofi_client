@@ -345,6 +345,10 @@ const messages = {
 			"Названия, по которым бот узнает эту категорию. Укажите через запятую.",
 		autoSynonyms: "Подобрать синонимы автоматически",
 		autoSynonymsHint: "ИИ добавит подходящие слова после создания категории.",
+		categoryIcon: "Иконка категории",
+		categoryIconAutomatic: "Подберём автоматически по названию",
+		categoryIconSelected: "Выбрано вручную",
+		categoryIconAuto: "Автовыбор",
 		budget: "Лимит расходов",
 		monthlyBudget: "Лимит на месяц",
 		monthlyBudgetHint:
@@ -1153,6 +1157,10 @@ const messages = {
 			"Names the bot should recognize as this category. Separate them with commas.",
 		autoSynonyms: "Suggest synonyms automatically",
 		autoSynonymsHint: "AI will add suitable recognition terms after creation.",
+		categoryIcon: "Category icon",
+		categoryIconAutomatic: "Automatically matched to the name",
+		categoryIconSelected: "Selected manually",
+		categoryIconAuto: "Auto select",
 		budget: "Spending limit",
 		monthlyBudget: "Monthly limit",
 		monthlyBudgetHint:
@@ -1964,6 +1972,10 @@ const messages = {
 		autoSynonyms: "Sugerir sinónimos automáticamente",
 		autoSynonymsHint:
 			"La IA añadirá términos adecuados después de crear la categoría.",
+		categoryIcon: "Icono de categoría",
+		categoryIconAutomatic: "Se asignará automáticamente según el nombre",
+		categoryIconSelected: "Seleccionado manualmente",
+		categoryIconAuto: "Selección automática",
 		budget: "Límite de gasto",
 		monthlyBudget: "Límite mensual",
 		monthlyBudgetHint:
