@@ -195,6 +195,7 @@ import {
 	appURLWithSpaceID,
 	preferredSpaceID,
 } from "./space-context";
+import { selectableParticipantsForSpace } from "./space-participants";
 import { spaceScopedItems } from "./space-scoped-data";
 import {
 	type SplitSettlementEvidence,
@@ -6400,13 +6401,8 @@ export const MiniApp = ({
 		}
 	};
 	const eligibleParticipants = useMemo(
-		() =>
-			participants.filter(
-				(participant) =>
-					participant.status !== "archived" &&
-					!participant.canonical_participant_id,
-			),
-		[participants],
+		() => selectableParticipantsForSpace(participants, spaceID),
+		[participants, spaceID],
 	);
 	const activeCoachmark =
 		coachmarksReady &&
@@ -15661,7 +15657,12 @@ const CategoryPicker = ({
 			setQuery("");
 			return;
 		}
-		requestAnimationFrame(() => searchRef.current?.focus());
+		requestAnimationFrame(() => {
+			rootRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
+			if (window.matchMedia("(pointer: fine)").matches) {
+				searchRef.current?.focus({ preventScroll: true });
+			}
+		});
 	}, [open]);
 
 	const selectCategory = (category?: Category) => {

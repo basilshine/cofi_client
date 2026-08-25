@@ -6353,7 +6353,7 @@
 .mini-modal > header {
 	position: sticky;
 	z-index: 6;
-	top: 0;
+	top: -20px;
 	display: flex;
 	align-items: center;
 	min-width: 0;
@@ -12135,8 +12135,10 @@
 		border-top: 1px solid var(--mini-line);
 		background: var(--mini-paper);
 	}
-	.mini-modal:has(.vendor-autocomplete-list) .mini-modal-actions {
+	.mini-modal:has(.vendor-autocomplete-list) .mini-modal-actions,
+	.mini-modal:has(.mini-category-picker.is-open) .mini-modal-actions {
 		opacity: 0;
+		transform: translateY(12px);
 		pointer-events: none;
 	}
 	.review-meta {
