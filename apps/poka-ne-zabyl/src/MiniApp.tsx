@@ -4800,33 +4800,11 @@ export const MiniApp = ({
 		void changeCategoryMonth(currentMonth);
 	}, [view, selectedCategoryMonth]);
 
-	const refreshCurrentView = async () => {
+	const refreshCurrentView = () => {
 		if (refreshing || loading || !token || !spaceID) return;
 		setRefreshing(true);
 		updatePullDistance(PULL_REFRESH_THRESHOLD);
-		try {
-			const minimumIndicator = new Promise((resolve) =>
-				window.setTimeout(resolve, 450),
-			);
-			if (previewMode) {
-				await minimumIndicator;
-				return;
-			}
-			const [freshSpaces] = await Promise.all([
-				apiRequest<Space[]>("/spaces", token),
-				loadSpace(true),
-				refreshNotifications(),
-				minimumIndicator,
-			]);
-			setSpaces(freshSpaces);
-		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Не удалось обновить данные",
-			);
-		} finally {
-			setRefreshing(false);
-			updatePullDistance(0);
-		}
+		window.setTimeout(() => window.location.reload(), 120);
 	};
 
 	const beginPullRefresh = (event: TouchEvent<HTMLDivElement>) => {
