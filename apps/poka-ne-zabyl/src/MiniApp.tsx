@@ -15523,6 +15523,186 @@ const CategoryIconBadge = ({
 	);
 };
 
+const CategoryPicker = ({
+	categories,
+	value,
+	language,
+	ariaLabel,
+	allowEmpty = false,
+	onChange,
+}: {
+	categories: Category[];
+	value?: number | null;
+	language: UILanguage;
+	ariaLabel?: string;
+	allowEmpty?: boolean;
+	onChange: (category?: Category) => void;
+}) => {
+	const listID = useId();
+	const rootRef = useRef<HTMLDivElement>(null);
+	const searchRef = useRef<HTMLInputElement>(null);
+	const [open, setOpen] = useState(false);
+	const [query, setQuery] = useState("");
+	const selectedCategory = categories.find((category) => category.id === value);
+	const selectedLabel = selectedCategory
+		? localizedCategoryName(selectedCategory, language)
+		: uiText(language, "categoryNotSet");
+	const filteredCategories = useMemo(() => {
+		const normalizedQuery = query.trim().toLocaleLowerCase();
+		if (!normalizedQuery) return categories;
+		return categories.filter((category) =>
+			localizedCategoryName(category, language)
+				.toLocaleLowerCase()
+				.includes(normalizedQuery),
+		);
+	}, [categories, language, query]);
+
+	useEffect(() => {
+		if (!open) return;
+		const closeOnOutsidePress = (event: PointerEvent) => {
+			if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+		};
+		document.addEventListener("pointerdown", closeOnOutsidePress);
+		return () =>
+			document.removeEventListener("pointerdown", closeOnOutsidePress);
+	}, [open]);
+
+	useEffect(() => {
+		if (!open) {
+			setQuery("");
+			return;
+		}
+		requestAnimationFrame(() => searchRef.current?.focus());
+	}, [open]);
+
+	const selectCategory = (category?: Category) => {
+		onChange(category);
+		setOpen(false);
+	};
+
+	return (
+		<div
+			className={`mini-category-picker${open ? " is-open" : ""}`}
+			ref={rootRef}
+		>
+			<button
+				className="mini-category-picker-trigger"
+				type="button"
+				aria-label={`${ariaLabel || uiText(language, "category")}: ${selectedLabel}`}
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				aria-controls={listID}
+				onClick={() => setOpen((current) => !current)}
+				onKeyDown={(event) => {
+					if (event.key === "ArrowDown") {
+						event.preventDefault();
+						setOpen(true);
+					}
+				}}
+			>
+				{selectedCategory ? (
+					<CategoryIconBadge
+						category={selectedCategory}
+						language={language}
+						size={18}
+						compact
+					/>
+				) : (
+					<span
+						className="mini-category-picker-placeholder-icon"
+						aria-hidden="true"
+					>
+						<Tag size={18} />
+					</span>
+				)}
+				<span className="mini-category-picker-value">{selectedLabel}</span>
+				<CaretDown
+					className="mini-category-picker-caret"
+					size={16}
+					aria-hidden="true"
+				/>
+			</button>
+			{open && (
+				<div className="mini-category-picker-panel">
+					<label className="mini-category-picker-search">
+						<MagnifyingGlass size={17} aria-hidden="true" />
+						<input
+							ref={searchRef}
+							type="search"
+							value={query}
+							aria-label={uiText(language, "categorySearch")}
+							placeholder={uiText(language, "categorySearch")}
+							onChange={(event) => setQuery(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Escape") {
+									setOpen(false);
+									rootRef.current
+										?.querySelector<HTMLButtonElement>(
+											".mini-category-picker-trigger",
+										)
+										?.focus();
+								}
+							}}
+						/>
+					</label>
+					<div
+						className="mini-category-picker-options"
+						id={listID}
+						role="listbox"
+						tabIndex={-1}
+					>
+						{allowEmpty && !query.trim() && (
+							<button
+								className="mini-category-picker-option"
+								type="button"
+								role="option"
+								aria-selected={!selectedCategory}
+								onClick={() => selectCategory()}
+							>
+								<span
+									className="mini-category-picker-placeholder-icon"
+									aria-hidden="true"
+								>
+									<Tag size={17} />
+								</span>
+								<span>{uiText(language, "categoryNotSet")}</span>
+								{!selectedCategory && <Check size={17} aria-hidden="true" />}
+							</button>
+						)}
+						{filteredCategories.map((category) => {
+							const selected = category.id === selectedCategory?.id;
+							return (
+								<button
+									className="mini-category-picker-option"
+									type="button"
+									key={category.id}
+									role="option"
+									aria-selected={selected}
+									onClick={() => selectCategory(category)}
+								>
+									<CategoryIconBadge
+										category={category}
+										language={language}
+										size={17}
+										compact
+									/>
+									<span>{localizedCategoryName(category, language)}</span>
+									{selected && <Check size={17} aria-hidden="true" />}
+								</button>
+							);
+						})}
+						{filteredCategories.length === 0 && (
+							<p className="mini-category-picker-empty">
+								{uiText(language, "categoryNoResults")}
+							</p>
+						)}
+					</div>
+				</div>
+			)}
+		</div>
+	);
+};
+
 const ExpenseCategoryIcons = ({
 	expense,
 	categories,
@@ -22559,33 +22739,27 @@ const PlanEditor = ({
 									}
 								/>
 							</div>
-							<label>
+							<div className="mini-plan-item-field">
 								<span>{uiText(language, "category")}</span>
-								<select
+								<CategoryPicker
+									categories={categories}
+									language={language}
 									value={item.category_id || 0}
-									onChange={(event) =>
+									allowEmpty
+									onChange={(category) =>
 										updateItems(
 											items.map((current, itemIndex) =>
 												itemIndex === index
 													? {
 															...current,
-															category_id: Number(event.target.value) || null,
+															category_id: category?.id || null,
 														}
 													: current,
 											),
 										)
 									}
-								>
-									<option value={0}>
-										{uiText(language, "categoryNotSet")}
-									</option>
-									{categories.map((category) => (
-										<option key={category.id} value={category.id}>
-											{localizedCategoryName(category, language)}
-										</option>
-									))}
-								</select>
-							</label>
+								/>
+							</div>
 						</div>
 						<HashtagNotesInput
 							language={language}
@@ -23071,36 +23245,32 @@ const ExpenseEditor = ({
 								{uiText(language, "positiveAmountRequired")}
 							</EditorFieldError>
 						</div>
-						<label className="mini-editor-field mini-editor-field--wide">
+						<div className="mini-editor-field mini-editor-field--wide">
 							<span className="mini-editor-label">
 								{uiText(language, "category")}
 							</span>
-							<select
+							<CategoryPicker
 								aria-label={uiText(language, "itemCategory").replace(
 									"{number}",
 									String(index + 1),
 								)}
+								categories={categories}
+								language={language}
 								value={item.category_id || 0}
-								onChange={(event) =>
+								onChange={(category) =>
 									updateItems(
 										expense.items.map((current, itemIndex) =>
 											itemIndex === index
 												? {
 														...current,
-														category_id: Number(event.target.value),
+														category_id: category?.id || 0,
 													}
 												: current,
 										),
 									)
 								}
-							>
-								{categories.map((category) => (
-									<option key={category.id} value={category.id}>
-										{localizedCategoryName(category, language)}
-									</option>
-								))}
-							</select>
-						</label>
+							/>
+						</div>
 						{!creating && (
 							<div className="mini-editor-field mini-editor-field--wide mini-editor-vendor">
 								<span className="mini-editor-label">
@@ -23349,14 +23519,13 @@ const ExpenseItemEditor = ({
 			<section className="mini-editor-section">
 				<h3>{uiText(language, "editorPurchaseContext")}</h3>
 				<div className="mini-editor-section-fields">
-					<label>
-						{uiText(language, "category")}
-						<select
+					<div className="mini-field">
+						<span>{uiText(language, "category")}</span>
+						<CategoryPicker
+							categories={categories}
+							language={language}
 							value={item.category_id || 0}
-							onChange={(event) => {
-								const category = categories.find(
-									(current) => current.id === Number(event.target.value),
-								);
+							onChange={(category) => {
 								onChange({
 									...item,
 									category_id: category?.id,
@@ -23366,14 +23535,8 @@ const ExpenseItemEditor = ({
 										: undefined,
 								});
 							}}
-						>
-							{categories.map((category) => (
-								<option key={category.id} value={category.id}>
-									{localizedCategoryName(category, language)}
-								</option>
-							))}
-						</select>
-					</label>
+						/>
+					</div>
 					<div className="mini-field">
 						<span>{uiText(language, "whereBought")}</span>
 						<VendorAutocomplete

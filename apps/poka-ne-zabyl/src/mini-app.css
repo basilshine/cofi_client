@@ -8507,6 +8507,156 @@
 	color: var(--mini-muted);
 	font-size: 12px;
 }
+.mini-category-picker {
+	display: grid;
+	min-width: 0;
+	gap: 7px;
+}
+.mini-category-picker-trigger {
+	display: grid;
+	width: 100%;
+	min-width: 0;
+	min-height: 46px;
+	grid-template-columns: 30px minmax(0, 1fr) 18px;
+	align-items: center;
+	gap: 9px;
+	padding: 7px 10px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+	color: var(--mini-ink);
+	text-align: left;
+	transition: border-color 150ms ease-out, box-shadow 150ms ease-out,
+		background-color 150ms ease-out;
+}
+.mini-category-picker-trigger:hover {
+	border-color: color-mix(in srgb, var(--mini-green) 35%, var(--mini-line));
+	background: color-mix(in srgb, var(--mini-soft) 45%, var(--mini-paper));
+}
+.mini-category-picker.is-open .mini-category-picker-trigger,
+.mini-category-picker-trigger:focus-visible {
+	border-color: color-mix(in srgb, var(--mini-green) 70%, var(--mini-line));
+	outline: none;
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mini-green) 12%, transparent);
+}
+.mini-category-picker-value {
+	min-width: 0;
+	overflow: hidden;
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.25;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-category-picker-placeholder-icon {
+	display: grid;
+	width: 30px;
+	height: 30px;
+	place-items: center;
+	border: 1px dashed color-mix(in srgb, var(--mini-muted) 45%, transparent);
+	border-radius: 7px;
+	color: var(--mini-muted);
+}
+.mini-category-picker-caret {
+	color: var(--mini-muted);
+	transition: transform 150ms ease-out;
+}
+.mini-category-picker.is-open .mini-category-picker-caret {
+	transform: rotate(180deg);
+}
+.mini-category-picker-panel {
+	display: grid;
+	min-width: 0;
+	gap: 7px;
+	padding: 7px;
+	border: 1px solid var(--mini-line);
+	border-radius: 8px;
+	background: var(--mini-paper);
+	box-shadow: 0 10px 24px rgb(30 38 48 / 10%);
+}
+.mini-category-picker-search {
+	display: grid;
+	min-width: 0;
+	min-height: 40px;
+	grid-template-columns: 18px minmax(0, 1fr);
+	align-items: center;
+	gap: 8px;
+	padding: 0 10px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-soft);
+	color: var(--mini-muted);
+}
+.mini-category-picker-search:focus-within {
+	border-color: color-mix(in srgb, var(--mini-green) 60%, var(--mini-line));
+	box-shadow: 0 0 0 2px color-mix(in srgb, var(--mini-green) 10%, transparent);
+}
+.mini-category-picker-search input,
+.mini-modal.is-editor .mini-category-picker-search input {
+	width: 100%;
+	min-width: 0;
+	min-height: 38px;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	outline: 0;
+	background: transparent;
+	box-shadow: none;
+	color: var(--mini-ink);
+}
+.mini-modal.is-editor .mini-category-picker-search input:hover,
+.mini-modal.is-editor .mini-category-picker-search input:focus-visible {
+	background: transparent;
+	box-shadow: none;
+}
+.mini-category-picker-options {
+	display: grid;
+	max-height: min(32vh, 260px);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-gutter: stable;
+}
+.mini-category-picker-option {
+	display: grid;
+	width: 100%;
+	min-width: 0;
+	min-height: 44px;
+	grid-template-columns: 30px minmax(0, 1fr) 18px;
+	align-items: center;
+	gap: 9px;
+	padding: 6px 9px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: var(--mini-ink);
+	font-size: 14px;
+	font-weight: 650;
+	text-align: left;
+}
+.mini-category-picker-option > span:nth-child(2) {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+.mini-category-picker-option:hover,
+.mini-category-picker-option:focus-visible {
+	outline: none;
+	background: var(--mini-soft);
+}
+.mini-category-picker-option[aria-selected="true"] {
+	background: color-mix(in srgb, var(--mini-green) 9%, var(--mini-paper));
+	color: var(--mini-green);
+}
+.mini-category-picker-option > svg:last-child {
+	justify-self: end;
+}
+.mini-category-picker-empty {
+	margin: 0;
+	padding: 18px 10px;
+	color: var(--mini-muted);
+	font-size: 13px;
+	font-weight: 600;
+	text-align: center;
+}
 .mini-plan-editor-items {
 	display: grid;
 	gap: 10px;
