@@ -172,6 +172,7 @@ import {
 	inheritedPlanCategoryID,
 	planCategoryState,
 	uniquePlanCategoryIDs,
+	visiblePlanCategoryIDs,
 } from "./plan-category";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
 import {
@@ -15554,7 +15555,10 @@ const PlanCategoryIcons = ({
 	fallback: ReactNode;
 	detail?: boolean;
 }) => {
-	const categoryRows = uniquePlanCategoryIDs(items || purchasePlanItems(plan))
+	const categoryRows = visiblePlanCategoryIDs(
+		plan.category_id,
+		items || purchasePlanItems(plan),
+	)
 		.map((categoryID) =>
 			categories.find((category) => category.id === categoryID),
 		)

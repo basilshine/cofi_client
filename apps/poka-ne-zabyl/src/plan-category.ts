@@ -43,3 +43,11 @@ export const uniquePlanCategoryIDs = (items: PlanCategoryItem[]) =>
 			(categoryID, index, categoryIDs) =>
 				categoryIDs.indexOf(categoryID) === index,
 		);
+
+export const visiblePlanCategoryIDs = (
+	planCategoryID: number | null | undefined,
+	items: PlanCategoryItem[],
+) => {
+	if (planCategoryID && planCategoryID > 0) return [planCategoryID];
+	return uniquePlanCategoryIDs(items);
+};

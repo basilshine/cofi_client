@@ -5,6 +5,7 @@ import {
 	inheritedPlanCategoryID,
 	planCategoryState,
 	uniquePlanCategoryIDs,
+	visiblePlanCategoryIDs,
 } from "../src/plan-category.ts";
 
 test("describes a category shared by every plan item", () => {
@@ -55,6 +56,21 @@ test("returns unique category icons in plan item order", () => {
 		uniquePlanCategoryIDs([
 			{ category_id: 7 },
 			{ category_id: null },
+			{ category_id: 4 },
+			{ category_id: 7 },
+		]),
+		[7, 4],
+	);
+});
+
+test("uses the plan category icon before item category fallbacks", () => {
+	assert.deepEqual(
+		visiblePlanCategoryIDs(9, [{ category_id: null }, { category_id: 4 }]),
+		[9],
+	);
+	assert.deepEqual(
+		visiblePlanCategoryIDs(null, [
+			{ category_id: 7 },
 			{ category_id: 4 },
 			{ category_id: 7 },
 		]),
