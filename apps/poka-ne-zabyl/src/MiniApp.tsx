@@ -9567,6 +9567,7 @@ export const MiniApp = ({
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
+								categoryCatalog={categories}
 								expenses={overviewExpenses}
 								latestExpenses={expensesWithSplitContext}
 								plans={plans}
@@ -13185,6 +13186,7 @@ const Overview = ({
 	total,
 	currency,
 	categories,
+	categoryCatalog,
 	expenses,
 	latestExpenses,
 	plans,
@@ -13225,6 +13227,7 @@ const Overview = ({
 	total: number;
 	currency: string;
 	categories: HomeCategoryRow<Category & { filteredTotal: number }>[];
+	categoryCatalog: Category[];
 	expenses: Expense[];
 	latestExpenses: Expense[];
 	plans: PurchasePlan[];
@@ -13581,7 +13584,7 @@ const Overview = ({
 													key={plan.id}
 													plan={plan}
 													capture={captureForPlan(plan, captures)}
-													categories={categories}
+													categories={categoryCatalog}
 													members={members}
 													language={language}
 													amount={planMoney.amount}
@@ -13779,7 +13782,7 @@ const Overview = ({
 							>
 								<ExpenseList
 									expenses={recentExpenses}
-									categories={categories}
+									categories={categoryCatalog}
 									captures={captures}
 									participants={participants}
 									language={language}
