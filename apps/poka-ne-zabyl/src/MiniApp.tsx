@@ -97,7 +97,7 @@ import { CategoryIcon, categoryIconTone } from "./category-icon";
 import {
 	CATEGORY_ICON_OPTIONS,
 	categoryIconLabel,
-	suggestCategoryIconKey,
+	resolveCategoryIconKey,
 } from "./category-icon-catalog";
 import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
 import { groupRowsByExpense } from "./expense-groups";
@@ -6740,7 +6740,9 @@ export const MiniApp = ({
 	const editCategory = (category: Category) =>
 		setEditingCategory({
 			...category,
-			icon_manual: true,
+			icon_manual:
+				category.icon_key !==
+				resolveCategoryIconKey(undefined, category.name, category.key),
 			alias_text: category.aliases?.join(", ") || "",
 			auto_aliases: false,
 			budget_period: (category.budget_amount || 0) > 0 ? "month" : "",
@@ -7350,6 +7352,11 @@ export const MiniApp = ({
 	const saveCategory = async () => {
 		if (!editingCategory) return;
 		const creating = editingCategory.id === 0;
+		const iconKey = resolveCategoryIconKey(
+			editingCategory.icon_key,
+			editingCategory.name,
+			editingCategory.key,
+		);
 		if (previewMode) {
 			setCategories((current) =>
 				creating
@@ -7357,9 +7364,7 @@ export const MiniApp = ({
 							...current,
 							{
 								...editingCategory,
-								icon_key:
-									editingCategory.icon_key ||
-									suggestCategoryIconKey(editingCategory.name),
+								icon_key: iconKey,
 								id: Math.max(0, ...current.map((category) => category.id)) + 1,
 								key: `custom_${Date.now()}`,
 								is_system: false,
@@ -7370,7 +7375,9 @@ export const MiniApp = ({
 							},
 						]
 					: current.map((category) =>
-							category.id === editingCategory.id ? editingCategory : category,
+							category.id === editingCategory.id
+								? { ...editingCategory, icon_key: iconKey }
+								: category,
 						),
 			);
 			setEditingCategory(null);
@@ -7391,7 +7398,7 @@ export const MiniApp = ({
 					method: creating ? "POST" : "PUT",
 					body: JSON.stringify({
 						name: editingCategory.name,
-						icon_key: editingCategory.icon_key || undefined,
+						icon_key: iconKey,
 						aliases,
 						auto_aliases: creating
 							? editingCategory.auto_aliases !== false
@@ -15503,8 +15510,11 @@ const CategoryIconBadge = ({
 	size?: number;
 	compact?: boolean;
 }) => {
-	const iconKey =
-		category.icon_key || suggestCategoryIconKey(category.name, category.key);
+	const iconKey = resolveCategoryIconKey(
+		category.icon_key,
+		category.name,
+		category.key,
+	);
 	const label = localizedCategoryName(category as Category, language);
 	return (
 		<span
@@ -23829,8 +23839,11 @@ const CategoryEditor = ({
 	const canDestructivelyChange = category.can_delete !== false;
 	const creating = category.id === 0;
 	const autoAliases = creating && category.auto_aliases !== false;
-	const previewIconKey =
-		category.icon_key || suggestCategoryIconKey(category.name, category.key);
+	const previewIconKey = resolveCategoryIconKey(
+		category.icon_key,
+		category.name,
+		category.key,
+	);
 	const monthLabel = new Intl.DateTimeFormat(language, {
 		month: "long",
 		year: "numeric",

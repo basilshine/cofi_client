@@ -335,6 +335,15 @@ export const suggestCategoryIconKey = (
 	return "tag";
 };
 
+export const resolveCategoryIconKey = (
+	iconKey: string | null | undefined,
+	name: string,
+	categoryKey = "",
+): CategoryIconKey =>
+	iconKey && iconKeys.has(iconKey)
+		? (iconKey as CategoryIconKey)
+		: suggestCategoryIconKey(name, categoryKey);
+
 export const categoryIconOption = (key?: string | null) =>
 	CATEGORY_ICON_OPTIONS.find(
 		(option) => option.key === normalizeCategoryIconKey(key),

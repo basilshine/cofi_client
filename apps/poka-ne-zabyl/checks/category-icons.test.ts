@@ -4,6 +4,7 @@ import {
 	CATEGORY_ICON_OPTIONS,
 	categoryIconLabel,
 	normalizeCategoryIconKey,
+	resolveCategoryIconKey,
 	suggestCategoryIconKey,
 } from "../src/category-icon-catalog.ts";
 
@@ -21,4 +22,15 @@ test("suggests category icons from names and keeps a safe fallback", () => {
 	assert.equal(suggestCategoryIconKey("Электрика и кабель"), "electricity");
 	assert.equal(suggestCategoryIconKey("Совсем новая идея"), "tag");
 	assert.equal(normalizeCategoryIconKey("unknown"), "tag");
+});
+
+test("resolves automatic category icons to a key that can be persisted", () => {
+	assert.equal(
+		resolveCategoryIconKey(undefined, "Автомобильный ремонт"),
+		"repair",
+	);
+	assert.equal(
+		resolveCategoryIconKey("transport", "Автомобильный ремонт"),
+		"transport",
+	);
 });
