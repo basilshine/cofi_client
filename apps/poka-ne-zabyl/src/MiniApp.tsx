@@ -14557,30 +14557,22 @@ const ExpensesView = ({
 						{filtersOpen && (
 							<div className="mini-filter-panel" id="expense-filters">
 								<div className="mini-filters">
-									<select
-										aria-label="Категория"
+									<CategoryPicker
+										ariaLabel={uiText(language, "category")}
+										categories={categories}
+										language={language}
 										value={categoryID}
-										onChange={(event) => onCategory(Number(event.target.value))}
-									>
-										<option value={0}>Все категории</option>
-										{categories.map((category) => (
-											<option key={category.id} value={category.id}>
-												{localizedCategoryName(category, language)}
-											</option>
-										))}
-									</select>
-									<select
-										aria-label="Где купили"
+										allowEmpty
+										placeholderLabel={uiText(language, "allCategories")}
+										onChange={(category) => onCategory(category?.id || 0)}
+									/>
+									<VendorPicker
+										ariaLabel={uiText(language, "planVendor")}
+										language={language}
+										vendors={vendors}
 										value={vendorID}
-										onChange={(event) => onVendor(Number(event.target.value))}
-									>
-										<option value={0}>Все продавцы</option>
-										{vendors.map((vendor) => (
-											<option key={vendor.id} value={vendor.id}>
-												{vendor.name}
-											</option>
-										))}
-									</select>
+										onChange={(vendor) => onVendor(vendor?.id || 0)}
+									/>
 								</div>
 							</div>
 						)}
@@ -15443,30 +15435,22 @@ const PlansView = ({
 				{filtersOpen && (
 					<div className="mini-filter-panel">
 						<div className="mini-filters">
-							<select
-								aria-label={uiText(language, "category")}
+							<CategoryPicker
+								ariaLabel={uiText(language, "category")}
+								categories={categories}
+								language={language}
 								value={categoryID}
-								onChange={(event) => setCategoryID(Number(event.target.value))}
-							>
-								<option value={0}>{uiText(language, "allCategories")}</option>
-								{categories.map((category) => (
-									<option key={category.id} value={category.id}>
-										{localizedCategoryName(category, language)}
-									</option>
-								))}
-							</select>
-							<select
-								aria-label={uiText(language, "planVendor")}
+								allowEmpty
+								placeholderLabel={uiText(language, "allCategories")}
+								onChange={(category) => setCategoryID(category?.id || 0)}
+							/>
+							<VendorPicker
+								ariaLabel={uiText(language, "planVendor")}
+								language={language}
+								vendors={vendors}
 								value={vendorID}
-								onChange={(event) => setVendorID(Number(event.target.value))}
-							>
-								<option value={0}>{uiText(language, "allVendors")}</option>
-								{vendors.map((vendor) => (
-									<option key={vendor.id} value={vendor.id}>
-										{vendor.name}
-									</option>
-								))}
-							</select>
+								onChange={(vendor) => setVendorID(vendor?.id || 0)}
+							/>
 						</div>
 					</div>
 				)}
@@ -15755,7 +15739,9 @@ const CategoryPicker = ({
 								>
 									<Tag size={17} />
 								</span>
-								<span>{uiText(language, "categoryNotSet")}</span>
+								<span>
+									{placeholderLabel || uiText(language, "categoryNotSet")}
+								</span>
 								{emptySelected && <Check size={17} aria-hidden="true" />}
 							</button>
 						)}
@@ -15834,6 +15820,171 @@ const ExpenseCategoryIcons = ({
 				/>
 			))}
 		</span>
+	);
+};
+
+const VendorPicker = ({
+	vendors,
+	value,
+	language,
+	ariaLabel,
+	onChange,
+}: {
+	vendors: Vendor[];
+	value?: number | null;
+	language: UILanguage;
+	ariaLabel?: string;
+	onChange: (vendor?: Vendor) => void;
+}) => {
+	const listID = useId();
+	const rootRef = useRef<HTMLDivElement>(null);
+	const searchRef = useRef<HTMLInputElement>(null);
+	const [open, setOpen] = useState(false);
+	const [query, setQuery] = useState("");
+	const selectedVendor = vendors.find((vendor) => vendor.id === value);
+	const selectedLabel = selectedVendor?.name || uiText(language, "allVendors");
+	const filteredVendors = useMemo(
+		() => vendorSuggestions(vendors, query, vendors.length),
+		[query, vendors],
+	);
+
+	useEffect(() => {
+		if (!open) return;
+		const closeOnOutsidePress = (event: PointerEvent) => {
+			if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+		};
+		document.addEventListener("pointerdown", closeOnOutsidePress);
+		return () =>
+			document.removeEventListener("pointerdown", closeOnOutsidePress);
+	}, [open]);
+
+	useEffect(() => {
+		if (!open) {
+			setQuery("");
+			return;
+		}
+		requestAnimationFrame(() => {
+			rootRef.current?.scrollIntoView({ block: "center", inline: "nearest" });
+			if (window.matchMedia("(pointer: fine)").matches) {
+				searchRef.current?.focus({ preventScroll: true });
+			}
+		});
+	}, [open]);
+
+	const selectVendor = (vendor?: Vendor) => {
+		onChange(vendor);
+		setOpen(false);
+	};
+
+	return (
+		<div
+			className={`mini-category-picker mini-vendor-picker${open ? " is-open" : ""}`}
+			ref={rootRef}
+		>
+			<button
+				className="mini-category-picker-trigger"
+				type="button"
+				aria-label={`${ariaLabel || uiText(language, "planVendor")}: ${selectedLabel}`}
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				aria-controls={listID}
+				onClick={() => setOpen((current) => !current)}
+				onKeyDown={(event) => {
+					if (event.key === "ArrowDown") {
+						event.preventDefault();
+						setOpen(true);
+					}
+				}}
+			>
+				<span className="mini-vendor-picker-icon" aria-hidden="true">
+					<Storefront size={18} />
+				</span>
+				<span className="mini-category-picker-value">{selectedLabel}</span>
+				<CaretDown
+					className="mini-category-picker-caret"
+					size={16}
+					aria-hidden="true"
+				/>
+			</button>
+			{open && (
+				<div className="mini-category-picker-panel">
+					<label className="mini-category-picker-search">
+						<MagnifyingGlass size={17} aria-hidden="true" />
+						<input
+							ref={searchRef}
+							type="search"
+							value={query}
+							aria-label={uiText(language, "vendorSearch")}
+							placeholder={uiText(language, "vendorSearch")}
+							onChange={(event) => setQuery(event.target.value)}
+							onKeyDown={(event) => {
+								if (event.key === "Escape") {
+									setOpen(false);
+									rootRef.current
+										?.querySelector<HTMLButtonElement>(
+											".mini-category-picker-trigger",
+										)
+										?.focus();
+								}
+							}}
+						/>
+					</label>
+					<div
+						className="mini-category-picker-options"
+						id={listID}
+						role="listbox"
+						tabIndex={-1}
+					>
+						{!query.trim() && (
+							<button
+								className="mini-category-picker-option"
+								type="button"
+								role="option"
+								aria-selected={!selectedVendor}
+								onClick={() => selectVendor()}
+							>
+								<span className="mini-vendor-picker-icon" aria-hidden="true">
+									<Storefront size={17} />
+								</span>
+								<span>{uiText(language, "allVendors")}</span>
+								{!selectedVendor && <Check size={17} aria-hidden="true" />}
+							</button>
+						)}
+						{filteredVendors.map((vendor) => {
+							const selected = vendor.id === selectedVendor?.id;
+							return (
+								<button
+									className="mini-category-picker-option"
+									type="button"
+									key={vendor.id}
+									role="option"
+									aria-selected={selected}
+									onClick={() => selectVendor(vendor)}
+								>
+									<span className="mini-vendor-picker-icon" aria-hidden="true">
+										<Storefront size={17} />
+									</span>
+									<span className="mini-vendor-picker-option-copy">
+										<b>{vendor.name}</b>
+										{vendor.aliases?.length ? (
+											<small>
+												{vendor.aliases.map((alias) => alias.alias).join(", ")}
+											</small>
+										) : null}
+									</span>
+									{selected && <Check size={17} aria-hidden="true" />}
+								</button>
+							);
+						})}
+						{filteredVendors.length === 0 && (
+							<p className="mini-category-picker-empty">
+								{uiText(language, "nothingFound")}
+							</p>
+						)}
+					</div>
+				</div>
+			)}
+		</div>
 	);
 };
 
