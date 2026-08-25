@@ -167,6 +167,11 @@ import {
 } from "./overview";
 import { appendUniquePage, nextPageOffset } from "./paged-list";
 import { periodReportTrend } from "./period-report";
+import {
+	applyPlanCategory,
+	inheritedPlanCategoryID,
+	planCategoryState,
+} from "./plan-category";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
 import {
 	collapsePurchasePlanSeries,
@@ -15539,6 +15544,7 @@ const CategoryPicker = ({
 	language,
 	ariaLabel,
 	allowEmpty = false,
+	placeholderLabel,
 	onChange,
 }: {
 	categories: Category[];
@@ -15546,6 +15552,7 @@ const CategoryPicker = ({
 	language: UILanguage;
 	ariaLabel?: string;
 	allowEmpty?: boolean;
+	placeholderLabel?: string;
 	onChange: (category?: Category) => void;
 }) => {
 	const listID = useId();
@@ -15556,7 +15563,8 @@ const CategoryPicker = ({
 	const selectedCategory = categories.find((category) => category.id === value);
 	const selectedLabel = selectedCategory
 		? localizedCategoryName(selectedCategory, language)
-		: uiText(language, "categoryNotSet");
+		: placeholderLabel || uiText(language, "categoryNotSet");
+	const emptySelected = !selectedCategory && !value;
 	const filteredCategories = useMemo(() => {
 		const normalizedQuery = query.trim().toLocaleLowerCase();
 		if (!normalizedQuery) return categories;
@@ -15666,7 +15674,7 @@ const CategoryPicker = ({
 								className="mini-category-picker-option"
 								type="button"
 								role="option"
-								aria-selected={!selectedCategory}
+								aria-selected={emptySelected}
 								onClick={() => selectCategory()}
 							>
 								<span
@@ -15676,7 +15684,7 @@ const CategoryPicker = ({
 									<Tag size={17} />
 								</span>
 								<span>{uiText(language, "categoryNotSet")}</span>
-								{!selectedCategory && <Check size={17} aria-hidden="true" />}
+								{emptySelected && <Check size={17} aria-hidden="true" />}
 							</button>
 						)}
 						{filteredCategories.map((category) => {
@@ -22469,6 +22477,7 @@ const PlanEditor = ({
 }) => {
 	const items = purchasePlanItems(plan);
 	const singleItemPlan = items.length === 1;
+	const wholePlanCategory = planCategoryState(items);
 	const validationRootRef = useRef<HTMLElement>(null);
 	const titleErrorID = useId();
 	const recurrenceErrorID = useId();
@@ -22601,6 +22610,35 @@ const PlanEditor = ({
 							{uiText(language, "planVendorHint")}
 						</small>
 					</div>
+					{!singleItemPlan && (
+						<div className="mini-field mini-plan-whole-category">
+							<span>{uiText(language, "planWholeCategory")}</span>
+							<CategoryPicker
+								categories={categories}
+								language={language}
+								ariaLabel={uiText(language, "planWholeCategory")}
+								value={
+									wholePlanCategory.kind === "shared"
+										? wholePlanCategory.categoryID
+										: wholePlanCategory.kind === "mixed"
+											? -1
+											: null
+								}
+								allowEmpty
+								placeholderLabel={
+									wholePlanCategory.kind === "mixed"
+										? uiText(language, "differentCategories")
+										: undefined
+								}
+								onChange={(category) =>
+									updateItems(applyPlanCategory(items, category?.id || null))
+								}
+							/>
+							<small className="mini-field-hint">
+								{uiText(language, "planWholeCategoryHint")}
+							</small>
+						</div>
+					)}
 				</div>
 			</section>
 			<section className="mini-editor-section">
@@ -22679,7 +22717,10 @@ const PlanEditor = ({
 					)}
 				</div>
 				{items.map((item, index) => (
-					<div className="mini-plan-editor-item" key={item.id || index}>
+					<div
+						className="mini-plan-editor-item"
+						key={item.id ? `item-${item.id}` : `new-${index}`}
+					>
 						{!singleItemPlan && (
 							<>
 								<div className="mini-plan-item-name">
@@ -22792,7 +22833,12 @@ const PlanEditor = ({
 					onClick={() =>
 						updateItems([
 							...items,
-							{ name: "", expected_amount: null, category_id: null, notes: "" },
+							{
+								name: "",
+								expected_amount: null,
+								category_id: inheritedPlanCategoryID(items),
+								notes: "",
+							},
 						])
 					}
 				>
