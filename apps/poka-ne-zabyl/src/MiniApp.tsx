@@ -177,6 +177,7 @@ import {
 	isServiceUnavailableError,
 	requestError,
 } from "./request";
+import { reviewDateConcern } from "./review-date";
 import {
 	LAST_SPACE_STORAGE_KEY,
 	appURLWithSpaceID,
@@ -11605,6 +11606,8 @@ const ReviewReady = ({
 	const invalid =
 		!draft.title.trim() || draft.items.length === 0 || incompleteItems > 0;
 	const [mismatchPromptOpen, setMismatchPromptOpen] = useState(false);
+	const [datePromptOpen, setDatePromptOpen] = useState(false);
+	const dateConcern = reviewDateConcern(draft.expenseDate);
 	const seller =
 		commonVendorName(draft.items.map((item) => item.vendor_name)) ||
 		draft.payeeText;
@@ -11624,12 +11627,19 @@ const ReviewReady = ({
 					draft.items[categorySuggestion.itemIndexes[0]]?.category_key,
 			)
 		: undefined;
-	const confirm = () => {
+	const confirmAfterDateReview = () => {
 		if (!estimatedItemPhoto && totalMatches === false) {
 			setMismatchPromptOpen(true);
 			return;
 		}
 		onConfirm();
+	};
+	const confirm = () => {
+		if (dateConcern) {
+			setDatePromptOpen(true);
+			return;
+		}
+		confirmAfterDateReview();
 	};
 	return (
 		<main className="review-shell review-ready-shell">
@@ -11704,6 +11714,24 @@ const ReviewReady = ({
 					</div>
 					<strong>{formatMoney(total, draft.sourceCurrency)}</strong>
 				</header>
+
+				{dateConcern && (
+					<aside className="review-date-warning" role="alert">
+						<WarningCircle size={21} weight="fill" />
+						<div>
+							<strong>{uiText(language, "reviewDateWarningTitle")}</strong>
+							<p>
+								{uiText(language, "reviewDateWarningBody").replace(
+									"{date}",
+									formatDateWithYear(draft.expenseDate, language),
+								)}
+							</p>
+						</div>
+						<button type="button" onClick={onEdit}>
+							{uiText(language, "reviewDateEdit")}
+						</button>
+					</aside>
+				)}
 
 				<div className="review-ready-lines">
 					{draft.items.map((item, index) => {
@@ -11831,6 +11859,46 @@ const ReviewReady = ({
 				)}
 			</footer>
 
+			{datePromptOpen && (
+				<div className="review-leave-backdrop" role="presentation">
+					<section
+						className="review-leave-dialog"
+						role="alertdialog"
+						aria-modal="true"
+						aria-labelledby="review-date-title"
+					>
+						<h2 id="review-date-title">
+							{uiText(language, "reviewDateWarningTitle")}
+						</h2>
+						<p>
+							{uiText(language, "reviewDateWarningBody").replace(
+								"{date}",
+								formatDateWithYear(draft.expenseDate, language),
+							)}
+						</p>
+						<button
+							type="button"
+							onClick={() => {
+								setDatePromptOpen(false);
+								onEdit();
+							}}
+						>
+							{uiText(language, "reviewDateEdit")}
+						</button>
+						<button
+							className="is-secondary"
+							type="button"
+							onClick={() => {
+								setDatePromptOpen(false);
+								confirmAfterDateReview();
+							}}
+						>
+							{uiText(language, "reviewDateSaveAnyway")}
+						</button>
+					</section>
+				</div>
+			)}
+
 			{mismatchPromptOpen && (
 				<div className="review-leave-backdrop" role="presentation">
 					<section
@@ -11932,6 +12000,7 @@ const ReviewEditor = ({
 		!draft.title.trim() ||
 		draft.items.length === 0 ||
 		draft.items.some((item) => !item.name.trim() || item.amount <= 0);
+	const dateConcern = reviewDateConcern(draft.expenseDate);
 	return (
 		<main className="review-shell" data-enter-navigation>
 			<header className="review-topbar">
@@ -12075,6 +12144,20 @@ const ReviewEditor = ({
 							}
 						/>
 					</label>
+					{dateConcern && (
+						<div className="review-date-warning review-date-warning--editor">
+							<WarningCircle size={19} weight="fill" />
+							<div>
+								<strong>{uiText(language, "reviewDateWarningTitle")}</strong>
+								<p>
+									{uiText(language, "reviewDateWarningBody").replace(
+										"{date}",
+										formatDateWithYear(draft.expenseDate, language),
+									)}
+								</p>
+							</div>
+						</div>
+					)}
 				</div>
 
 				<div className="review-lines-head">
@@ -12304,6 +12387,7 @@ const ReviewSaved = ({
 	const planCurrency = readString(planData, "currency") || expense.currency;
 	const planDueDate = readString(planData, "due_date");
 	const planInterval = readString(planData, "recurrence_interval");
+	const dateConcern = reviewDateConcern(expense.expense_date);
 	return (
 		<main className="review-saved">
 			<div className="review-saved-mark">
@@ -12332,6 +12416,20 @@ const ReviewSaved = ({
 					<strong>{formatMoney(total, expense.currency)}</strong>
 				</footer>
 			</article>
+			{dateConcern && (
+				<aside className="review-date-warning review-date-warning--saved">
+					<WarningCircle size={20} weight="fill" />
+					<div>
+						<strong>{uiText(language, "reviewDateWarningTitle")}</strong>
+						<p>
+							{uiText(language, "reviewSavedOutsidePeriod").replace(
+								"{date}",
+								formatDateWithYear(expense.expense_date, language),
+							)}
+						</p>
+					</div>
+				</aside>
+			)}
 			{planSuggestion && (
 				<section className="review-plan-suggestion" aria-live="polite">
 					<span aria-hidden="true">
@@ -27261,6 +27359,15 @@ const formatDate = (value: string, language: UILanguage) => {
 	return new Intl.DateTimeFormat(language, {
 		day: "numeric",
 		month: "short",
+	}).format(date);
+};
+const formatDateWithYear = (value: string, language: UILanguage) => {
+	const date = new Date(`${value.slice(0, 10)}T12:00:00`);
+	if (Number.isNaN(date.getTime())) return value.slice(0, 10) || "—";
+	return new Intl.DateTimeFormat(language, {
+		day: "numeric",
+		month: "long",
+		year: "numeric",
 	}).format(date);
 };
 const localizedTimezoneName = (timezone: string, language: UILanguage) => {

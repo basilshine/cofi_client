@@ -662,6 +662,13 @@ const messages = {
 		reviewConfirm: "Подтвердить и сохранить",
 		reviewFixData: "Исправить данные",
 		reviewSaveErrorSafe: "Данные не потеряны. Можно попробовать ещё раз.",
+		reviewDateWarningTitle: "Проверьте дату чека",
+		reviewDateWarningBody:
+			"Распознана дата {date}; с ней расход попадёт в историю другого периода.",
+		reviewDateEdit: "Изменить дату",
+		reviewDateSaveAnyway: "Сохранить с этой датой",
+		reviewSavedOutsidePeriod:
+			"Расход сохранён с датой {date}; он находится в истории этого периода.",
 		reviewMismatchTitle: "Суммы не совпадают",
 		reviewMismatchEdit: "Проверить позиции",
 		reviewSaveAnyway: "Сохранить всё равно",
@@ -1461,6 +1468,13 @@ const messages = {
 		reviewConfirm: "Confirm and save",
 		reviewFixData: "Fix details",
 		reviewSaveErrorSafe: "Your data is safe. You can try again.",
+		reviewDateWarningTitle: "Check the receipt date",
+		reviewDateWarningBody:
+			"The recognized date is {date}; the expense will appear in another history period.",
+		reviewDateEdit: "Change date",
+		reviewDateSaveAnyway: "Save with this date",
+		reviewSavedOutsidePeriod:
+			"The expense was saved for {date}; it is in that history period.",
 		reviewMismatchTitle: "Totals do not match",
 		reviewMismatchEdit: "Review items",
 		reviewSaveAnyway: "Save anyway",
@@ -2272,6 +2286,13 @@ const messages = {
 		reviewConfirm: "Confirmar y guardar",
 		reviewFixData: "Corregir datos",
 		reviewSaveErrorSafe: "Tus datos están seguros. Puedes intentarlo de nuevo.",
+		reviewDateWarningTitle: "Comprueba la fecha del recibo",
+		reviewDateWarningBody:
+			"La fecha reconocida es {date}; el gasto aparecerá en otro periodo del historial.",
+		reviewDateEdit: "Cambiar fecha",
+		reviewDateSaveAnyway: "Guardar con esta fecha",
+		reviewSavedOutsidePeriod:
+			"El gasto se guardó con fecha {date}; está en ese periodo del historial.",
 		reviewMismatchTitle: "Los totales no coinciden",
 		reviewMismatchEdit: "Revisar artículos",
 		reviewSaveAnyway: "Guardar de todos modos",
