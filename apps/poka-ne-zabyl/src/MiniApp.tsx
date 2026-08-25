@@ -171,6 +171,7 @@ import {
 	applyPlanCategory,
 	inheritedPlanCategoryID,
 	planCategoryState,
+	uniquePlanCategoryIDs,
 } from "./plan-category";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
 import {
@@ -13583,6 +13584,7 @@ const Overview = ({
 													key={plan.id}
 													plan={plan}
 													capture={captureForPlan(plan, captures)}
+													categories={categories}
 													members={members}
 													language={language}
 													amount={planMoney.amount}
@@ -14855,6 +14857,7 @@ const SplitsView = ({
 const PlanRecordCard = ({
 	plan,
 	capture,
+	categories,
 	members,
 	language,
 	amount,
@@ -14868,6 +14871,7 @@ const PlanRecordCard = ({
 }: {
 	plan: PurchasePlan;
 	capture?: CapturePacket;
+	categories: Category[];
 	members: SpaceMember[];
 	language: UILanguage;
 	amount: number;
@@ -14903,13 +14907,18 @@ const PlanRecordCard = ({
 			className={`mini-plan-record-card${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
 		>
 			<button className="mini-plan-record-main" type="button" onClick={onOpen}>
-				<span className="mini-plan-record-icon">
-					{plan.source_document_id ? (
-						<SourceIcon capture={capture} size={19} />
-					) : (
-						<ShoppingBagOpen size={19} />
-					)}
-				</span>
+				<PlanCategoryIcons
+					plan={plan}
+					categories={categories}
+					language={language}
+					fallback={
+						plan.source_document_id ? (
+							<SourceIcon capture={capture} size={19} />
+						) : (
+							<ShoppingBagOpen size={19} />
+						)
+					}
+				/>
 				<span className="mini-plan-record-title">
 					<b>{plan.title}</b>
 				</span>
@@ -15145,6 +15154,7 @@ const PlansView = ({
 				key={plan.id}
 				plan={plan}
 				capture={captureForPlan(plan, captures)}
+				categories={categories}
 				members={members}
 				language={language}
 				amount={money.amount}
@@ -15179,12 +15189,23 @@ const PlansView = ({
 			purchasePlanOccurrenceCount(plan, bounds.from, bounds.to),
 		);
 		const forecastAmount = money.amount * occurrenceCount;
+		const itemCategory = categories.find(
+			(category) => category.id === item.category_id,
+		);
 		return (
 			<div
 				className={`mini-plan-row${dueToday ? " is-today" : overdue ? " is-overdue" : ""}`}
 				key={`${plan.id}-${item.id || index}`}
 			>
-				{sourceButton(plan)}
+				{itemCategory ? (
+					<CategoryIconBadge
+						category={itemCategory}
+						language={language}
+						size={19}
+					/>
+				) : (
+					sourceButton(plan)
+				)}
 				<button
 					className="mini-plan-copy"
 					type="button"
@@ -15534,6 +15555,56 @@ const CategoryIconBadge = ({
 				name={category.name}
 				size={size}
 			/>
+		</span>
+	);
+};
+
+const PlanCategoryIcons = ({
+	plan,
+	items,
+	categories,
+	language,
+	fallback,
+	detail = false,
+}: {
+	plan: PurchasePlan;
+	items?: PurchasePlanItem[];
+	categories: Category[];
+	language: UILanguage;
+	fallback: ReactNode;
+	detail?: boolean;
+}) => {
+	const categoryRows = uniquePlanCategoryIDs(items || purchasePlanItems(plan))
+		.map((categoryID) =>
+			categories.find((category) => category.id === categoryID),
+		)
+		.filter((category): category is Category => Boolean(category))
+		.slice(0, 3);
+	if (categoryRows.length === 0) {
+		return (
+			<span
+				className={detail ? "mini-plan-detail-icon" : "mini-plan-record-icon"}
+			>
+				{fallback}
+			</span>
+		);
+	}
+	return (
+		<span
+			className={`mini-plan-category-icons is-${categoryRows.length}${detail ? " is-detail" : ""}`}
+			aria-label={categoryRows
+				.map((category) => localizedCategoryName(category, language))
+				.join(", ")}
+		>
+			{categoryRows.map((category) => (
+				<CategoryIconBadge
+					key={category.id}
+					category={category}
+					language={language}
+					size={categoryRows.length === 1 ? 19 : 15}
+					compact={categoryRows.length > 1}
+				/>
+			))}
 		</span>
 	);
 };
@@ -22246,6 +22317,11 @@ const PlanDetail = ({
 	const money = planDisplayMoney(plan, currency, item);
 	const categoryID = item?.category_id ?? plan.category_id;
 	const category = categories.find((current) => current.id === categoryID);
+	const detailCategoryRows = uniquePlanCategoryIDs(item ? [item] : items)
+		.map((currentCategoryID) =>
+			categories.find((current) => current.id === currentCategoryID),
+		)
+		.filter((current): current is Category => Boolean(current));
 	const notes = item?.notes || (items.length === 1 ? items[0].notes : "");
 	const seller =
 		plan.vendor_name ||
@@ -22259,9 +22335,14 @@ const PlanDetail = ({
 			onClose={onClose}
 		>
 			<div className="mini-record-hero is-plan">
-				<span>
-					<ShoppingBagOpen size={22} weight="bold" />
-				</span>
+				<PlanCategoryIcons
+					plan={plan}
+					items={item ? [item] : items}
+					categories={categories}
+					language={language}
+					fallback={<ShoppingBagOpen size={22} weight="bold" />}
+					detail
+				/>
 				<div>
 					<small>
 						{item
@@ -22291,13 +22372,17 @@ const PlanDetail = ({
 						<b>{planRecurrenceText(plan, language)}</b>
 					</div>
 				)}
-				{(item || items.length === 1) && (
+				{(item || items.length === 1 || detailCategoryRows.length > 0) && (
 					<div>
 						<small>{uiText(language, "category")}</small>
 						<b>
-							{category
-								? localizedCategoryName(category, language)
-								: uiText(language, "categoryNotSet")}
+							{detailCategoryRows.length > 0
+								? detailCategoryRows
+										.map((current) => localizedCategoryName(current, language))
+										.join(", ")
+								: category
+									? localizedCategoryName(category, language)
+									: uiText(language, "categoryNotSet")}
 						</b>
 					</div>
 				)}
@@ -22351,13 +22436,24 @@ const PlanDetail = ({
 					<div className="mini-record-lines">
 						{items.map((current, index) => {
 							const itemMoney = planDisplayMoney(plan, currency, current);
+							const itemCategory = categories.find(
+								(category) => category.id === current.category_id,
+							);
 							return (
 								<button
 									key={current.id || index}
 									type="button"
 									onClick={() => onOpenItem(index)}
 								>
-									<span>{index + 1}</span>
+									{itemCategory ? (
+										<CategoryIconBadge
+											category={itemCategory}
+											language={language}
+											size={16}
+										/>
+									) : (
+										<span>{index + 1}</span>
+									)}
 									<b>{current.name}</b>
 									<strong>
 										{itemMoney.amount

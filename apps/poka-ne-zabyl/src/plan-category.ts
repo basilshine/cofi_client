@@ -34,3 +34,12 @@ export const inheritedPlanCategoryID = (items: PlanCategoryItem[]) => {
 	const state = planCategoryState(items);
 	return state.kind === "shared" ? state.categoryID : null;
 };
+
+export const uniquePlanCategoryIDs = (items: PlanCategoryItem[]) =>
+	items
+		.map(normalizedCategoryID)
+		.filter((categoryID): categoryID is number => categoryID !== null)
+		.filter(
+			(categoryID, index, categoryIDs) =>
+				categoryIDs.indexOf(categoryID) === index,
+		);

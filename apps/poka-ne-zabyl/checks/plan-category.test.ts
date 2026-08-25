@@ -4,6 +4,7 @@ import {
 	applyPlanCategory,
 	inheritedPlanCategoryID,
 	planCategoryState,
+	uniquePlanCategoryIDs,
 } from "../src/plan-category.ts";
 
 test("describes a category shared by every plan item", () => {
@@ -47,4 +48,16 @@ test("applies an explicitly selected category to every plan item", () => {
 		{ name: "Краска", category_id: null },
 		{ name: "Валик", category_id: null },
 	]);
+});
+
+test("returns unique category icons in plan item order", () => {
+	assert.deepEqual(
+		uniquePlanCategoryIDs([
+			{ category_id: 7 },
+			{ category_id: null },
+			{ category_id: 4 },
+			{ category_id: 7 },
+		]),
+		[7, 4],
+	);
 });
