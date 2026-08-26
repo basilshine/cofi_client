@@ -6614,6 +6614,14 @@ export const MiniApp = ({
 			case "inviteSpace":
 				if (activeSpace) setInvitingSpace(activeSpace);
 				break;
+			case "receiptArchive":
+				setExpenseSection("history");
+				setView("expenses");
+				break;
+			case "settlementProof":
+				setExpenseSection("splits");
+				setView("expenses");
+				break;
 			case "createSpace":
 				openNewSpaceEditor();
 				break;
@@ -13441,6 +13449,18 @@ const productPromoCopy = (
 				body: "promoInviteBody",
 				action: "promoInviteAction",
 			};
+		case "receiptArchive":
+			return {
+				title: "promoReceiptArchiveTitle",
+				body: "promoReceiptArchiveBody",
+				action: "promoReceiptArchiveAction",
+			};
+		case "settlementProof":
+			return {
+				title: "promoSettlementProofTitle",
+				body: "promoSettlementProofBody",
+				action: "promoSettlementProofAction",
+			};
 		case "createSpace":
 			return {
 				title: "promoSpaceTitle",
@@ -13511,6 +13531,40 @@ const ProductPromoVisual = ({ id }: { id: ProductPromoID }) => (
 					size={28}
 					weight="fill"
 				/>
+			</>
+		)}
+		{id === "receiptArchive" && (
+			<>
+				<Receipt
+					className="mini-promo-icon is-source"
+					size={27}
+					weight="fill"
+				/>
+				<MagnifyingGlass
+					className="mini-promo-icon is-motion"
+					size={18}
+					weight="bold"
+				/>
+				<ImageSquare
+					className="mini-promo-icon is-result"
+					size={29}
+					weight="fill"
+				/>
+			</>
+		)}
+		{id === "settlementProof" && (
+			<>
+				<ArrowsLeftRight
+					className="mini-promo-icon is-source"
+					size={26}
+					weight="bold"
+				/>
+				<ImageSquare
+					className="mini-promo-icon is-motion"
+					size={18}
+					weight="fill"
+				/>
+				<Check className="mini-promo-icon is-result" size={29} weight="bold" />
 			</>
 		)}
 		{id === "createSpace" && (

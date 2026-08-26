@@ -2,6 +2,8 @@ export const productPromoIDs = [
 	"aiCapture",
 	"splitExpense",
 	"inviteSpace",
+	"receiptArchive",
+	"settlementProof",
 	"createSpace",
 	"customCategories",
 	"plus",
@@ -40,12 +42,14 @@ export const emptyProductPromoState = (): ProductPromoState => ({
 	campaigns: {},
 });
 
-const globalCooldownMs = 24 * 60 * 60 * 1000;
+const globalCooldownMs = 2 * 24 * 60 * 60 * 1000;
 
 const campaignCooldownMs: Record<ProductPromoID, number> = {
 	aiCapture: 2 * 24 * 60 * 60 * 1000,
 	splitExpense: 3 * 24 * 60 * 60 * 1000,
 	inviteSpace: 2 * 24 * 60 * 60 * 1000,
+	receiptArchive: 14 * 24 * 60 * 60 * 1000,
+	settlementProof: 7 * 24 * 60 * 60 * 1000,
 	createSpace: 5 * 24 * 60 * 60 * 1000,
 	customCategories: 7 * 24 * 60 * 60 * 1000,
 	plus: 10 * 24 * 60 * 60 * 1000,
@@ -107,6 +111,10 @@ const eligibleProductPromos = (
 	...(signals.canInviteToSpace && !signals.hasInvitedParticipant
 		? ["inviteSpace" as const]
 		: []),
+	...(signals.hasSmartCapture && signals.hasExpenses
+		? ["receiptArchive" as const]
+		: []),
+	...(signals.hasSplitExpense ? ["settlementProof" as const] : []),
 	...(signals.canCreateSpace && !signals.hasExtraSpace
 		? ["createSpace" as const]
 		: []),

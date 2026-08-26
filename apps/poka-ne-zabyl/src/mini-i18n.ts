@@ -103,16 +103,24 @@ const messages = {
 		productPromoDismiss: "Скрыть подсказку",
 		promoAiCaptureTitle: "Фото превращается в готовый расход",
 		promoAiCaptureBody:
-			"Сфотографируйте чек: позиции, сумма и категории появятся сами.",
+			"Позиции, сумма и категории появятся сами, а фотография останется прикреплена к расходу.",
 		promoAiCaptureAction: "Разобрать чек",
 		promoSplitTitle: "Разделите один чек между всеми",
 		promoSplitBody:
-			"Укажите плательщика и доли, а приложение посчитает, кто кому должен.",
+			"Укажите плательщика и доли. После перевода участники смогут подтвердить расчёт фотографией или сообщением.",
 		promoSplitAction: "Создать сплит",
 		promoInviteTitle: "Добавьте человека в это пространство",
 		promoInviteBody:
 			"Задайте временное имя и отправьте ссылку. После входа имя обновится автоматически.",
 		promoInviteAction: "Пригласить",
+		promoReceiptArchiveTitle: "Исходный чек всегда под рукой",
+		promoReceiptArchiveBody:
+			"Фотография хранится вместе с расходом. Её можно открыть и увеличить в истории в любой момент.",
+		promoReceiptArchiveAction: "Открыть историю",
+		promoSettlementProofTitle: "Расчёт заканчивается подтверждением",
+		promoSettlementProofBody:
+			"Приложите фотографию перевода или оставьте сообщение. Второй участник увидит подтверждение и закроет долг.",
+		promoSettlementProofAction: "Посмотреть расчёты",
 		promoSpaceTitle: "Разделите расходы по пространствам",
 		promoSpaceBody:
 			"Семья, ремонт или поездка живут отдельно, со своими участниками и категориями.",
@@ -972,16 +980,24 @@ const messages = {
 		productPromoDismiss: "Hide suggestion",
 		promoAiCaptureTitle: "Turn a photo into a ready expense",
 		promoAiCaptureBody:
-			"Photograph a receipt and its items, total, and categories will appear automatically.",
+			"Items, total, and categories appear automatically, while the original photo stays attached to the expense.",
 		promoAiCaptureAction: "Scan a receipt",
 		promoSplitTitle: "Split one receipt between everyone",
 		promoSplitBody:
-			"Choose who paid and assign shares. The app will calculate who owes whom.",
+			"Choose who paid and assign shares. After a transfer, participants can confirm it with a photo or message.",
 		promoSplitAction: "Create a split",
 		promoInviteTitle: "Add someone to this space",
 		promoInviteBody:
 			"Give them a temporary name and share a link. Their real name replaces it after sign-in.",
 		promoInviteAction: "Invite someone",
+		promoReceiptArchiveTitle: "The original receipt stays close",
+		promoReceiptArchiveBody:
+			"The photo is stored with the expense. Open and enlarge it from history whenever you need it.",
+		promoReceiptArchiveAction: "Open history",
+		promoSettlementProofTitle: "Finish a settlement with proof",
+		promoSettlementProofBody:
+			"Attach a transfer photo or leave a message. The other participant can review it and close the balance.",
+		promoSettlementProofAction: "View settlements",
 		promoSpaceTitle: "Keep different budgets in separate spaces",
 		promoSpaceBody:
 			"Family, renovation, and travel can each have their own members and categories.",
@@ -1838,16 +1854,24 @@ const messages = {
 		productPromoDismiss: "Ocultar sugerencia",
 		promoAiCaptureTitle: "Convierte una foto en un gasto listo",
 		promoAiCaptureBody:
-			"Fotografía un recibo y sus artículos, total y categorías aparecerán automáticamente.",
+			"Los artículos, el total y las categorías aparecen automáticamente, y la foto queda adjunta al gasto.",
 		promoAiCaptureAction: "Escanear recibo",
 		promoSplitTitle: "Reparte un recibo entre todos",
 		promoSplitBody:
-			"Indica quién pagó y asigna las partes. La aplicación calculará quién debe a quién.",
+			"Indica quién pagó y asigna las partes. Después, el pago se puede confirmar con una foto o un mensaje.",
 		promoSplitAction: "Crear reparto",
 		promoInviteTitle: "Añade a alguien a este espacio",
 		promoInviteBody:
 			"Ponle un nombre temporal y comparte el enlace. Su nombre real lo sustituirá al entrar.",
 		promoInviteAction: "Invitar",
+		promoReceiptArchiveTitle: "El recibo original siempre está disponible",
+		promoReceiptArchiveBody:
+			"La foto se guarda con el gasto. Puedes abrirla y ampliarla desde el historial cuando quieras.",
+		promoReceiptArchiveAction: "Abrir historial",
+		promoSettlementProofTitle: "Cierra una liquidación con confirmación",
+		promoSettlementProofBody:
+			"Adjunta una foto de la transferencia o deja un mensaje. La otra persona podrá revisarlo y cerrar la deuda.",
+		promoSettlementProofAction: "Ver liquidaciones",
 		promoSpaceTitle: "Separa tus gastos por espacios",
 		promoSpaceBody:
 			"Familia, reforma o viaje pueden tener sus propios miembros y categorías.",

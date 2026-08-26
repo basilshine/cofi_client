@@ -38,6 +38,14 @@ test("product promos choose the most relevant unused feature", () => {
 		),
 		"splitExpense",
 	);
+	assert.equal(
+		nextProductPromo(
+			{ ...signals, hasExpenses: false, hasSplitExpense: true },
+			emptyProductPromoState(),
+			new Date("2026-08-26T10:00:00Z"),
+		),
+		"settlementProof",
+	);
 });
 
 test("product promos respect the global cooldown and snooze", () => {
@@ -46,16 +54,39 @@ test("product promos respect the global cooldown and snooze", () => {
 	const shown = recordProductPromoImpression(base, "inviteSpace", now);
 	assert.equal(
 		nextProductPromo(
-			{ ...signals, canInviteToSpace: true },
+			{
+				...signals,
+				hasExpenses: false,
+				hasSmartCapture: false,
+				canInviteToSpace: true,
+			},
 			shown,
-			new Date("2026-08-26T20:00:00Z"),
+			new Date("2026-08-27T20:00:00Z"),
 		),
 		null,
+	);
+	assert.equal(
+		nextProductPromo(
+			{
+				...signals,
+				hasExpenses: false,
+				hasSmartCapture: false,
+				canInviteToSpace: true,
+			},
+			shown,
+			new Date("2026-08-28T11:00:00Z"),
+		),
+		"inviteSpace",
 	);
 	const snoozed = snoozeProductPromo(base, "inviteSpace", 7, false, now);
 	assert.equal(
 		nextProductPromo(
-			{ ...signals, canInviteToSpace: true },
+			{
+				...signals,
+				hasExpenses: false,
+				hasSmartCapture: false,
+				canInviteToSpace: true,
+			},
 			snoozed,
 			new Date("2026-08-28T10:00:00Z"),
 		),

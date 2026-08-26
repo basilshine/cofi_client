@@ -873,8 +873,12 @@
 	box-shadow: 0 10px 24px rgb(28 34 52 / 5%);
 }
 .mini-product-promo.is-splitExpense,
-.mini-product-promo.is-inviteSpace {
+.mini-product-promo.is-inviteSpace,
+.mini-product-promo.is-settlementProof {
 	--promo-accent: #3159cf;
+}
+.mini-product-promo.is-receiptArchive {
+	--promo-accent: #237965;
 }
 .mini-product-promo.is-createSpace {
 	--promo-accent: #b26b16;
