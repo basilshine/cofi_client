@@ -13521,126 +13521,215 @@ const productPromoDeveloperLabels: Record<ProductPromoID, string> = {
 	plus: "Подписка Plus",
 };
 
-const ProductPromoVisual = ({ id }: { id: ProductPromoID }) => (
-	<div className="mini-product-promo-visual" aria-hidden="true">
-		{id === "aiCapture" && (
-			<>
-				<Camera className="mini-promo-icon is-source" size={26} weight="fill" />
-				<Sparkle
-					className="mini-promo-icon is-motion"
-					size={18}
-					weight="fill"
-				/>
-				<Receipt
-					className="mini-promo-icon is-result"
-					size={29}
-					weight="fill"
-				/>
-			</>
+const ProductPromoScene = ({
+	primary,
+	secondary,
+	metric,
+	complete = false,
+}: {
+	primary: ReactNode;
+	secondary?: ReactNode;
+	metric?: string;
+	complete?: boolean;
+}) => (
+	<div className="mini-promo-scene-layout">
+		<span className="mini-promo-scene-symbol">{primary}</span>
+		<span className="mini-promo-scene-data">
+			<span>
+				<i />
+				<i />
+			</span>
+			{metric && <b>{metric}</b>}
+		</span>
+		{secondary && (
+			<span className="mini-promo-scene-secondary">{secondary}</span>
 		)}
-		{id === "splitExpense" && (
-			<>
-				<Receipt
-					className="mini-promo-icon is-source"
-					size={26}
-					weight="fill"
-				/>
-				<ArrowsLeftRight
-					className="mini-promo-icon is-motion"
-					size={19}
-					weight="bold"
-				/>
-				<UsersThree
-					className="mini-promo-icon is-result"
-					size={31}
-					weight="fill"
-				/>
-			</>
-		)}
-		{id === "inviteSpace" && (
-			<>
-				<UsersThree
-					className="mini-promo-icon is-source"
-					size={28}
-					weight="fill"
-				/>
-				<Plus className="mini-promo-icon is-motion" size={17} weight="bold" />
-				<ShareNetwork
-					className="mini-promo-icon is-result"
-					size={28}
-					weight="fill"
-				/>
-			</>
-		)}
-		{id === "receiptArchive" && (
-			<>
-				<Receipt
-					className="mini-promo-icon is-source"
-					size={27}
-					weight="fill"
-				/>
-				<MagnifyingGlass
-					className="mini-promo-icon is-motion"
-					size={18}
-					weight="bold"
-				/>
-				<ImageSquare
-					className="mini-promo-icon is-result"
-					size={29}
-					weight="fill"
-				/>
-			</>
-		)}
-		{id === "settlementProof" && (
-			<>
-				<ArrowsLeftRight
-					className="mini-promo-icon is-source"
-					size={26}
-					weight="bold"
-				/>
-				<ImageSquare
-					className="mini-promo-icon is-motion"
-					size={18}
-					weight="fill"
-				/>
-				<Check className="mini-promo-icon is-result" size={29} weight="bold" />
-			</>
-		)}
-		{id === "createSpace" && (
-			<>
-				<House className="mini-promo-icon is-source" size={25} weight="fill" />
-				<Plus className="mini-promo-icon is-motion" size={17} weight="bold" />
-				<Buildings
-					className="mini-promo-icon is-result"
-					size={31}
-					weight="fill"
-				/>
-			</>
-		)}
-		{id === "customCategories" && (
-			<>
-				<Tag className="mini-promo-icon is-source" size={25} weight="fill" />
-				<Sparkle
-					className="mini-promo-icon is-motion"
-					size={17}
-					weight="fill"
-				/>
-				<Tag className="mini-promo-icon is-result" size={31} weight="fill" />
-			</>
-		)}
-		{id === "plus" && (
-			<>
-				<Star className="mini-promo-icon is-source" size={25} weight="fill" />
-				<Plus className="mini-promo-icon is-motion" size={17} weight="bold" />
-				<Sparkle
-					className="mini-promo-icon is-result"
-					size={31}
-					weight="fill"
-				/>
-			</>
+		{complete && (
+			<span className="mini-promo-scene-complete">
+				<Check size={12} weight="bold" />
+			</span>
 		)}
 	</div>
 );
+
+const productPromoScenes = (
+	id: ProductPromoID,
+): [ReactNode, ReactNode, ReactNode] => {
+	switch (id) {
+		case "aiCapture":
+			return [
+				<ProductPromoScene
+					key="source"
+					primary={<Camera size={27} weight="fill" />}
+					secondary={<ImageSquare size={17} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="process"
+					primary={<Receipt size={27} weight="fill" />}
+					secondary={<Sparkle size={18} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="result"
+					primary={<Receipt size={28} weight="fill" />}
+					metric="1 890"
+					complete
+				/>,
+			];
+		case "splitExpense":
+			return [
+				<ProductPromoScene
+					key="source"
+					primary={<Receipt size={27} weight="fill" />}
+					metric="2 400"
+				/>,
+				<ProductPromoScene
+					key="process"
+					primary={<UsersThree size={29} weight="fill" />}
+					secondary={<ArrowsLeftRight size={18} weight="bold" />}
+				/>,
+				<ProductPromoScene
+					key="result"
+					primary={<ArrowsLeftRight size={28} weight="bold" />}
+					metric="1 200"
+					complete
+				/>,
+			];
+		case "inviteSpace":
+			return [
+				<ProductPromoScene
+					key="source"
+					primary={<House size={27} weight="fill" />}
+					secondary={<Plus size={17} weight="bold" />}
+				/>,
+				<ProductPromoScene
+					key="process"
+					primary={<ShareNetwork size={28} weight="fill" />}
+					secondary={<PaperPlaneTilt size={17} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="result"
+					primary={<UsersThree size={30} weight="fill" />}
+					complete
+				/>,
+			];
+		case "receiptArchive":
+			return [
+				<ProductPromoScene
+					key="source"
+					primary={<Receipt size={28} weight="fill" />}
+					secondary={<Camera size={17} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="process"
+					primary={<MagnifyingGlass size={27} weight="bold" />}
+					secondary={<ImageSquare size={17} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="result"
+					primary={<ImageSquare size={29} weight="fill" />}
+					secondary={<CornersOut size={17} weight="bold" />}
+					complete
+				/>,
+			];
+		case "settlementProof":
+			return [
+				<ProductPromoScene
+					key="source"
+					primary={<ArrowsLeftRight size={28} weight="bold" />}
+					metric="1 200"
+				/>,
+				<ProductPromoScene
+					key="process"
+					primary={<ImageSquare size={28} weight="fill" />}
+					secondary={<PaperPlaneTilt size={17} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="result"
+					primary={<Check size={29} weight="bold" />}
+					metric="0"
+					complete
+				/>,
+			];
+		case "createSpace":
+			return [
+				<ProductPromoScene
+					key="source"
+					primary={<House size={28} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="process"
+					primary={<Plus size={28} weight="bold" />}
+					secondary={<ArrowRight size={17} weight="bold" />}
+				/>,
+				<ProductPromoScene
+					key="result"
+					primary={<Buildings size={30} weight="fill" />}
+					secondary={<House size={17} weight="fill" />}
+					complete
+				/>,
+			];
+		case "customCategories":
+			return [
+				<ProductPromoScene
+					key="source"
+					primary={<ShoppingBagOpen size={28} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="process"
+					primary={<Tag size={28} weight="fill" />}
+					secondary={<Sparkle size={17} weight="fill" />}
+				/>,
+				<ProductPromoScene
+					key="result"
+					primary={<Tag size={30} weight="fill" />}
+					complete
+				/>,
+			];
+		case "plus":
+			return [
+				<ProductPromoScene
+					key="source"
+					primary={<Star size={28} weight="fill" />}
+					metric="48 / 50"
+				/>,
+				<ProductPromoScene
+					key="process"
+					primary={<ArrowRight size={28} weight="bold" />}
+					secondary={<Plus size={17} weight="bold" />}
+				/>,
+				<ProductPromoScene
+					key="result"
+					primary={<Sparkle size={30} weight="fill" />}
+					metric="250"
+					complete
+				/>,
+			];
+	}
+};
+
+const ProductPromoVisual = ({ id }: { id: ProductPromoID }) => {
+	const scenes = productPromoScenes(id);
+	return (
+		<div className="mini-product-promo-visual" aria-hidden="true">
+			<div className="mini-promo-story-window">
+				{scenes.map((scene, index) => (
+					<div
+						className={`mini-promo-scene is-${["source", "process", "result"][index]}`}
+						key={["source", "process", "result"][index]}
+					>
+						<span className="mini-promo-step">{index + 1}</span>
+						{scene}
+					</div>
+				))}
+			</div>
+			<div className="mini-promo-story-progress">
+				<i className="is-source" />
+				<i className="is-process" />
+				<i className="is-result" />
+			</div>
+		</div>
+	);
+};
 
 const ProductPromoCard = ({
 	id,
