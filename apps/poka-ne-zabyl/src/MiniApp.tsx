@@ -181,6 +181,7 @@ import {
 	emptyProductPromoState,
 	nextProductPromo,
 	parseProductPromoState,
+	productPromoIDs,
 	recordProductPromoImpression,
 	snoozeProductPromo,
 } from "./product-promos";
@@ -2555,6 +2556,10 @@ export const MiniApp = ({
 	const [productPromosReady, setProductPromosReady] = useState(false);
 	const [activeProductPromo, setActiveProductPromo] =
 		useState<ProductPromoID | null>(null);
+	const [developerPromoPreviewEnabled, setDeveloperPromoPreviewEnabled] =
+		useState(false);
+	const [developerPromoCampaign, setDeveloperPromoCampaign] =
+		useState<ProductPromoID>("aiCapture");
 	const [largeText, setLargeText] = useState(false);
 	const [reviewPresentation, setReviewPresentation] =
 		useState<ReviewPresentation>("ready");
@@ -6546,6 +6551,7 @@ export const MiniApp = ({
 	useEffect(() => {
 		if (
 			businessApp ||
+			developerPromoPreviewEnabled ||
 			view !== "overview" ||
 			loading ||
 			!productPromosReady ||
@@ -6571,6 +6577,7 @@ export const MiniApp = ({
 		addChoiceOpen,
 		businessApp,
 		captureOpen,
+		developerPromoPreviewEnabled,
 		loading,
 		persistProductPromoState,
 		previewMode,
@@ -6582,6 +6589,10 @@ export const MiniApp = ({
 	]);
 	const closeProductPromo = (acted: boolean) => {
 		if (!activeProductPromo) return;
+		if (developerPromoPreviewEnabled) {
+			setActiveProductPromo(null);
+			return;
+		}
 		persistProductPromoState(
 			snoozeProductPromo(
 				productPromoState,
@@ -6595,6 +6606,18 @@ export const MiniApp = ({
 				`product_promo_${activeProductPromo}_${acted ? "action" : "dismiss"}`,
 			);
 		setActiveProductPromo(null);
+	};
+	const updateDeveloperPromoPreview = (enabled: boolean) => {
+		setDeveloperPromoPreviewEnabled(enabled);
+		if (!enabled) setActiveProductPromo(null);
+	};
+	const showDeveloperProductPromo = () => {
+		if (!developerPromoPreviewEnabled) return;
+		setActiveProductPromo(developerPromoCampaign);
+		setView("overview");
+		setSpaceMenuOpen(false);
+		setAccountMenuOpen(false);
+		window.scrollTo({ top: 0, behavior: "smooth" });
 	};
 	const followProductPromo = () => {
 		const promo = activeProductPromo;
@@ -10031,6 +10054,8 @@ export const MiniApp = ({
 								reviewPresentation={reviewPresentation}
 								reviewCompletionBehavior={reviewCompletionBehavior}
 								reviewSettingsSaving={reviewSettingsSaving}
+								developerPromoPreviewEnabled={developerPromoPreviewEnabled}
+								developerPromoCampaign={developerPromoCampaign}
 								quota={accountQuota}
 								developerDashboard={developerDashboard}
 								developerDashboardLoading={developerDashboardLoading}
@@ -10061,6 +10086,9 @@ export const MiniApp = ({
 								onLargeText={updateLargeText}
 								onReviewPresentation={updateReviewPresentation}
 								onReviewCompletionBehavior={updateReviewCompletionBehavior}
+								onDeveloperPromoPreview={updateDeveloperPromoPreview}
+								onDeveloperPromoCampaign={setDeveloperPromoCampaign}
+								onShowDeveloperPromo={showDeveloperProductPromo}
 								onDevUpdate={(patch) => void updateDeveloperQuota(patch)}
 								onRefreshDeveloperDashboard={() =>
 									void refreshDeveloperDashboard()
@@ -13480,6 +13508,17 @@ const productPromoCopy = (
 				action: "promoPlusAction",
 			};
 	}
+};
+
+const productPromoDeveloperLabels: Record<ProductPromoID, string> = {
+	aiCapture: "Фото → готовый расход",
+	splitExpense: "Разделение чека",
+	inviteSpace: "Приглашение участника",
+	receiptArchive: "Архив исходных чеков",
+	settlementProof: "Подтверждение расчёта",
+	createSpace: "Новое пространство",
+	customCategories: "Свои категории",
+	plus: "Подписка Plus",
 };
 
 const ProductPromoVisual = ({ id }: { id: ProductPromoID }) => (
@@ -18208,6 +18247,8 @@ const ProfileView = ({
 	reviewPresentation,
 	reviewCompletionBehavior,
 	reviewSettingsSaving,
+	developerPromoPreviewEnabled,
+	developerPromoCampaign,
 	quota,
 	developerDashboard,
 	developerDashboardLoading,
@@ -18222,6 +18263,9 @@ const ProfileView = ({
 	onLargeText,
 	onReviewPresentation,
 	onReviewCompletionBehavior,
+	onDeveloperPromoPreview,
+	onDeveloperPromoCampaign,
+	onShowDeveloperPromo,
 	onManageVendors,
 	onManageSpaces,
 	onManageDeveloperUsers,
@@ -18252,6 +18296,8 @@ const ProfileView = ({
 	reviewPresentation: ReviewPresentation;
 	reviewCompletionBehavior: ReviewCompletionBehavior;
 	reviewSettingsSaving: boolean;
+	developerPromoPreviewEnabled: boolean;
+	developerPromoCampaign: ProductPromoID;
 	quota: Quota | null;
 	developerDashboard: DeveloperDashboard | null;
 	developerDashboardLoading: boolean;
@@ -18266,6 +18312,9 @@ const ProfileView = ({
 	onLargeText: (enabled: boolean) => void;
 	onReviewPresentation: (value: ReviewPresentation) => void;
 	onReviewCompletionBehavior: (value: ReviewCompletionBehavior) => void;
+	onDeveloperPromoPreview: (enabled: boolean) => void;
+	onDeveloperPromoCampaign: (value: ProductPromoID) => void;
+	onShowDeveloperPromo: () => void;
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
 	onManageDeveloperUsers: () => void;
@@ -18610,9 +18659,14 @@ const ProfileView = ({
 							reviewPresentation={reviewPresentation}
 							reviewCompletionBehavior={reviewCompletionBehavior}
 							reviewSettingsSaving={reviewSettingsSaving}
+							promoPreviewEnabled={developerPromoPreviewEnabled}
+							promoCampaign={developerPromoCampaign}
 							onApply={onDevUpdate}
 							onReviewPresentation={onReviewPresentation}
 							onReviewCompletionBehavior={onReviewCompletionBehavior}
+							onPromoPreview={onDeveloperPromoPreview}
+							onPromoCampaign={onDeveloperPromoCampaign}
+							onShowPromo={onShowDeveloperPromo}
 							onRefresh={onRefreshDeveloperDashboard}
 							onResendIncompleteRegistration={onResendIncompleteRegistration}
 							registrationRecoverySendingID={registrationRecoverySendingID}
@@ -19859,9 +19913,14 @@ const BillingDeveloperTools = ({
 	reviewPresentation,
 	reviewCompletionBehavior,
 	reviewSettingsSaving,
+	promoPreviewEnabled,
+	promoCampaign,
 	onApply,
 	onReviewPresentation,
 	onReviewCompletionBehavior,
+	onPromoPreview,
+	onPromoCampaign,
+	onShowPromo,
 	onRefresh,
 	onResendIncompleteRegistration,
 	registrationRecoverySendingID,
@@ -19878,9 +19937,14 @@ const BillingDeveloperTools = ({
 	reviewPresentation: ReviewPresentation;
 	reviewCompletionBehavior: ReviewCompletionBehavior;
 	reviewSettingsSaving: boolean;
+	promoPreviewEnabled: boolean;
+	promoCampaign: ProductPromoID;
 	onApply: (patch: DeveloperQuotaPatch) => void;
 	onReviewPresentation: (value: ReviewPresentation) => void;
 	onReviewCompletionBehavior: (value: ReviewCompletionBehavior) => void;
+	onPromoPreview: (enabled: boolean) => void;
+	onPromoCampaign: (value: ProductPromoID) => void;
+	onShowPromo: () => void;
 	onRefresh: () => void;
 	onResendIncompleteRegistration: (challengeID: number) => void;
 	registrationRecoverySendingID: number;
@@ -19972,6 +20036,63 @@ const BillingDeveloperTools = ({
 							</button>
 						</div>
 					</div>
+				</div>
+			</details>
+			<details className="mini-dev-panel">
+				<summary>
+					<span>
+						<b>Предпросмотр промо</b>
+						<small>
+							{promoPreviewEnabled
+								? "Режим включён для текущего сеанса"
+								: "Проверьте любой сюжет без ожидания"}
+						</small>
+					</span>
+					<CaretDown size={17} weight="bold" />
+				</summary>
+				<div className="mini-dev-panel-body mini-dev-promo-settings">
+					<button
+						className="mini-dev-promo-toggle"
+						type="button"
+						role="switch"
+						aria-checked={promoPreviewEnabled}
+						onClick={() => onPromoPreview(!promoPreviewEnabled)}
+					>
+						<span>
+							<strong>Режим просмотра</strong>
+							<small>Обычная частота показов и статистика не изменятся</small>
+						</span>
+						<i />
+					</button>
+					<label>
+						Сюжет
+						<select
+							value={promoCampaign}
+							disabled={!promoPreviewEnabled}
+							onChange={(event) =>
+								onPromoCampaign(event.currentTarget.value as ProductPromoID)
+							}
+						>
+							{productPromoIDs.map((id) => (
+								<option key={id} value={id}>
+									{productPromoDeveloperLabels[id]}
+								</option>
+							))}
+						</select>
+					</label>
+					<button
+						className="mini-dev-promo-show"
+						type="button"
+						disabled={!promoPreviewEnabled}
+						onClick={onShowPromo}
+					>
+						Показать на главной
+						<ArrowRight size={16} weight="bold" />
+					</button>
+					<p>
+						Можно закрывать карточку и нажимать её кнопку: это не меняет
+						состояние промо для реальных пользователей.
+					</p>
 				</div>
 			</details>
 			<div className="mini-dev-section-head">

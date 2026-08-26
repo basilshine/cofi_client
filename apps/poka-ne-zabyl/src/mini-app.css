@@ -4434,6 +4434,79 @@
 	font-size: 10px;
 	line-height: 1.4;
 }
+.mini-dev-promo-settings {
+	gap: 10px;
+}
+.mini-dev-promo-toggle {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 38px;
+	align-items: center;
+	gap: 12px;
+	min-height: 54px;
+	padding: 8px 10px;
+	text-align: left;
+}
+.mini-dev-promo-toggle > span {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+}
+.mini-dev-promo-toggle strong {
+	color: var(--mini-ink);
+	font-size: 12px;
+}
+.mini-dev-promo-toggle small,
+.mini-dev-promo-settings p {
+	color: var(--mini-muted);
+	font-size: 9px;
+	font-weight: 500;
+	line-height: 1.45;
+}
+.mini-dev-promo-toggle > i {
+	position: relative;
+	display: block;
+	width: 36px;
+	height: 20px;
+	border: 1px solid var(--mini-line);
+	border-radius: 10px;
+	background: var(--mini-soft);
+	transition: border-color 160ms ease, background 160ms ease;
+}
+.mini-dev-promo-toggle > i::after {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--mini-paper);
+	box-shadow: 0 1px 3px rgba(23, 27, 45, 0.2);
+	content: "";
+	transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.mini-dev-promo-toggle[aria-checked="true"] > i {
+	border-color: var(--mini-green);
+	background: var(--mini-green);
+}
+.mini-dev-promo-toggle[aria-checked="true"] > i::after {
+	transform: translateX(16px);
+}
+.mini-dev-promo-settings label {
+	display: grid;
+	gap: 5px;
+}
+.mini-dev-promo-show {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 7px;
+	border-color: var(--mini-green) !important;
+	background: var(--mini-green) !important;
+	color: var(--mini-paper) !important;
+}
+.mini-dev-promo-settings p {
+	margin: 0;
+}
 .mini-dev-mode-control {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
