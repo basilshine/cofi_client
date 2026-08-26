@@ -673,6 +673,28 @@
 	justify-content: space-between;
 	gap: 16px;
 }
+.mini-home-plan-status {
+	display: inline-flex;
+	min-height: 38px;
+	flex: none;
+	align-items: center;
+	gap: 6px;
+	padding: 0 10px;
+	border: 1px solid var(--mini-line);
+	border-radius: 7px;
+	background: var(--mini-paper);
+	color: var(--mini-muted);
+	font-size: 12px;
+	font-weight: 750;
+}
+.mini-home-plan-status svg:last-child {
+	opacity: 0.65;
+}
+.mini-home-plan-status.is-plus {
+	border-color: color-mix(in srgb, #b68a20 35%, var(--mini-line));
+	background: color-mix(in srgb, #f2c85b 9%, var(--mini-paper));
+	color: #775a13;
+}
 .mini-add-button {
 	display: inline-flex;
 	flex: none;
@@ -834,6 +856,151 @@
 	display: grid;
 	min-width: 0;
 	gap: 10px;
+}
+.mini-product-promo {
+	--promo-accent: var(--mini-green);
+	position: relative;
+	display: grid;
+	min-width: 0;
+	grid-template-columns: 82px minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 13px;
+	padding: 14px 42px 14px 14px;
+	border: 1px solid
+		color-mix(in srgb, var(--promo-accent) 24%, var(--mini-line));
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--promo-accent) 5%, var(--mini-paper));
+	box-shadow: 0 10px 24px rgb(28 34 52 / 5%);
+}
+.mini-product-promo.is-splitExpense,
+.mini-product-promo.is-inviteSpace {
+	--promo-accent: #3159cf;
+}
+.mini-product-promo.is-createSpace {
+	--promo-accent: #b26b16;
+}
+.mini-product-promo.is-customCategories {
+	--promo-accent: #9a4964;
+}
+.mini-product-promo.is-plus {
+	--promo-accent: #a47a12;
+}
+.mini-product-promo-dismiss {
+	position: absolute;
+	top: 7px;
+	right: 7px;
+	display: grid;
+	width: 32px;
+	height: 32px;
+	place-items: center;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--mini-muted);
+}
+.mini-product-promo-dismiss:hover {
+	background: color-mix(in srgb, var(--promo-accent) 8%, transparent);
+	color: var(--mini-ink);
+}
+.mini-product-promo-visual {
+	position: relative;
+	width: 82px;
+	height: 64px;
+	overflow: hidden;
+	border: 1px solid
+		color-mix(in srgb, var(--promo-accent) 18%, var(--mini-line));
+	border-radius: 7px;
+	background: var(--mini-paper);
+	color: var(--promo-accent);
+}
+.mini-promo-icon {
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+}
+.mini-promo-icon.is-source {
+	left: 10px;
+	top: 55%;
+	opacity: 0.58;
+}
+.mini-promo-icon.is-motion {
+	left: 50%;
+	z-index: 2;
+	transform: translate(-50%, -50%);
+	animation: mini-promo-motion 2.8s ease-out infinite;
+}
+.mini-promo-icon.is-result {
+	right: 9px;
+	animation: mini-promo-result 2.8s ease-out infinite;
+}
+.mini-product-promo-copy {
+	display: grid;
+	min-width: 0;
+	gap: 3px;
+}
+.mini-product-promo-copy small {
+	color: var(--promo-accent);
+	font-size: 10px;
+	font-weight: 800;
+	text-transform: uppercase;
+}
+.mini-product-promo-copy strong {
+	font-size: 14px;
+	line-height: 1.25;
+}
+.mini-product-promo-copy p {
+	margin: 0;
+	color: var(--mini-muted);
+	font-size: 12px;
+	line-height: 1.4;
+}
+.mini-product-promo-action {
+	display: inline-flex;
+	min-height: 42px;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	padding: 0 12px;
+	border: 1px solid var(--promo-accent);
+	border-radius: 7px;
+	background: var(--promo-accent);
+	color: var(--mini-paper);
+	font-size: 12px;
+	font-weight: 800;
+	white-space: nowrap;
+}
+@keyframes mini-promo-motion {
+	0%,
+	22% {
+		opacity: 0;
+		transform: translate(-70%, -50%) scale(0.8);
+	}
+	44%,
+	72% {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: translate(-30%, -50%) scale(0.85);
+	}
+}
+@keyframes mini-promo-result {
+	0%,
+	38% {
+		opacity: 0.35;
+		transform: translateY(-50%) scale(0.88);
+	}
+	58%,
+	88% {
+		opacity: 1;
+		transform: translateY(-50%) scale(1);
+	}
+	100% {
+		opacity: 0.55;
+		transform: translateY(-50%) scale(0.94);
+	}
 }
 .mini-home-report-prompt {
 	display: grid;
@@ -8167,6 +8334,19 @@
 	font-size: 13px;
 	line-height: 1.5;
 }
+.mini-invite-name {
+	display: grid;
+	gap: 6px;
+}
+.mini-invite-name > span {
+	font-size: 12px;
+	font-weight: 750;
+}
+.mini-invite-name > small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	line-height: 1.35;
+}
 .mini-invite-link {
 	display: grid;
 	gap: 10px;
@@ -8197,6 +8377,28 @@
 	background: var(--mini-paper);
 	color: var(--mini-green);
 	font-weight: 700;
+}
+@media (max-width: 560px) {
+	.mini-product-promo {
+		grid-template-columns: 68px minmax(0, 1fr);
+		gap: 10px 12px;
+		padding: 13px 40px 13px 12px;
+	}
+	.mini-product-promo-visual {
+		width: 68px;
+		height: 60px;
+	}
+	.mini-product-promo-action {
+		grid-column: 2;
+		justify-self: start;
+		min-height: 40px;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.mini-promo-icon.is-motion,
+	.mini-promo-icon.is-result {
+		animation: none;
+	}
 }
 .mini-invite-link > button {
 	border-color: var(--mini-green);

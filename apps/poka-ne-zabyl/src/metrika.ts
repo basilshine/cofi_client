@@ -25,7 +25,8 @@ export type MetrikaGoal =
 	| "first_capture_ready"
 	| "first_review_opened"
 	| "first_review_edit_opened"
-	| "first_review_closed_unsaved";
+	| "first_review_closed_unsaved"
+	| `product_promo_${ProductPromoID}_${"shown" | "action" | "dismiss"}`;
 
 export const initializeMetrika = () => {
 	const metrikaWindow = window as MetrikaWindow;
@@ -90,3 +91,4 @@ export const trackFirstCaptureGoal = (
 	window.localStorage.setItem(key, "1");
 	return true;
 };
+import type { ProductPromoID } from "./product-promos";

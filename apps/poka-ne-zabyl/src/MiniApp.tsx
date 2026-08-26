@@ -132,6 +132,7 @@ import {
 } from "./metrika";
 import {
 	type UILanguage,
+	type UIMessage,
 	itemCountText,
 	languageOptions,
 	linkedIdentityErrorText,
@@ -174,6 +175,15 @@ import {
 	uniquePlanCategoryIDs,
 	visiblePlanCategoryIDs,
 } from "./plan-category";
+import {
+	type ProductPromoID,
+	type ProductPromoState,
+	emptyProductPromoState,
+	nextProductPromo,
+	parseProductPromoState,
+	recordProductPromoImpression,
+	snoozeProductPromo,
+} from "./product-promos";
 import { PULL_REFRESH_THRESHOLD, pullRefreshDistance } from "./pull-refresh";
 import {
 	collapsePurchasePlanSeries,
@@ -2539,6 +2549,12 @@ export const MiniApp = ({
 	const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 	const [seenCoachmarks, setSeenCoachmarks] = useState<CoachmarkID[]>([]);
 	const [coachmarksReady, setCoachmarksReady] = useState(false);
+	const [productPromoState, setProductPromoState] = useState<ProductPromoState>(
+		emptyProductPromoState,
+	);
+	const [productPromosReady, setProductPromosReady] = useState(false);
+	const [activeProductPromo, setActiveProductPromo] =
+		useState<ProductPromoID | null>(null);
 	const [largeText, setLargeText] = useState(false);
 	const [reviewPresentation, setReviewPresentation] =
 		useState<ReviewPresentation>("ready");
@@ -2599,6 +2615,21 @@ export const MiniApp = ({
 			setSeenCoachmarks([]);
 		}
 		setCoachmarksReady(true);
+	}, [user?.id]);
+	useEffect(() => {
+		setProductPromosReady(false);
+		setActiveProductPromo(null);
+		if (!user?.id) return;
+		try {
+			setProductPromoState(
+				parseProductPromoState(
+					window.localStorage.getItem(`pnz:product-promos:v1:${user.id}`),
+				),
+			);
+		} catch {
+			setProductPromoState(emptyProductPromoState());
+		}
+		setProductPromosReady(true);
 	}, [user?.id]);
 	useEffect(() => {
 		try {
@@ -2711,6 +2742,21 @@ export const MiniApp = ({
 			return next;
 		});
 	};
+	const persistProductPromoState = useCallback(
+		(next: ProductPromoState) => {
+			setProductPromoState(next);
+			if (!user?.id) return;
+			try {
+				window.localStorage.setItem(
+					`pnz:product-promos:v1:${user.id}`,
+					JSON.stringify(next),
+				);
+			} catch {
+				// Frequency limits still apply until the page closes.
+			}
+		},
+		[user?.id],
+	);
 	useEffect(() => {
 		if (!notice) return;
 		const timer = window.setTimeout(() => setNotice(""), 5_000);
@@ -6453,6 +6499,132 @@ export const MiniApp = ({
 		const known = new Set(expenses.map(({ id }) => id));
 		return [...expenses, ...splitExpenses.filter(({ id }) => !known.has(id))];
 	}, [expenses, splitExpenses]);
+	const productPromoSignals = useMemo(
+		() => ({
+			hasExpenses: expensesWithSplitContext.length > 0,
+			hasSmartCapture: captures.some(
+				(capture) =>
+					capture.processing_status === "succeeded" &&
+					capture.input_kind !== "manual",
+			),
+			canSplitExpense:
+				eligibleParticipants.length > 1 &&
+				expensesWithSplitContext.some(
+					(expense) => expense.user_id === user?.id || activeSpaceOwnedByUser,
+				),
+			hasSplitExpense: expenseSplits.length > 0,
+			canInviteToSpace: Boolean(
+				activeSpaceOwnedByUser && activeSpace && !activeSpace.is_personal,
+			),
+			hasInvitedParticipant:
+				members.length > 1 || eligibleParticipants.length > 1,
+			canCreateSpace:
+				!businessApp &&
+				ownedSpacesCount < Math.max(2, accountQuota?.max_spaces || 2),
+			hasExtraSpace: ownedSpacesCount > 1,
+			hasCustomCategory: categories.some(
+				(category) => !category.is_system && !category.is_preset,
+			),
+			hasPlus: accountHasPlus,
+		}),
+		[
+			accountHasPlus,
+			accountQuota?.max_spaces,
+			activeSpace,
+			activeSpaceOwnedByUser,
+			businessApp,
+			captures,
+			categories,
+			eligibleParticipants.length,
+			expenseSplits.length,
+			expensesWithSplitContext,
+			members.length,
+			ownedSpacesCount,
+			user?.id,
+		],
+	);
+	useEffect(() => {
+		if (
+			businessApp ||
+			view !== "overview" ||
+			loading ||
+			!productPromosReady ||
+			activeProductPromo ||
+			activeCoachmark ||
+			spaceMenuOpen ||
+			accountMenuOpen ||
+			addChoiceOpen ||
+			captureOpen
+		)
+			return;
+		const next = nextProductPromo(productPromoSignals, productPromoState);
+		if (!next) return;
+		setActiveProductPromo(next);
+		persistProductPromoState(
+			recordProductPromoImpression(productPromoState, next),
+		);
+		if (!previewMode) reachMetrikaGoal(`product_promo_${next}_shown`);
+	}, [
+		accountMenuOpen,
+		activeCoachmark,
+		activeProductPromo,
+		addChoiceOpen,
+		businessApp,
+		captureOpen,
+		loading,
+		persistProductPromoState,
+		previewMode,
+		productPromoSignals,
+		productPromoState,
+		productPromosReady,
+		spaceMenuOpen,
+		view,
+	]);
+	const closeProductPromo = (acted: boolean) => {
+		if (!activeProductPromo) return;
+		persistProductPromoState(
+			snoozeProductPromo(
+				productPromoState,
+				activeProductPromo,
+				acted ? 14 : 7,
+				acted,
+			),
+		);
+		if (!previewMode)
+			reachMetrikaGoal(
+				`product_promo_${activeProductPromo}_${acted ? "action" : "dismiss"}`,
+			);
+		setActiveProductPromo(null);
+	};
+	const followProductPromo = () => {
+		const promo = activeProductPromo;
+		if (!promo) return;
+		closeProductPromo(true);
+		switch (promo) {
+			case "aiCapture":
+				openCapture("photo");
+				break;
+			case "splitExpense": {
+				const expense = expensesWithSplitContext.find(
+					(item) => item.user_id === user?.id || activeSpaceOwnedByUser,
+				);
+				if (expense) setSplitEditorExpense(expense);
+				break;
+			}
+			case "inviteSpace":
+				if (activeSpace) setInvitingSpace(activeSpace);
+				break;
+			case "createSpace":
+				openNewSpaceEditor();
+				break;
+			case "customCategories":
+				setView("categories");
+				break;
+			case "plus":
+				setView("subscription");
+				break;
+		}
+	};
 	const spaceSubtitle = (space: Space) => {
 		const industry = space.settings?.industry
 			? businessIndustryProfile(space.settings.industry).label
@@ -9608,6 +9780,8 @@ export const MiniApp = ({
 								language={language}
 								spaceName={activeWorkspaceName}
 								businessMode={businessApp}
+								hasPlus={accountHasPlus}
+								productPromo={activeProductPromo}
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
@@ -9634,6 +9808,9 @@ export const MiniApp = ({
 									setReportPeriodPreset("month");
 									setReportMonthOpen(true);
 								}}
+								onProductPromoAction={followProductPromo}
+								onDismissProductPromo={() => closeProductPromo(false)}
+								onSubscription={() => setView("subscription")}
 								onConfigureLocale={openProfileEditor}
 								onCategory={openCategory}
 								onManageBudgets={() => setView("categories")}
@@ -10994,7 +11171,18 @@ export const MiniApp = ({
 				<SpaceInviteDialog
 					space={invitingSpace}
 					token={token}
+					language={language}
+					participants={
+						invitingSpace.id === spaceID ? eligibleParticipants : []
+					}
 					previewMode={previewMode}
+					onCreated={(participant) => {
+						if (invitingSpace.id !== spaceID) return;
+						setParticipants((current) => [
+							...current.filter((item) => item.id !== participant.id),
+							participant,
+						]);
+					}}
 					onClose={() => setInvitingSpace(null)}
 					onNotice={setNotice}
 				/>
@@ -13231,11 +13419,184 @@ const PeriodReportView = ({
 	);
 };
 
+const productPromoCopy = (
+	id: ProductPromoID,
+): { title: UIMessage; body: UIMessage; action: UIMessage } => {
+	switch (id) {
+		case "aiCapture":
+			return {
+				title: "promoAiCaptureTitle",
+				body: "promoAiCaptureBody",
+				action: "promoAiCaptureAction",
+			};
+		case "splitExpense":
+			return {
+				title: "promoSplitTitle",
+				body: "promoSplitBody",
+				action: "promoSplitAction",
+			};
+		case "inviteSpace":
+			return {
+				title: "promoInviteTitle",
+				body: "promoInviteBody",
+				action: "promoInviteAction",
+			};
+		case "createSpace":
+			return {
+				title: "promoSpaceTitle",
+				body: "promoSpaceBody",
+				action: "promoSpaceAction",
+			};
+		case "customCategories":
+			return {
+				title: "promoCategoryTitle",
+				body: "promoCategoryBody",
+				action: "promoCategoryAction",
+			};
+		case "plus":
+			return {
+				title: "promoPlusTitle",
+				body: "promoPlusBody",
+				action: "promoPlusAction",
+			};
+	}
+};
+
+const ProductPromoVisual = ({ id }: { id: ProductPromoID }) => (
+	<div className="mini-product-promo-visual" aria-hidden="true">
+		{id === "aiCapture" && (
+			<>
+				<Camera className="mini-promo-icon is-source" size={26} weight="fill" />
+				<Sparkle
+					className="mini-promo-icon is-motion"
+					size={18}
+					weight="fill"
+				/>
+				<Receipt
+					className="mini-promo-icon is-result"
+					size={29}
+					weight="fill"
+				/>
+			</>
+		)}
+		{id === "splitExpense" && (
+			<>
+				<Receipt
+					className="mini-promo-icon is-source"
+					size={26}
+					weight="fill"
+				/>
+				<ArrowsLeftRight
+					className="mini-promo-icon is-motion"
+					size={19}
+					weight="bold"
+				/>
+				<UsersThree
+					className="mini-promo-icon is-result"
+					size={31}
+					weight="fill"
+				/>
+			</>
+		)}
+		{id === "inviteSpace" && (
+			<>
+				<UsersThree
+					className="mini-promo-icon is-source"
+					size={28}
+					weight="fill"
+				/>
+				<Plus className="mini-promo-icon is-motion" size={17} weight="bold" />
+				<ShareNetwork
+					className="mini-promo-icon is-result"
+					size={28}
+					weight="fill"
+				/>
+			</>
+		)}
+		{id === "createSpace" && (
+			<>
+				<House className="mini-promo-icon is-source" size={25} weight="fill" />
+				<Plus className="mini-promo-icon is-motion" size={17} weight="bold" />
+				<Buildings
+					className="mini-promo-icon is-result"
+					size={31}
+					weight="fill"
+				/>
+			</>
+		)}
+		{id === "customCategories" && (
+			<>
+				<Tag className="mini-promo-icon is-source" size={25} weight="fill" />
+				<Sparkle
+					className="mini-promo-icon is-motion"
+					size={17}
+					weight="fill"
+				/>
+				<Tag className="mini-promo-icon is-result" size={31} weight="fill" />
+			</>
+		)}
+		{id === "plus" && (
+			<>
+				<Star className="mini-promo-icon is-source" size={25} weight="fill" />
+				<Plus className="mini-promo-icon is-motion" size={17} weight="bold" />
+				<Sparkle
+					className="mini-promo-icon is-result"
+					size={31}
+					weight="fill"
+				/>
+			</>
+		)}
+	</div>
+);
+
+const ProductPromoCard = ({
+	id,
+	language,
+	onAction,
+	onDismiss,
+}: {
+	id: ProductPromoID;
+	language: UILanguage;
+	onAction: () => void;
+	onDismiss: () => void;
+}) => {
+	const copy = productPromoCopy(id);
+	return (
+		<section className={`mini-product-promo is-${id}`}>
+			<button
+				className="mini-product-promo-dismiss"
+				type="button"
+				aria-label={uiText(language, "productPromoDismiss")}
+				title={uiText(language, "productPromoDismiss")}
+				onClick={onDismiss}
+			>
+				<X size={17} />
+			</button>
+			<ProductPromoVisual id={id} />
+			<div className="mini-product-promo-copy">
+				<small>{uiText(language, "productPromoEyebrow")}</small>
+				<strong>{uiText(language, copy.title)}</strong>
+				<p>{uiText(language, copy.body)}</p>
+			</div>
+			<button
+				className="mini-product-promo-action"
+				type="button"
+				onClick={onAction}
+			>
+				{uiText(language, copy.action)}
+				<ArrowRight size={16} weight="bold" />
+			</button>
+		</section>
+	);
+};
+
 const Overview = ({
 	user,
 	language,
 	spaceName,
 	businessMode,
+	hasPlus,
+	productPromo,
 	total,
 	currency,
 	categories,
@@ -13257,6 +13618,9 @@ const Overview = ({
 	onReport,
 	onReports,
 	onCreateReport,
+	onProductPromoAction,
+	onDismissProductPromo,
+	onSubscription,
 	onCategory,
 	onManageBudgets,
 	onExpense,
@@ -13277,6 +13641,8 @@ const Overview = ({
 	language: UILanguage;
 	spaceName: string;
 	businessMode: boolean;
+	hasPlus: boolean;
+	productPromo: ProductPromoID | null;
 	total: number;
 	currency: string;
 	categories: HomeCategoryRow<Category & { filteredTotal: number }>[];
@@ -13298,6 +13664,9 @@ const Overview = ({
 	onReport: (id: number) => void;
 	onReports: () => void;
 	onCreateReport: () => void;
+	onProductPromoAction: () => void;
+	onDismissProductPromo: () => void;
+	onSubscription: () => void;
 	onCategory: (id: number, period?: Period) => void;
 	onManageBudgets: () => void;
 	onExpense: (expense: Expense) => void;
@@ -13477,12 +13846,23 @@ const Overview = ({
 		setOpenFolder((current) => (current === folder ? null : folder));
 	return (
 		<section className="mini-view mini-overview">
-			<div className="mini-title">
-				<p>
-					{uiText(language, "greeting")}
-					{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
-				</p>
-				<h1>{monthName}</h1>
+			<div className="mini-title-row">
+				<div className="mini-title">
+					<p>
+						{uiText(language, "greeting")}
+						{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+					</p>
+					<h1>{monthName}</h1>
+				</div>
+				<button
+					className={`mini-home-plan-status${hasPlus ? " is-plus" : ""}`}
+					type="button"
+					onClick={onSubscription}
+				>
+					<Star size={15} weight={hasPlus ? "fill" : "regular"} />
+					<span>{uiText(language, hasPlus ? "plus" : "basic")}</span>
+					<ArrowRight size={14} weight="bold" />
+				</button>
 			</div>
 			<div className="mini-overview-grid">
 				<div className="mini-overview-summary">
@@ -13508,6 +13888,14 @@ const Overview = ({
 						</button>
 					</div>
 					<div className="mini-home-stream">
+						{productPromo && (
+							<ProductPromoCard
+								id={productPromo}
+								language={language}
+								onAction={onProductPromoAction}
+								onDismiss={onDismissProductPromo}
+							/>
+						)}
 						{!hasCompletedMonthReport && (
 							<button
 								className="mini-home-report-prompt"
@@ -24968,18 +25356,28 @@ const ProfileEditor = ({
 const SpaceInviteDialog = ({
 	space,
 	token,
+	language,
+	participants,
 	previewMode,
+	onCreated,
 	onClose,
 	onNotice,
 }: {
 	space: Space;
 	token: string;
+	language: UILanguage;
+	participants: SpaceParticipant[];
 	previewMode: boolean;
+	onCreated: (participant: SpaceParticipant) => void;
 	onClose: () => void;
 	onNotice: (message: string) => void;
 }) => {
 	const [submitting, setSubmitting] = useState(false);
-	const [createdLinkToken, setCreatedLinkToken] = useState("");
+	const [inviteName, setInviteName] = useState(() =>
+		nextGuestDisplayName(participants, uiText(language, "guestParticipant")),
+	);
+	const [createdInvite, setCreatedInvite] =
+		useState<SplitParticipantInviteResult | null>(null);
 	const [error, setError] = useState("");
 
 	const inviteURL = (inviteToken: string) =>
@@ -24988,9 +25386,9 @@ const SpaceInviteDialog = ({
 	const copyInvite = async (inviteToken: string) => {
 		try {
 			await navigator.clipboard.writeText(inviteURL(inviteToken));
-			onNotice("Ссылка приглашения скопирована");
+			onNotice(uiText(language, "participantInviteCopied"));
 		} catch {
-			setError("Не удалось скопировать ссылку. Выделите её вручную");
+			setError(uiText(language, "participantInviteCopyFailed"));
 		}
 	};
 
@@ -25002,7 +25400,9 @@ const SpaceInviteDialog = ({
 		try {
 			await navigator.share({
 				title: `Пространство «${space.name}»`,
-				text: `Присоединяйся к пространству «${space.name}» в «Пока не забыл».`,
+				text: uiText(language, "spaceInviteShareText")
+					.replace("{name}", inviteName.trim())
+					.replace("{space}", space.name),
 				url: inviteURL(inviteToken),
 			});
 		} catch (err) {
@@ -25013,67 +25413,98 @@ const SpaceInviteDialog = ({
 
 	const shareOrCreateInvite = async () => {
 		if (submitting) return;
-		if (createdLinkToken) {
-			await shareInvite(createdLinkToken);
+		if (createdInvite) {
+			await shareInvite(createdInvite.token);
 			return;
 		}
+		const displayName = inviteName.trim();
+		if (!displayName) return;
 		setSubmitting(true);
 		setError("");
 		try {
 			const invite = previewMode
 				? {
+						participant: {
+							id: Date.now(),
+							space_id: space.id,
+							display_name: displayName,
+							participant_type: "guest",
+							status: "invited",
+						},
 						token: `preview-link-${Date.now()}`,
 						expires_at: new Date(Date.now() + 7 * 86_400_000).toISOString(),
 					}
-				: await apiRequest<{ token: string; expires_at: string }>(
-						`/spaces/${space.id}/invites`,
+				: await apiRequest<SplitParticipantInviteResult>(
+						`/spaces/${space.id}/participants`,
 						token,
 						{
 							method: "POST",
-							body: JSON.stringify({ channel: "link" }),
+							body: JSON.stringify({
+								display_name: displayName,
+								invite_channel: "link",
+							}),
 						},
 					);
-			setCreatedLinkToken(invite.token);
+			setCreatedInvite(invite);
+			onCreated(invite.participant);
 			await shareInvite(invite.token);
 		} catch {
-			setError("Не удалось создать ссылку. Попробуйте ещё раз");
+			setError(uiText(language, "participantInviteFailed"));
 		} finally {
 			setSubmitting(false);
 		}
 	};
 
 	return (
-		<Modal title={`Пригласить в «${space.name}»`} onClose={onClose}>
+		<Modal
+			title={`${uiText(language, "spaceInviteTitle")}: ${space.name}`}
+			onClose={onClose}
+		>
 			<div className="mini-invite-form">
 				<p className="mini-invite-copy">
-					Отправьте приглашение через мессенджер, почту или любое другое
-					приложение. После входа человек автоматически попадёт в пространство.
+					{uiText(language, "spaceInviteIntro")}
 				</p>
+				<label className="mini-invite-name">
+					<span>{uiText(language, "participantName")}</span>
+					<input
+						maxLength={80}
+						disabled={Boolean(createdInvite)}
+						value={inviteName}
+						placeholder={uiText(language, "participantNameExample")}
+						onChange={(event) => setInviteName(event.target.value)}
+					/>
+					<small>{uiText(language, "spaceInviteNameHint")}</small>
+				</label>
 				<div className="mini-invite-link">
 					<span>
-						<b>Ссылка для приглашения</b>
-						<small>Действует 7 дней и сработает для одного человека.</small>
+						<b>{uiText(language, "spaceInviteLinkTitle")}</b>
+						<small>{uiText(language, "spaceInviteLinkHint")}</small>
 					</span>
 					<button
 						type="button"
-						disabled={submitting}
+						disabled={submitting || !inviteName.trim()}
 						onClick={shareOrCreateInvite}
 					>
 						<ShareNetwork size={18} weight="bold" />
-						{submitting ? "Создаём ссылку…" : "Поделиться приглашением"}
+						{submitting
+							? uiText(language, "saving")
+							: createdInvite
+								? uiText(language, "shareInviteAgain")
+								: uiText(language, "addAndShareInvite")}
 					</button>
-					{createdLinkToken && (
+					{createdInvite && (
 						<div className="mini-invite-share">
 							<input
-								aria-label="Ссылка приглашения"
+								aria-label={uiText(language, "spaceInviteLinkTitle")}
 								readOnly
-								value={inviteURL(createdLinkToken)}
+								value={inviteURL(createdInvite.token)}
+								onFocus={(event) => event.currentTarget.select()}
 							/>
 							<button
 								type="button"
-								aria-label="Копировать ссылку"
-								title="Копировать ссылку"
-								onClick={() => copyInvite(createdLinkToken)}
+								aria-label={uiText(language, "participantInviteCopied")}
+								title={uiText(language, "participantInviteCopied")}
+								onClick={() => copyInvite(createdInvite.token)}
 							>
 								<Copy size={17} />
 							</button>

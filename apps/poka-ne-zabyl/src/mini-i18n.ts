@@ -99,6 +99,32 @@ const messages = {
 		homeReportPromptHint: "Соберите итоги завершённого месяца",
 		homeReportPromptAction: "Создать",
 		homeAttentionCount: "Требует действия: {count}",
+		productPromoEyebrow: "Полезная возможность",
+		productPromoDismiss: "Скрыть подсказку",
+		promoAiCaptureTitle: "Фото превращается в готовый расход",
+		promoAiCaptureBody:
+			"Сфотографируйте чек: позиции, сумма и категории появятся сами.",
+		promoAiCaptureAction: "Разобрать чек",
+		promoSplitTitle: "Разделите один чек между всеми",
+		promoSplitBody:
+			"Укажите плательщика и доли, а приложение посчитает, кто кому должен.",
+		promoSplitAction: "Создать сплит",
+		promoInviteTitle: "Добавьте человека в это пространство",
+		promoInviteBody:
+			"Задайте временное имя и отправьте ссылку. После входа имя обновится автоматически.",
+		promoInviteAction: "Пригласить",
+		promoSpaceTitle: "Разделите расходы по пространствам",
+		promoSpaceBody:
+			"Семья, ремонт или поездка живут отдельно, со своими участниками и категориями.",
+		promoSpaceAction: "Создать пространство",
+		promoCategoryTitle: "Настройте категории под себя",
+		promoCategoryBody:
+			"Добавьте свою категорию, и приложение предложит иконку и слова для распознавания.",
+		promoCategoryAction: "Создать категорию",
+		promoPlusTitle: "Больше места для ваших сценариев",
+		promoPlusBody:
+			"Плюс увеличивает лимиты пространств, категорий, планов и умных разборов.",
+		promoPlusAction: "Посмотреть Плюс",
 		allReports: "Все сводки",
 		reportArchiveEyebrow: "Финансовая история",
 		reportArchiveTitle: "Архив сводок",
@@ -334,6 +360,15 @@ const messages = {
 		participantInviteCopyFailed:
 			"Не удалось скопировать ссылку — выделите её вручную.",
 		participantInviteFailed: "Не удалось добавить участника",
+		spaceInviteIntro:
+			"Задайте человеку временное имя и отправьте ссылку удобным способом.",
+		spaceInviteNameHint:
+			"После регистрации настоящее имя заменит временное, а история и доли сохранятся.",
+		spaceInviteLinkTitle: "Персональная ссылка",
+		spaceInviteLinkHint: "Действует 7 дней и сработает для одного человека.",
+		spaceInviteTitle: "Пригласить в пространство",
+		spaceInviteShareText:
+			"{name}, присоединяйтесь к пространству «{space}» в «Пока не забыл».",
 		receiptPaidReceipt: "Оплатил(а) чек",
 		receiptOwnShare: "Своя доля",
 		receiptWhoOwesWhom: "Кто кому должен",
@@ -933,6 +968,32 @@ const messages = {
 		homeReportPromptHint: "Review the completed month in one place",
 		homeReportPromptAction: "Create",
 		homeAttentionCount: "Needs action: {count}",
+		productPromoEyebrow: "Worth trying",
+		productPromoDismiss: "Hide suggestion",
+		promoAiCaptureTitle: "Turn a photo into a ready expense",
+		promoAiCaptureBody:
+			"Photograph a receipt and its items, total, and categories will appear automatically.",
+		promoAiCaptureAction: "Scan a receipt",
+		promoSplitTitle: "Split one receipt between everyone",
+		promoSplitBody:
+			"Choose who paid and assign shares. The app will calculate who owes whom.",
+		promoSplitAction: "Create a split",
+		promoInviteTitle: "Add someone to this space",
+		promoInviteBody:
+			"Give them a temporary name and share a link. Their real name replaces it after sign-in.",
+		promoInviteAction: "Invite someone",
+		promoSpaceTitle: "Keep different budgets in separate spaces",
+		promoSpaceBody:
+			"Family, renovation, and travel can each have their own members and categories.",
+		promoSpaceAction: "Create a space",
+		promoCategoryTitle: "Make categories your own",
+		promoCategoryBody:
+			"Add a category and the app will suggest an icon and recognition keywords.",
+		promoCategoryAction: "Create a category",
+		promoPlusTitle: "More room for your routines",
+		promoPlusBody:
+			"Plus raises the limits for spaces, categories, plans, and smart scans.",
+		promoPlusAction: "Explore Plus",
 		allReports: "All summaries",
 		reportArchiveEyebrow: "Financial history",
 		reportArchiveTitle: "Summary archive",
@@ -1168,6 +1229,14 @@ const messages = {
 		participantInviteCopied: "Invite link copied",
 		participantInviteCopyFailed: "Could not copy the link. Select it manually.",
 		participantInviteFailed: "Could not add participant",
+		spaceInviteIntro:
+			"Give this person a temporary name, then share their link in any app.",
+		spaceInviteNameHint:
+			"Their real name replaces it after registration while history and shares stay linked.",
+		spaceInviteLinkTitle: "Personal invite link",
+		spaceInviteLinkHint: "Valid for 7 days and can be used by one person.",
+		spaceInviteTitle: "Invite to space",
+		spaceInviteShareText: "{name}, join the “{space}” space in Poka ne zabyl.",
 		receiptPaidReceipt: "Paid the receipt",
 		receiptOwnShare: "Own share",
 		receiptWhoOwesWhom: "Who owes whom",
@@ -1765,6 +1834,32 @@ const messages = {
 		homeReportPromptHint: "Reúne los resultados del mes terminado",
 		homeReportPromptAction: "Crear",
 		homeAttentionCount: "Requiere una acción: {count}",
+		productPromoEyebrow: "Puede resultarte útil",
+		productPromoDismiss: "Ocultar sugerencia",
+		promoAiCaptureTitle: "Convierte una foto en un gasto listo",
+		promoAiCaptureBody:
+			"Fotografía un recibo y sus artículos, total y categorías aparecerán automáticamente.",
+		promoAiCaptureAction: "Escanear recibo",
+		promoSplitTitle: "Reparte un recibo entre todos",
+		promoSplitBody:
+			"Indica quién pagó y asigna las partes. La aplicación calculará quién debe a quién.",
+		promoSplitAction: "Crear reparto",
+		promoInviteTitle: "Añade a alguien a este espacio",
+		promoInviteBody:
+			"Ponle un nombre temporal y comparte el enlace. Su nombre real lo sustituirá al entrar.",
+		promoInviteAction: "Invitar",
+		promoSpaceTitle: "Separa tus gastos por espacios",
+		promoSpaceBody:
+			"Familia, reforma o viaje pueden tener sus propios miembros y categorías.",
+		promoSpaceAction: "Crear espacio",
+		promoCategoryTitle: "Adapta las categorías a tu manera",
+		promoCategoryBody:
+			"Añade una categoría y la aplicación sugerirá un icono y palabras para reconocerla.",
+		promoCategoryAction: "Crear categoría",
+		promoPlusTitle: "Más espacio para tus rutinas",
+		promoPlusBody:
+			"Plus amplía los límites de espacios, categorías, planes y análisis inteligentes.",
+		promoPlusAction: "Ver Plus",
 		allReports: "Todos los resúmenes",
 		reportArchiveEyebrow: "Historial financiero",
 		reportArchiveTitle: "Archivo de resúmenes",
@@ -2004,6 +2099,15 @@ const messages = {
 		participantInviteCopyFailed:
 			"No se pudo copiar el enlace. Selecciónalo manualmente.",
 		participantInviteFailed: "No se pudo añadir al participante",
+		spaceInviteIntro:
+			"Ponle un nombre temporal y comparte su enlace desde cualquier aplicación.",
+		spaceInviteNameHint:
+			"Su nombre real lo sustituirá al registrarse, sin perder el historial ni las partes.",
+		spaceInviteLinkTitle: "Enlace personal",
+		spaceInviteLinkHint: "Válido durante 7 días y para una sola persona.",
+		spaceInviteTitle: "Invitar al espacio",
+		spaceInviteShareText:
+			"{name}, únete al espacio «{space}» en Poka ne zabyl.",
 		receiptPaidReceipt: "Pagó el recibo",
 		receiptOwnShare: "Parte propia",
 		receiptWhoOwesWhom: "Quién debe a quién",
