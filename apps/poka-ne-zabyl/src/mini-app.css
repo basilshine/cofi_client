@@ -924,7 +924,7 @@
 .mini-product-promo-visual {
 	position: relative;
 	width: 100%;
-	height: 126px;
+	height: clamp(300px, 68vw, 360px);
 	grid-column: 1 / -1;
 	overflow: hidden;
 	border: 1px solid
@@ -937,21 +937,47 @@
 }
 .mini-promo-story-window {
 	position: absolute;
-	inset: 0 0 15px;
+	inset: 0 0 14px;
 	overflow: hidden;
 }
 .mini-promo-scene {
+	--promo-focus-x: 50%;
+	--promo-focus-y: 50%;
+	--promo-zoom: 1;
+	--promo-tap-x: 50%;
+	--promo-tap-y: 50%;
 	position: absolute;
 	inset: 0;
-	display: grid;
-	align-items: center;
-	padding: 14px 18px;
+	overflow: hidden;
 	opacity: 0;
 	transform: translateX(12px);
 	filter: blur(4px);
-	animation-duration: 6.6s;
+	animation-duration: 8.4s;
 	animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
 	animation-iteration-count: infinite;
+}
+.mini-promo-scene > img {
+	position: absolute;
+	inset: 0;
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: var(--promo-focus-x) var(--promo-focus-y);
+	transform: scale(var(--promo-zoom));
+	transform-origin: var(--promo-focus-x) var(--promo-focus-y);
+	user-select: none;
+	animation: mini-promo-screen-drift 8.4s ease-in-out infinite;
+}
+.mini-promo-screen-vignette {
+	position: absolute;
+	inset: 0;
+	background: linear-gradient(
+		to bottom,
+		rgb(17 24 42 / 3%) 40%,
+		rgb(17 24 42 / 22%) 100%
+	);
+	pointer-events: none;
 }
 .mini-promo-scene.is-source {
 	animation-name: mini-promo-scene-source;
@@ -962,84 +988,66 @@
 .mini-promo-scene.is-result {
 	animation-name: mini-promo-scene-result;
 }
-.mini-promo-step {
+.mini-promo-demo-caption {
 	position: absolute;
-	top: 8px;
-	left: 9px;
+	right: 10px;
+	bottom: 10px;
+	left: 10px;
+	z-index: 2;
 	display: grid;
-	width: 18px;
-	height: 18px;
+	min-height: 48px;
+	grid-template-columns: 26px minmax(0, 1fr);
+	align-items: center;
+	gap: 9px;
+	min-width: 0;
+	padding: 8px 10px;
+	border: 1px solid rgb(255 255 255 / 18%);
+	border-radius: 7px;
+	background: rgb(18 27 52 / 88%);
+	box-shadow: 0 10px 24px rgb(18 27 52 / 24%);
+	backdrop-filter: blur(8px);
+}
+.mini-promo-demo-caption > span {
+	display: grid;
+	width: 26px;
+	height: 26px;
 	place-items: center;
-	border: 1px solid color-mix(in srgb, var(--promo-accent) 20%, transparent);
+	border: 1px solid rgb(255 255 255 / 22%);
 	border-radius: 50%;
-	background: color-mix(in srgb, var(--promo-accent) 8%, var(--mini-paper));
-	font-size: 9px;
+	background: var(--promo-accent);
+	color: #fff;
+	font-size: 11px;
 	font-weight: 900;
 	font-variant-numeric: tabular-nums;
 }
-.mini-promo-scene-layout {
-	display: grid;
-	grid-template-columns: 52px minmax(0, 1fr) 32px;
-	align-items: center;
-	gap: 14px;
-	padding-top: 7px;
-}
-.mini-promo-scene-symbol,
-.mini-promo-scene-secondary {
-	display: grid;
-	place-items: center;
-}
-.mini-promo-scene-symbol {
-	width: 52px;
-	height: 52px;
-	border-radius: 6px;
-	background: color-mix(in srgb, var(--promo-accent) 11%, var(--mini-paper));
-	box-shadow: inset 0 0 0 1px
-		color-mix(in srgb, var(--promo-accent) 12%, transparent);
-}
-.mini-promo-scene-secondary {
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-	background: var(--mini-paper);
-	box-shadow: 0 1px 2px rgb(28 34 52 / 7%), inset 0 0 0 1px
-		color-mix(in srgb, var(--promo-accent) 14%, transparent);
-}
-.mini-promo-scene-data {
-	display: grid;
+.mini-promo-demo-caption strong {
 	min-width: 0;
-	gap: 7px;
+	color: #fff;
+	font-size: 12px;
+	line-height: 1.3;
+	text-wrap: balance;
 }
-.mini-promo-scene-data > span {
-	display: grid;
-	gap: 5px;
-}
-.mini-promo-scene-data i {
-	display: block;
-	height: 5px;
-	border-radius: 3px;
-	background: color-mix(in srgb, var(--promo-accent) 17%, var(--mini-line));
-}
-.mini-promo-scene-data i:last-child {
-	width: 64%;
-}
-.mini-promo-scene-data b {
-	font-size: 13px;
-	font-variant-numeric: tabular-nums;
-	line-height: 1;
-}
-.mini-promo-scene-complete {
+.mini-promo-demo-pointer {
 	position: absolute;
-	right: 8px;
-	bottom: 7px;
+	top: var(--promo-tap-y);
+	left: var(--promo-tap-x);
+	z-index: 3;
 	display: grid;
-	width: 22px;
-	height: 22px;
+	width: 34px;
+	height: 34px;
 	place-items: center;
+	color: var(--promo-accent);
+	filter: drop-shadow(0 3px 4px rgb(28 34 52 / 22%));
+	animation: mini-promo-pointer-tap 1.15s 350ms ease-in-out infinite;
+}
+.mini-promo-demo-pointer::before {
+	position: absolute;
+	inset: 2px;
+	border: 2px solid color-mix(in srgb, var(--promo-accent) 55%, transparent);
 	border-radius: 50%;
-	background: var(--promo-accent);
-	color: var(--mini-paper);
-	box-shadow: 0 3px 8px color-mix(in srgb, var(--promo-accent) 22%, transparent);
+	content: "";
+	opacity: 0;
+	animation: mini-promo-pointer-ring 1.15s 350ms ease-out infinite;
 }
 .mini-promo-story-progress {
 	position: absolute;
@@ -1055,7 +1063,7 @@
 	height: 3px;
 	border-radius: 2px;
 	background: color-mix(in srgb, var(--promo-accent) 14%, var(--mini-line));
-	animation-duration: 6.6s;
+	animation-duration: 8.4s;
 	animation-timing-function: linear;
 	animation-iteration-count: infinite;
 }
@@ -1130,6 +1138,44 @@
 		opacity: 1;
 		transform: translateY(0);
 		filter: blur(0);
+	}
+}
+@keyframes mini-promo-pointer-tap {
+	0%,
+	28% {
+		transform: translate(calc(-50% + 13px), calc(-50% - 12px)) scale(0.92);
+	}
+	54%,
+	72% {
+		transform: translate(-50%, -50%) scale(0.86);
+	}
+	100% {
+		transform: translate(calc(-50% + 13px), calc(-50% - 12px)) scale(0.92);
+	}
+}
+@keyframes mini-promo-screen-drift {
+	0%,
+	12% {
+		transform: scale(var(--promo-zoom));
+	}
+	72%,
+	100% {
+		transform: scale(calc(var(--promo-zoom) + 0.045));
+	}
+}
+@keyframes mini-promo-pointer-ring {
+	0%,
+	48% {
+		opacity: 0;
+		transform: scale(0.45);
+	}
+	62% {
+		opacity: 0.7;
+	}
+	86%,
+	100% {
+		opacity: 0;
+		transform: scale(1.35);
 	}
 }
 @keyframes mini-promo-scene-source {
@@ -8676,10 +8722,7 @@
 	}
 	.mini-product-promo-visual {
 		width: 100%;
-		height: 124px;
-	}
-	.mini-promo-scene {
-		padding-inline: 14px;
+		height: clamp(292px, 82vw, 344px);
 	}
 	.mini-product-promo-action {
 		width: 100%;
@@ -8693,7 +8736,10 @@
 	.mini-product-promo-copy,
 	.mini-product-promo-action,
 	.mini-promo-scene,
-	.mini-promo-story-progress i {
+	.mini-promo-scene > img,
+	.mini-promo-story-progress i,
+	.mini-promo-demo-pointer,
+	.mini-promo-demo-pointer::before {
 		animation: none;
 	}
 	.mini-promo-scene.is-source,

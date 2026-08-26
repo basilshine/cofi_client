@@ -18,6 +18,7 @@ import {
 	Copy,
 	CornersIn,
 	CornersOut,
+	CursorClick,
 	EnvelopeSimple,
 	FunnelSimple,
 	GearSix,
@@ -47,6 +48,7 @@ import {
 } from "@phosphor-icons/react";
 import WebApp from "@twa-dev/sdk";
 import {
+	type CSSProperties,
 	type FormEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
@@ -1636,6 +1638,14 @@ const budgetWarningText = (warning: BudgetWarning) =>
 const previewMode =
 	["localhost", "127.0.0.1"].includes(window.location.hostname) &&
 	new URLSearchParams(window.location.search).get("preview") === "1";
+const previewPromoParameter = new URLSearchParams(window.location.search).get(
+	"promo",
+);
+const previewProductPromo =
+	previewMode &&
+	productPromoIDs.some((promoID) => promoID === previewPromoParameter)
+		? (previewPromoParameter as ProductPromoID)
+		: null;
 const maintenanceAdminAccess =
 	new URLSearchParams(window.location.search).get("admin") === "1";
 const previewReport: PeriodReport = {
@@ -2623,7 +2633,7 @@ export const MiniApp = ({
 	}, [user?.id]);
 	useEffect(() => {
 		setProductPromosReady(false);
-		setActiveProductPromo(null);
+		setActiveProductPromo(previewProductPromo);
 		if (!user?.id) return;
 		try {
 			setProductPromoState(
@@ -13521,194 +13531,209 @@ const productPromoDeveloperLabels: Record<ProductPromoID, string> = {
 	plus: "Подписка Plus",
 };
 
-const ProductPromoScene = ({
-	primary,
-	secondary,
-	metric,
-	complete = false,
-}: {
-	primary: ReactNode;
-	secondary?: ReactNode;
-	metric?: string;
-	complete?: boolean;
-}) => (
-	<div className="mini-promo-scene-layout">
-		<span className="mini-promo-scene-symbol">{primary}</span>
-		<span className="mini-promo-scene-data">
-			<span>
-				<i />
-				<i />
-			</span>
-			{metric && <b>{metric}</b>}
-		</span>
-		{secondary && (
-			<span className="mini-promo-scene-secondary">{secondary}</span>
-		)}
-		{complete && (
-			<span className="mini-promo-scene-complete">
-				<Check size={12} weight="bold" />
-			</span>
-		)}
-	</div>
-);
+type ProductPromoDemoScene = {
+	image: string;
+	step: UIMessage;
+	focus: [number, number];
+	zoom: number;
+	tap?: [number, number];
+};
+
+const productPromoPwaAsset = (language: UILanguage, name: string): string =>
+	`/pwa-${language === "ru" ? "" : `${language}-`}${name}.png`;
 
 const productPromoScenes = (
 	id: ProductPromoID,
-): [ReactNode, ReactNode, ReactNode] => {
+	language: UILanguage,
+): ProductPromoDemoScene[] => {
 	switch (id) {
 		case "aiCapture":
 			return [
-				<ProductPromoScene
-					key="source"
-					primary={<Camera size={27} weight="fill" />}
-					secondary={<ImageSquare size={17} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="process"
-					primary={<Receipt size={27} weight="fill" />}
-					secondary={<Sparkle size={18} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="result"
-					primary={<Receipt size={28} weight="fill" />}
-					metric="1 890"
-					complete
-				/>,
+				{
+					image: productPromoPwaAsset(language, "flow-photo-input"),
+					step: "promoDemoAiSource",
+					focus: [50, 46],
+					zoom: 1.08,
+				},
+				{
+					image: productPromoPwaAsset(language, "flow-photo-review"),
+					step: "promoDemoAiAction",
+					focus: [50, 54],
+					zoom: 1.16,
+					tap: [74, 81],
+				},
+				{
+					image: productPromoPwaAsset(language, "flow-photo-review"),
+					step: "promoDemoAiResult",
+					focus: [50, 84],
+					zoom: 1.14,
+				},
 			];
 		case "splitExpense":
 			return [
-				<ProductPromoScene
-					key="source"
-					primary={<Receipt size={27} weight="fill" />}
-					metric="2 400"
-				/>,
-				<ProductPromoScene
-					key="process"
-					primary={<UsersThree size={29} weight="fill" />}
-					secondary={<ArrowsLeftRight size={18} weight="bold" />}
-				/>,
-				<ProductPromoScene
-					key="result"
-					primary={<ArrowsLeftRight size={28} weight="bold" />}
-					metric="1 200"
-					complete
-				/>,
+				{
+					image: productPromoPwaAsset(language, "splits-detail"),
+					step: "promoDemoSplitSource",
+					focus: [50, 38],
+					zoom: 1.08,
+				},
+				{
+					image: productPromoPwaAsset(language, "splits-editor"),
+					step: "promoDemoSplitAction",
+					focus: [50, 70],
+					zoom: 1.08,
+					tap: [73, 73],
+				},
+				{
+					image: productPromoPwaAsset(language, "splits-list"),
+					step: "promoDemoSplitResult",
+					focus: [50, 38],
+					zoom: 1.12,
+				},
 			];
 		case "inviteSpace":
 			return [
-				<ProductPromoScene
-					key="source"
-					primary={<House size={27} weight="fill" />}
-					secondary={<Plus size={17} weight="bold" />}
-				/>,
-				<ProductPromoScene
-					key="process"
-					primary={<ShareNetwork size={28} weight="fill" />}
-					secondary={<PaperPlaneTilt size={17} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="result"
-					primary={<UsersThree size={30} weight="fill" />}
-					complete
-				/>,
+				{
+					image: productPromoPwaAsset(language, "spaces"),
+					step: "promoDemoInviteSource",
+					focus: [50, 18],
+					zoom: 1.12,
+				},
+				{
+					image: productPromoPwaAsset(language, "spaces"),
+					step: "promoDemoInviteAction",
+					focus: [50, 28],
+					zoom: 1.24,
+					tap: [70, 72],
+				},
+				{
+					image: productPromoPwaAsset(language, "spaces"),
+					step: "promoDemoInviteResult",
+					focus: [50, 28],
+					zoom: 1.16,
+				},
 			];
 		case "receiptArchive":
 			return [
-				<ProductPromoScene
-					key="source"
-					primary={<Receipt size={28} weight="fill" />}
-					secondary={<Camera size={17} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="process"
-					primary={<MagnifyingGlass size={27} weight="bold" />}
-					secondary={<ImageSquare size={17} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="result"
-					primary={<ImageSquare size={29} weight="fill" />}
-					secondary={<CornersOut size={17} weight="bold" />}
-					complete
-				/>,
+				{
+					image: productPromoPwaAsset(language, "splits-detail"),
+					step: "promoDemoArchiveSource",
+					focus: [50, 31],
+					zoom: 1.08,
+				},
+				{
+					image: productPromoPwaAsset(language, "splits-detail"),
+					step: "promoDemoArchiveAction",
+					focus: [50, 38],
+					zoom: 1.28,
+					tap: [40, 58],
+				},
+				{
+					image: productPromoPwaAsset(language, "flow-photo-input"),
+					step: "promoDemoArchiveResult",
+					focus: [31, 47],
+					zoom: 1.42,
+				},
 			];
 		case "settlementProof":
 			return [
-				<ProductPromoScene
-					key="source"
-					primary={<ArrowsLeftRight size={28} weight="bold" />}
-					metric="1 200"
-				/>,
-				<ProductPromoScene
-					key="process"
-					primary={<ImageSquare size={28} weight="fill" />}
-					secondary={<PaperPlaneTilt size={17} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="result"
-					primary={<Check size={29} weight="bold" />}
-					metric="0"
-					complete
-				/>,
+				{
+					image: "/assets/promo/settlement-list.png",
+					step: "promoDemoProofSource",
+					focus: [50, 38],
+					zoom: 1.1,
+				},
+				{
+					image: "/assets/promo/settlement-dialog.png",
+					step: "promoDemoProofAction",
+					focus: [50, 63],
+					zoom: 1.08,
+					tap: [53, 73],
+				},
+				{
+					image: productPromoPwaAsset(language, "splits-list"),
+					step: "promoDemoProofResult",
+					focus: [50, 37],
+					zoom: 1.16,
+				},
 			];
 		case "createSpace":
 			return [
-				<ProductPromoScene
-					key="source"
-					primary={<House size={28} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="process"
-					primary={<Plus size={28} weight="bold" />}
-					secondary={<ArrowRight size={17} weight="bold" />}
-				/>,
-				<ProductPromoScene
-					key="result"
-					primary={<Buildings size={30} weight="fill" />}
-					secondary={<House size={17} weight="fill" />}
-					complete
-				/>,
+				{
+					image: productPromoPwaAsset(language, "spaces"),
+					step: "promoDemoSpaceSource",
+					focus: [50, 16],
+					zoom: 1.1,
+				},
+				{
+					image: productPromoPwaAsset(language, "spaces"),
+					step: "promoDemoSpaceAction",
+					focus: [50, 26],
+					zoom: 1.24,
+					tap: [75, 67],
+				},
+				{
+					image: productPromoPwaAsset(language, "spaces"),
+					step: "promoDemoSpaceResult",
+					focus: [50, 27],
+					zoom: 1.12,
+				},
 			];
 		case "customCategories":
 			return [
-				<ProductPromoScene
-					key="source"
-					primary={<ShoppingBagOpen size={28} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="process"
-					primary={<Tag size={28} weight="fill" />}
-					secondary={<Sparkle size={17} weight="fill" />}
-				/>,
-				<ProductPromoScene
-					key="result"
-					primary={<Tag size={30} weight="fill" />}
-					complete
-				/>,
+				{
+					image: "/mini-app-categories.png",
+					step: "promoDemoCategorySource",
+					focus: [50, 32],
+					zoom: 1.08,
+				},
+				{
+					image: "/mini-app-categories.png",
+					step: "promoDemoCategoryAction",
+					focus: [50, 20],
+					zoom: 1.24,
+					tap: [77, 34],
+				},
+				{
+					image: "/mini-app-overview.png",
+					step: "promoDemoCategoryResult",
+					focus: [50, 76],
+					zoom: 1.18,
+				},
 			];
 		case "plus":
 			return [
-				<ProductPromoScene
-					key="source"
-					primary={<Star size={28} weight="fill" />}
-					metric="48 / 50"
-				/>,
-				<ProductPromoScene
-					key="process"
-					primary={<ArrowRight size={28} weight="bold" />}
-					secondary={<Plus size={17} weight="bold" />}
-				/>,
-				<ProductPromoScene
-					key="result"
-					primary={<Sparkle size={30} weight="fill" />}
-					metric="250"
-					complete
-				/>,
+				{
+					image: "/mini-app-plus.png",
+					step: "promoDemoPlusSource",
+					focus: [50, 23],
+					zoom: 1.1,
+				},
+				{
+					image: "/mini-app-plus.png",
+					step: "promoDemoPlusAction",
+					focus: [50, 42],
+					zoom: 1.25,
+					tap: [52, 61],
+				},
+				{
+					image: "/mini-app-plus.png",
+					step: "promoDemoPlusResult",
+					focus: [50, 30],
+					zoom: 1.16,
+				},
 			];
 	}
 };
 
-const ProductPromoVisual = ({ id }: { id: ProductPromoID }) => {
-	const scenes = productPromoScenes(id);
+const ProductPromoVisual = ({
+	id,
+	language,
+}: {
+	id: ProductPromoID;
+	language: UILanguage;
+}) => {
+	const scenes = productPromoScenes(id, language);
 	return (
 		<div className="mini-product-promo-visual" aria-hidden="true">
 			<div className="mini-promo-story-window">
@@ -13716,9 +13741,27 @@ const ProductPromoVisual = ({ id }: { id: ProductPromoID }) => {
 					<div
 						className={`mini-promo-scene is-${["source", "process", "result"][index]}`}
 						key={["source", "process", "result"][index]}
+						style={
+							{
+								"--promo-focus-x": `${scene.focus[0]}%`,
+								"--promo-focus-y": `${scene.focus[1]}%`,
+								"--promo-zoom": scene.zoom,
+								"--promo-tap-x": `${scene.tap?.[0] ?? 50}%`,
+								"--promo-tap-y": `${scene.tap?.[1] ?? 50}%`,
+							} as CSSProperties
+						}
 					>
-						<span className="mini-promo-step">{index + 1}</span>
-						{scene}
+						<img src={scene.image} alt="" draggable={false} />
+						<div className="mini-promo-screen-vignette" />
+						<div className="mini-promo-demo-caption">
+							<span>{index + 1}</span>
+							<strong>{uiText(language, scene.step)}</strong>
+						</div>
+						{scene.tap && (
+							<span className="mini-promo-demo-pointer">
+								<CursorClick size={23} weight="fill" />
+							</span>
+						)}
 					</div>
 				))}
 			</div>
@@ -13757,7 +13800,7 @@ const ProductPromoCard = ({
 					<X size={18} />
 				</button>
 			</header>
-			<ProductPromoVisual id={id} />
+			<ProductPromoVisual id={id} language={language} />
 			<div className="mini-product-promo-copy">
 				<strong>{uiText(language, copy.title)}</strong>
 				<p>{uiText(language, copy.body)}</p>
