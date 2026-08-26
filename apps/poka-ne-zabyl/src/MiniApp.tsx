@@ -13745,18 +13745,20 @@ const ProductPromoCard = ({
 	const copy = productPromoCopy(id);
 	return (
 		<section className={`mini-product-promo is-${id}`}>
-			<button
-				className="mini-product-promo-dismiss"
-				type="button"
-				aria-label={uiText(language, "productPromoDismiss")}
-				title={uiText(language, "productPromoDismiss")}
-				onClick={onDismiss}
-			>
-				<X size={17} />
-			</button>
+			<header className="mini-product-promo-head">
+				<small>{uiText(language, "productPromoEyebrow")}</small>
+				<button
+					className="mini-product-promo-dismiss"
+					type="button"
+					aria-label={uiText(language, "productPromoDismiss")}
+					title={uiText(language, "productPromoDismiss")}
+					onClick={onDismiss}
+				>
+					<X size={18} />
+				</button>
+			</header>
 			<ProductPromoVisual id={id} />
 			<div className="mini-product-promo-copy">
-				<small>{uiText(language, "productPromoEyebrow")}</small>
 				<strong>{uiText(language, copy.title)}</strong>
 				<p>{uiText(language, copy.body)}</p>
 			</div>
