@@ -196,7 +196,10 @@ import {
 	appURLWithSpaceID,
 	preferredSpaceID,
 } from "./space-context";
-import { selectableParticipantsForSpace } from "./space-participants";
+import {
+	nextGuestDisplayName,
+	selectableParticipantsForSpace,
+} from "./space-participants";
 import { spaceScopedItems } from "./space-scoped-data";
 import {
 	type SplitSettlementEvidence,
@@ -463,6 +466,12 @@ type SpaceParticipant = {
 	status: string;
 	email?: string;
 	canonical_participant_id?: number;
+};
+
+type SplitParticipantInviteResult = {
+	participant: SpaceParticipant;
+	token: string;
+	expires_at?: string;
 };
 
 type ExpenseSplit = {
@@ -6609,6 +6618,41 @@ export const MiniApp = ({
 		}
 	};
 
+	const createSplitParticipantInvite = async (
+		displayName: string,
+	): Promise<SplitParticipantInviteResult> => {
+		if (previewMode) {
+			const participant: SpaceParticipant = {
+				id: Math.max(0, ...participants.map(({ id }) => id)) + 1,
+				space_id: spaceID,
+				display_name: displayName.trim(),
+				participant_type: "invited_member",
+				status: "invited",
+			};
+			setParticipants((current) => [...current, participant]);
+			return {
+				participant,
+				token: `preview-participant-${participant.id}-${Date.now()}`,
+			};
+		}
+		const result = await apiRequest<SplitParticipantInviteResult>(
+			`/spaces/${spaceID}/participants`,
+			token,
+			{
+				method: "POST",
+				body: JSON.stringify({
+					display_name: displayName.trim(),
+					invite_channel: "link",
+				}),
+			},
+		);
+		setParticipants((current) => [
+			...current.filter(({ id }) => id !== result.participant.id),
+			result.participant,
+		]);
+		return result;
+	};
+
 	const applySplitSettlementStates = (states: SplitSettlementState[]) => {
 		const bySplitID = new Map(states.map((state) => [state.split_id, state]));
 		setExpenseSplits((current) =>
@@ -10401,7 +10445,9 @@ export const MiniApp = ({
 					participants={eligibleParticipants}
 					splits={splitsByExpense.get(recordDetail.expense.id) || []}
 					currentUserID={user?.id || 0}
-					canManageSplits={activeSpace?.owner_user_id === user?.id}
+					canManageSplits={
+						activeSpace?.owner_user_id === user?.id && !activeSpace?.is_personal
+					}
 					capture={captureForExpense(recordDetail.expense, captures)}
 					sourceLoading={sourceLoading}
 					moveTargets={shellSpaces.filter(
@@ -10477,10 +10523,17 @@ export const MiniApp = ({
 			{splitEditorExpense && (
 				<ExpenseSplitEditor
 					expense={splitEditorExpense}
+					language={language}
+					spaceName={activeSpace?.name || ""}
 					participants={eligibleParticipants}
 					splits={splitsByExpense.get(splitEditorExpense.id) || []}
 					saving={splitSaving}
+					canInvite={
+						activeSpace?.owner_user_id === user?.id && !activeSpace?.is_personal
+					}
 					onClose={() => setSplitEditorExpense(null)}
+					onInvite={createSplitParticipantInvite}
+					onNotice={setNotice}
 					onSave={(lines, payerParticipantID) =>
 						void saveExpenseSplits(
 							splitEditorExpense,
@@ -21323,9 +21376,9 @@ const ExpenseDetail = ({
 						: "receiptSettlementOpen";
 	const canSplit =
 		itemIndex === undefined &&
-		participants.length > 1 &&
-		(expense.user_id === currentUserID ||
-			participantUserID(splitPayer) === currentUserID ||
+		((participants.length > 1 &&
+			(expense.user_id === currentUserID ||
+				participantUserID(splitPayer) === currentUserID)) ||
 			canManageSplits) &&
 		Boolean(onSplit);
 	return (
@@ -21446,7 +21499,7 @@ const ExpenseDetail = ({
 					</div>
 				</section>
 			)}
-			{itemIndex === undefined && participants.length > 1 && (
+			{itemIndex === undefined && (participants.length > 1 || canSplit) && (
 				<section className="mini-record-split">
 					<div className="mini-record-split-head">
 						<span>
@@ -21456,17 +21509,28 @@ const ExpenseDetail = ({
 							<b>{uiText(language, "receiptSettlement")}</b>
 							<small>{uiText(language, splitSummaryKey)}</small>
 						</div>
-						{canSplit && (
-							<button type="button" onClick={onSplit}>
-								{uiText(
-									language,
-									splits.length > 0
-										? "receiptEditSettlement"
-										: "receiptConfigureSettlement",
-								)}
-							</button>
-						)}
 					</div>
+					{canSplit && (
+						<button
+							className="mini-record-split-action"
+							type="button"
+							onClick={onSplit}
+						>
+							<ArrowsLeftRight size={19} weight="bold" />
+							<span>
+								<b>
+									{uiText(
+										language,
+										splits.length > 0
+											? "receiptEditSettlement"
+											: "receiptConfigureSettlement",
+									)}
+								</b>
+								<small>{uiText(language, "receiptSplitActionHint")}</small>
+							</span>
+							<ArrowRight size={17} />
+						</button>
+					)}
 					{splitPayer && (
 						<div className="mini-record-split-payment">
 							<i>{participantInitials(splitPayer.display_name)}</i>
@@ -22042,17 +22106,27 @@ const SplitSettlementDialog = ({
 
 const ExpenseSplitEditor = ({
 	expense,
+	language,
+	spaceName,
 	participants,
 	splits,
 	saving,
+	canInvite,
 	onClose,
+	onInvite,
+	onNotice,
 	onSave,
 }: {
 	expense: Expense;
+	language: UILanguage;
+	spaceName: string;
 	participants: SpaceParticipant[];
 	splits: ExpenseSplit[];
 	saving: boolean;
+	canInvite: boolean;
 	onClose: () => void;
+	onInvite: (displayName: string) => Promise<SplitParticipantInviteResult>;
+	onNotice: (message: string) => void;
 	onSave: (
 		lines: { space_participant_id: number; amount: number }[],
 		payerParticipantID: number,
@@ -22081,6 +22155,16 @@ const ExpenseSplitEditor = ({
 			participants[0]?.id ||
 			0,
 	);
+	const [inviteOpen, setInviteOpen] = useState(false);
+	const [inviteName, setInviteName] = useState("");
+	const [inviteSaving, setInviteSaving] = useState(false);
+	const [inviteError, setInviteError] = useState("");
+	const [createdInvite, setCreatedInvite] =
+		useState<SplitParticipantInviteResult | null>(null);
+	const inviteInputRef = useRef<HTMLInputElement>(null);
+	useEffect(() => {
+		if (inviteOpen && !createdInvite) inviteInputRef.current?.focus();
+	}, [inviteOpen, createdInvite]);
 	const selectedIDs = participants
 		.filter((participant) => amounts.has(participant.id))
 		.map((participant) => participant.id);
@@ -22111,8 +22195,84 @@ const ExpenseSplitEditor = ({
 	const payerParticipant = participants.find(
 		(participant) => participant.id === payerParticipantID,
 	);
+	const inviteURL = (inviteToken: string) =>
+		`${window.location.origin}/join?token=${encodeURIComponent(inviteToken)}`;
+	const copyParticipantInvite = async (inviteToken: string) => {
+		try {
+			await navigator.clipboard.writeText(inviteURL(inviteToken));
+			onNotice(uiText(language, "participantInviteCopied"));
+		} catch {
+			setInviteError(uiText(language, "participantInviteCopyFailed"));
+		}
+	};
+	const shareParticipantInvite = async (
+		inviteToken: string,
+		displayName: string,
+	) => {
+		if (!navigator.share) {
+			await copyParticipantInvite(inviteToken);
+			return;
+		}
+		try {
+			await navigator.share({
+				title: spaceName || uiText(language, "inviteSplitParticipant"),
+				text:
+					language === "ru"
+						? `${displayName}, присоединяйтесь к пространству «${spaceName}» в «Пока не забыл».`
+						: language === "es"
+							? `${displayName}, únete al espacio «${spaceName}» en «Пока не забыл».`
+							: `${displayName}, join the “${spaceName}” space in “Пока не забыл”.`,
+				url: inviteURL(inviteToken),
+			});
+		} catch (error) {
+			if (error instanceof DOMException && error.name === "AbortError") return;
+			await copyParticipantInvite(inviteToken);
+		}
+	};
+	const openParticipantInvite = () => {
+		setInviteName(
+			nextGuestDisplayName(participants, uiText(language, "guestParticipant")),
+		);
+		setInviteError("");
+		setCreatedInvite(null);
+		setInviteOpen(true);
+	};
+	const createParticipantInvite = async () => {
+		const displayName = inviteName.trim();
+		if (!displayName || inviteSaving) return;
+		setInviteSaving(true);
+		setInviteError("");
+		try {
+			const result = await onInvite(displayName);
+			setCreatedInvite(result);
+			setAmounts((current) =>
+				equalSplitAmounts(money.amount, [
+					...new Set([...current.keys(), result.participant.id]),
+				]),
+			);
+			onNotice(
+				`${result.participant.display_name}: ${uiText(language, "participantInviteReady")}`,
+			);
+			await shareParticipantInvite(
+				result.token,
+				result.participant.display_name,
+			);
+		} catch (error) {
+			setInviteError(
+				error instanceof Error
+					? error.message
+					: uiText(language, "participantInviteFailed"),
+			);
+		} finally {
+			setInviteSaving(false);
+		}
+	};
 	return (
-		<Modal title="Разделить расход" variant="editor" onClose={onClose}>
+		<Modal
+			title={uiText(language, "receiptConfigureSettlement")}
+			variant="editor"
+			onClose={onClose}
+		>
 			<div className="mini-split-editor-summary">
 				<span>
 					<ArrowsLeftRight size={21} weight="bold" />
@@ -22178,7 +22338,7 @@ const ExpenseSplitEditor = ({
 										{participantUserID(participant) === expense.user_id
 											? "Автор расхода"
 											: participant.status === "invited"
-												? "Приглашение отправлено"
+												? uiText(language, "participantInviteReady")
 												: participant.status === "placeholder"
 													? "Ещё не присоединился"
 													: "Участник пространства"}
@@ -22222,6 +22382,98 @@ const ExpenseSplitEditor = ({
 					);
 				})}
 			</div>
+			{canInvite && (
+				<section className="mini-split-invite-participant">
+					<div className="mini-split-invite-heading">
+						<span>
+							<Plus size={19} weight="bold" />
+						</span>
+						<div>
+							<b>{uiText(language, "inviteSplitParticipant")}</b>
+							<small>{uiText(language, "inviteSplitParticipantHint")}</small>
+						</div>
+						{!inviteOpen && (
+							<button type="button" onClick={openParticipantInvite}>
+								<Plus size={16} weight="bold" />
+								{uiText(language, "invite")}
+							</button>
+						)}
+					</div>
+					{inviteOpen && !createdInvite && (
+						<div className="mini-split-invite-form">
+							<label>
+								<span>{uiText(language, "participantName")}</span>
+								<input
+									ref={inviteInputRef}
+									maxLength={80}
+									value={inviteName}
+									placeholder={uiText(language, "participantNameExample")}
+									onChange={(event) => setInviteName(event.target.value)}
+									onKeyDown={(event) => {
+										if (event.key === "Enter") void createParticipantInvite();
+									}}
+								/>
+							</label>
+							<button
+								type="button"
+								disabled={inviteSaving || !inviteName.trim()}
+								onClick={() => void createParticipantInvite()}
+							>
+								<ShareNetwork size={18} weight="bold" />
+								{inviteSaving
+									? uiText(language, "saving")
+									: uiText(language, "addAndShareInvite")}
+							</button>
+						</div>
+					)}
+					{createdInvite && (
+						<div className="mini-split-invite-ready" role="status">
+							<span>
+								<Check size={17} weight="bold" />
+							</span>
+							<div>
+								<b>{uiText(language, "participantInviteReady")}</b>
+								<small>{uiText(language, "participantInviteReadyHint")}</small>
+							</div>
+							<button
+								type="button"
+								onClick={() =>
+									void shareParticipantInvite(
+										createdInvite.token,
+										createdInvite.participant.display_name,
+									)
+								}
+							>
+								<ShareNetwork size={17} weight="bold" />
+								{uiText(language, "shareInviteAgain")}
+							</button>
+							<div className="mini-invite-share">
+								<input
+									aria-label={uiText(language, "participantInviteReady")}
+									readOnly
+									value={inviteURL(createdInvite.token)}
+									onFocus={(event) => event.currentTarget.select()}
+								/>
+								<button
+									type="button"
+									aria-label={uiText(language, "participantInviteCopied")}
+									title={uiText(language, "participantInviteCopied")}
+									onClick={() =>
+										void copyParticipantInvite(createdInvite.token)
+									}
+								>
+									<Copy size={17} />
+								</button>
+							</div>
+						</div>
+					)}
+					{inviteError && (
+						<p className="mini-error" role="alert">
+							{inviteError}
+						</p>
+					)}
+				</section>
+			)}
 			<div
 				className={`mini-split-editor-balance${Math.abs(remaining) <= 0.02 ? " is-ready" : ""}`}
 			>

@@ -65,3 +65,17 @@ export const selectableParticipantsForSpace = <
 
 	return result;
 };
+
+export const nextGuestDisplayName = (
+	participants: Pick<SelectableSpaceParticipant, "display_name">[],
+	guestLabel: string,
+) => {
+	const names = new Set(
+		participants.map((participant) =>
+			participant.display_name.trim().toLocaleLowerCase(),
+		),
+	);
+	let index = 1;
+	while (names.has(`${guestLabel} ${index}`.toLocaleLowerCase())) index += 1;
+	return `${guestLabel} ${index}`;
+};

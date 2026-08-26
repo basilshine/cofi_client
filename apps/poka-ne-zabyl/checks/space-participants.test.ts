@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { selectableParticipantsForSpace } from "../src/space-participants.ts";
+import {
+	nextGuestDisplayName,
+	selectableParticipantsForSpace,
+} from "../src/space-participants.ts";
 
 test("keeps only unique selectable participants from the active space", () => {
 	const participants = selectableParticipantsForSpace(
@@ -75,5 +78,15 @@ test("does not merge different invited participants with the same display name",
 	assert.deepEqual(
 		participants.map(({ id }) => id),
 		[31, 32],
+	);
+});
+
+test("suggests the first available guest name", () => {
+	assert.equal(
+		nextGuestDisplayName(
+			[{ display_name: "Гость 1" }, { display_name: "гость 3" }],
+			"Гость",
+		),
+		"Гость 2",
 	);
 });

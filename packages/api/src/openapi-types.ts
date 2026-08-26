@@ -8159,7 +8159,50 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /**
+         * Create a financial participant placeholder
+         * @description Creates a named participant in the space. When invite_channel is link, the participant and its single-use space invite are created atomically so later acceptance can link existing split rows without changing participant IDs.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateSpaceParticipantRequest"];
+                };
+            };
+            responses: {
+                /** @description Participant placeholder created */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CreateSpaceParticipantResponse"];
+                    };
+                };
+                /** @description Invalid participant name or invite channel */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Caller cannot manage invites for this space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -8769,7 +8812,14 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @enum {string} */
+                        channel?: "email" | "link";
+                    };
+                };
+            };
             responses: {
                 /** @description Participant invite created */
                 200: {
@@ -9920,6 +9970,17 @@ export interface components {
                 [key: string]: unknown;
             };
             status?: string;
+        };
+        CreateSpaceParticipantRequest: {
+            display_name: string;
+            /** @enum {string} */
+            invite_channel?: "link";
+        };
+        CreateSpaceParticipantResponse: {
+            participant: components["schemas"]["SpaceParticipant"];
+            token?: string;
+            /** Format: date-time */
+            expires_at?: string;
         };
         LinkSpaceParticipantRequest: {
             /** Format: int64 */
