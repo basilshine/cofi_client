@@ -3247,16 +3247,16 @@ export const MiniApp = ({
 			setVendors(previewVendors);
 			const previewQuota: Quota = {
 				plan: "basic",
-				limit: 20,
+				limit: 50,
 				used: 7,
-				remaining: 13,
+				remaining: 43,
 				max_spaces: 2,
 				max_custom_categories: 3,
 				max_categories: 18,
 				max_category_budgets: 3,
 				max_active_plans: 10,
 				recurring_limit: 0,
-				welcome_remaining: 13,
+				welcome_remaining: 43,
 				additional_limit: 0,
 				dev_tools_enabled: true,
 				feedback_admin_enabled: true,
@@ -3786,7 +3786,7 @@ export const MiniApp = ({
 				? {
 						code: "PNZ-DEMO-2026-CODE-0001",
 						reward_type: rewardType,
-						units: rewardType === "plus_30d" ? 400 : 100,
+						units: rewardType === "plus_30d" ? 250 : 100,
 						plus_days: rewardType === "plus_30d" ? 30 : 0,
 					}
 				: await apiRequest<ActivationCodeResponse>(
@@ -4196,7 +4196,7 @@ export const MiniApp = ({
 				}
 				const recurring =
 					patch.plan === "plus"
-						? 400
+						? 250
 						: patch.plan === "free"
 							? 0
 							: (current.recurring_limit ?? 0);
@@ -17772,7 +17772,7 @@ const SubscriptionView = ({
 	const autoRenewEnabled = Boolean(quota?.auto_renew_enabled);
 	const recurringLimit = quota?.recurring_limit || 0;
 	const recurringUsed = quota?.recurring_used || 0;
-	const allowanceLimit = plus ? recurringLimit : quota?.limit || 20;
+	const allowanceLimit = plus ? recurringLimit : quota?.limit || 50;
 	const allowanceUsed = plus ? recurringUsed : quota?.used || 0;
 	const progress =
 		allowanceLimit > 0
@@ -17814,30 +17814,30 @@ const SubscriptionView = ({
 						: "Для регулярного использования, планов и общих пространств.",
 					basicBenefits: [
 						"Ручные расходы и история без ограничений",
-						"20 приветственных разборов один раз",
+						"50 приветственных разборов один раз",
 						"10 активных планов и 3 лимита категорий",
 						"2 своих пространства, включая Личное",
 						"Исходные фото и голос хранятся 3 дня",
 					],
 					plusBenefits: [
-						"400 разборов каждые 30 дней",
+						"250 разборов каждые 30 дней",
 						"До 100 планов, лимитов и своих категорий",
 						"До 10 своих пространств",
 						"Исходные фото и голос хранятся 30 дней",
 						"Скидки на дополнительные пакеты",
 					],
-					exampleTitle: "400 разборов — это примерно",
-					text: "400 текстов",
-					voice: "200 голосовых",
-					photo: "133 фото чеков",
+					exampleTitle: "250 разборов — это примерно",
+					text: "250 текстов",
+					voice: "125 голосовых",
+					photo: "83 фото чеков",
 					modes:
 						"Текст, голос, чеки и оценка предмета доступны на обоих тарифах. Плюс даёт больше разборов и возможностей организации.",
 					packsTitle: "Дополнительные пакеты",
 					packsBody:
 						"Нужны, если разборы закончились раньше. Пакет добавляет баланс, но не меняет тариф и остаётся после окончания Плюса.",
 					packsPrice: plus
-						? "Для Плюса: 100 от 79 ₽"
-						: "Для Базового: 100 от 99 ₽",
+						? "Для Плюса: 50 от 49 ₽"
+						: "Для Базового: 50 от 59 ₽",
 					promoTitle: "Есть промокод?",
 					promoBody: "Активируйте подарок для своего аккаунта.",
 					promoPlaceholder: "Введите промокод",
@@ -17876,30 +17876,30 @@ const SubscriptionView = ({
 						plusNote: "Para uso frecuente, planes y espacios compartidos.",
 						basicBenefits: [
 							"Gastos manuales e historial sin límites",
-							"20 registros de bienvenida una sola vez",
+							"50 registros de bienvenida una sola vez",
 							"10 planes activos y 3 límites de categoría",
 							"2 espacios propios, incluido Personal",
 							"Fotos y audio originales durante 3 días",
 						],
 						plusBenefits: [
-							"400 registros cada 30 días",
+							"250 registros cada 30 días",
 							"Hasta 100 planes, límites y categorías propias",
 							"Hasta 10 espacios propios",
 							"Fotos y audio originales durante 30 días",
 							"Descuentos en paquetes adicionales",
 						],
-						exampleTitle: "400 registros equivalen aproximadamente a",
-						text: "400 textos",
-						voice: "200 audios",
-						photo: "133 fotos",
+						exampleTitle: "250 registros equivalen aproximadamente a",
+						text: "250 textos",
+						voice: "125 audios",
+						photo: "83 fotos",
 						modes:
 							"Texto, voz, recibos y valoración de objetos están disponibles en ambos planes. Plus ofrece más capacidad y organización.",
 						packsTitle: "Paquetes adicionales",
 						packsBody:
 							"Úsalos si se agota el saldo. Añaden registros, no cambian el plan y permanecen después de Plus.",
 						packsPrice: plus
-							? "Con Plus: 100 desde 79 ₽"
-							: "Básico: 100 desde 99 ₽",
+							? "Con Plus: 50 desde 49 ₽"
+							: "Básico: 50 desde 59 ₽",
 						promoTitle: "¿Tienes un código?",
 						promoBody: "Activa el regalo en tu cuenta.",
 						promoPlaceholder: "Introduce el código",
@@ -17937,30 +17937,30 @@ const SubscriptionView = ({
 						plusNote: "For regular use, planning, and shared spaces.",
 						basicBenefits: [
 							"Unlimited manual expenses and history",
-							"20 welcome additions once",
+							"50 welcome additions once",
 							"10 active plans and 3 category budgets",
 							"2 owned spaces, including Personal",
 							"Original photos and voice stored for 3 days",
 						],
 						plusBenefits: [
-							"400 additions every 30 days",
+							"250 additions every 30 days",
 							"Up to 100 plans, budgets, and custom categories",
 							"Up to 10 owned spaces",
 							"Original photos and voice stored for 30 days",
 							"Discounts on additional packs",
 						],
-						exampleTitle: "400 additions is roughly",
-						text: "400 texts",
-						voice: "200 voice notes",
-						photo: "133 receipt photos",
+						exampleTitle: "250 additions is roughly",
+						text: "250 texts",
+						voice: "125 voice notes",
+						photo: "83 receipt photos",
 						modes:
 							"Text, voice, receipts, and item valuation are available on both plans. Plus adds more allowance and organization.",
 						packsTitle: "Additional packs",
 						packsBody:
 							"Use a pack if your allowance runs out. It adds balance, does not change your plan, and remains after Plus ends.",
 						packsPrice: plus
-							? "With Plus: 100 from 79 ₽"
-							: "Basic: 100 from 99 ₽",
+							? "With Plus: 50 from 49 ₽"
+							: "Basic: 50 from 59 ₽",
 						promoTitle: "Have a promo code?",
 						promoBody: "Activate the gift for your account.",
 						promoPlaceholder: "Enter promo code",
@@ -19192,9 +19192,9 @@ const DeveloperUserRow = ({
 								).toISOString(),
 								recurring_remaining: Math.max(
 									current.subscription.recurring_remaining,
-									400,
+									250,
 								),
-								remaining: Math.max(current.subscription.remaining, 400),
+								remaining: Math.max(current.subscription.remaining, 250),
 							},
 						}
 					: await apiRequest<DeveloperUserDetail>(
@@ -20874,9 +20874,10 @@ const FeedbackDeveloperTools = ({
 );
 
 const billingPacks = [
+	{ code: "pack_50", basicPrice: 59, plusPrice: 49, units: 50 },
 	{ code: "pack_100", basicPrice: 99, plusPrice: 79, units: 100 },
-	{ code: "pack_500", basicPrice: 399, plusPrice: 299, units: 500 },
-	{ code: "pack_1500", basicPrice: 899, plusPrice: 699, units: 1500 },
+	{ code: "pack_250", basicPrice: 199, plusPrice: 159, units: 250 },
+	{ code: "pack_500", basicPrice: 349, plusPrice: 279, units: 500 },
 ];
 
 const BillingPackPicker = ({

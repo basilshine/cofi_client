@@ -3652,7 +3652,7 @@ export interface paths {
         put?: never;
         /**
          * Create or reopen a period report for the current user
-         * @description Accepts either one completed calendar month or a custom date range inside the trailing 12-month window ending no later than today. Creating a new snapshot costs 30 analyses; reopening an existing snapshot is free.
+         * @description Accepts either one completed calendar month or a custom date range inside the trailing 12-month window ending no later than today. Creating a new snapshot costs 20 analyses; reopening an existing snapshot is free.
          */
         post: {
             parameters: {
@@ -3701,7 +3701,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Fewer than 30 analyses remain; a notification is queued */
+                /** @description Fewer than 20 analyses remain; a notification is queued */
                 402: {
                     headers: {
                         [name: string]: unknown;
@@ -7129,7 +7129,7 @@ export interface paths {
         put?: never;
         /**
          * Grant complimentary Plus to a user
-         * @description Grants 30 days of Plus with the normal 400-unit period to the user's personal entitlement and notifies the user. The grant creates no payment and does not enable automatic renewal.
+         * @description Grants 30 days of Plus with the normal 250-unit period to the user's personal entitlement and notifies the user. The grant creates no payment and does not enable automatic renewal.
          */
         post: {
             parameters: {
@@ -7267,7 +7267,7 @@ export interface paths {
                 content: {
                     "application/json": {
                         /** @enum {string} */
-                        product_code: "plus_30d" | "pack_100" | "pack_500" | "pack_1500";
+                        product_code: "plus_30d" | "pack_50" | "pack_100" | "pack_250" | "pack_500";
                         /** @description Request a recurring parent payment for Plus. Ignored for packs and while recurring payments are disabled. */
                         auto_renew?: boolean;
                     };
@@ -9729,7 +9729,7 @@ export interface components {
             currency?: components["schemas"]["CurrencyCode"];
             settings?: {
                 /**
-                 * @description Opt-in for weekly and monthly summaries. Each successfully generated summary consumes 30 public analysis units.
+                 * @description Opt-in for weekly and monthly summaries. Each successfully generated summary consumes 20 public analysis units.
                  * @default false
                  */
                 period_reports_enabled: boolean;

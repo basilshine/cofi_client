@@ -259,7 +259,7 @@ const pageHead = ({ path, title, description, language }) => {
 									price: "0",
 									priceCurrency: "RUB",
 									description:
-										"Бесплатный тариф с 20 приветственными разборами и ручным учётом без ограничения по времени.",
+										"Бесплатный тариф с 50 приветственными разборами и ручным учётом без ограничения по времени.",
 								},
 								{
 									"@type": "Offer",
@@ -267,7 +267,7 @@ const pageHead = ({ path, title, description, language }) => {
 									price: "249",
 									priceCurrency: "RUB",
 									description:
-										"Тариф на 30 дней с 400 разборами, расширенными лимитами и скидкой на пакеты.",
+										"Тариф на 30 дней с 250 разборами, расширенными лимитами и скидкой на пакеты.",
 								},
 							],
 							provider: { "@id": `${origin}/#organization` },

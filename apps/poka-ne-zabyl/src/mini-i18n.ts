@@ -823,9 +823,9 @@ const messages = {
 		spaceCurrency: "Валюта пространства",
 		periodicReports: "Периодические сводки",
 		periodicReportsHint:
-			"Каждая новая сводка стоит 30 разборов. Повторное открытие готовой бесплатно.",
+			"Каждая новая сводка стоит 20 разборов. Повторное открытие готовой бесплатно.",
 		createReport: "Создать сводку",
-		createReportHint: "Выбрать период за последние 12 месяцев · 30 разборов",
+		createReportHint: "Выбрать период за последние 12 месяцев · 20 разборов",
 		reportPeriod: "Период сводки",
 		reportPeriodMonth: "Месяц",
 		reportPeriodThreeMonths: "3 месяца",
@@ -836,12 +836,12 @@ const messages = {
 		reportMonth: "Месяц для аналитики",
 		reportMonthHint:
 			"Выберите готовый период или укажите даты внутри последних 12 месяцев. Будущие даты недоступны.",
-		generateReport: "Сформировать за 30 разборов",
+		generateReport: "Сформировать за 20 разборов",
 		generatingReport: "Формируем сводку…",
 		reportEmpty: "За выбранный период пока нет расходов или планов",
 		reportPeriodInvalid:
 			"Выберите даты внутри последних 12 месяцев, не позднее сегодня",
-		reportQuotaShortage: "Не хватает 30 разборов на сводку",
+		reportQuotaShortage: "Не хватает 20 разборов на сводку",
 		currencyConvertHint:
 			"При смене валюты расходы и лимиты пересчитаются. Исходные суммы сохранятся.",
 		ownerCurrencyOnly: "Валюту может менять только владелец пространства.",
@@ -1698,9 +1698,9 @@ const messages = {
 		spaceCurrency: "Space currency",
 		periodicReports: "Periodic summaries",
 		periodicReportsHint:
-			"Each new summary costs 30 analyses. Reopening an existing summary is free.",
+			"Each new summary costs 20 analyses. Reopening an existing summary is free.",
 		createReport: "Create summary",
-		createReportHint: "Choose a period from the last 12 months · 30 analyses",
+		createReportHint: "Choose a period from the last 12 months · 20 analyses",
 		reportPeriod: "Summary period",
 		reportPeriodMonth: "Month",
 		reportPeriodThreeMonths: "3 months",
@@ -1711,12 +1711,12 @@ const messages = {
 		reportMonth: "Month to analyse",
 		reportMonthHint:
 			"Choose a ready-made period or dates within the last 12 months. Future dates are unavailable.",
-		generateReport: "Create for 30 analyses",
+		generateReport: "Create for 20 analyses",
 		generatingReport: "Creating summary…",
 		reportEmpty: "There are no expenses or plans for the selected period yet",
 		reportPeriodInvalid:
 			"Choose dates within the last 12 months, no later than today",
-		reportQuotaShortage: "You need 30 analyses for this summary",
+		reportQuotaShortage: "You need 20 analyses for this summary",
 		currencyConvertHint:
 			"Changing currency recalculates expenses and limits. Original amounts are preserved.",
 		ownerCurrencyOnly: "Only the space owner can change its currency.",
@@ -2585,9 +2585,9 @@ const messages = {
 		spaceCurrency: "Moneda del espacio",
 		periodicReports: "Resúmenes periódicos",
 		periodicReportsHint:
-			"Cada resumen nuevo cuesta 30 análisis. Volver a abrir uno existente es gratis.",
+			"Cada resumen nuevo cuesta 20 análisis. Volver a abrir uno existente es gratis.",
 		createReport: "Crear resumen",
-		createReportHint: "Elegir un período de los últimos 12 meses · 30 análisis",
+		createReportHint: "Elegir un período de los últimos 12 meses · 20 análisis",
 		reportPeriod: "Período del resumen",
 		reportPeriodMonth: "Mes",
 		reportPeriodThreeMonths: "3 meses",
@@ -2598,12 +2598,12 @@ const messages = {
 		reportMonth: "Mes para analizar",
 		reportMonthHint:
 			"Elige un período preparado o fechas dentro de los últimos 12 meses. Las fechas futuras no están disponibles.",
-		generateReport: "Crear por 30 análisis",
+		generateReport: "Crear por 20 análisis",
 		generatingReport: "Creando el resumen…",
 		reportEmpty: "Todavía no hay gastos ni planes para el período elegido",
 		reportPeriodInvalid:
 			"Elige fechas de los últimos 12 meses, como máximo hasta hoy",
-		reportQuotaShortage: "Necesitas 30 análisis para este resumen",
+		reportQuotaShortage: "Necesitas 20 análisis para este resumen",
 		currencyConvertHint:
 			"Al cambiar la moneda se recalculan los gastos y límites. Se conservan los importes originales.",
 		ownerCurrencyOnly:

@@ -149,7 +149,7 @@ const translations: Record<
 		"Без подписки": "No subscription",
 		"Для знакомства с сервисом и спокойного ручного учёта.":
 			"For getting started and simple manual tracking.",
-		"20 приветственных разборов один раз": "20 welcome smart entries, one time",
+		"50 приветственных разборов один раз": "50 welcome smart entries, one time",
 		"Все способы добавления расхода": "Every way to add an expense",
 		"15 стандартных, 3 своих категории и 3 лимита":
 			"15 standard categories, 3 custom categories, and 3 limits",
@@ -164,7 +164,7 @@ const translations: Record<
 		"Для регулярного учёта": "For regular tracking",
 		"Больше умных добавлений, планов и пространства для семейных сценариев.":
 			"More smart entries, plans, and room for family scenarios.",
-		"400 разборов на оплаченный период": "400 smart entries per paid period",
+		"250 разборов на оплаченный период": "250 smart entries per paid period",
 		"До 100 своих категорий и лимитов":
 			"Up to 100 custom categories and limits",
 		"До 100 активных планов покупок": "Up to 100 active purchase plans",
@@ -178,12 +178,14 @@ const translations: Record<
 		"Пакет не меняет тариф и дату продления. Сначала расходуется лимит Плюс, затем приветственный и купленный остаток.":
 			"A pack does not change your plan or renewal date. Your Plus allowance is used first, followed by welcome and purchased entries.",
 		"Стоимость пакетов": "Pack pricing",
+		"59 ₽ на Базовом": "₽59 on Basic",
+		"49 ₽ с Плюс": "₽49 with Plus",
 		"99 ₽ на Базовом": "₽99 on Basic",
 		"79 ₽ с Плюс": "₽79 with Plus",
-		"399 ₽ на Базовом": "₽399 on Basic",
-		"299 ₽ с Плюс": "₽299 with Plus",
-		"899 ₽ на Базовом": "₽899 on Basic",
-		"699 ₽ с Плюс": "₽699 with Plus",
+		"199 ₽ на Базовом": "₽199 on Basic",
+		"159 ₽ с Плюс": "₽159 with Plus",
+		"349 ₽ на Базовом": "₽349 on Basic",
+		"279 ₽ с Плюс": "₽279 with Plus",
 		"Разбор списывается только за успешный результат: текст стоит 1, голос 2, фото 3, большой чек 5, оценка предмета по фото 10. Ручной ввод разборы не расходует.":
 			"An entry is charged only for a successful result: text costs 1, voice 2, a photo 3, a large receipt 5, and photo item estimation 10. Manual entry uses no allowance.",
 		"Разделите общий расход": "Split a shared expense",
@@ -361,8 +363,8 @@ const translations: Record<
 		"Без подписки": "Sin suscripción",
 		"Для знакомства с сервисом и спокойного ручного учёта.":
 			"Para empezar y llevar un control manual sencillo.",
-		"20 приветственных разборов один раз":
-			"20 registros inteligentes de bienvenida, una sola vez",
+		"50 приветственных разборов один раз":
+			"50 registros inteligentes de bienvenida, una sola vez",
 		"Все способы добавления расхода": "Todas las formas de añadir un gasto",
 		"15 стандартных, 3 своих категории и 3 лимита":
 			"15 categorías estándar, 3 propias y 3 límites",
@@ -377,8 +379,8 @@ const translations: Record<
 		"Для регулярного учёта": "Para un control habitual",
 		"Больше умных добавлений, планов и пространства для семейных сценариев.":
 			"Más registros inteligentes, planes y espacio para situaciones familiares.",
-		"400 разборов на оплаченный период":
-			"400 registros inteligentes por periodo pagado",
+		"250 разборов на оплаченный период":
+			"250 registros inteligentes por periodo pagado",
 		"До 100 своих категорий и лимитов":
 			"Hasta 100 categorías y límites propios",
 		"До 100 активных планов покупок": "Hasta 100 planes de compra activos",
@@ -392,12 +394,14 @@ const translations: Record<
 		"Пакет не меняет тариф и дату продления. Сначала расходуется лимит Плюс, затем приветственный и купленный остаток.":
 			"Un paquete no cambia tu plan ni la fecha de renovación. Primero se usa la cuota de Plus y después los registros de bienvenida y comprados.",
 		"Стоимость пакетов": "Precios de los paquetes",
+		"59 ₽ на Базовом": "59 ₽ con Básico",
+		"49 ₽ с Плюс": "49 ₽ con Plus",
 		"99 ₽ на Базовом": "99 ₽ con Básico",
 		"79 ₽ с Плюс": "79 ₽ con Plus",
-		"399 ₽ на Базовом": "399 ₽ con Básico",
-		"299 ₽ с Плюс": "299 ₽ con Plus",
-		"899 ₽ на Базовом": "899 ₽ con Básico",
-		"699 ₽ с Плюс": "699 ₽ con Plus",
+		"199 ₽ на Базовом": "199 ₽ con Básico",
+		"159 ₽ с Плюс": "159 ₽ con Plus",
+		"349 ₽ на Базовом": "349 ₽ con Básico",
+		"279 ₽ с Плюс": "279 ₽ con Plus",
 		"Разбор списывается только за успешный результат: текст стоит 1, голос 2, фото 3, большой чек 5, оценка предмета по фото 10. Ручной ввод разборы не расходует.":
 			"Solo se descuenta por un resultado correcto: texto 1, voz 2, foto 3, recibo grande 5 y estimación de un artículo por foto 10. La entrada manual no consume registros.",
 		"Разделите общий расход": "Divide un gasto compartido",
