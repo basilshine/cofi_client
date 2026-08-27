@@ -48,7 +48,6 @@ import {
 } from "@phosphor-icons/react";
 import WebApp from "@twa-dev/sdk";
 import {
-	type CSSProperties,
 	type FormEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
@@ -13532,195 +13531,189 @@ const productPromoDeveloperLabels: Record<ProductPromoID, string> = {
 };
 
 type ProductPromoDemoScene = {
-	image: string;
+	icon: ReactNode;
+	label: UIMessage;
+	metric: string;
 	step: UIMessage;
-	focus: [number, number];
-	zoom: number;
-	tap?: [number, number];
+	complete?: boolean;
 };
 
-const productPromoPwaAsset = (language: UILanguage, name: string): string =>
-	`/pwa-${language === "ru" ? "" : `${language}-`}${name}.png`;
-
-const productPromoScenes = (
-	id: ProductPromoID,
-	language: UILanguage,
-): ProductPromoDemoScene[] => {
+const productPromoScenes = (id: ProductPromoID): ProductPromoDemoScene[] => {
 	switch (id) {
 		case "aiCapture":
 			return [
 				{
-					image: productPromoPwaAsset(language, "flow-photo-input"),
+					icon: <Camera size={34} weight="fill" />,
+					label: "promoDemoAiSourceLabel",
+					metric: "JPG",
 					step: "promoDemoAiSource",
-					focus: [50, 46],
-					zoom: 1.08,
 				},
 				{
-					image: productPromoPwaAsset(language, "flow-photo-review"),
+					icon: <Sparkle size={35} weight="fill" />,
+					label: "promoDemoAiActionLabel",
+					metric: "3",
 					step: "promoDemoAiAction",
-					focus: [50, 54],
-					zoom: 1.16,
-					tap: [74, 81],
 				},
 				{
-					image: productPromoPwaAsset(language, "flow-photo-review"),
+					icon: <Receipt size={35} weight="fill" />,
+					label: "promoDemoAiResultLabel",
+					metric: "1 890 ₽",
 					step: "promoDemoAiResult",
-					focus: [50, 84],
-					zoom: 1.14,
+					complete: true,
 				},
 			];
 		case "splitExpense":
 			return [
 				{
-					image: productPromoPwaAsset(language, "splits-detail"),
+					icon: <Receipt size={35} weight="fill" />,
+					label: "promoDemoSplitSourceLabel",
+					metric: "2 400 ₽",
 					step: "promoDemoSplitSource",
-					focus: [50, 38],
-					zoom: 1.08,
 				},
 				{
-					image: productPromoPwaAsset(language, "splits-editor"),
+					icon: <UsersThree size={36} weight="fill" />,
+					label: "promoDemoSplitActionLabel",
+					metric: "2",
 					step: "promoDemoSplitAction",
-					focus: [50, 70],
-					zoom: 1.08,
-					tap: [73, 73],
 				},
 				{
-					image: productPromoPwaAsset(language, "splits-list"),
+					icon: <ArrowsLeftRight size={36} weight="bold" />,
+					label: "promoDemoSplitResultLabel",
+					metric: "1 200 ₽",
 					step: "promoDemoSplitResult",
-					focus: [50, 38],
-					zoom: 1.12,
+					complete: true,
 				},
 			];
 		case "inviteSpace":
 			return [
 				{
-					image: productPromoPwaAsset(language, "spaces"),
+					icon: <House size={35} weight="fill" />,
+					label: "promoDemoInviteSourceLabel",
+					metric: "1",
 					step: "promoDemoInviteSource",
-					focus: [50, 18],
-					zoom: 1.12,
 				},
 				{
-					image: productPromoPwaAsset(language, "spaces"),
+					icon: <ShareNetwork size={36} weight="fill" />,
+					label: "promoDemoInviteActionLabel",
+					metric: "LINK",
 					step: "promoDemoInviteAction",
-					focus: [50, 28],
-					zoom: 1.24,
-					tap: [70, 72],
 				},
 				{
-					image: productPromoPwaAsset(language, "spaces"),
+					icon: <UsersThree size={36} weight="fill" />,
+					label: "promoDemoInviteResultLabel",
+					metric: "2",
 					step: "promoDemoInviteResult",
-					focus: [50, 28],
-					zoom: 1.16,
+					complete: true,
 				},
 			];
 		case "receiptArchive":
 			return [
 				{
-					image: productPromoPwaAsset(language, "splits-detail"),
+					icon: <Receipt size={35} weight="fill" />,
+					label: "promoDemoArchiveSourceLabel",
+					metric: "1 890 ₽",
 					step: "promoDemoArchiveSource",
-					focus: [50, 31],
-					zoom: 1.08,
 				},
 				{
-					image: productPromoPwaAsset(language, "splits-detail"),
+					icon: <ImageSquare size={36} weight="fill" />,
+					label: "promoDemoArchiveActionLabel",
+					metric: "JPG",
 					step: "promoDemoArchiveAction",
-					focus: [50, 38],
-					zoom: 1.28,
-					tap: [40, 58],
 				},
 				{
-					image: productPromoPwaAsset(language, "flow-photo-input"),
+					icon: <CornersOut size={36} weight="bold" />,
+					label: "promoDemoArchiveResultLabel",
+					metric: "100%",
 					step: "promoDemoArchiveResult",
-					focus: [31, 47],
-					zoom: 1.42,
+					complete: true,
 				},
 			];
 		case "settlementProof":
 			return [
 				{
-					image: "/assets/promo/settlement-list.png",
+					icon: <ArrowsLeftRight size={36} weight="bold" />,
+					label: "promoDemoProofSourceLabel",
+					metric: "1 200 ₽",
 					step: "promoDemoProofSource",
-					focus: [50, 38],
-					zoom: 1.1,
 				},
 				{
-					image: "/assets/promo/settlement-dialog.png",
+					icon: <ImageSquare size={36} weight="fill" />,
+					label: "promoDemoProofActionLabel",
+					metric: "JPG",
 					step: "promoDemoProofAction",
-					focus: [50, 63],
-					zoom: 1.08,
-					tap: [53, 73],
 				},
 				{
-					image: productPromoPwaAsset(language, "splits-list"),
+					icon: <Check size={36} weight="bold" />,
+					label: "promoDemoProofResultLabel",
+					metric: "0 ₽",
 					step: "promoDemoProofResult",
-					focus: [50, 37],
-					zoom: 1.16,
+					complete: true,
 				},
 			];
 		case "createSpace":
 			return [
 				{
-					image: productPromoPwaAsset(language, "spaces"),
+					icon: <House size={35} weight="fill" />,
+					label: "promoDemoSpaceSourceLabel",
+					metric: "1",
 					step: "promoDemoSpaceSource",
-					focus: [50, 16],
-					zoom: 1.1,
 				},
 				{
-					image: productPromoPwaAsset(language, "spaces"),
+					icon: <Plus size={36} weight="bold" />,
+					label: "promoDemoSpaceActionLabel",
+					metric: "+1",
 					step: "promoDemoSpaceAction",
-					focus: [50, 26],
-					zoom: 1.24,
-					tap: [75, 67],
 				},
 				{
-					image: productPromoPwaAsset(language, "spaces"),
+					icon: <Buildings size={36} weight="fill" />,
+					label: "promoDemoSpaceResultLabel",
+					metric: "2",
 					step: "promoDemoSpaceResult",
-					focus: [50, 27],
-					zoom: 1.12,
+					complete: true,
 				},
 			];
 		case "customCategories":
 			return [
 				{
-					image: "/mini-app-categories.png",
+					icon: <ShoppingBagOpen size={35} weight="fill" />,
+					label: "promoDemoCategorySourceLabel",
+					metric: "?",
 					step: "promoDemoCategorySource",
-					focus: [50, 32],
-					zoom: 1.08,
 				},
 				{
-					image: "/mini-app-categories.png",
+					icon: <Sparkle size={36} weight="fill" />,
+					label: "promoDemoCategoryActionLabel",
+					metric: "AI",
 					step: "promoDemoCategoryAction",
-					focus: [50, 20],
-					zoom: 1.24,
-					tap: [77, 34],
 				},
 				{
-					image: "/mini-app-overview.png",
+					icon: <Tag size={36} weight="fill" />,
+					label: "promoDemoCategoryResultLabel",
+					metric: "+1",
 					step: "promoDemoCategoryResult",
-					focus: [50, 76],
-					zoom: 1.18,
+					complete: true,
 				},
 			];
 		case "plus":
 			return [
 				{
-					image: "/mini-app-plus.png",
+					icon: <Star size={35} weight="fill" />,
+					label: "promoDemoPlusSourceLabel",
+					metric: "48 / 50",
 					step: "promoDemoPlusSource",
-					focus: [50, 23],
-					zoom: 1.1,
 				},
 				{
-					image: "/mini-app-plus.png",
+					icon: <ArrowRight size={36} weight="bold" />,
+					label: "promoDemoPlusActionLabel",
+					metric: "PLUS",
 					step: "promoDemoPlusAction",
-					focus: [50, 42],
-					zoom: 1.25,
-					tap: [52, 61],
 				},
 				{
-					image: "/mini-app-plus.png",
+					icon: <Sparkle size={36} weight="fill" />,
+					label: "promoDemoPlusResultLabel",
+					metric: "250",
 					step: "promoDemoPlusResult",
-					focus: [50, 30],
-					zoom: 1.16,
+					complete: true,
 				},
 			];
 	}
@@ -13733,7 +13726,8 @@ const ProductPromoVisual = ({
 	id: ProductPromoID;
 	language: UILanguage;
 }) => {
-	const scenes = productPromoScenes(id, language);
+	const scenes = productPromoScenes(id);
+	const copy = productPromoCopy(id);
 	return (
 		<div className="mini-product-promo-visual" aria-hidden="true">
 			<div className="mini-promo-story-window">
@@ -13741,23 +13735,39 @@ const ProductPromoVisual = ({
 					<div
 						className={`mini-promo-scene is-${["source", "process", "result"][index]}`}
 						key={["source", "process", "result"][index]}
-						style={
-							{
-								"--promo-focus-x": `${scene.focus[0]}%`,
-								"--promo-focus-y": `${scene.focus[1]}%`,
-								"--promo-zoom": scene.zoom,
-								"--promo-tap-x": `${scene.tap?.[0] ?? 50}%`,
-								"--promo-tap-y": `${scene.tap?.[1] ?? 50}%`,
-							} as CSSProperties
-						}
 					>
-						<img src={scene.image} alt="" draggable={false} />
-						<div className="mini-promo-screen-vignette" />
 						<div className="mini-promo-demo-caption">
 							<span>{index + 1}</span>
 							<strong>{uiText(language, scene.step)}</strong>
 						</div>
-						{scene.tap && (
+						<div className="mini-promo-demo-stage">
+							<span className="mini-promo-demo-icon">{scene.icon}</span>
+							<span className="mini-promo-demo-copy">
+								<small>{uiText(language, copy.title)}</small>
+								<strong>{uiText(language, scene.label)}</strong>
+							</span>
+							<b>{scene.metric}</b>
+							<div className="mini-promo-demo-detail" aria-hidden="true">
+								<i />
+								<i />
+								<i />
+							</div>
+						</div>
+						<div
+							className={`mini-promo-demo-state${scene.complete ? " is-complete" : ""}`}
+						>
+							{scene.complete ? (
+								<Check size={16} weight="bold" />
+							) : (
+								<ArrowRight size={16} weight="bold" />
+							)}
+							<span>
+								{scene.complete
+									? uiText(language, "added")
+									: uiText(language, copy.action)}
+							</span>
+						</div>
+						{index === 1 && (
 							<span className="mini-promo-demo-pointer">
 								<CursorClick size={23} weight="fill" />
 							</span>
