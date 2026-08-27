@@ -15,6 +15,7 @@ import {
 	ChartLineUp,
 	ChatCircleText,
 	Check,
+	CheckSquare,
 	Copy,
 	CornersIn,
 	CornersOut,
@@ -111,6 +112,13 @@ import {
 	normalizeExpenseRecord,
 	normalizeExpenseRecords,
 } from "./expense-record";
+import {
+	expenseItemSelectionKey,
+	expenseSelectionState,
+	setExpenseSelectionKeys,
+	toggleExpenseItemSelection,
+	toggleExpenseSelection,
+} from "./expense-selection";
 import {
 	equalSplitAmounts,
 	fullSplitAmount,
@@ -9883,6 +9891,7 @@ export const MiniApp = ({
 							<ExpensesView
 								items={filteredItems}
 								expenses={expensesWithSplitContext}
+								spaceID={spaceID}
 								allTimeTotal={allTimeExpenseTotal}
 								monthTotal={overviewExpenseTotal}
 								section={expenseSection}
@@ -14711,6 +14720,7 @@ const FirstExpenseEmpty = ({
 const ExpensesView = ({
 	items,
 	expenses,
+	spaceID,
 	allTimeTotal,
 	monthTotal,
 	section,
@@ -14772,6 +14782,7 @@ const ExpensesView = ({
 }: {
 	items: ExpenseItemRow[];
 	expenses: Expense[];
+	spaceID: number;
 	allTimeTotal: number | null;
 	monthTotal: number | null;
 	section: ExpenseSection;
@@ -14833,6 +14844,12 @@ const ExpensesView = ({
 }) => {
 	const [filtersOpen, setFiltersOpen] = useState(false);
 	const [filterContextVisible, setFilterContextVisible] = useState(false);
+	const [selectionMode, setSelectionMode] = useState(false);
+	const [selectionSummaryOpen, setSelectionSummaryOpen] = useState(false);
+	const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(
+		() => new Set(),
+	);
+	const [selectionFeedback, setSelectionFeedback] = useState("");
 	const filtersRef = useRef<HTMLDivElement>(null);
 	const activeCategory = categories.find(({ id }) => id === categoryID);
 	const activeVendor = vendors.find(({ id }) => id === vendorID);
@@ -14855,6 +14872,92 @@ const ExpensesView = ({
 		period,
 		hasSummaryFilters,
 	);
+	const allExpenseItems = useMemo(() => expenseItemRows(expenses), [expenses]);
+	const selectedRows = useMemo(
+		() =>
+			allExpenseItems.filter(({ expense, item, itemIndex }) =>
+				selectedItemKeys.has(
+					expenseItemSelectionKey(expense.id, item, itemIndex),
+				),
+			),
+		[allExpenseItems, selectedItemKeys],
+	);
+	const selectedGroups = useMemo(
+		() => groupRowsByExpense(selectedRows),
+		[selectedRows],
+	);
+	const selectedTotal = selectedRows.reduce(
+		(sum, row) =>
+			sum + (itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
+		0,
+	);
+	const visibleItemKeys = useMemo(
+		() =>
+			items.map(({ expense, item, itemIndex }) =>
+				expenseItemSelectionKey(expense.id, item, itemIndex),
+			),
+		[items],
+	);
+	const visibleSelectedCount = items.filter(({ expense, item, itemIndex }) =>
+		selectedItemKeys.has(expenseItemSelectionKey(expense.id, item, itemIndex)),
+	).length;
+	const allVisibleSelected =
+		visibleItemKeys.length > 0 &&
+		visibleItemKeys.every((key) => selectedItemKeys.has(key));
+	const selectionSummaryText = [
+		`${uiText(language, "selectionActualExpenses")}: ${formatMoney(selectedTotal, currency)}`,
+		...selectedGroups.flatMap((rows) => [
+			`\n${rows[0].expense.title || rows[0].expense.items[0]?.name || uiText(language, "viewExpense")}`,
+			...rows.map(
+				(row) =>
+					`• ${row.item.name || uiText(language, "items")}: ${formatMoney(itemAmountInCurrency(row.item, row.expense, currency) ?? 0, currency)}`,
+			),
+		]),
+	].join("\n");
+	const resetSelection = () => {
+		setSelectedItemKeys(new Set());
+		setSelectionSummaryOpen(false);
+		setSelectionFeedback("");
+		setSelectionMode(false);
+	};
+	const toggleSelectedItem = (row: ExpenseItemRow) =>
+		setSelectedItemKeys((current) =>
+			toggleExpenseItemSelection(
+				current,
+				row.expense.id,
+				row.item,
+				row.itemIndex,
+			),
+		);
+	const toggleSelectedExpense = (expense: Expense) =>
+		setSelectedItemKeys((current) => toggleExpenseSelection(current, expense));
+	const toggleVisibleSelection = () =>
+		setSelectedItemKeys((current) =>
+			setExpenseSelectionKeys(current, visibleItemKeys, !allVisibleSelected),
+		);
+	const copySelection = async () => {
+		try {
+			await navigator.clipboard.writeText(selectionSummaryText);
+			setSelectionFeedback(uiText(language, "selectionCopied"));
+		} catch {
+			setSelectionFeedback(uiText(language, "selectionCopyFailed"));
+		}
+	};
+	const shareSelection = async () => {
+		if (!navigator.share) {
+			await copySelection();
+			return;
+		}
+		try {
+			await navigator.share({
+				title: uiText(language, "selectionActualExpenses"),
+				text: selectionSummaryText,
+			});
+		} catch (error) {
+			if (error instanceof DOMException && error.name === "AbortError") return;
+			await copySelection();
+		}
+	};
 	const formatRangeDate = (value: string) =>
 		new Intl.DateTimeFormat(language, {
 			day: "numeric",
@@ -14917,6 +15020,12 @@ const ExpensesView = ({
 		observer.observe(filters);
 		return () => observer.disconnect();
 	}, [section]);
+	useEffect(() => {
+		setSelectionMode(false);
+		setSelectionSummaryOpen(false);
+		setSelectedItemKeys(new Set());
+		setSelectionFeedback("");
+	}, [spaceID]);
 
 	const openFilters = () => {
 		setFiltersOpen(true);
@@ -14931,6 +15040,7 @@ const ExpensesView = ({
 	};
 	const changeSection = (nextSection: ExpenseSection) => {
 		setFilterContextVisible(false);
+		if (nextSection !== "history") resetSelection();
 		onSection(nextSection);
 	};
 	const addLabel = uiText(
@@ -14964,7 +15074,7 @@ const ExpensesView = ({
 					</p>
 					<h1>{uiText(language, "navExpenses")}</h1>
 				</div>
-				{section !== "splits" && (
+				{section !== "splits" && !selectionMode && (
 					<button
 						className="mini-add-button"
 						type="button"
@@ -14976,6 +15086,36 @@ const ExpensesView = ({
 					</button>
 				)}
 			</div>
+			{section === "history" && !selectionMode && items.length > 0 && (
+				<button
+					className="mini-selection-start"
+					type="button"
+					onClick={() => setSelectionMode(true)}
+				>
+					<span>
+						<CheckSquare size={21} weight="bold" />
+					</span>
+					<span>
+						<b>{uiText(language, "collectAmount")}</b>
+						<small>{uiText(language, "collectAmountHint")}</small>
+					</span>
+					<CaretRight size={17} weight="bold" />
+				</button>
+			)}
+			{section === "history" && selectionMode && (
+				<div className="mini-selection-heading" role="status">
+					<span>
+						<CheckSquare size={20} weight="fill" />
+					</span>
+					<div>
+						<b>{uiText(language, "expenseSelectionTitle")}</b>
+						<small>{uiText(language, "expenseSelectionHint")}</small>
+					</div>
+					<button type="button" onClick={resetSelection}>
+						{uiText(language, "cancel")}
+					</button>
+				</div>
+			)}
 			<div
 				className={`mini-expense-sections${participants.length > 1 ? " is-shared" : ""}`}
 				role="tablist"
@@ -15129,18 +15269,60 @@ const ExpensesView = ({
 								</div>
 							</div>
 						)}
-						<div className="mini-result">
-							<div>
-								<small>
-									{uiText(language, expensesHasMore ? "shown" : "found")}
-								</small>
-								<span>{purchaseCountText(items.length, language)}</span>
+						{selectionMode ? (
+							<>
+								<div
+									className="mini-selection-inline-summary"
+									aria-live="polite"
+								>
+									<span>
+										<small>{uiText(language, "expenseSelectionTitle")}</small>
+										<b>{itemCountText(selectedRows.length, language)}</b>
+									</span>
+									<span>
+										<small>{uiText(language, "selectionTotal")}</small>
+										<strong>{formatMoney(selectedTotal, currency)}</strong>
+									</span>
+								</div>
+								<div className="mini-selection-bulk">
+									<span>
+										<b>{uiText(language, "selectionCurrentList")}</b>
+										<small>{itemCountText(items.length, language)}</small>
+									</span>
+									<button
+										type="button"
+										aria-pressed={allVisibleSelected}
+										disabled={visibleItemKeys.length === 0}
+										onClick={toggleVisibleSelection}
+									>
+										{allVisibleSelected ? (
+											<X size={16} weight="bold" />
+										) : (
+											<CheckSquare size={17} weight="bold" />
+										)}
+										{uiText(
+											language,
+											allVisibleSelected
+												? "selectionExcludeShown"
+												: "selectionSelectAll",
+										)}
+									</button>
+								</div>
+							</>
+						) : (
+							<div className="mini-result">
+								<div>
+									<small>
+										{uiText(language, expensesHasMore ? "shown" : "found")}
+									</small>
+									<span>{purchaseCountText(items.length, language)}</span>
+								</div>
+								<div>
+									<small>{uiText(language, "total")}</small>
+									<strong>{formatMoney(summaryTotal, currency)}</strong>
+								</div>
 							</div>
-							<div>
-								<small>{uiText(language, "total")}</small>
-								<strong>{formatMoney(summaryTotal, currency)}</strong>
-							</div>
-						</div>
+						)}
 						<div
 							className="mini-expense-mode mini-browse-mode"
 							role="group"
@@ -15284,7 +15466,11 @@ const ExpensesView = ({
 							participants={participants}
 							language={language}
 							currency={currency}
-							onOpenExpense={onOpenExpense}
+							selectionMode={selectionMode}
+							selectedItemKeys={selectedItemKeys}
+							onOpenExpense={
+								selectionMode ? toggleSelectedExpense : onOpenExpense
+							}
 						/>
 					) : (
 						<ExpenseItemList
@@ -15294,7 +15480,9 @@ const ExpensesView = ({
 							members={members}
 							language={language}
 							currency={currency}
-							onOpen={onOpenExpenseItem}
+							selectionMode={selectionMode}
+							selectedItemKeys={selectedItemKeys}
+							onOpen={selectionMode ? toggleSelectedItem : onOpenExpenseItem}
 						/>
 					)}
 					<LoadMorePage
@@ -15304,7 +15492,123 @@ const ExpensesView = ({
 						error={expensesLoadMoreError}
 						onLoadMore={onLoadMoreExpenses}
 					/>
+					{selectionMode && (
+						<div className="mini-selection-bar" aria-live="polite">
+							<div>
+								<small>
+									{selectedRows.length > visibleSelectedCount
+										? `${itemCountText(selectedRows.length, language)} · ${visibleSelectedCount} ${uiText(language, "selectionVisible")}`
+										: itemCountText(selectedRows.length, language)}
+								</small>
+								<strong>{formatMoney(selectedTotal, currency)}</strong>
+							</div>
+							<button
+								type="button"
+								disabled={selectedRows.length === 0}
+								onClick={() => {
+									setSelectionFeedback("");
+									setSelectionSummaryOpen(true);
+								}}
+							>
+								{uiText(language, "viewSelectionTotal")}
+								<ArrowRight size={17} weight="bold" />
+							</button>
+						</div>
+					)}
 				</>
+			)}
+			{selectionSummaryOpen && (
+				<Modal
+					title={uiText(language, "viewSelectionTotal")}
+					variant="record"
+					onClose={() => setSelectionSummaryOpen(false)}
+				>
+					<div className="mini-selection-summary-hero">
+						<span>
+							<CheckSquare size={22} weight="fill" />
+						</span>
+						<div>
+							<small>{uiText(language, "selectionActualExpenses")}</small>
+							<strong>{formatMoney(selectedTotal, currency)}</strong>
+							<p>{itemCountText(selectedRows.length, language)}</p>
+						</div>
+					</div>
+					<div className="mini-selection-summary-list">
+						{selectedGroups.map((rows) => {
+							const expense = rows[0].expense;
+							const groupTotal = rows.reduce(
+								(sum, row) =>
+									sum +
+									(itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
+								0,
+							);
+							return (
+								<section key={expense.id}>
+									<header>
+										<span>
+											<b>
+												{expense.title ||
+													expense.items[0]?.name ||
+													uiText(language, "viewExpense")}
+											</b>
+											<small>
+												{formatDate(expense.expense_date, language)}
+											</small>
+										</span>
+										<strong>{formatMoney(groupTotal, currency)}</strong>
+									</header>
+									{rows.map((row) => (
+										<div
+											key={expenseItemSelectionKey(
+												expense.id,
+												row.item,
+												row.itemIndex,
+											)}
+										>
+											<span>{row.item.name || uiText(language, "items")}</span>
+											<b>
+												{formatMoney(
+													itemAmountInCurrency(
+														row.item,
+														row.expense,
+														currency,
+													) ?? 0,
+													currency,
+												)}
+											</b>
+										</div>
+									))}
+								</section>
+							);
+						})}
+					</div>
+					{selectionFeedback && (
+						<p className="mini-selection-feedback" role="status">
+							<Check size={16} weight="bold" />
+							{selectionFeedback}
+						</p>
+					)}
+					<div className="mini-selection-summary-actions">
+						<button type="button" onClick={() => void copySelection()}>
+							<Copy size={17} />
+							{uiText(language, "copySelection")}
+						</button>
+						<button type="button" onClick={() => void shareSelection()}>
+							<ShareNetwork size={17} />
+							{uiText(language, "shareSelection")}
+						</button>
+						<button
+							className="is-primary"
+							type="button"
+							onClick={() => setSelectionSummaryOpen(false)}
+						>
+							{uiText(language, "editSelection")}
+						</button>
+						<button className="is-clear" type="button" onClick={resetSelection}>
+							{uiText(language, "clearSelection")}
+						</button>
+					</div>
+				</Modal>
 			)}
 		</section>
 	);
@@ -16673,6 +16977,23 @@ const VendorPicker = ({
 	);
 };
 
+const ExpenseSelectionMark = ({
+	state,
+}: {
+	state: "empty" | "partial" | "complete";
+}) => (
+	<span
+		className={`mini-expense-selection-mark is-${state}`}
+		aria-hidden="true"
+	>
+		{state === "complete" ? (
+			<Check size={18} weight="bold" />
+		) : state === "partial" ? (
+			<span>−</span>
+		) : null}
+	</span>
+);
+
 const ExpenseItemList = ({
 	items,
 	categories,
@@ -16682,6 +17003,8 @@ const ExpenseItemList = ({
 	currency,
 	onOpen,
 	showAuthors = true,
+	selectionMode = false,
+	selectedItemKeys,
 }: {
 	items: ExpenseItemRow[];
 	categories: Category[];
@@ -16691,8 +17014,10 @@ const ExpenseItemList = ({
 	currency: string;
 	onOpen: (item: ExpenseItemRow) => void;
 	showAuthors?: boolean;
+	selectionMode?: boolean;
+	selectedItemKeys?: ReadonlySet<string>;
 }) => (
-	<div className="mini-expenses">
+	<div className={`mini-expenses${selectionMode ? " is-selecting" : ""}`}>
 		{items.map((row) => {
 			const money = itemDisplayMoney(row.item, row.expense, currency);
 			const originalMoney = itemOriginalMoney(
@@ -16713,13 +17038,22 @@ const ExpenseItemList = ({
 			const author = showAuthors
 				? sharedRecordAuthor(members, row.expense.user_id)
 				: "";
+			const selected = Boolean(
+				selectedItemKeys?.has(
+					expenseItemSelectionKey(row.expense.id, row.item, row.itemIndex),
+				),
+			);
 			return (
 				<button
 					key={`${row.expense.id}-${row.item.id || row.itemIndex}`}
+					className={selectionMode && selected ? "is-selected" : undefined}
 					type="button"
+					aria-pressed={selectionMode ? selected : undefined}
 					onClick={() => onOpen(row)}
 				>
-					{categoryRow ? (
+					{selectionMode ? (
+						<ExpenseSelectionMark state={selected ? "complete" : "empty"} />
+					) : categoryRow ? (
 						<CategoryIconBadge
 							category={categoryRow}
 							language={language}
@@ -16767,6 +17101,8 @@ const GroupedExpenseItemList = ({
 	language,
 	currency,
 	onOpenExpense,
+	selectionMode = false,
+	selectedItemKeys,
 }: {
 	items: ExpenseItemRow[];
 	categories: Category[];
@@ -16775,21 +17111,34 @@ const GroupedExpenseItemList = ({
 	language: UILanguage;
 	currency: string;
 	onOpenExpense: (expense: Expense) => void;
+	selectionMode?: boolean;
+	selectedItemKeys?: ReadonlySet<string>;
 }) => {
 	const groups = groupRowsByExpense(items);
 	return (
-		<div className="mini-expenses">
+		<div className={`mini-expenses${selectionMode ? " is-selecting" : ""}`}>
 			{groups.map((rows) => {
 				const expense = rows[0].expense;
-				const total = rows.reduce(
+				const visibleTotal = rows.reduce(
 					(sum, row) =>
 						sum + (itemAmountInCurrency(row.item, row.expense, currency) ?? 0),
 					0,
 				);
+				const total = selectionMode
+					? expense.items.reduce(
+							(sum, item) =>
+								sum + (itemAmountInCurrency(item, expense, currency) ?? 0),
+							0,
+						)
+					: visibleTotal;
 				const originalMoney =
-					rows.length === expense.items.length
+					selectionMode || rows.length === expense.items.length
 						? expenseOriginalMoney(expense, currency)
 						: undefined;
+				const receiptSelectionState = expenseSelectionState(
+					expense,
+					selectedItemKeys || new Set(),
+				);
 				return (
 					<ExpenseRecordCard
 						key={expense.id}
@@ -16800,8 +17149,9 @@ const GroupedExpenseItemList = ({
 						language={language}
 						amount={total}
 						currency={currency}
-						itemCount={rows.length}
+						itemCount={selectionMode ? expense.items.length : rows.length}
 						originalMoney={originalMoney}
+						selectionState={selectionMode ? receiptSelectionState : undefined}
 						onOpen={() => onOpenExpense(expense)}
 					/>
 				);
@@ -16821,6 +17171,7 @@ const ExpenseRecordCard = ({
 	currency,
 	itemCount,
 	originalMoney,
+	selectionState,
 	onOpen,
 }: {
 	expense: Expense;
@@ -16832,6 +17183,7 @@ const ExpenseRecordCard = ({
 	currency: string;
 	itemCount: number;
 	originalMoney?: { amount: number; currency: string } | null;
+	selectionState?: "empty" | "partial" | "complete";
 	onOpen: () => void;
 }) => {
 	const title = expense.title || expense.items[0]?.name || "Расход";
@@ -16860,16 +17212,27 @@ const ExpenseRecordCard = ({
 
 	return (
 		<button
-			className={`mini-expense-card${itemPreview ? " has-item-preview" : ""}`}
+			className={`mini-expense-card${itemPreview ? " has-item-preview" : ""}${selectionState ? ` is-selection is-${selectionState}` : ""}`}
 			type="button"
+			aria-pressed={
+				selectionState
+					? selectionState === "partial"
+						? "mixed"
+						: selectionState === "complete"
+					: undefined
+			}
 			onClick={onOpen}
 		>
-			<ExpenseCategoryIcons
-				expense={expense}
-				categories={categories}
-				language={language}
-				fallback={<SourceIcon capture={capture} size={19} />}
-			/>
+			{selectionState ? (
+				<ExpenseSelectionMark state={selectionState} />
+			) : (
+				<ExpenseCategoryIcons
+					expense={expense}
+					categories={categories}
+					language={language}
+					fallback={<SourceIcon capture={capture} size={19} />}
+				/>
+			)}
 			<span className="mini-expense-copy">
 				<b>{title}</b>
 			</span>
