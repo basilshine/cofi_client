@@ -110,6 +110,10 @@ import {
 } from "./expense-export";
 import { groupRowsByExpense } from "./expense-groups";
 import {
+	aggregateItemAssignments,
+	itemAssignmentsAreComplete,
+} from "./expense-item-split";
+import {
 	type Period,
 	expenseSummaryTotal,
 	periodBounds,
@@ -520,6 +524,14 @@ type ExpenseSplit = {
 type ExpenseSplitDecision = {
 	expense: Expense;
 	splits: Omit<ExpenseSplit, "expense_id">[];
+};
+
+type ExpenseItemAllocation = {
+	id?: number;
+	expense_item_id: number;
+	space_participant_id: number;
+	participant?: SpaceParticipant;
+	amount: number;
 };
 
 type PageInfo = {
@@ -2821,6 +2833,47 @@ export const MiniApp = ({
 		null,
 	);
 	const [splitSaving, setSplitSaving] = useState(false);
+	const [splitItemAllocations, setSplitItemAllocations] = useState<
+		ExpenseItemAllocation[]
+	>([]);
+	const [splitItemAllocationsLoading, setSplitItemAllocationsLoading] =
+		useState(false);
+	useEffect(() => {
+		if (!splitEditorExpense) {
+			setSplitItemAllocations([]);
+			setSplitItemAllocationsLoading(false);
+			return;
+		}
+		if (previewMode) {
+			setSplitItemAllocations([]);
+			setSplitItemAllocationsLoading(false);
+			return;
+		}
+		let active = true;
+		setSplitItemAllocationsLoading(true);
+		void apiRequest<{ allocations: ExpenseItemAllocation[] }>(
+			`/spaces/${spaceID}/expenses/${splitEditorExpense.id}/item-allocations`,
+			token,
+		)
+			.then((response) => {
+				if (active) setSplitItemAllocations(response.allocations || []);
+			})
+			.catch((error) => {
+				if (!active) return;
+				setSplitItemAllocations([]);
+				setNotice(
+					error instanceof Error
+						? error.message
+						: "Не удалось загрузить распределение позиций",
+				);
+			})
+			.finally(() => {
+				if (active) setSplitItemAllocationsLoading(false);
+			});
+		return () => {
+			active = false;
+		};
+	}, [previewMode, spaceID, splitEditorExpense, token]);
 	const [editingPlanCandidate, setEditingPlanCandidate] =
 		useState<ReviewCandidate | null>(null);
 	const [completingPlanID, setCompletingPlanID] = useState(0);
@@ -6821,6 +6874,7 @@ export const MiniApp = ({
 					},
 				};
 			});
+			setSplitItemAllocations([]);
 			setSplitEditorExpense(null);
 			const soleParticipant =
 				lines.length === 1
@@ -6838,6 +6892,123 @@ export const MiniApp = ({
 		} catch (err) {
 			setNotice(
 				err instanceof Error ? err.message : "Не удалось сохранить разделение",
+			);
+		} finally {
+			setSplitSaving(false);
+		}
+	};
+
+	const saveExpenseItemAllocations = async (
+		expense: Expense,
+		items: { expense_item_id: number; space_participant_ids: number[] }[],
+		payerParticipantID: number,
+	) => {
+		if (splitSaving) return;
+		setSplitSaving(true);
+		try {
+			let savedLines: Omit<ExpenseSplit, "expense_id">[] = [];
+			let savedAllocations: ExpenseItemAllocation[] = [];
+			if (!previewMode) {
+				const response = await apiRequest<{
+					allocations: ExpenseItemAllocation[];
+					splits: Omit<ExpenseSplit, "expense_id">[];
+				}>(
+					`/spaces/${spaceID}/expenses/${expense.id}/item-allocations`,
+					token,
+					{
+						method: "PUT",
+						body: JSON.stringify({
+							payer_participant_id: payerParticipantID,
+							items,
+						}),
+					},
+				);
+				savedLines = response.splits || [];
+				savedAllocations = response.allocations || [];
+			} else {
+				const currency = expenseSplitTotal(expense).currency;
+				const assignments = new Map(
+					items.map((item) => [
+						item.expense_item_id,
+						item.space_participant_ids,
+					]),
+				);
+				const sources = expense.items
+					.filter((item): item is ExpenseItem & { id: number } => !!item.id)
+					.map((item) => ({
+						id: item.id,
+						amount: itemDisplayMoney(item, expense, currency).amount,
+					}));
+				const totals = aggregateItemAssignments(sources, assignments);
+				savedLines = Array.from(totals, ([participantID, amount], index) => {
+					const participant = eligibleParticipants.find(
+						(item) => item.id === participantID,
+					);
+					return {
+						id: Date.now() + index,
+						space_participant_id: participantID,
+						amount,
+						user_id: participantUserID(participant) || undefined,
+						participant,
+						payer_participant_id: payerParticipantID,
+						payer: eligibleParticipants.find(
+							(item) => item.id === payerParticipantID,
+						),
+						settlement_status: "unpaid",
+					};
+				});
+				savedAllocations = items.flatMap((assignment) => {
+					const item = sources.find(
+						(source) => source.id === assignment.expense_item_id,
+					);
+					if (!item || assignment.space_participant_ids.length === 0) return [];
+					const amounts = equalSplitAmounts(
+						item.amount,
+						[...assignment.space_participant_ids].sort((a, b) => a - b),
+					);
+					return Array.from(amounts, ([participantID, amount]) => ({
+						expense_item_id: assignment.expense_item_id,
+						space_participant_id: participantID,
+						participant: eligibleParticipants.find(
+							(participant) => participant.id === participantID,
+						),
+						amount,
+					}));
+				});
+			}
+			setExpenseSplits((current) => [
+				...current.filter((split) => split.expense_id !== expense.id),
+				...savedLines.map((line) => ({ ...line, expense_id: expense.id })),
+			]);
+			setSplitItemAllocations(savedAllocations);
+			const withPayer = (current: Expense) =>
+				current.id === expense.id
+					? { ...current, payer_participant_id: payerParticipantID }
+					: current;
+			setExpenses((current) => current.map(withPayer));
+			setSplitExpenses((current) => current.map(withPayer));
+			setRecordDetail((current) => {
+				if (
+					!current ||
+					(current.kind !== "expense" && current.kind !== "expense-item") ||
+					current.expense.id !== expense.id
+				)
+					return current;
+				return {
+					...current,
+					expense: {
+						...current.expense,
+						payer_participant_id: payerParticipantID,
+					},
+				};
+			});
+			setSplitEditorExpense(null);
+			setNotice("Позиции распределены, долги пересчитаны");
+		} catch (error) {
+			setNotice(
+				error instanceof Error
+					? error.message
+					: "Не удалось сохранить распределение позиций",
 			);
 		} finally {
 			setSplitSaving(false);
@@ -10765,6 +10936,9 @@ export const MiniApp = ({
 					spaceName={activeSpace?.name || ""}
 					participants={eligibleParticipants}
 					splits={splitsByExpense.get(splitEditorExpense.id) || []}
+					itemAllocations={splitItemAllocations}
+					itemAllocationsLoading={splitItemAllocationsLoading}
+					currentUserID={user?.id || 0}
 					saving={splitSaving}
 					canInvite={
 						activeSpace?.owner_user_id === user?.id && !activeSpace?.is_personal
@@ -10776,6 +10950,13 @@ export const MiniApp = ({
 						void saveExpenseSplits(
 							splitEditorExpense,
 							lines,
+							payerParticipantID,
+						)
+					}
+					onSaveItems={(items, payerParticipantID) =>
+						void saveExpenseItemAllocations(
+							splitEditorExpense,
+							items,
 							payerParticipantID,
 						)
 					}
@@ -23277,18 +23458,25 @@ const ExpenseSplitEditor = ({
 	spaceName,
 	participants,
 	splits,
+	itemAllocations,
+	itemAllocationsLoading,
+	currentUserID,
 	saving,
 	canInvite,
 	onClose,
 	onInvite,
 	onNotice,
 	onSave,
+	onSaveItems,
 }: {
 	expense: Expense;
 	language: UILanguage;
 	spaceName: string;
 	participants: SpaceParticipant[];
 	splits: ExpenseSplit[];
+	itemAllocations: ExpenseItemAllocation[];
+	itemAllocationsLoading: boolean;
+	currentUserID: number;
 	saving: boolean;
 	canInvite: boolean;
 	onClose: () => void;
@@ -23296,6 +23484,10 @@ const ExpenseSplitEditor = ({
 	onNotice: (message: string) => void;
 	onSave: (
 		lines: { space_participant_id: number; amount: number }[],
+		payerParticipantID: number,
+	) => void;
+	onSaveItems: (
+		items: { expense_item_id: number; space_participant_ids: number[] }[],
 		payerParticipantID: number,
 	) => void;
 }) => {
@@ -23322,6 +23514,33 @@ const ExpenseSplitEditor = ({
 			participants[0]?.id ||
 			0,
 	);
+	const [mode, setMode] = useState<"amount" | "items">(
+		itemAllocations.length > 0 ? "items" : "amount",
+	);
+	const [itemAssignments, setItemAssignments] = useState<Map<number, number[]>>(
+		() => {
+			const next = new Map<number, number[]>();
+			for (const allocation of itemAllocations) {
+				next.set(allocation.expense_item_id, [
+					...(next.get(allocation.expense_item_id) || []),
+					allocation.space_participant_id,
+				]);
+			}
+			return next;
+		},
+	);
+	useEffect(() => {
+		if (itemAllocationsLoading || itemAllocations.length === 0) return;
+		const next = new Map<number, number[]>();
+		for (const allocation of itemAllocations) {
+			next.set(allocation.expense_item_id, [
+				...(next.get(allocation.expense_item_id) || []),
+				allocation.space_participant_id,
+			]);
+		}
+		setItemAssignments(next);
+		setMode("items");
+	}, [itemAllocations, itemAllocationsLoading]);
 	const [inviteOpen, setInviteOpen] = useState(false);
 	const [inviteName, setInviteName] = useState("");
 	const [inviteSaving, setInviteSaving] = useState(false);
@@ -23362,6 +23581,51 @@ const ExpenseSplitEditor = ({
 	const payerParticipant = participants.find(
 		(participant) => participant.id === payerParticipantID,
 	);
+	const itemSources = expense.items.flatMap((item) => {
+		if (!item.id) return [];
+		return [
+			{
+				id: item.id,
+				amount: itemDisplayMoney(item, expense, money.currency).amount,
+			},
+		];
+	});
+	const currentParticipant = participants.find(
+		(participant) => participantUserID(participant) === currentUserID,
+	);
+	const itemAssignmentsComplete = itemAssignmentsAreComplete(
+		itemSources,
+		itemAssignments,
+	);
+	const itemAggregate = aggregateItemAssignments(itemSources, itemAssignments);
+	const assignedItemTotal = itemSources.reduce(
+		(sum, item) =>
+			sum + ((itemAssignments.get(item.id) || []).length > 0 ? item.amount : 0),
+		0,
+	);
+	const unassignedItemCount = itemSources.filter(
+		(item) => (itemAssignments.get(item.id) || []).length === 0,
+	).length;
+	const itemModeValid =
+		payerParticipantID > 0 &&
+		itemSources.length === expense.items.length &&
+		itemAssignmentsComplete;
+	const assignAllItems = (participantIDs: number[]) =>
+		setItemAssignments(
+			new Map(itemSources.map((item) => [item.id, [...participantIDs]])),
+		);
+	const toggleItemParticipant = (itemID: number, participantID: number) =>
+		setItemAssignments((current) => {
+			const next = new Map(current);
+			const selected = next.get(itemID) || [];
+			next.set(
+				itemID,
+				selected.includes(participantID)
+					? selected.filter((id) => id !== participantID)
+					: [...selected, participantID],
+			);
+			return next;
+		});
 	const inviteURL = (inviteToken: string) =>
 		`${window.location.origin}/join?token=${encodeURIComponent(inviteToken)}`;
 	const copyParticipantInvite = async (inviteToken: string) => {
@@ -23449,6 +23713,29 @@ const ExpenseSplitEditor = ({
 					<strong>{formatMoney(money.amount, money.currency)}</strong>
 				</div>
 			</div>
+			<div
+				className="mini-split-mode"
+				role="tablist"
+				aria-label="Способ разделения"
+			>
+				<button
+					type="button"
+					className={mode === "amount" ? "is-selected" : ""}
+					aria-selected={mode === "amount"}
+					onClick={() => setMode("amount")}
+				>
+					По сумме
+				</button>
+				<button
+					type="button"
+					className={mode === "items" ? "is-selected" : ""}
+					aria-selected={mode === "items"}
+					disabled={expense.items.length === 0}
+					onClick={() => setMode("items")}
+				>
+					По позициям
+				</button>
+			</div>
 			<section className="mini-split-payer">
 				<span>
 					<b>Кто оплатил</b>
@@ -23474,81 +23761,196 @@ const ExpenseSplitEditor = ({
 					))}
 				</div>
 			</section>
-			<div className="mini-split-editor-toolbar">
-				<span>
-					<b>На кого относится расход</b>
-					<small>Можно назначить всю сумму одному</small>
-				</span>
-				<button
-					type="button"
-					disabled={selectedIDs.length < 2}
-					onClick={() => distributeEqually()}
-				>
-					Поровну
-				</button>
-			</div>
-			<div className="mini-split-editor-list">
-				{participants.map((participant) => {
-					const selected = amounts.has(participant.id);
-					return (
-						<div className={selected ? "is-selected" : ""} key={participant.id}>
-							<button
-								className="mini-split-participant-toggle"
-								type="button"
-								aria-pressed={selected}
-								onClick={() => toggleParticipant(participant.id)}
-							>
-								<i>{participantInitials(participant.display_name)}</i>
-								<span>
-									<b>{participant.display_name}</b>
-									<small>
-										{participantUserID(participant) === expense.user_id
-											? "Автор расхода"
-											: participant.status === "invited"
-												? uiText(language, "participantInviteReady")
-												: participant.status === "placeholder"
-													? "Ещё не присоединился"
-													: "Участник пространства"}
-									</small>
-								</span>
-								<span className="mini-split-check">
-									{selected && <Check size={15} weight="bold" />}
-								</span>
-							</button>
-							<div className="mini-split-amount-control">
-								<label>
-									<input
-										aria-label={`Доля ${participant.display_name}`}
-										inputMode="decimal"
-										disabled={!selected}
-										value={selected ? amounts.get(participant.id) || "" : ""}
-										onChange={(event) => {
-											const value = Number(
-												event.target.value.replace(",", "."),
-											);
-											if (!Number.isFinite(value) || value < 0) return;
-											setAmounts((current) =>
-												new Map(current).set(
-													participant.id,
-													Math.round(value * 100) / 100,
-												),
-											);
-										}}
-									/>
-									<span>{money.currency}</span>
-								</label>
-								<button
-									className="mini-split-full-button"
-									type="button"
-									onClick={() => assignFullAmount(participant.id)}
+			{mode === "amount" ? (
+				<>
+					<div className="mini-split-editor-toolbar">
+						<span>
+							<b>На кого относится расход</b>
+							<small>Можно назначить всю сумму одному</small>
+						</span>
+						<button
+							type="button"
+							disabled={selectedIDs.length < 2}
+							onClick={() => distributeEqually()}
+						>
+							Поровну
+						</button>
+					</div>
+					<div className="mini-split-editor-list">
+						{participants.map((participant) => {
+							const selected = amounts.has(participant.id);
+							return (
+								<div
+									className={selected ? "is-selected" : ""}
+									key={participant.id}
 								>
-									Вся сумма
+									<button
+										className="mini-split-participant-toggle"
+										type="button"
+										aria-pressed={selected}
+										onClick={() => toggleParticipant(participant.id)}
+									>
+										<i>{participantInitials(participant.display_name)}</i>
+										<span>
+											<b>{participant.display_name}</b>
+											<small>
+												{participantUserID(participant) === expense.user_id
+													? "Автор расхода"
+													: participant.status === "invited"
+														? uiText(language, "participantInviteReady")
+														: participant.status === "placeholder"
+															? "Ещё не присоединился"
+															: "Участник пространства"}
+											</small>
+										</span>
+										<span className="mini-split-check">
+											{selected && <Check size={15} weight="bold" />}
+										</span>
+									</button>
+									<div className="mini-split-amount-control">
+										<label>
+											<input
+												aria-label={`Доля ${participant.display_name}`}
+												inputMode="decimal"
+												disabled={!selected}
+												value={
+													selected ? amounts.get(participant.id) || "" : ""
+												}
+												onChange={(event) => {
+													const value = Number(
+														event.target.value.replace(",", "."),
+													);
+													if (!Number.isFinite(value) || value < 0) return;
+													setAmounts((current) =>
+														new Map(current).set(
+															participant.id,
+															Math.round(value * 100) / 100,
+														),
+													);
+												}}
+											/>
+											<span>{money.currency}</span>
+										</label>
+										<button
+											className="mini-split-full-button"
+											type="button"
+											onClick={() => assignFullAmount(participant.id)}
+										>
+											Вся сумма
+										</button>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				</>
+			) : (
+				<section className="mini-item-split">
+					<div className="mini-item-split-head">
+						<span>
+							<b>Кому что досталось</b>
+							<small>
+								{itemAllocationsLoading
+									? "Загружаем сохранённое распределение…"
+									: unassignedItemCount > 0
+										? `Без участников: ${unassignedItemCount}`
+										: "Все позиции распределены"}
+							</small>
+						</span>
+						<div>
+							{currentParticipant && (
+								<button
+									type="button"
+									onClick={() => assignAllItems([currentParticipant.id])}
+								>
+									Мне
 								</button>
-							</div>
+							)}
+							<button
+								type="button"
+								onClick={() =>
+									assignAllItems(participants.map((item) => item.id))
+								}
+							>
+								Всем
+							</button>
 						</div>
-					);
-				})}
-			</div>
+					</div>
+					<div className="mini-item-split-list">
+						{expense.items.map((item, index) => {
+							if (!item.id) {
+								return (
+									<p
+										className="mini-error"
+										key={`missing-${item.name}-${item.amount}-${item.category_id || 0}`}
+									>
+										Позицию «{item.name || index + 1}» нужно сначала сохранить.
+									</p>
+								);
+							}
+							const selected = itemAssignments.get(item.id) || [];
+							const itemMoney = itemDisplayMoney(item, expense, money.currency);
+							const shares = equalSplitAmounts(
+								itemMoney.amount,
+								[...selected].sort((a, b) => a - b),
+							);
+							return (
+								<article
+									className={selected.length > 0 ? "is-assigned" : ""}
+									key={item.id}
+								>
+									<header>
+										<span>{index + 1}</span>
+										<div>
+											<b>{item.name || `Позиция ${index + 1}`}</b>
+											<small>
+												{selected.length === 0
+													? "Выберите участника"
+													: selected.length === 1
+														? "Личная позиция"
+														: `Поровну на ${selected.length}`}
+											</small>
+										</div>
+										<strong>
+											{formatMoney(itemMoney.amount, itemMoney.currency)}
+										</strong>
+									</header>
+									<div className="mini-item-split-people">
+										{participants.map((participant) => {
+											const active = selected.includes(participant.id);
+											return (
+												<button
+													type="button"
+													className={active ? "is-selected" : ""}
+													aria-pressed={active}
+													key={participant.id}
+													onClick={() =>
+														toggleItemParticipant(item.id || 0, participant.id)
+													}
+												>
+													<i>{participantInitials(participant.display_name)}</i>
+													<span>
+														{participant.display_name}
+														{active && selected.length > 1 && (
+															<small>
+																{formatMoney(
+																	shares.get(participant.id) || 0,
+																	itemMoney.currency,
+																)}
+															</small>
+														)}
+													</span>
+													{active && <Check size={13} weight="bold" />}
+												</button>
+											);
+										})}
+									</div>
+								</article>
+							);
+						})}
+					</div>
+				</section>
+			)}
 			{canInvite && (
 				<section className="mini-split-invite-participant">
 					<div className="mini-split-invite-heading">
@@ -23642,18 +24044,69 @@ const ExpenseSplitEditor = ({
 				</section>
 			)}
 			<div
-				className={`mini-split-editor-balance${Math.abs(remaining) <= 0.02 ? " is-ready" : ""}`}
+				className={`mini-split-editor-balance${
+					mode === "items"
+						? itemAssignmentsComplete
+							? " is-ready"
+							: ""
+						: Math.abs(remaining) <= 0.02
+							? " is-ready"
+							: ""
+				}`}
 			>
 				<span>
 					<small>Распределено</small>
-					<b>{formatMoney(distributed, money.currency)}</b>
+					<b>
+						{formatMoney(
+							mode === "items" ? assignedItemTotal : distributed,
+							money.currency,
+						)}
+					</b>
 				</span>
 				<span>
-					<small>{remaining < 0 ? "Сверх суммы" : "Осталось"}</small>
-					<b>{formatMoney(Math.abs(remaining), money.currency)}</b>
+					<small>
+						{mode === "items"
+							? unassignedItemCount > 0
+								? `Без участников: ${unassignedItemCount}`
+								: "Готово"
+							: remaining < 0
+								? "Сверх суммы"
+								: "Осталось"}
+					</small>
+					<b>
+						{mode === "items"
+							? itemAssignmentsComplete
+								? "Все позиции"
+								: formatMoney(
+										Math.max(0, money.amount - assignedItemTotal),
+										money.currency,
+									)
+							: formatMoney(Math.abs(remaining), money.currency)}
+					</b>
 				</span>
 			</div>
-			{soleParticipant && payerParticipant && valid && (
+			{mode === "items" && itemAggregate.size > 0 && (
+				<div className="mini-item-split-totals">
+					<span>
+						<small>Итоговые доли</small>
+						<b>Долги посчитаются от этих сумм</b>
+					</span>
+					{participants
+						.filter((participant) => itemAggregate.has(participant.id))
+						.map((participant) => (
+							<div key={participant.id}>
+								<span>{participant.display_name}</span>
+								<strong>
+									{formatMoney(
+										itemAggregate.get(participant.id) || 0,
+										money.currency,
+									)}
+								</strong>
+							</div>
+						))}
+				</div>
+			)}
+			{mode === "amount" && soleParticipant && payerParticipant && valid && (
 				<div className="mini-split-editor-outcome">
 					<span>
 						<small>После сохранения</small>
@@ -23680,18 +24133,34 @@ const ExpenseSplitEditor = ({
 				<button
 					className="mini-save"
 					type="button"
-					disabled={saving || !valid}
+					disabled={
+						saving ||
+						itemAllocationsLoading ||
+						(mode === "items" ? !itemModeValid : !valid)
+					}
 					onClick={() =>
-						onSave(
-							selectedIDs.map((participantID) => ({
-								space_participant_id: participantID,
-								amount: amounts.get(participantID) || 0,
-							})),
-							payerParticipantID,
-						)
+						mode === "items"
+							? onSaveItems(
+									itemSources.map((item) => ({
+										expense_item_id: item.id,
+										space_participant_ids: itemAssignments.get(item.id) || [],
+									})),
+									payerParticipantID,
+								)
+							: onSave(
+									selectedIDs.map((participantID) => ({
+										space_participant_id: participantID,
+										amount: amounts.get(participantID) || 0,
+									})),
+									payerParticipantID,
+								)
 					}
 				>
-					{saving ? "Сохраняем…" : "Сохранить доли"}
+					{saving
+						? "Сохраняем…"
+						: mode === "items"
+							? "Сохранить распределение"
+							: "Сохранить доли"}
 				</button>
 			</div>
 		</Modal>

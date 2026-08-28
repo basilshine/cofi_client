@@ -2661,6 +2661,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/spaces/{spaceId}/expenses/{expenseId}/item-allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List item-level consumers for an expense
+         * @description Returns the saved participant allocation for each receipt item. Aggregate debts remain available through the canonical split route.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Saved item allocations */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            allocations: components["schemas"]["ExpenseItemAllocationLine"][];
+                        };
+                    };
+                };
+                /** @description Current user is not a member of the space */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        /**
+         * Replace item-level consumers and rebuild expense splits
+         * @description The expense creator, linked payer, or Space owner assigns every receipt item to one or more participants. Shared items are divided equally with server-owned cent rounding, then aggregate split rows are rebuilt atomically.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    spaceId: number;
+                    expenseId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        payer_participant_id: number;
+                        items: components["schemas"]["ExpenseItemAssignmentInput"][];
+                    };
+                };
+            };
+            responses: {
+                /** @description Saved item allocations and rebuilt split rows */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            allocations: components["schemas"]["ExpenseItemAllocationLine"][];
+                            splits: components["schemas"]["ExpenseSplitLine"][];
+                        };
+                    };
+                };
+                /** @description Missing item, duplicate participant, or incomplete allocation */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Current user cannot update these splits */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Expense is not linked to this space */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/spaces/{spaceId}/expenses/{expenseId}/splits/{splitId}/settlement": {
         parameters: {
             query?: never;
@@ -10039,6 +10154,21 @@ export interface components {
         };
         ExpenseSplitInputLine: {
             space_participant_id: number;
+            amount: number;
+        };
+        ExpenseItemAssignmentInput: {
+            /** Format: int64 */
+            expense_item_id: number;
+            space_participant_ids: number[];
+        };
+        ExpenseItemAllocationLine: {
+            /** Format: int64 */
+            id: number;
+            /** Format: int64 */
+            expense_item_id: number;
+            /** Format: int64 */
+            space_participant_id: number;
+            participant?: components["schemas"]["SpaceParticipant"];
             amount: number;
         };
         InviteSpaceParticipantResponse: {
