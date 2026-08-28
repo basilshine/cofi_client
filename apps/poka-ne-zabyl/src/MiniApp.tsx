@@ -21,6 +21,7 @@ import {
 	CornersOut,
 	CursorClick,
 	EnvelopeSimple,
+	FileXls,
 	FunnelSimple,
 	GearSix,
 	House,
@@ -102,6 +103,11 @@ import {
 	resolveCategoryIconKey,
 } from "./category-icon-catalog";
 import { type CoachmarkID, nextCoachmark, parseCoachmarks } from "./coachmarks";
+import {
+	type ExpenseExportLabels,
+	expenseSelectionFilename,
+	expenseSelectionWorkbook,
+} from "./expense-export";
 import { groupRowsByExpense } from "./expense-groups";
 import {
 	type Period,
@@ -9892,6 +9898,7 @@ export const MiniApp = ({
 								items={filteredItems}
 								expenses={expensesWithSplitContext}
 								spaceID={spaceID}
+								spaceName={activeWorkspaceName}
 								allTimeTotal={allTimeExpenseTotal}
 								monthTotal={overviewExpenseTotal}
 								section={expenseSection}
@@ -14721,6 +14728,7 @@ const ExpensesView = ({
 	items,
 	expenses,
 	spaceID,
+	spaceName,
 	allTimeTotal,
 	monthTotal,
 	section,
@@ -14783,6 +14791,7 @@ const ExpensesView = ({
 	items: ExpenseItemRow[];
 	expenses: Expense[];
 	spaceID: number;
+	spaceName: string;
 	allTimeTotal: number | null;
 	monthTotal: number | null;
 	section: ExpenseSection;
@@ -14956,6 +14965,82 @@ const ExpensesView = ({
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "AbortError") return;
 			await copySelection();
+		}
+	};
+	const exportSelection = async () => {
+		try {
+			const labels: ExpenseExportLabels = {
+				space: uiText(language, "exportSpace"),
+				date: uiText(language, "exportDate"),
+				expense: uiText(language, "exportExpense"),
+				item: uiText(language, "exportItem"),
+				vendor: uiText(language, "exportVendor"),
+				category: uiText(language, "category"),
+				amount: uiText(language, "exportAmount"),
+				currency: uiText(language, "exportCurrency"),
+				originalAmount: uiText(language, "exportOriginalAmount"),
+				originalCurrency: uiText(language, "exportOriginalCurrency"),
+				payer: uiText(language, "exportPayer"),
+				addedBy: uiText(language, "addedBy"),
+				notes: uiText(language, "notes"),
+				tags: uiText(language, "exportTags"),
+			};
+			const rows = selectedRows.map(({ expense, item }) => {
+				const displayMoney = itemDisplayMoney(item, expense, currency);
+				const originalMoney = itemOriginalMoney(
+					item,
+					expense,
+					displayMoney.currency,
+				);
+				const category = categories.find(
+					(current) => current.id === item.category_id,
+				);
+				const author = members.find(
+					(member) => member.user_id === expense.user_id,
+				);
+				return {
+					space: spaceName,
+					date: expense.expense_date.slice(0, 10),
+					expense:
+						expense.title ||
+						expense.items[0]?.name ||
+						uiText(language, "viewExpense"),
+					item: item.name || uiText(language, "items"),
+					vendor:
+						item.vendor_name ||
+						item.vendor?.name ||
+						expense.vendor_name ||
+						expense.vendor?.name ||
+						expense.payee_text ||
+						"",
+					category:
+						item.category_name ||
+						item.category?.name ||
+						(category ? localizedCategoryName(category, language) : ""),
+					amount: displayMoney.amount,
+					currency: displayMoney.currency,
+					originalAmount: originalMoney?.amount,
+					originalCurrency: originalMoney?.currency,
+					payer:
+						expensePayerParticipant(expense, participants)?.display_name ||
+						author?.name ||
+						author?.email ||
+						"",
+					addedBy: author?.name || author?.email || "",
+					notes: item.notes || "",
+					tags: (item.tags || []).join(" "),
+				};
+			});
+			const workbook = expenseSelectionWorkbook(rows, labels, language);
+			const { default: writeXlsxFile } = await import(
+				"write-excel-file/browser"
+			);
+			await writeXlsxFile(workbook.data, workbook.options).toFile(
+				expenseSelectionFilename(spaceName, localISODate()),
+			);
+			setSelectionFeedback(uiText(language, "selectionExported"));
+		} catch {
+			setSelectionFeedback(uiText(language, "selectionExportFailed"));
 		}
 	};
 	const formatRangeDate = (value: string) =>
@@ -15589,6 +15674,17 @@ const ExpensesView = ({
 						</p>
 					)}
 					<div className="mini-selection-summary-actions">
+						<button
+							className="is-export"
+							type="button"
+							onClick={exportSelection}
+						>
+							<FileXls size={20} weight="bold" />
+							<span>
+								<b>{uiText(language, "exportSelectionExcel")}</b>
+								<small>{uiText(language, "exportSelectionHint")}</small>
+							</span>
+						</button>
 						<button type="button" onClick={() => void copySelection()}>
 							<Copy size={17} />
 							{uiText(language, "copySelection")}
