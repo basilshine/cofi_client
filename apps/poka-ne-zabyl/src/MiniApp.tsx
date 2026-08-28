@@ -61,6 +61,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { createPortal } from "react-dom";
 import "./mini-app.css";
 import {
 	type AcquisitionFunnel,
@@ -17668,7 +17669,14 @@ const FullscreenImageViewer = ({
 		return () => document.removeEventListener("keydown", handleKeyDown);
 	}, [onClose, onNext, onPrevious]);
 
-	return (
+	useEffect(() => {
+		document.body.classList.add("mini-lightbox-open");
+		return () => document.body.classList.remove("mini-lightbox-open");
+	}, []);
+
+	if (typeof document === "undefined") return null;
+
+	return createPortal(
 		<div
 			className="mini-source-lightbox"
 			role="dialog"
@@ -17741,7 +17749,8 @@ const FullscreenImageViewer = ({
 					</button>
 				</nav>
 			)}
-		</div>
+		</div>,
+		document.body,
 	);
 };
 
