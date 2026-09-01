@@ -14619,6 +14619,136 @@
 	color: var(--mini-muted);
 	font-size: 11px;
 }
+.mini-mobile-date-field {
+	display: grid;
+	min-width: 0;
+	gap: 8px;
+	color: var(--mini-ink);
+	font-size: 13px;
+	font-weight: 700;
+}
+.mini-mobile-date-label {
+	display: block;
+	min-width: 0;
+}
+.mini-mobile-date-control {
+	position: relative;
+	display: grid;
+	min-width: 0;
+	min-height: 62px;
+	grid-template-columns: 40px minmax(0, 1fr) 40px;
+	align-items: center;
+	gap: 10px;
+	padding: 7px 8px 7px 10px;
+	border: 1px solid transparent;
+	border-radius: 8px;
+	background: var(--mini-soft);
+	box-shadow: inset 0 0 0 1px rgba(41, 69, 199, 0.04), 0 1px 2px
+		rgba(23, 27, 45, 0.04);
+	transition-property: background-color, border-color, box-shadow, scale;
+	transition-duration: 160ms;
+	transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+.mini-mobile-date-control:hover {
+	background: color-mix(in srgb, var(--mini-green) 7%, var(--mini-paper));
+}
+.mini-mobile-date-control:active {
+	scale: 0.99;
+}
+.mini-mobile-date-control:has(input:focus-visible) {
+	border-color: color-mix(in srgb, var(--mini-green) 56%, transparent);
+	box-shadow: 0 0 0 3px rgba(41, 69, 199, 0.12), 0 6px 18px
+		rgba(23, 27, 45, 0.08);
+}
+.mini-mobile-date-control.is-invalid {
+	border-color: color-mix(in srgb, var(--mini-red) 62%, transparent);
+	background: color-mix(in srgb, var(--mini-red) 5%, var(--mini-paper));
+}
+.mini-mobile-date-control:has(input:disabled) {
+	opacity: 0.52;
+	pointer-events: none;
+}
+.mini-mobile-date-icon {
+	display: grid;
+	width: 40px;
+	height: 40px;
+	place-items: center;
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--mini-green) 9%, var(--mini-paper));
+	color: var(--mini-green);
+}
+.mini-mobile-date-copy {
+	display: grid;
+	min-width: 0;
+	gap: 2px;
+	line-height: 1.25;
+}
+.mini-mobile-date-copy strong,
+.mini-mobile-date-copy small {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mini-mobile-date-copy strong {
+	color: var(--mini-ink);
+	font-size: 15px;
+	font-variant-numeric: tabular-nums;
+	font-weight: 750;
+}
+.mini-mobile-date-copy small {
+	color: var(--mini-muted);
+	font-size: 11px;
+	font-weight: 600;
+}
+.mini-mobile-date-caret {
+	justify-self: center;
+	color: var(--mini-muted);
+	pointer-events: none;
+}
+.mini-mobile-date-clear {
+	position: relative;
+	z-index: 2;
+	display: grid;
+	width: 40px;
+	height: 40px;
+	place-items: center;
+	padding: 0;
+	border: 0;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--mini-muted);
+}
+.mini-mobile-date-clear:hover {
+	background: rgba(41, 69, 199, 0.08);
+	color: var(--mini-green);
+}
+.mini-mobile-date-clear:active {
+	scale: 0.96;
+}
+.mini-mobile-date-control > input[type="date"] {
+	position: absolute;
+	z-index: 1;
+	inset: 0;
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	min-height: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: inherit;
+	background: transparent;
+	cursor: pointer;
+	opacity: 0;
+	-webkit-appearance: auto;
+	appearance: auto;
+}
+.mini-mobile-date-control.has-clear > input[type="date"] {
+	right: 48px;
+	width: auto;
+}
 @media (max-width: 520px) {
 	.mini-filters {
 		grid-template-columns: minmax(0, 1fr);

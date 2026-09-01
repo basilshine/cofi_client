@@ -63,6 +63,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import "./mini-app.css";
+import { MobileDateField } from "./MobileDateField";
 import {
 	type AcquisitionFunnel,
 	acquisitionFunnelFromSearch,
@@ -12622,16 +12623,15 @@ const ReviewEditor = ({
 							)}
 						</button>
 					</div>
-					<label className="review-field">
-						<span>{uiText(language, "date")}</span>
-						<input
-							type="date"
-							value={draft.expenseDate}
-							onChange={(event) =>
-								onChange({ ...draft, expenseDate: event.target.value })
-							}
-						/>
-					</label>
+					<MobileDateField
+						ariaLabel={uiText(language, "date")}
+						className="review-field"
+						label={uiText(language, "date")}
+						language={language}
+						required
+						value={draft.expenseDate}
+						onChange={(expenseDate) => onChange({ ...draft, expenseDate })}
+					/>
 					{dateConcern && (
 						<div className="review-date-warning review-date-warning--editor">
 							<WarningCircle size={19} weight="fill" />
@@ -24796,32 +24796,35 @@ const PlanEditor = ({
 			<section className="mini-editor-section">
 				<h3>{uiText(language, "editorPlanTiming")}</h3>
 				<div className="mini-editor-section-fields">
-					<label>
-						{plan.recurrence_interval ? (
-							<RequiredFieldLabel language={language}>
-								{uiText(language, "plannedDate")}
-							</RequiredFieldLabel>
-						) : (
-							uiText(language, "plannedDate")
-						)}
-						<input
-							aria-describedby={
-								recurrenceInvalid
-									? `${recurrenceErrorID} ${recurrenceErrorID}-hint`
-									: `${recurrenceErrorID}-hint`
-							}
-							aria-invalid={recurrenceInvalid}
-							required={Boolean(plan.recurrence_interval)}
-							type="date"
-							value={plan.due_date?.slice(0, 10) || ""}
-							onChange={(event) =>
-								onChange({ ...plan, due_date: event.target.value || null })
-							}
-						/>
+					<MobileDateField
+						ariaDescribedBy={
+							recurrenceInvalid
+								? `${recurrenceErrorID} ${recurrenceErrorID}-hint`
+								: `${recurrenceErrorID}-hint`
+						}
+						ariaInvalid={recurrenceInvalid}
+						ariaLabel={uiText(language, "plannedDate")}
+						className="mini-field"
+						label={
+							plan.recurrence_interval ? (
+								<RequiredFieldLabel language={language}>
+									{uiText(language, "plannedDate")}
+								</RequiredFieldLabel>
+							) : (
+								uiText(language, "plannedDate")
+							)
+						}
+						language={language}
+						required={Boolean(plan.recurrence_interval)}
+						value={plan.due_date?.slice(0, 10) || ""}
+						onChange={(dueDate) =>
+							onChange({ ...plan, due_date: dueDate || null })
+						}
+					>
 						<small className="mini-field-hint" id={`${recurrenceErrorID}-hint`}>
 							{uiText(language, "plannedDateHint")}
 						</small>
-					</label>
+					</MobileDateField>
 					<label>
 						{uiText(language, "planRecurrence")}
 						<select
@@ -25265,28 +25268,30 @@ const ExpenseEditor = ({
 							</small>
 						)}
 					</div>
-					<label>
-						<RequiredFieldLabel language={language}>
-							{uiText(language, "purchaseDate")}
-						</RequiredFieldLabel>
-						<input
-							aria-describedby={
-								[
-									creating ? `${dateErrorID}-hint` : "",
-									saveAttempted && dateInvalid ? dateErrorID : "",
-								]
-									.filter(Boolean)
-									.join(" ") || undefined
-							}
-							aria-invalid={saveAttempted && dateInvalid}
-							aria-label={uiText(language, "purchaseDate")}
-							required
-							type="date"
-							value={expense.expense_date.slice(0, 10)}
-							onChange={(event) =>
-								onChange({ ...expense, expense_date: event.target.value })
-							}
-						/>
+					<MobileDateField
+						ariaDescribedBy={
+							[
+								creating ? `${dateErrorID}-hint` : "",
+								saveAttempted && dateInvalid ? dateErrorID : "",
+							]
+								.filter(Boolean)
+								.join(" ") || undefined
+						}
+						ariaInvalid={saveAttempted && dateInvalid}
+						ariaLabel={uiText(language, "purchaseDate")}
+						className="mini-field"
+						label={
+							<RequiredFieldLabel language={language}>
+								{uiText(language, "purchaseDate")}
+							</RequiredFieldLabel>
+						}
+						language={language}
+						required
+						value={expense.expense_date.slice(0, 10)}
+						onChange={(expenseDate) =>
+							onChange({ ...expense, expense_date: expenseDate })
+						}
+					>
 						{creating && (
 							<small className="mini-field-hint" id={`${dateErrorID}-hint`}>
 								{uiText(language, "purchaseDateHint")}
@@ -25298,7 +25303,7 @@ const ExpenseEditor = ({
 						>
 							{uiText(language, "fieldRequired")}
 						</EditorFieldError>
-					</label>
+					</MobileDateField>
 				</div>
 			</section>
 			{participants.length > 1 && (
@@ -27081,28 +27086,28 @@ const ReportMonthDialog = ({
 
 			{preset === "custom" && (
 				<div className="mini-report-custom-dates">
-					<label>
-						{uiText(language, "dateFrom")}
-						<input
-							type="date"
-							min={minDate}
-							max={maxDate}
-							value={startDate}
-							disabled={generating}
-							onChange={(event) => onStartDate(event.target.value)}
-						/>
-					</label>
-					<label>
-						{uiText(language, "dateTo")}
-						<input
-							type="date"
-							min={minDate}
-							max={maxDate}
-							value={endDate}
-							disabled={generating}
-							onChange={(event) => onEndDate(event.target.value)}
-						/>
-					</label>
+					<MobileDateField
+						ariaLabel={uiText(language, "dateFrom")}
+						disabled={generating}
+						label={uiText(language, "dateFrom")}
+						language={language}
+						max={maxDate}
+						min={minDate}
+						required
+						value={startDate}
+						onChange={onStartDate}
+					/>
+					<MobileDateField
+						ariaLabel={uiText(language, "dateTo")}
+						disabled={generating}
+						label={uiText(language, "dateTo")}
+						language={language}
+						max={maxDate}
+						min={minDate}
+						required
+						value={endDate}
+						onChange={onEndDate}
+					/>
 				</div>
 			)}
 
