@@ -25359,27 +25359,38 @@ const ExpenseEditor = ({
 									</>
 								)}
 							</div>
-							{creating && expense.items.length > 1 && (
-								<button
-									className="mini-editor-item-remove"
-									type="button"
-									aria-label={uiText(language, "removeItem").replace(
-										"{number}",
-										String(index + 1),
+							{(!creating || expense.items.length > 1) && (
+								<div className="mini-editor-item-actions">
+									{!creating && (
+										<strong>
+											{formatMoney(item.amount, expense.currency)}
+										</strong>
 									)}
-									onClick={() =>
-										updateItems(
-											expense.items.filter(
-												(_, itemIndex) => itemIndex !== index,
-											),
-										)
-									}
-								>
-									<Trash size={16} />
-								</button>
-							)}
-							{!creating && (
-								<strong>{formatMoney(item.amount, expense.currency)}</strong>
+									{expense.items.length > 1 && (
+										<button
+											className="mini-editor-item-remove"
+											type="button"
+											disabled={saving}
+											aria-label={uiText(language, "removeItem").replace(
+												"{number}",
+												String(index + 1),
+											)}
+											title={uiText(language, "removeItem").replace(
+												"{number}",
+												String(index + 1),
+											)}
+											onClick={() =>
+												updateItems(
+													expense.items.filter(
+														(_, itemIndex) => itemIndex !== index,
+													),
+												)
+											}
+										>
+											<Trash size={17} />
+										</button>
+									)}
+								</div>
 							)}
 						</div>
 						<label className="mini-editor-field mini-editor-item-name">
