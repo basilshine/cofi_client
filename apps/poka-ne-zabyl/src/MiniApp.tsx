@@ -14119,7 +14119,7 @@ const Overview = ({
 	onConfigureLocale: () => void;
 }) => {
 	const [openFolder, setOpenFolder] = useState<string | null>(() =>
-		pendingCandidates.length > 0 ? "reviews" : null,
+		pendingCandidates.length > 0 ? "reviews" : "categories",
 	);
 	const previousPendingCount = useRef(pendingCandidates.length);
 	useEffect(() => {
@@ -14225,6 +14225,13 @@ const Overview = ({
 			(balance.creditorUserID === currentUserID &&
 				balance.settlementStatus === "sent"),
 	).length;
+	const hasOutstandingSplitBalances = splitBalances.length > 0;
+	const visibleOpenFolder =
+		(openFolder === "reviews" && pendingCandidates.length === 0) ||
+		(openFolder === "plans" && upcomingPlans.length === 0) ||
+		(openFolder === "splits" && !hasOutstandingSplitBalances)
+			? "categories"
+			: openFolder;
 	const splitSummary =
 		youOweTotal > 0 || owedToYouTotal > 0
 			? [
@@ -14476,7 +14483,7 @@ const Overview = ({
 									</div>
 								</HomeFolder>
 							)}
-							{participants.length > 1 && (
+							{hasOutstandingSplitBalances && (
 								<HomeFolder
 									id="splits"
 									language={language}
@@ -14484,7 +14491,7 @@ const Overview = ({
 									summary={splitSummary}
 									icon={<ArrowsLeftRight size={20} weight="bold" />}
 									tone="debts"
-									open={openFolder === "splits"}
+									open={visibleOpenFolder === "splits"}
 									alert={splitActionCount > 0}
 									attentionCount={splitActionCount}
 									onToggle={() => toggleFolder("splits")}
@@ -14575,7 +14582,7 @@ const Overview = ({
 								summary={leadingCategorySummary}
 								icon={<Tag size={20} weight="bold" />}
 								tone="categories"
-								open={openFolder === "categories"}
+								open={visibleOpenFolder === "categories"}
 								onToggle={() => toggleFolder("categories")}
 								actionLabel={uiText(language, "viewAll")}
 								onAction={onManageBudgets}
