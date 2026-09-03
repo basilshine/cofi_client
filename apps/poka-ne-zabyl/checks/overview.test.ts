@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { expensesForMonth, homeCategoryRows } from "../src/overview.ts";
+import {
+	expensesForMonth,
+	homeCategoryDistribution,
+	homeCategoryRows,
+} from "../src/overview.ts";
 
 test("keeps only expenses from the selected calendar month", () => {
 	const expenses = [
@@ -62,5 +66,47 @@ test("shows every pinned category beyond the default five rows", () => {
 	assert.deepEqual(
 		rows.map(({ id }) => id),
 		[7, 6, 5, 4, 3, 2, 1],
+	);
+});
+
+test("builds a top-three category distribution from actual monthly spending", () => {
+	const rows = homeCategoryDistribution(
+		[
+			{ id: 1, homeAmount: 1200, pinned: false },
+			{ id: 2, homeAmount: 0, pinned: true },
+			{ id: 3, homeAmount: 3000, pinned: false },
+			{ id: 4, homeAmount: 800, pinned: false },
+			{ id: 5, homeAmount: 500, pinned: false },
+		],
+		6000,
+	);
+
+	assert.deepEqual(
+		rows.map(({ id, homeShare }) => ({ id, homeShare })),
+		[
+			{ id: 3, homeShare: 50 },
+			{ id: 1, homeShare: 20 },
+			{ id: 4, homeShare: 800 / 60 },
+		],
+	);
+});
+
+test("keeps category shares coherent when category totals exceed the headline total", () => {
+	const rows = homeCategoryDistribution(
+		[
+			{ id: 1, homeAmount: 6000 },
+			{ id: 2, homeAmount: 3000 },
+			{ id: 3, homeAmount: 1000 },
+		],
+		5000,
+	);
+
+	assert.deepEqual(
+		rows.map(({ id, homeShare }) => ({ id, homeShare })),
+		[
+			{ id: 1, homeShare: 60 },
+			{ id: 2, homeShare: 30 },
+			{ id: 3, homeShare: 10 },
+		],
 	);
 });

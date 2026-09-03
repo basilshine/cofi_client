@@ -185,6 +185,7 @@ import {
 import {
 	type HomeCategoryRow,
 	expensesForMonth,
+	homeCategoryDistribution,
 	homeCategoryRows,
 } from "./overview";
 import { appendUniquePage, nextPageOffset } from "./paged-list";
@@ -14118,16 +14119,8 @@ const Overview = ({
 	onManual: () => void;
 	onConfigureLocale: () => void;
 }) => {
-	const [openFolder, setOpenFolder] = useState<string | null>(() =>
-		pendingCandidates.length > 0 ? "reviews" : "categories",
-	);
-	const previousPendingCount = useRef(pendingCandidates.length);
-	useEffect(() => {
-		if (pendingCandidates.length > previousPendingCount.current) {
-			setOpenFolder("reviews");
-		}
-		previousPendingCount.current = pendingCandidates.length;
-	}, [pendingCandidates.length]);
+	const [openFolder, setOpenFolder] = useState<string | null>(null);
+	const [categoriesOpen, setCategoriesOpen] = useState(true);
 	if (!hasAnyExpenses && plans.length === 0 && pendingCandidates.length === 0) {
 		return (
 			<FirstExpenseEmpty
@@ -14226,12 +14219,6 @@ const Overview = ({
 				balance.settlementStatus === "sent"),
 	).length;
 	const hasOutstandingSplitBalances = splitBalances.length > 0;
-	const visibleOpenFolder =
-		(openFolder === "reviews" && pendingCandidates.length === 0) ||
-		(openFolder === "plans" && upcomingPlans.length === 0) ||
-		(openFolder === "splits" && !hasOutstandingSplitBalances)
-			? "categories"
-			: openFolder;
 	const splitSummary =
 		youOweTotal > 0 || owedToYouTotal > 0
 			? [
@@ -14248,6 +14235,14 @@ const Overview = ({
 	const leadingCategory = [...categories].sort(
 		(left, right) => right.homeAmount - left.homeAmount,
 	)[0];
+	const categoryShareTotal = Math.max(
+		total,
+		categories.reduce(
+			(sum, category) => sum + Math.max(0, category.homeAmount),
+			0,
+		),
+	);
+	const categoryDistribution = homeCategoryDistribution(categories, total);
 	const recentExpenses = latestExpenses.slice(0, 4);
 	const latestExpense = recentExpenses[0];
 	const latestExpenseMoney = latestExpense
@@ -14317,6 +14312,68 @@ const Overview = ({
 							{expenseCountText(expenses.length, language)}
 							{spaceName ? ` · ${spaceName}` : ""}
 						</small>
+						{categoryDistribution.length > 0 && (
+							<div className="mini-total-categories">
+								<span className="mini-total-categories-heading">
+									{uiText(language, "homeTopCategories")}
+								</span>
+								<div
+									className="mini-total-category-track"
+									role="img"
+									aria-label={categoryDistribution
+										.map(
+											(category) =>
+												`${localizedCategoryName(category, language)}: ${Math.round(category.homeShare)}%`,
+										)
+										.join(", ")}
+								>
+									{categoryDistribution.map((category) => {
+										const iconKey = resolveCategoryIconKey(
+											category.icon_key,
+											category.name,
+											category.key,
+										);
+										return (
+											<span
+												key={category.id}
+												data-tone={categoryIconTone(iconKey)}
+												style={{ width: `${category.homeShare}%` }}
+											/>
+										);
+									})}
+								</div>
+								<div
+									className={`mini-total-category-legend is-${categoryDistribution.length}`}
+								>
+									{categoryDistribution.map((category) => {
+										const name = localizedCategoryName(category, language);
+										const share = uiText(language, "homeCategoryShare").replace(
+											"{percent}",
+											String(Math.round(category.homeShare)),
+										);
+										return (
+											<button
+												key={category.id}
+												type="button"
+												aria-label={`${name}, ${share}`}
+												onClick={() => onCategory(category.id, "month")}
+											>
+												<CategoryIconBadge
+													category={category}
+													language={language}
+													size={15}
+													compact
+												/>
+												<span>
+													<b>{name}</b>
+													<small>{Math.round(category.homeShare)}%</small>
+												</span>
+											</button>
+										);
+									})}
+								</div>
+							</div>
+						)}
 						<button
 							className="mini-total-plans"
 							type="button"
@@ -14491,7 +14548,7 @@ const Overview = ({
 									summary={splitSummary}
 									icon={<ArrowsLeftRight size={20} weight="bold" />}
 									tone="debts"
-									open={visibleOpenFolder === "splits"}
+									open={openFolder === "splits"}
 									alert={splitActionCount > 0}
 									attentionCount={splitActionCount}
 									onToggle={() => toggleFolder("splits")}
@@ -14582,13 +14639,25 @@ const Overview = ({
 								summary={leadingCategorySummary}
 								icon={<Tag size={20} weight="bold" />}
 								tone="categories"
-								open={visibleOpenFolder === "categories"}
-								onToggle={() => toggleFolder("categories")}
+								open={categoriesOpen}
+								onToggle={() => setCategoriesOpen((current) => !current)}
 								actionLabel={uiText(language, "viewAll")}
 								onAction={onManageBudgets}
 							>
 								<div className="mini-home-categories">
 									{categories.map((category) => {
+										const name = localizedCategoryName(category, language);
+										const share =
+											categoryShareTotal > 0
+												? Math.min(
+														100,
+														(category.homeAmount / categoryShareTotal) * 100,
+													)
+												: 0;
+										const shareText = uiText(
+											language,
+											"homeCategoryShare",
+										).replace("{percent}", String(Math.round(share)));
 										const period = uiText(
 											language,
 											category.budget_period === "week"
@@ -14596,53 +14665,48 @@ const Overview = ({
 												: "forMonth",
 										);
 										const status = `${uiText(language, "limit")} ${formatMoney(category.budget_amount || 0, currency)} · ${uiText(language, category.homeOverLimit ? "overLimitBy" : "remaining")} ${formatMoney(category.homeDifference, currency)} · ${period}`;
+										const budgetState = category.homeHasLimit
+											? `${uiText(language, category.homeOverLimit ? "overLimitBy" : "remaining")} ${formatMoney(category.homeDifference, currency)}`
+											: "";
 										return (
 											<button
 												className={category.homeOverLimit ? "is-over" : ""}
 												key={category.id}
 												type="button"
+												aria-label={`${name}, ${formatMoney(category.homeAmount, currency)}, ${shareText}${budgetState ? `, ${budgetState}` : ""}`}
 												onClick={() => onCategory(category.id, "month")}
 											>
-												<span>
-													<span className="mini-home-category-title">
-														<CategoryIconBadge
-															category={category}
-															language={language}
-															size={15}
-															compact
-														/>
-														<b>{localizedCategoryName(category, language)}</b>
-														{category.pinned && (
-															<PushPin size={13} weight="fill" />
-														)}
+												<span className="mini-home-category-main">
+													<CategoryIconBadge
+														category={category}
+														language={language}
+														size={18}
+													/>
+													<span className="mini-home-category-copy">
+														<span className="mini-home-category-title">
+															<b>{name}</b>
+															{category.pinned && (
+																<PushPin size={12} weight="fill" />
+															)}
+														</span>
+														<small>
+															{shareText}
+															{budgetState ? ` · ${budgetState}` : ""}
+														</small>
 													</span>
 													<strong>
 														{formatMoney(category.homeAmount, currency)}
 													</strong>
 												</span>
 												{category.homeHasLimit ? (
-													<>
-														<small>{status}</small>
-														<span
-															className="mini-home-category-progress"
-															role="progressbar"
-															aria-label={status}
-															aria-valuemin={0}
-															aria-valuemax={100}
-															aria-valuenow={Math.round(category.homeProgress)}
-															tabIndex={0}
-														>
-															<i
-																style={{ width: `${category.homeProgress}%` }}
-															/>
-														</span>
-													</>
-												) : (
-													<span className="mini-home-category-no-limit">
-														<i />
-														{uiText(language, "limitNotSet")}
+													<span
+														className="mini-home-category-progress"
+														aria-hidden="true"
+														title={status}
+													>
+														<i style={{ width: `${category.homeProgress}%` }} />
 													</span>
-												)}
+												) : null}
 											</button>
 										);
 									})}

@@ -24,6 +24,10 @@ export type HomeCategoryRow<T> = T & {
 	homeProgress: number;
 };
 
+export type HomeCategoryDistributionRow<T> = T & {
+	homeShare: number;
+};
+
 export const homeCategoryRows = <T extends CategoryOverviewInput>(
 	categories: T[],
 	maxRows = 5,
@@ -59,4 +63,26 @@ export const homeCategoryRows = <T extends CategoryOverviewInput>(
 		);
 	const pinnedCount = rows.filter((category) => category.pinned).length;
 	return rows.slice(0, Math.max(maxRows, pinnedCount));
+};
+
+export const homeCategoryDistribution = <T extends { homeAmount: number }>(
+	categories: T[],
+	total: number,
+	maxRows = 3,
+): HomeCategoryDistributionRow<T>[] => {
+	if (maxRows <= 0) return [];
+	const categorizedTotal = categories.reduce(
+		(sum, category) => sum + Math.max(0, category.homeAmount),
+		0,
+	);
+	const denominator = Math.max(total, categorizedTotal);
+	if (denominator <= 0) return [];
+	return [...categories]
+		.filter((category) => category.homeAmount > 0)
+		.sort((left, right) => right.homeAmount - left.homeAmount)
+		.slice(0, maxRows)
+		.map((category) => ({
+			...category,
+			homeShare: Math.min(100, (category.homeAmount / denominator) * 100),
+		}));
 };
