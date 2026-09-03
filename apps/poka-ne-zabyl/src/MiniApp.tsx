@@ -185,7 +185,7 @@ import {
 import {
 	type HomeCategoryRow,
 	expensesForMonth,
-	homeCategoryDistribution,
+	homeCategoryBreakdown,
 	homeCategoryRows,
 } from "./overview";
 import { appendUniquePage, nextPageOffset } from "./paged-list";
@@ -6789,20 +6789,23 @@ export const MiniApp = ({
 			(sum, expense) => sum + (expenseAmountInCurrency(expense, currency) ?? 0),
 			0,
 		);
-	const categoryTotals = useMemo(() => {
-		return homeCategoryRows(
-			categories.map((category) => {
-				const display = categoryDisplayAmounts(category, currency);
-				return {
-					...category,
-					filteredTotal: display.monthSpent,
-					budget_amount: display.budgetAmount,
-					budget_spent: display.budgetSpent,
-					budget_remaining: display.budgetRemaining,
-				};
-			}),
-		);
+	const categoryOverview = useMemo(() => {
+		const rows = categories.map((category) => {
+			const display = categoryDisplayAmounts(category, currency);
+			return {
+				...category,
+				filteredTotal: display.monthSpent,
+				budget_amount: display.budgetAmount,
+				budget_spent: display.budgetSpent,
+				budget_remaining: display.budgetRemaining,
+			};
+		});
+		return {
+			all: homeCategoryRows(rows, rows.length),
+			visible: homeCategoryRows(rows),
+		};
 	}, [categories, currency]);
+	const categoryTotals = categoryOverview.visible;
 	const openCategory = (id: number, nextPeriod: Period = "all") => {
 		setExpenseSection("history");
 		setPeriod(nextPeriod);
@@ -10013,6 +10016,7 @@ export const MiniApp = ({
 								total={overviewTotal}
 								currency={currency}
 								categories={categoryTotals}
+								allCategories={categoryOverview.all}
 								categoryCatalog={categories}
 								expenses={overviewExpenses}
 								latestExpenses={expensesWithSplitContext}
@@ -14036,6 +14040,7 @@ const Overview = ({
 	total,
 	currency,
 	categories,
+	allCategories,
 	categoryCatalog,
 	expenses,
 	latestExpenses,
@@ -14082,6 +14087,7 @@ const Overview = ({
 	total: number;
 	currency: string;
 	categories: HomeCategoryRow<Category & { filteredTotal: number }>[];
+	allCategories: HomeCategoryRow<Category & { filteredTotal: number }>[];
 	categoryCatalog: Category[];
 	expenses: Expense[];
 	latestExpenses: Expense[];
@@ -14237,12 +14243,22 @@ const Overview = ({
 	)[0];
 	const categoryShareTotal = Math.max(
 		total,
-		categories.reduce(
+		allCategories.reduce(
 			(sum, category) => sum + Math.max(0, category.homeAmount),
 			0,
 		),
 	);
-	const categoryDistribution = homeCategoryDistribution(categories, total);
+	const categoryBreakdown = homeCategoryBreakdown(allCategories, total);
+	const categoryDistribution = categoryBreakdown.featured;
+	const visibleCategoryIDs = new Set(categories.map((category) => category.id));
+	const categoryRemainder = homeCategoryBreakdown(
+		allCategories.filter(
+			(category) =>
+				category.homeAmount > 0 && !visibleCategoryIDs.has(category.id),
+		),
+		categoryShareTotal,
+		0,
+	).remainder;
 	const recentExpenses = latestExpenses.slice(0, 4);
 	const latestExpense = recentExpenses[0];
 	const latestExpenseMoney = latestExpense
@@ -14641,7 +14657,9 @@ const Overview = ({
 								tone="categories"
 								open={categoriesOpen}
 								onToggle={() => setCategoriesOpen((current) => !current)}
-								actionLabel={uiText(language, "viewAll")}
+								actionLabel={
+									categoryRemainder ? undefined : uiText(language, "viewAll")
+								}
 								onAction={onManageBudgets}
 							>
 								<div className="mini-home-categories">
@@ -14712,6 +14730,57 @@ const Overview = ({
 									})}
 									{categories.length === 0 && (
 										<Empty text={uiText(language, "noExpensesThisMonth")} />
+									)}
+									{categoryRemainder && (
+										<button
+											className="mini-home-category-more"
+											type="button"
+											aria-label={`${uiText(language, "homeOtherCategories")}, ${formatMoney(categoryRemainder.homeAmount, currency)}, ${Math.round(categoryRemainder.homeShare)}%. ${uiText(language, "viewAll")}`}
+											onClick={onManageBudgets}
+										>
+											<span
+												className="mini-home-category-more-icons"
+												aria-hidden="true"
+											>
+												{categoryRemainder.categories
+													.slice(0, 3)
+													.map((category) => (
+														<CategoryIconBadge
+															key={category.id}
+															category={category}
+															language={language}
+															size={14}
+															compact
+														/>
+													))}
+											</span>
+											<span className="mini-home-category-more-copy">
+												<b>{uiText(language, "homeOtherCategories")}</b>
+												<small>
+													{uiText(language, "homeOtherCategoriesMeta")
+														.replace(
+															"{count}",
+															categoryCountText(
+																categoryRemainder.categories.length,
+																language,
+															),
+														)
+														.replace(
+															"{percent}",
+															String(Math.round(categoryRemainder.homeShare)),
+														)}
+												</small>
+											</span>
+											<span className="mini-home-category-more-action">
+												<strong>
+													{formatMoney(categoryRemainder.homeAmount, currency)}
+												</strong>
+												<small>
+													{uiText(language, "viewAll")}
+													<ArrowRight size={13} weight="bold" />
+												</small>
+											</span>
+										</button>
 									)}
 								</div>
 							</HomeFolder>
@@ -30093,6 +30162,21 @@ const expenseCountText = (count: number, language: UILanguage) => {
 		return `${count} ${count === 1 ? "expense" : "expenses"}`;
 	if (language === "es") return `${count} ${count === 1 ? "gasto" : "gastos"}`;
 	return `${count} ${expenseWord(count)}`;
+};
+const categoryCountText = (count: number, language: UILanguage) => {
+	if (language === "en")
+		return `${count} ${count === 1 ? "category" : "categories"}`;
+	if (language === "es")
+		return `${count} ${count === 1 ? "categoría" : "categorías"}`;
+	const word =
+		count % 10 === 1 && count % 100 !== 11
+			? "категория"
+			: count % 10 >= 2 &&
+					count % 10 <= 4 &&
+					(count % 100 < 10 || count % 100 >= 20)
+				? "категории"
+				: "категорий";
+	return `${count} ${word}`;
 };
 const expenseWord = (count: number) =>
 	count % 10 === 1 && count % 100 !== 11

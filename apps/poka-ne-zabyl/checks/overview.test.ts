@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
 	expensesForMonth,
+	homeCategoryBreakdown,
 	homeCategoryDistribution,
 	homeCategoryRows,
 } from "../src/overview.ts";
@@ -109,4 +110,40 @@ test("keeps category shares coherent when category totals exceed the headline to
 			{ id: 3, homeShare: 10 },
 		],
 	);
+});
+
+test("summarizes every category outside the featured group", () => {
+	const breakdown = homeCategoryBreakdown(
+		[
+			{ id: 1, homeAmount: 3200 },
+			{ id: 2, homeAmount: 1400 },
+			{ id: 3, homeAmount: 900 },
+			{ id: 4, homeAmount: 350 },
+			{ id: 5, homeAmount: 150 },
+			{ id: 6, homeAmount: 0 },
+		],
+		6000,
+	);
+
+	assert.deepEqual(
+		breakdown.featured.map(({ id }) => id),
+		[1, 2, 3],
+	);
+	assert.deepEqual(
+		breakdown.remainder?.categories.map(({ id }) => id),
+		[4, 5],
+	);
+	assert.equal(breakdown.remainder?.homeAmount, 500);
+	assert.ok(Math.abs((breakdown.remainder?.homeShare || 0) - 500 / 60) < 1e-9);
+
+	const remainderOnly = homeCategoryBreakdown(
+		[
+			{ id: 4, homeAmount: 350 },
+			{ id: 5, homeAmount: 150 },
+		],
+		6000,
+		0,
+	);
+	assert.deepEqual(remainderOnly.featured, []);
+	assert.equal(remainderOnly.remainder?.homeAmount, 500);
 });

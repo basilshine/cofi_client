@@ -28,6 +28,15 @@ export type HomeCategoryDistributionRow<T> = T & {
 	homeShare: number;
 };
 
+export type HomeCategoryBreakdown<T> = {
+	featured: HomeCategoryDistributionRow<T>[];
+	remainder: {
+		categories: HomeCategoryDistributionRow<T>[];
+		homeAmount: number;
+		homeShare: number;
+	} | null;
+};
+
 export const homeCategoryRows = <T extends CategoryOverviewInput>(
 	categories: T[],
 	maxRows = 5,
@@ -70,19 +79,42 @@ export const homeCategoryDistribution = <T extends { homeAmount: number }>(
 	total: number,
 	maxRows = 3,
 ): HomeCategoryDistributionRow<T>[] => {
-	if (maxRows <= 0) return [];
+	return homeCategoryBreakdown(categories, total, maxRows).featured;
+};
+
+export const homeCategoryBreakdown = <T extends { homeAmount: number }>(
+	categories: T[],
+	total: number,
+	maxRows = 3,
+): HomeCategoryBreakdown<T> => {
 	const categorizedTotal = categories.reduce(
 		(sum, category) => sum + Math.max(0, category.homeAmount),
 		0,
 	);
 	const denominator = Math.max(total, categorizedTotal);
-	if (denominator <= 0) return [];
-	return [...categories]
+	if (denominator <= 0) return { featured: [], remainder: null };
+	const distribution = [...categories]
 		.filter((category) => category.homeAmount > 0)
 		.sort((left, right) => right.homeAmount - left.homeAmount)
-		.slice(0, maxRows)
 		.map((category) => ({
 			...category,
 			homeShare: Math.min(100, (category.homeAmount / denominator) * 100),
 		}));
+	const featured = maxRows > 0 ? distribution.slice(0, maxRows) : [];
+	const remainderCategories = distribution.slice(Math.max(0, maxRows));
+	const remainderAmount = remainderCategories.reduce(
+		(sum, category) => sum + category.homeAmount,
+		0,
+	);
+	return {
+		featured,
+		remainder:
+			remainderCategories.length > 0
+				? {
+						categories: remainderCategories,
+						homeAmount: remainderAmount,
+						homeShare: Math.min(100, (remainderAmount / denominator) * 100),
+					}
+				: null,
+	};
 };
