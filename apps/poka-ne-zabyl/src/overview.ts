@@ -28,6 +28,12 @@ export type HomeCategoryDistributionRow<T> = T & {
 	homeShare: number;
 };
 
+export type HomeCategoryRemainder<T> = {
+	categories: T[];
+	homeAmount: number;
+	homeShare: number;
+};
+
 export const homeCategoryRows = <T extends CategoryOverviewInput>(
 	categories: T[],
 	maxRows = 5,
@@ -85,4 +91,42 @@ export const homeCategoryDistribution = <T extends { homeAmount: number }>(
 			...category,
 			homeShare: Math.min(100, (category.homeAmount / denominator) * 100),
 		}));
+};
+
+export const homeCategoryRemainder = <
+	T extends { id: number; homeAmount: number },
+>(
+	allCategories: T[],
+	visibleCategories: Pick<T, "id">[],
+	total: number,
+): HomeCategoryRemainder<T> | null => {
+	const visibleIDs = new Set(visibleCategories.map(({ id }) => id));
+	const categories = allCategories.filter(
+		(category) =>
+			Number.isFinite(category.homeAmount) &&
+			category.homeAmount > 0 &&
+			!visibleIDs.has(category.id),
+	);
+	if (categories.length === 0) return null;
+	const categorizedTotal = allCategories.reduce(
+		(sum, category) =>
+			sum +
+			(Number.isFinite(category.homeAmount)
+				? Math.max(0, category.homeAmount)
+				: 0),
+		0,
+	);
+	const denominator = Math.max(
+		Number.isFinite(total) ? Math.max(0, total) : 0,
+		categorizedTotal,
+	);
+	const homeAmount = categories.reduce(
+		(sum, category) => sum + category.homeAmount,
+		0,
+	);
+	return {
+		categories,
+		homeAmount,
+		homeShare: denominator > 0 ? (homeAmount / denominator) * 100 : 0,
+	};
 };

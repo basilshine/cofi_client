@@ -3,6 +3,7 @@ import test from "node:test";
 import {
 	expensesForMonth,
 	homeCategoryDistribution,
+	homeCategoryRemainder,
 	homeCategoryRows,
 } from "../src/overview.ts";
 
@@ -109,4 +110,25 @@ test("keeps category shares coherent when category totals exceed the headline to
 			{ id: 3, homeShare: 10 },
 		],
 	);
+});
+
+test("summarizes only positive categories hidden after the visible rows", () => {
+	const all = [
+		{ id: 1, homeAmount: 3200 },
+		{ id: 2, homeAmount: 1400 },
+		{ id: 3, homeAmount: 900 },
+		{ id: 4, homeAmount: 350 },
+		{ id: 5, homeAmount: 100 },
+		{ id: 6, homeAmount: 50 },
+		{ id: 7, homeAmount: 0 },
+	];
+	const remainder = homeCategoryRemainder(all, all.slice(0, 5), 6000);
+
+	assert.deepEqual(
+		remainder?.categories.map(({ id }) => id),
+		[6],
+	);
+	assert.equal(remainder?.homeAmount, 50);
+	assert.ok(Math.abs((remainder?.homeShare || 0) - 50 / 60) < 1e-9);
+	assert.equal(homeCategoryRemainder(all, all, 6000), null);
 });
