@@ -1037,12 +1037,12 @@
 .mini-home-folder {
 	--folder-accent: var(--mini-green);
 	--folder-signal: var(--folder-accent);
+	--folder-header: color-mix(in srgb, var(--folder-accent) 5%, var(--mini-soft));
 	position: relative;
 	display: grid;
 	min-width: 0;
 	border-bottom: 1px solid var(--mini-line);
-	background: transparent;
-	transition: background-color 180ms ease;
+	background: var(--mini-paper);
 }
 .mini-home-folder-stack {
 	display: grid;
@@ -1598,9 +1598,6 @@
 	--folder-signal: var(--mini-red);
 	--folder-accent: var(--mini-red);
 }
-.mini-home-folder.is-open {
-	background: color-mix(in srgb, var(--folder-accent) 2.5%, var(--mini-paper));
-}
 .mini-home-folder-toggle {
 	display: grid;
 	width: 100%;
@@ -1610,9 +1607,15 @@
 	gap: 11px;
 	padding: 11px 12px 11px 14px;
 	border: 0;
-	background: transparent;
+	background: var(--folder-header);
 	color: var(--mini-ink);
 	text-align: left;
+	transition: background-color 180ms ease, box-shadow 180ms ease;
+}
+.mini-home-folder.is-open > .mini-home-folder-toggle {
+	background: color-mix(in srgb, var(--folder-accent) 10%, var(--mini-soft));
+	box-shadow: inset 0 -1px 0
+		color-mix(in srgb, var(--folder-accent) 22%, var(--mini-line));
 }
 .mini-home-folder-toggle:focus-visible {
 	outline: 2px solid color-mix(in srgb, var(--folder-accent) 55%, transparent);
@@ -1701,10 +1704,11 @@
 .mini-home-folder-panel {
 	display: grid;
 	gap: 7px;
-	padding: 2px 14px 12px;
-	border-top: 1px solid
-		color-mix(in srgb, var(--folder-accent) 10%, var(--mini-line));
-	background: color-mix(in srgb, var(--folder-accent) 2%, var(--mini-paper));
+	padding: 6px 14px 12px;
+	border-top: 0;
+	background: var(--mini-paper);
+	box-shadow: inset 0 9px 16px -18px
+		color-mix(in srgb, var(--folder-accent) 55%, transparent);
 	animation: mini-home-folder-open 180ms ease-out;
 }
 .mini-home-folder-action {
