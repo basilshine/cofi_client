@@ -5,6 +5,7 @@ import {
 	homeCategoryDistribution,
 	homeCategoryRemainder,
 	homeCategoryRows,
+	homePlanOverview,
 } from "../src/overview.ts";
 
 test("keeps only expenses from the selected calendar month", () => {
@@ -131,4 +132,26 @@ test("summarizes only positive categories hidden after the visible rows", () => 
 	assert.equal(remainder?.homeAmount, 50);
 	assert.ok(Math.abs((remainder?.homeShare || 0) - 50 / 60) < 1e-9);
 	assert.equal(homeCategoryRemainder(all, all, 6000), null);
+});
+
+test("keeps five upcoming plans and summarizes the remaining amount", () => {
+	const plans = Array.from({ length: 7 }, (_, index) => ({
+		id: index + 1,
+		amount: index === 5 ? Number.NaN : (index + 1) * 100,
+	}));
+	const overview = homePlanOverview(plans, (plan) => plan.amount);
+
+	assert.deepEqual(
+		overview.plans.map(({ id }) => id),
+		[1, 2, 3, 4, 5],
+	);
+	assert.deepEqual(
+		overview.remainder?.plans.map(({ id }) => id),
+		[6, 7],
+	);
+	assert.equal(overview.remainder?.homeAmount, 700);
+	assert.equal(
+		homePlanOverview(plans.slice(0, 5), (plan) => plan.amount).remainder,
+		null,
+	);
 });

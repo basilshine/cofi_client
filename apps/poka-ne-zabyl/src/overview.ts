@@ -34,6 +34,14 @@ export type HomeCategoryRemainder<T> = {
 	homeShare: number;
 };
 
+export type HomePlanOverview<T> = {
+	plans: T[];
+	remainder: {
+		plans: T[];
+		homeAmount: number;
+	} | null;
+};
+
 export const homeCategoryRows = <T extends CategoryOverviewInput>(
 	categories: T[],
 	maxRows = 5,
@@ -128,5 +136,28 @@ export const homeCategoryRemainder = <
 		categories,
 		homeAmount,
 		homeShare: denominator > 0 ? (homeAmount / denominator) * 100 : 0,
+	};
+};
+
+export const homePlanOverview = <T>(
+	plans: T[],
+	amountForPlan: (plan: T) => number,
+	maxRows = 5,
+): HomePlanOverview<T> => {
+	const limit = Number.isFinite(maxRows) ? Math.max(0, Math.floor(maxRows)) : 5;
+	const visiblePlans = plans.slice(0, limit);
+	const remainderPlans = plans.slice(limit);
+	if (remainderPlans.length === 0) {
+		return { plans: visiblePlans, remainder: null };
+	}
+	return {
+		plans: visiblePlans,
+		remainder: {
+			plans: remainderPlans,
+			homeAmount: remainderPlans.reduce((sum, plan) => {
+				const amount = amountForPlan(plan);
+				return sum + (Number.isFinite(amount) ? Math.max(0, amount) : 0);
+			}, 0),
+		},
 	};
 };

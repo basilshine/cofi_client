@@ -188,6 +188,7 @@ import {
 	homeCategoryDistribution,
 	homeCategoryRemainder,
 	homeCategoryRows,
+	homePlanOverview,
 } from "./overview";
 import { appendUniquePage, nextPageOffset } from "./paged-list";
 import { periodReportTrend } from "./period-report";
@@ -2146,6 +2147,66 @@ const previewPlans: PurchasePlan[] = [
 				category_id: 5,
 			},
 		],
+	},
+	{
+		id: 3,
+		tenant_id: 1,
+		space_id: 1,
+		created_by_user_id: 1,
+		title: "Продукты на выходные",
+		expected_amount: 3600,
+		currency: "RUB",
+		category_id: 1,
+		due_date: isoDay(1),
+		status: "planned",
+	},
+	{
+		id: 4,
+		tenant_id: 1,
+		space_id: 1,
+		created_by_user_id: 2,
+		title: "Корм для питомца",
+		expected_amount: 2100,
+		currency: "RUB",
+		category_id: 2,
+		due_date: isoDay(3),
+		status: "planned",
+	},
+	{
+		id: 5,
+		tenant_id: 1,
+		space_id: 1,
+		created_by_user_id: 1,
+		title: "Проездной",
+		expected_amount: 3200,
+		currency: "RUB",
+		category_id: 4,
+		due_date: isoDay(5),
+		status: "planned",
+	},
+	{
+		id: 6,
+		tenant_id: 1,
+		space_id: 1,
+		created_by_user_id: 1,
+		title: "Аптечка",
+		expected_amount: 1750,
+		currency: "RUB",
+		category_id: 6,
+		due_date: isoDay(8),
+		status: "planned",
+	},
+	{
+		id: 7,
+		tenant_id: 1,
+		space_id: 1,
+		created_by_user_id: 2,
+		title: "Наполнитель",
+		expected_amount: 980,
+		currency: "RUB",
+		category_id: 2,
+		due_date: isoDay(12),
+		status: "planned",
 	},
 ];
 const previewVendors: Vendor[] = [
@@ -14159,13 +14220,31 @@ const Overview = ({
 	);
 	const monthName = month.slice(0, 1).toUpperCase() + month.slice(1);
 	const planSeries = collapsePurchasePlanSeries(plans);
-	const upcomingPlans = [...planSeries]
-		.sort((left, right) => {
-			if (!left.due_date) return 1;
-			if (!right.due_date) return -1;
-			return left.due_date.localeCompare(right.due_date);
-		})
-		.slice(0, 3);
+	const sortedPlans = [...planSeries].sort((left, right) => {
+		if (!left.due_date) return 1;
+		if (!right.due_date) return -1;
+		return left.due_date.localeCompare(right.due_date);
+	});
+	const planOverview = homePlanOverview(
+		sortedPlans,
+		(plan) => planDisplayMoney(plan, currency).amount,
+	);
+	const upcomingPlans = planOverview.plans;
+	const remainingPlans = planOverview.remainder;
+	const remainingPlanCategories = remainingPlans
+		? Array.from(
+				new Set(
+					remainingPlans.plans.flatMap((plan) =>
+						visiblePlanCategoryIDs(plan.category_id, purchasePlanItems(plan)),
+					),
+				),
+			)
+				.map((categoryID) =>
+					categoryCatalog.find((category) => category.id === categoryID),
+				)
+				.filter((category): category is Category => Boolean(category))
+				.slice(0, 3)
+		: [];
 	const overduePlans = partitionOverduePurchasePlans(
 		planSeries,
 		localISODate(),
@@ -14203,7 +14282,7 @@ const Overview = ({
 	const homePlanSummary = [
 		uiText(language, "homeUpcomingCount").replace(
 			"{count}",
-			String(upcomingPlans.length),
+			String(sortedPlans.length),
 		),
 		todayPlanCount > 0
 			? `${uiText(language, "periodToday")}: ${todayPlanCount}`
@@ -14520,7 +14599,7 @@ const Overview = ({
 									</div>
 								</HomeFolder>
 							)}
-							{upcomingPlans.length > 0 && (
+							{sortedPlans.length > 0 && (
 								<HomeFolder
 									id="plans"
 									language={language}
@@ -14533,7 +14612,9 @@ const Overview = ({
 									critical={overduePlanCount > 0}
 									attentionCount={planActionCount}
 									onToggle={() => toggleFolder("plans")}
-									actionLabel={uiText(language, "viewAll")}
+									actionLabel={
+										remainingPlans ? undefined : uiText(language, "viewAll")
+									}
 									onAction={() => onPlans()}
 								>
 									<div className="mini-home-plan-list">
@@ -14565,6 +14646,53 @@ const Overview = ({
 												/>
 											);
 										})}
+										{remainingPlans && (
+											<button
+												className="mini-home-plan-more"
+												type="button"
+												aria-label={`${uiText(language, "homeOtherPlans")}, ${planCountText(remainingPlans.plans.length, language)}, ${formatMoney(remainingPlans.homeAmount, currency)}. ${uiText(language, "viewAll")}`}
+												onClick={() => onPlans()}
+											>
+												<span
+													className="mini-home-plan-more-icons"
+													aria-hidden="true"
+												>
+													{remainingPlanCategories.length > 0 ? (
+														remainingPlanCategories.map((category) => (
+															<CategoryIconBadge
+																key={category.id}
+																category={category}
+																language={language}
+																size={14}
+																compact
+															/>
+														))
+													) : (
+														<span className="mini-home-plan-more-fallback">
+															<ShoppingBagOpen size={18} weight="bold" />
+														</span>
+													)}
+												</span>
+												<span className="mini-home-plan-more-copy">
+													<b>{uiText(language, "homeOtherPlans")}</b>
+													<small>
+														{planCountText(
+															remainingPlans.plans.length,
+															language,
+														)}
+													</small>
+												</span>
+												<span className="mini-home-plan-more-action">
+													<strong>
+														{formatMoney(remainingPlans.homeAmount, currency)}
+													</strong>
+													<small>
+														{uiText(language, "viewAll")}
+														<ArrowRight size={13} weight="bold" />
+													</small>
+												</span>
+											</button>
+										)}
 									</div>
 								</HomeFolder>
 							)}
@@ -30188,6 +30316,19 @@ const categoryCountText = (count: number, language: UILanguage) => {
 					(count % 100 < 10 || count % 100 >= 20)
 				? "категории"
 				: "категорий";
+	return `${count} ${word}`;
+};
+const planCountText = (count: number, language: UILanguage) => {
+	if (language === "en") return `${count} ${count === 1 ? "plan" : "plans"}`;
+	if (language === "es") return `${count} ${count === 1 ? "plan" : "planes"}`;
+	const word =
+		count % 10 === 1 && count % 100 !== 11
+			? "план"
+			: count % 10 >= 2 &&
+					count % 10 <= 4 &&
+					(count % 100 < 10 || count % 100 >= 20)
+				? "плана"
+				: "планов";
 	return `${count} ${word}`;
 };
 const expenseWord = (count: number) =>
