@@ -50,6 +50,7 @@ import {
 } from "@phosphor-icons/react";
 import WebApp from "@twa-dev/sdk";
 import {
+	type CSSProperties,
 	type FormEvent,
 	type ReactNode,
 	type PointerEvent as ReactPointerEvent,
@@ -184,6 +185,7 @@ import {
 } from "./notification-inbox";
 import {
 	type HomeCategoryRow,
+	categoryChartRows,
 	expensesForMonth,
 	homeCategoryDistribution,
 	homeCategoryRemainder,
@@ -18214,8 +18216,7 @@ const CategoriesView = ({
 	onUpgrade: () => void;
 	onAdd: () => void;
 }) => {
-	const summaryRef = useRef<HTMLElement>(null);
-	const [summaryCompact, setSummaryCompact] = useState(false);
+	const [summaryCollapsed, setSummaryCollapsed] = useState(false);
 	const customCategoryCount = categories.filter(
 		(category) => !category.is_system && !category.is_preset,
 	).length;
@@ -18242,29 +18243,27 @@ const CategoriesView = ({
 		year: "numeric",
 	}).format(new Date(`${shiftCategoryMonth(month, 1)}-01T12:00:00`));
 	const summaryOverLimit = summary.limit > 0 && summary.remaining < 0;
-	useEffect(() => {
-		let frame = 0;
-		const updateSummaryState = () => {
-			cancelAnimationFrame(frame);
-			frame = requestAnimationFrame(() => {
-				const element = summaryRef.current;
-				if (!element) return;
-				const stickyTop = Number.parseFloat(getComputedStyle(element).top) || 0;
-				setSummaryCompact(
-					(document.scrollingElement?.scrollTop || window.scrollY) > 0 &&
-						element.getBoundingClientRect().top <= stickyTop + 1,
-				);
-			});
+	const chart = categoryChartRows(
+		categories,
+		(category) => categoryDisplayAmounts(category, currency).monthSpent,
+	);
+	const chartColors = ["#2945c7", "#21a875", "#d49b35", "#d46057", "#8f96aa"];
+	let chartOffset = 0;
+	const chartRows = chart.rows.map((row, index) => {
+		const start = chartOffset;
+		chartOffset += row.share;
+		return {
+			...row,
+			color: chartColors[index % chartColors.length],
+			start,
+			end: chartOffset,
 		};
-		updateSummaryState();
-		window.addEventListener("scroll", updateSummaryState, { passive: true });
-		window.addEventListener("resize", updateSummaryState);
-		return () => {
-			cancelAnimationFrame(frame);
-			window.removeEventListener("scroll", updateSummaryState);
-			window.removeEventListener("resize", updateSummaryState);
-		};
-	}, []);
+	});
+	const chartBackground = chartRows.length
+		? `conic-gradient(${chartRows
+				.map((row) => `${row.color} ${row.start}% ${row.end}%`)
+				.join(", ")})`
+		: "var(--mini-line)";
 	const orderedCategories = [...categories].sort((left, right) => {
 		const leftAmounts = categoryDisplayAmounts(left, currency);
 		const rightAmounts = categoryDisplayAmounts(right, currency);
@@ -18287,90 +18286,178 @@ const CategoriesView = ({
 			</div>
 			<p className="mini-intro">{uiText(language, "categoriesIntro")}</p>
 			<section
-				ref={summaryRef}
-				className={`mini-category-summary${summaryOverLimit ? " is-over" : ""}${loading ? " is-loading" : ""}${summaryCompact ? " is-compact" : ""}`}
+				className={`mini-category-summary${summaryOverLimit ? " is-over" : ""}${loading ? " is-loading" : ""}${summaryCollapsed ? " is-collapsed" : ""}`}
 				aria-busy={loading}
 			>
-				<div className="mini-category-period">
-					<button
-						type="button"
-						aria-label={uiText(language, "previousMonth")}
-						onClick={() => onMonth(shiftCategoryMonth(month, -1))}
-					>
-						<CaretLeft size={18} weight="bold" />
-					</button>
+				<header className="mini-category-summary-head">
 					<span>
-						<small>{uiText(language, "categoryPeriod")}</small>
-						<b>{monthLabel}</b>
-					</span>
-					<button
-						type="button"
-						aria-label={uiText(language, "nextMonth")}
-						onClick={() => onMonth(shiftCategoryMonth(month, 1))}
-					>
-						<CaretRight size={18} weight="bold" />
-					</button>
-				</div>
-				<div className="mini-category-summary-metrics">
-					<span>
-						<small>{uiText(language, "spentInPeriod")}</small>
-						<strong>{formatMoney(summary.spent, currency)}</strong>
-					</span>
-					<span>
-						<small>{uiText(language, "totalMonthlyLimit")}</small>
-						<strong>
-							{summary.limit > 0
-								? formatMoney(summary.limit, currency)
-								: uiText(language, "noMonthlyLimit")}
-						</strong>
-					</span>
-					<span>
+						<b>{uiText(language, "categorySpendingTitle")}</b>
 						<small>
-							{uiText(
-								language,
-								summaryOverLimit ? "overLimitBy" : "remainingFromLimit",
-							)}
+							{summaryCollapsed
+								? `${monthLabel} · ${formatMoney(summary.spent, currency)}`
+								: uiText(language, "categorySpendingHint")}
 						</small>
-						<strong>
-							{summary.limit > 0
-								? formatMoney(Math.abs(summary.remaining), currency)
-								: "—"}
-						</strong>
 					</span>
-				</div>
-				{summary.limit > 0 && (
-					<span className="mini-category-summary-progress" aria-hidden="true">
-						<i
-							style={{
-								width: `${Math.min(100, (summary.spent / summary.limit) * 100)}%`,
-							}}
-						/>
-					</span>
-				)}
-				{categoryBudgetCount > 0 && (
-					<small className="mini-category-summary-note">
-						{uiText(language, "limitsForThisMonth")}
-					</small>
-				)}
-				{canManageBudgets && categoryBudgetCount > 0 && (
 					<button
-						className="mini-category-clone"
 						type="button"
-						disabled={cloneLoading}
-						onClick={onCloneNext}
+						aria-expanded={!summaryCollapsed}
+						aria-controls="category-spending-summary"
+						aria-label={uiText(
+							language,
+							summaryCollapsed
+								? "expandCategorySpending"
+								: "collapseCategorySpending",
+						)}
+						onClick={() => setSummaryCollapsed((current) => !current)}
 					>
-						<Copy size={17} />
-						<span>
-							<strong>
-								{uiText(
-									language,
-									cloneLoading ? "cloningBudgets" : "cloneBudgets",
-								)}
-							</strong>
-							<small>{nextMonthLabel}</small>
-						</span>
-						<ArrowRight size={16} />
+						<CaretDown size={18} weight="bold" />
 					</button>
+				</header>
+				{!summaryCollapsed && (
+					<div
+						className="mini-category-summary-panel"
+						id="category-spending-summary"
+					>
+						<div className="mini-category-period">
+							<button
+								type="button"
+								aria-label={uiText(language, "previousMonth")}
+								onClick={() => onMonth(shiftCategoryMonth(month, -1))}
+							>
+								<CaretLeft size={18} weight="bold" />
+							</button>
+							<span>
+								<small>{uiText(language, "categoryPeriod")}</small>
+								<b>{monthLabel}</b>
+							</span>
+							<button
+								type="button"
+								aria-label={uiText(language, "nextMonth")}
+								onClick={() => onMonth(shiftCategoryMonth(month, 1))}
+							>
+								<CaretRight size={18} weight="bold" />
+							</button>
+						</div>
+						{chartRows.length > 0 ? (
+							<div className="mini-category-distribution">
+								<div
+									className="mini-category-donut"
+									style={{ background: chartBackground } as CSSProperties}
+									role="img"
+									aria-label={chartRows
+										.map((row) => {
+											const name = row.category
+												? localizedCategoryName(row.category, language)
+												: uiText(language, "categorySpendingOther");
+											return `${name}: ${Math.round(row.share)}%`;
+										})
+										.join(", ")}
+								>
+									<span>
+										<small>{uiText(language, "spentInPeriod")}</small>
+										<strong>{formatCompactMoney(chart.total, currency)}</strong>
+									</span>
+								</div>
+								<div className="mini-category-distribution-legend">
+									{chartRows.map((row) => {
+										const category = row.category;
+										const name = category
+											? localizedCategoryName(category, language)
+											: uiText(language, "categorySpendingOther");
+										return category ? (
+											<button
+												type="button"
+												key={category.id}
+												onClick={() => onOpen(category.id)}
+											>
+												<i style={{ background: row.color }} />
+												<span>
+													<b>{name}</b>
+													<small>{Math.round(row.share)}%</small>
+												</span>
+												<strong>{formatMoney(row.amount, currency)}</strong>
+											</button>
+										) : (
+											<div key="other-categories">
+												<i style={{ background: row.color }} />
+												<span>
+													<b>{name}</b>
+													<small>{Math.round(row.share)}%</small>
+												</span>
+												<strong>{formatMoney(row.amount, currency)}</strong>
+											</div>
+										);
+									})}
+								</div>
+							</div>
+						) : (
+							<Empty text={uiText(language, "noExpensesThisMonth")} />
+						)}
+						<div className="mini-category-summary-metrics">
+							<span>
+								<small>{uiText(language, "spentInPeriod")}</small>
+								<strong>{formatMoney(summary.spent, currency)}</strong>
+							</span>
+							<span>
+								<small>{uiText(language, "totalMonthlyLimit")}</small>
+								<strong>
+									{summary.limit > 0
+										? formatMoney(summary.limit, currency)
+										: uiText(language, "noMonthlyLimit")}
+								</strong>
+							</span>
+							<span>
+								<small>
+									{uiText(
+										language,
+										summaryOverLimit ? "overLimitBy" : "remainingFromLimit",
+									)}
+								</small>
+								<strong>
+									{summary.limit > 0
+										? formatMoney(Math.abs(summary.remaining), currency)
+										: "—"}
+								</strong>
+							</span>
+						</div>
+						{summary.limit > 0 && (
+							<span
+								className="mini-category-summary-progress"
+								aria-hidden="true"
+							>
+								<i
+									style={{
+										width: `${Math.min(100, (summary.spent / summary.limit) * 100)}%`,
+									}}
+								/>
+							</span>
+						)}
+						{categoryBudgetCount > 0 && (
+							<small className="mini-category-summary-note">
+								{uiText(language, "limitsForThisMonth")}
+							</small>
+						)}
+						{canManageBudgets && categoryBudgetCount > 0 && (
+							<button
+								className="mini-category-clone"
+								type="button"
+								disabled={cloneLoading}
+								onClick={onCloneNext}
+							>
+								<Copy size={17} />
+								<span>
+									<strong>
+										{uiText(
+											language,
+											cloneLoading ? "cloningBudgets" : "cloneBudgets",
+										)}
+									</strong>
+									<small>{nextMonthLabel}</small>
+								</span>
+								<ArrowRight size={16} />
+							</button>
+						)}
+					</div>
 				)}
 			</section>
 			{showBasicLimits && quota && (

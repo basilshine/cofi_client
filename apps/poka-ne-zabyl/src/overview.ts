@@ -42,6 +42,17 @@ export type HomePlanOverview<T> = {
 	} | null;
 };
 
+export type CategoryChartRow<T> = {
+	category: T | null;
+	amount: number;
+	share: number;
+};
+
+export type CategoryChart<T> = {
+	rows: CategoryChartRow<T>[];
+	total: number;
+};
+
 export const homeCategoryRows = <T extends CategoryOverviewInput>(
 	categories: T[],
 	maxRows = 5,
@@ -160,4 +171,37 @@ export const homePlanOverview = <T>(
 			}, 0),
 		},
 	};
+};
+
+export const categoryChartRows = <T>(
+	categories: T[],
+	amountForCategory: (category: T) => number,
+	maxRows = 5,
+): CategoryChart<T> => {
+	const limit = Number.isFinite(maxRows) ? Math.max(1, Math.floor(maxRows)) : 5;
+	const ranked = categories
+		.map((category) => ({ category, amount: amountForCategory(category) }))
+		.filter(({ amount }) => Number.isFinite(amount) && amount > 0)
+		.sort((left, right) => right.amount - left.amount);
+	const total = ranked.reduce((sum, row) => sum + row.amount, 0);
+	if (total <= 0) return { rows: [], total: 0 };
+
+	const visibleCount = ranked.length > limit ? limit - 1 : limit;
+	const visible = ranked.slice(0, visibleCount);
+	const remainderAmount = ranked
+		.slice(visibleCount)
+		.reduce((sum, row) => sum + row.amount, 0);
+	const rows: CategoryChartRow<T>[] = visible.map(({ category, amount }) => ({
+		category,
+		amount,
+		share: (amount / total) * 100,
+	}));
+	if (remainderAmount > 0) {
+		rows.push({
+			category: null,
+			amount: remainderAmount,
+			share: (remainderAmount / total) * 100,
+		});
+	}
+	return { rows, total };
 };

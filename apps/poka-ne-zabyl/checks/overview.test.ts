@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+	categoryChartRows,
 	expensesForMonth,
 	homeCategoryDistribution,
 	homeCategoryRemainder,
@@ -153,5 +154,38 @@ test("keeps five upcoming plans and summarizes the remaining amount", () => {
 	assert.equal(
 		homePlanOverview(plans.slice(0, 5), (plan) => plan.amount).remainder,
 		null,
+	);
+});
+
+test("builds a compact category chart with an aggregated remainder", () => {
+	const chart = categoryChartRows(
+		[
+			{ id: 1, amount: 5000 },
+			{ id: 2, amount: 3000 },
+			{ id: 3, amount: 1200 },
+			{ id: 4, amount: 600 },
+			{ id: 5, amount: 200 },
+			{ id: 6, amount: Number.NaN },
+		],
+		(category) => category.amount,
+		4,
+	);
+
+	assert.equal(chart.total, 10000);
+	assert.deepEqual(
+		chart.rows.map((row) => ({
+			id: row.category?.id || null,
+			amount: row.amount,
+		})),
+		[
+			{ id: 1, amount: 5000 },
+			{ id: 2, amount: 3000 },
+			{ id: 3, amount: 1200 },
+			{ id: null, amount: 800 },
+		],
+	);
+	assert.equal(
+		Math.round(chart.rows.reduce((sum, row) => sum + row.share, 0)),
+		100,
 	);
 });
