@@ -30,8 +30,7 @@
 		"preview:telegram": "npm run preview --workspace apps/telegram-webapp",
 		"preview:web": "npm run preview --workspace apps/web",
 		"gen:types": "node ./scripts/gen-types.mjs",
-		"prepare": "husky && node ./scripts/patch-husky-shims.mjs",
-		"deploy": "gh-pages -d apps/web/dist"
+		"prepare": "husky && node ./scripts/patch-husky-shims.mjs"
 	},
 	"keywords": [],
 	"author": "",
@@ -82,20 +81,15 @@
 		"@types/react-dom": "^18.2.19",
 		"@vitejs/plugin-react": "^4.2.1",
 		"autoprefixer": "^10.4.17",
-		"gh-pages": "^6.3.0",
 		"husky": "^9.1.7",
-		"lint-staged": "^15.5.2",
 		"openapi-typescript": "7.13.0",
 		"postcss": "^8.5.26",
-		"tailwindcss": "^3.4.1",
+		"tailwindcss": "^3.4.19",
 		"typescript": "^5.3.3",
 		"vite": "^6.3.5"
 	},
 	"overrides": {
-		"js-yaml": "^4.3.2"
-	},
-	"lint-staged": {
-		"*.{js,jsx,ts,tsx}": ["biome check", "biome format --write"],
-		"*.{json,css,md}": ["biome format --write"]
+		"js-yaml": "^4.3.2",
+		"postcss-selector-parser": "^7.1.6"
 	}
 }
