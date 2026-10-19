@@ -408,7 +408,7 @@ export const ActivityListCard = ({
 	const isSpaceWarm = surfaceVariant === "spaceWarm";
 	const isGlobalScope = scope === "global";
 	const surfaceSectionClass = isSpaceWarm
-		? "rounded-2xl border border-[rgba(95,105,125,0.18)] bg-gradient-to-b from-[#fdfcfa] to-[#f7f5f2] text-card-foreground shadow-[0_10px_32px_-24px_rgba(45,42,38,0.2)] transition-shadow duration-150 hover:shadow-[0_14px_36px_-22px_rgba(45,42,38,0.22)]"
+		? "rounded-2xl border border-[rgba(95,105,125,0.18)] bg-linear-to-b from-[#fdfcfa] to-[#f7f5f2] text-card-foreground shadow-[0_10px_32px_-24px_rgba(45,42,38,0.2)] transition-shadow duration-150 hover:shadow-[0_14px_36px_-22px_rgba(45,42,38,0.22)]"
 		: `${sectionCard} transition-shadow duration-150 hover:shadow-[0_12px_28px_-20px_rgba(31,37,35,0.12)]`;
 	const [expandedId, setExpandedId] = useState<string | number | null>(null);
 
@@ -806,7 +806,7 @@ export const ActivityListCard = ({
 					</h2>
 				</div>
 				<Link
-					className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 bg-background/40 backdrop-blur-sm px-3.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-all duration-150 ease-out hover:-translate-y-px hover:bg-card hover:text-foreground hover:shadow-sm active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+					className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 bg-background/40 backdrop-blur-xs px-3.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-all duration-150 ease-out hover:-translate-y-px hover:bg-card hover:text-foreground hover:shadow-xs active:translate-y-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 					to={ctaTo}
 				>
 					{ctaLabel}
@@ -914,17 +914,17 @@ export const ActivityListCard = ({
 														key={`${String(item.id)}-attention-divider`}
 													>
 														<div className="flex items-center gap-3 px-1">
-															<span className="h-px flex-1 bg-gradient-to-r from-transparent via-[rgba(140,115,85,0.22)] to-transparent" />
+															<span className="h-px flex-1 bg-linear-to-r from-transparent via-[rgba(140,115,85,0.22)] to-transparent" />
 															<span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
 																Recorded
 															</span>
-															<span className="h-px flex-1 bg-gradient-to-l from-transparent via-[rgba(140,115,85,0.22)] to-transparent" />
+															<span className="h-px flex-1 bg-linear-to-l from-transparent via-[rgba(140,115,85,0.22)] to-transparent" />
 														</div>
 													</li>
 												) : null}
 												<li className="relative">
 													<button
-														className={`group w-full cursor-pointer rounded-xl px-2 py-3 text-left transition-[background-color,box-shadow,transform,opacity] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${recentHighlightClass} ${
+														className={`group w-full cursor-pointer rounded-xl px-2 py-3 text-left transition-[background-color,box-shadow,transform,opacity] duration-150 ease-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${recentHighlightClass} ${
 															isSpaceWarm
 																? `hover:-translate-y-px hover:bg-[rgba(255,251,242,0.98)] hover:shadow-[0_10px_26px_-16px_rgba(120,90,50,0.22)] active:translate-y-0 ${urgentRow && !railMuted ? "ring-1 ring-inset ring-[rgba(189,143,64,0.2)]" : ""}`
 																: "hover:-translate-y-px hover:bg-background/45 hover:shadow-[0_8px_18px_-14px_rgba(31,37,35,0.45)] active:translate-y-0"

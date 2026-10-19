@@ -97,7 +97,7 @@ export const ExpenseItemRecurringControls = ({
 							aria-label="Recurring interval for this line"
 							className={
 								isPanel
-									? "h-9 w-full min-w-0 rounded-md border border-border bg-background px-2 text-xs shadow-sm"
+									? "h-9 w-full min-w-0 rounded-md border border-border bg-background px-2 text-xs shadow-xs"
 									: "h-8 max-w-[14rem] rounded-md border border-border bg-background px-2 text-xs"
 							}
 							disabled={disabled}
@@ -121,7 +121,7 @@ export const ExpenseItemRecurringControls = ({
 					{testIntervalsVisible ? (
 						<p className="text-[10px] leading-snug text-muted-foreground">
 							Test cadences need the server to allow them (e.g. development or{" "}
-							<code className="rounded bg-muted px-0.5">
+							<code className="rounded-[4px] bg-muted px-0.5">
 								RECURRING_ALLOW_TEST_INTERVALS
 							</code>
 							).

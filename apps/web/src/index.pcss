@@ -1,0 +1,9 @@
+/*
+ * PostCSS entrypoint for Tailwind-specific directives.
+ * Shared Ceits tokens live in packages/ui so active apps do not depend on the retired root client.
+ */
+@import "tailwindcss" source(none);
+@import "../../../packages/ui/src/tailwind-compat.css";
+@import "../../../packages/ui/src/global.css";
+
+@config "../tailwind.config.cjs";

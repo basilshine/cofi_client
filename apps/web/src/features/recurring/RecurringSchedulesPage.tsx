@@ -41,11 +41,11 @@ const sectionTitle =
 	"font-display text-lg font-bold tracking-tight text-foreground sm:text-xl";
 const sectionEyebrow = "eyebrow";
 const ghostButton =
-	"inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 bg-background/40 px-3.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+	"inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 bg-background/40 px-3.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 const plannerMiniButton =
-	"inline-flex h-8 items-center rounded-md border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+	"inline-flex h-8 items-center rounded-md border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 const formInputClass =
-	"h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+	"h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 const formLabelClass =
 	"text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 const metaPillClass =
@@ -55,7 +55,7 @@ const actionButtonClass =
 const destructiveActionButtonClass =
 	"inline-flex h-8 items-center gap-1.5 rounded-md border border-destructive/40 bg-background px-2.5 text-xs font-medium text-destructive transition hover:bg-destructive/10 disabled:opacity-50";
 const forecastCardBaseClass =
-	"rounded-xl border p-3.5 shadow-sm transition hover:shadow-md";
+	"rounded-xl border p-3.5 shadow-xs transition hover:shadow-md";
 const miniIconClass = "h-3.5 w-3.5";
 
 const showTestRecurringIntervals = () =>
@@ -212,19 +212,19 @@ const forecastTone = (label: ForecastSummary["label"]) => {
 	switch (label) {
 		case "Day":
 			return {
-				card: "border-emerald-500/30 bg-gradient-to-b from-emerald-500/10 to-background",
+				card: "border-emerald-500/30 bg-linear-to-b from-emerald-500/10 to-background",
 				badge: "bg-emerald-500/20 text-emerald-900 dark:text-emerald-100",
 				fill: "bg-emerald-500/70",
 			};
 		case "Month":
 			return {
-				card: "border-sky-500/30 bg-gradient-to-b from-sky-500/10 to-background",
+				card: "border-sky-500/30 bg-linear-to-b from-sky-500/10 to-background",
 				badge: "bg-sky-500/20 text-sky-900 dark:text-sky-100",
 				fill: "bg-sky-500/70",
 			};
 		case "Year":
 			return {
-				card: "border-violet-500/30 bg-gradient-to-b from-violet-500/10 to-background",
+				card: "border-violet-500/30 bg-linear-to-b from-violet-500/10 to-background",
 				badge: "bg-violet-500/20 text-violet-900 dark:text-violet-100",
 				fill: "bg-violet-500/70",
 			};
@@ -1053,7 +1053,7 @@ export const RecurringSchedulesPage = ({
 								return (
 									<button
 										className={[
-											"relative flex h-8 items-center justify-center rounded text-xs transition",
+											"relative flex h-8 items-center justify-center rounded-[4px] text-xs transition",
 											isSelected
 												? "bg-foreground text-background"
 												: isCurrentMonth

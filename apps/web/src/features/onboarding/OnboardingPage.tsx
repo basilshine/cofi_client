@@ -277,7 +277,7 @@ export const OnboardingPage = () => {
 				</motion.div>
 
 				<motion.div
-					className="rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 shadow-sm md:p-8"
+					className="rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 shadow-xs md:p-8"
 					variants={staggerItem}
 				>
 					{inviteHint ? (
@@ -331,7 +331,7 @@ export const OnboardingPage = () => {
 									] as const
 								).map((opt) => (
 									<button
-										className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))] px-4 py-4 text-left transition hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--accent))]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50"
+										className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))] px-4 py-4 text-left transition hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--accent))]/5 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50"
 										disabled={saving}
 										key={opt.id}
 										onClick={() => void handleSelectContext(opt.id)}
@@ -364,7 +364,7 @@ export const OnboardingPage = () => {
 								{purposeChoices.map((opt) => (
 									<button
 										className={[
-											"rounded-xl border px-3 py-3 text-left text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50",
+											"rounded-xl border px-3 py-3 text-left text-sm font-medium transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50",
 											spacePurpose === opt.value
 												? "border-[hsl(var(--accent))] bg-[hsl(var(--accent))]/10 text-[hsl(var(--text-primary))]"
 												: "border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))] text-[hsl(var(--text-primary))] hover:border-[hsl(var(--accent))]/30",
@@ -397,7 +397,7 @@ export const OnboardingPage = () => {
 									Space name
 								</span>
 								<input
-									className="h-11 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))] px-3 text-sm text-[hsl(var(--text-primary))] outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+									className="h-11 rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))] px-3 text-sm text-[hsl(var(--text-primary))] outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
 									id="ob-space-name"
 									onChange={(e) => setSpaceName(e.target.value)}
 									placeholder="e.g. Family Budget"
@@ -414,7 +414,7 @@ export const OnboardingPage = () => {
 										<button
 											aria-pressed={on}
 											className={[
-												"rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]",
+												"rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]",
 												on
 													? "border-[hsl(var(--accent))] bg-[hsl(var(--accent))]/15 text-[hsl(var(--text-primary))]"
 													: "border-[hsl(var(--border-subtle))] text-[hsl(var(--text-secondary))] hover:border-[hsl(var(--accent))]/30",
@@ -436,14 +436,14 @@ export const OnboardingPage = () => {
 							</div>
 							<div className="mt-8 flex flex-wrap gap-3">
 								<button
-									className="h-11 rounded-lg border border-[hsl(var(--border-subtle))] px-4 text-sm font-medium text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--bg))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+									className="h-11 rounded-lg border border-[hsl(var(--border-subtle))] px-4 text-sm font-medium text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--bg))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
 									onClick={handleBack}
 									type="button"
 								>
 									Back
 								</button>
 								<button
-									className="h-11 rounded-lg bg-[hsl(var(--accent))] px-5 text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50"
+									className="h-11 rounded-lg bg-[hsl(var(--accent))] px-5 text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50"
 									disabled={saving}
 									onClick={() => void handleSpaceContinue()}
 									type="button"
@@ -469,7 +469,7 @@ export const OnboardingPage = () => {
 								{CAPTURE_OPTIONS.map((opt) => (
 									<button
 										className={[
-											"rounded-xl border px-4 py-3 text-left text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50",
+											"rounded-xl border px-4 py-3 text-left text-sm font-medium transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50",
 											captureMode === opt.value
 												? "border-[hsl(var(--accent))] bg-[hsl(var(--accent))]/10 text-[hsl(var(--text-primary))]"
 												: "border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))] text-[hsl(var(--text-primary))] hover:border-[hsl(var(--accent))]/30",
@@ -485,14 +485,14 @@ export const OnboardingPage = () => {
 							</div>
 							<div className="mt-8 flex flex-wrap gap-3">
 								<button
-									className="h-11 rounded-lg border border-[hsl(var(--border-subtle))] px-4 text-sm font-medium text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--bg))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+									className="h-11 rounded-lg border border-[hsl(var(--border-subtle))] px-4 text-sm font-medium text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--bg))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
 									onClick={handleBack}
 									type="button"
 								>
 									Back
 								</button>
 								<button
-									className="h-11 rounded-lg bg-[hsl(var(--accent))] px-5 text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50"
+									className="h-11 rounded-lg bg-[hsl(var(--accent))] px-5 text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] disabled:opacity-50"
 									disabled={saving}
 									onClick={() => void handleFinish()}
 									type="button"

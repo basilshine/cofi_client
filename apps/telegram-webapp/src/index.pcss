@@ -1,6 +1,7 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+@import "../../../packages/ui/src/tailwind-compat.css";
+
+@config "../tailwind.config.cjs";
 
 :root {
 	--background: 43 50% 97%;

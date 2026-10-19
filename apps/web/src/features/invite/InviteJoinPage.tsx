@@ -199,7 +199,7 @@ export const InviteJoinPage = () => {
 				</motion.div>
 
 				<motion.div
-					className="mt-8 rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 shadow-sm md:p-8"
+					className="mt-8 rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 shadow-xs md:p-8"
 					variants={staggerItem}
 				>
 					{loading || authLoading ? (
@@ -329,7 +329,7 @@ export const InviteJoinPage = () => {
 										</p>
 									) : null}
 									<button
-										className="flex h-11 w-full items-center justify-center rounded-lg bg-[hsl(var(--accent))] text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+										className="flex h-11 w-full items-center justify-center rounded-lg bg-[hsl(var(--accent))] text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
 										onClick={() =>
 											void apiClient.spaces
 												.acceptInvite(token)
@@ -361,13 +361,13 @@ export const InviteJoinPage = () => {
 							) : (
 								<div className="flex flex-col gap-3">
 									<Link
-										className="flex h-11 w-full items-center justify-center rounded-lg bg-[hsl(var(--accent))] text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+										className="flex h-11 w-full items-center justify-center rounded-lg bg-[hsl(var(--accent))] text-sm font-semibold text-[hsl(var(--accent-contrast))] hover:brightness-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
 										to={`/register${inviteQuery}`}
 									>
 										Create account
 									</Link>
 									<Link
-										className="flex h-11 w-full items-center justify-center rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))] text-sm font-semibold text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--surface))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
+										className="flex h-11 w-full items-center justify-center rounded-lg border border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))] text-sm font-semibold text-[hsl(var(--text-primary))] hover:bg-[hsl(var(--surface))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))]"
 										to={`/login${inviteQuery}`}
 									>
 										Log in

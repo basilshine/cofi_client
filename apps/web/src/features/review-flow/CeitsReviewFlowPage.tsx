@@ -2024,7 +2024,7 @@ export const CeitsReviewFlowPage = () => {
 							/>
 						) : null}
 						{!candidateLoading && !error && capturePackets.length === 0 ? (
-							<section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.9)] px-6 py-8 text-center shadow-sm">
+							<section className="mx-auto mt-8 max-w-2xl rounded-2xl border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.9)] px-6 py-8 text-center shadow-xs">
 								<h2 className="text-2xl font-semibold tracking-tight text-foreground">
 									{hasExpenseReviewFallback
 										? "Capture not found for this expense"
@@ -2091,7 +2091,7 @@ export const CeitsReviewFlowPage = () => {
 								</div>
 							))}
 						</div>
-						<div className="mt-5 rounded-2xl border border-border/70 bg-background/72 p-4 shadow-sm">
+						<div className="mt-5 rounded-2xl border border-border/70 bg-background/72 p-4 shadow-xs">
 							<p className="text-[11px] font-semibold uppercase tracking-[0.13em] text-muted-foreground">
 								Active capture
 							</p>

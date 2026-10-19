@@ -274,7 +274,7 @@ export const SpaceMembersPage = () => {
 
 	const rightRail = (
 		<div className="flex min-h-full flex-col gap-5">
-			<section className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-card/88 p-5 shadow-sm">
+			<section className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-card/88 p-5 shadow-xs">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 					People model
 				</p>
@@ -287,7 +287,7 @@ export const SpaceMembersPage = () => {
 				</p>
 			</section>
 
-			<section className="rounded-2xl border border-[rgba(120,154,124,0.18)] bg-[rgba(247,252,248,0.72)] p-5 shadow-sm">
+			<section className="rounded-2xl border border-[rgba(120,154,124,0.18)] bg-[rgba(247,252,248,0.72)] p-5 shadow-xs">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#365f42]">
 					Invite readiness
 				</p>
@@ -313,7 +313,7 @@ export const SpaceMembersPage = () => {
 				</dl>
 			</section>
 
-			<section className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-[rgba(255,252,246,0.72)] p-5 shadow-sm xl:flex xl:flex-1 xl:flex-col">
+			<section className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-[rgba(255,252,246,0.72)] p-5 shadow-xs xl:flex xl:flex-1 xl:flex-col">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 					Registered access
 				</p>
@@ -399,7 +399,7 @@ export const SpaceMembersPage = () => {
 					</select>
 				</WorkspaceFilterBar>
 				<WorkspaceListBody error={loadError}>
-					<section className="overflow-hidden rounded-2xl border border-[rgba(95,105,125,0.12)] bg-gradient-to-b from-[#faf8f5] to-[#f0ece6] shadow-[0_8px_26px_-22px_rgba(45,48,58,0.1)] ring-1 ring-inset ring-white/50">
+					<section className="overflow-hidden rounded-2xl border border-[rgba(95,105,125,0.12)] bg-linear-to-b from-[#faf8f5] to-[#f0ece6] shadow-[0_8px_26px_-22px_rgba(45,48,58,0.1)] ring-1 ring-inset ring-white/50">
 						<WorkspacePagedList
 							hasMore={participantsHasMore}
 							isLoadingMore={participantsLoadingMore}

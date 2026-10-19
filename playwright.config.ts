@@ -19,7 +19,8 @@ export default defineConfig({
 		trace: "retain-on-failure",
 	},
 	webServer: {
-		command: "npm run dev:web -- --host 127.0.0.1 --port 5174",
+		command:
+			"node node_modules/vite/bin/vite.js apps/web --host 127.0.0.1 --port 5174 --strictPort",
 		reuseExistingServer: true,
 		timeout: 120_000,
 		url: baseURL,

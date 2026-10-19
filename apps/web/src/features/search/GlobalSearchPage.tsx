@@ -185,7 +185,7 @@ const HighlightedText = ({
 				if (tokenSet.has(part.toLowerCase())) {
 					return (
 						<mark
-							className="rounded bg-[rgba(220,170,72,0.28)] px-0.5 text-inherit"
+							className="rounded-[4px] bg-[rgba(220,170,72,0.28)] px-0.5 text-inherit"
 							key={key}
 						>
 							{part}
@@ -265,7 +265,7 @@ const SearchResultRow = ({
 			</div>
 			{sourceCaptureHref ? (
 				<Link
-					className="inline-flex h-8 shrink-0 items-center justify-center rounded-full border border-[rgba(82,72,57,0.16)] bg-white/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-3"
+					className="inline-flex h-8 shrink-0 items-center justify-center rounded-full border border-[rgba(82,72,57,0.16)] bg-white/70 px-3 text-[11px] font-semibold text-foreground transition hover:bg-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:mt-3"
 					to={sourceCaptureHref}
 				>
 					Review capture
@@ -400,13 +400,13 @@ export const GlobalSearchPage = () => {
 						</div>
 					</header>
 
-					<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/72 p-4 shadow-sm">
+					<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/72 p-4 shadow-xs">
 						<label className="flex min-w-0 items-center gap-3 rounded-xl border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.9)] px-3.5 py-3 shadow-inner">
 							<Search className="h-5 w-5 shrink-0 text-muted-foreground" />
 							<input
 								aria-label="Search Ceits"
 								autoComplete="off"
-								className="h-8 min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
+								className="h-8 min-w-0 flex-1 bg-transparent text-base text-foreground outline-hidden placeholder:text-muted-foreground"
 								onChange={(event) => updateSearch({ q: event.target.value })}
 								placeholder="Try a promo code, merchant, item, space, tag..."
 								type="search"
@@ -517,7 +517,7 @@ export const GlobalSearchPage = () => {
 				className="hidden shrink-0 self-stretch flex-col border-l border-border/60 bg-muted/30 xl:flex xl:w-[20rem]"
 			>
 				<div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 py-8">
-					<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4 shadow-sm">
+					<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4 shadow-xs">
 						<p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
 							Result shape
 						</p>
@@ -535,7 +535,7 @@ export const GlobalSearchPage = () => {
 						</div>
 					</section>
 
-					<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4 shadow-sm">
+					<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/68 p-4 shadow-xs">
 						<div className="flex items-center justify-between gap-3">
 							<p className="text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground">
 								Promo matches

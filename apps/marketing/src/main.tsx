@@ -2,7 +2,7 @@ import { MotionConfig } from "framer-motion";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import "../../../packages/ui/src/global.css";
+import "./index.pcss";
 import { MarketingApp } from "./MarketingApp";
 
 const rootElement = document.getElementById("root");

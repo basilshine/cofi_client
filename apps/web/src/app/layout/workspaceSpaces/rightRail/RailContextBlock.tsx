@@ -40,7 +40,7 @@ export const RailContextBlock = ({
 }: RailContextBlockProps) => {
 	const billsCardClass =
 		billsSurface === "spaceMuted"
-			? "rounded-2xl border border-[rgba(88,98,118,0.22)] bg-gradient-to-b from-[#faf9fc] to-[#f2f1f6] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_8px_28px_-22px_rgba(45,48,58,0.12)]"
+			? "rounded-2xl border border-[rgba(88,98,118,0.22)] bg-linear-to-b from-[#faf9fc] to-[#f2f1f6] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.65),0_8px_28px_-22px_rgba(45,48,58,0.12)]"
 			: "rounded-2xl border border-border/60 bg-card p-4 soft-shadow inner-glow";
 
 	return (

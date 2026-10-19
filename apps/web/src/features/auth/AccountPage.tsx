@@ -725,7 +725,7 @@ export const AccountPage = () => {
 													{p.label}
 												</div>
 												{isActive ? (
-													<span className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+													<span className="rounded-[4px] bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
 														ACTIVE
 													</span>
 												) : null}
@@ -1101,7 +1101,7 @@ export const AccountPage = () => {
 											<input
 												aria-describedby="notif-channels-desc"
 												checked={notifChannels[key]}
-												className="mt-1 h-4 w-4 shrink-0 rounded border border-border"
+												className="mt-1 h-4 w-4 shrink-0 rounded-[4px] border border-border"
 												disabled={notifLoading || notifSaving}
 												onChange={(e) =>
 													void handleNotificationChannelToggle(
@@ -1178,11 +1178,11 @@ export const AccountPage = () => {
 											</div>
 											<div className="flex flex-wrap items-center gap-2">
 												{m.identity_verified ? (
-													<span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:text-emerald-300">
+													<span className="rounded-[4px] bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:text-emerald-300">
 														Email verified
 													</span>
 												) : (
-													<span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-900 dark:text-amber-200">
+													<span className="rounded-[4px] bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-900 dark:text-amber-200">
 														Not verified
 													</span>
 												)}
@@ -1190,7 +1190,7 @@ export const AccountPage = () => {
 												m.role !== "owner" &&
 												m.user_id !== user?.id ? (
 													<button
-														className="rounded border border-destructive/40 px-2 py-1 text-[11px] text-destructive hover:bg-destructive/10"
+														className="rounded-[4px] border border-destructive/40 px-2 py-1 text-[11px] text-destructive hover:bg-destructive/10"
 														onClick={() =>
 															void handleRemovePersonalMember(m.user_id)
 														}
@@ -1283,7 +1283,7 @@ export const AccountPage = () => {
 												</div>
 												{personalTenantAdmin && !row.accepted_at ? (
 													<button
-														className="rounded border border-border px-2 py-0.5 text-[10px] hover:bg-muted"
+														className="rounded-[4px] border border-border px-2 py-0.5 text-[10px] hover:bg-muted"
 														onClick={() =>
 															void handleCancelPersonalInvite(row.id)
 														}
@@ -1343,11 +1343,11 @@ export const AccountPage = () => {
 											</div>
 											<div className="flex flex-wrap items-center gap-2">
 												{m.identity_verified ? (
-													<span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:text-emerald-300">
+													<span className="rounded-[4px] bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-800 dark:text-emerald-300">
 														Email verified
 													</span>
 												) : (
-													<span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-900 dark:text-amber-200">
+													<span className="rounded-[4px] bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-900 dark:text-amber-200">
 														Not verified
 													</span>
 												)}
@@ -1355,7 +1355,7 @@ export const AccountPage = () => {
 												m.role !== "owner" &&
 												m.user_id !== user?.id ? (
 													<button
-														className="rounded border border-destructive/40 px-2 py-1 text-[11px] text-destructive hover:bg-destructive/10"
+														className="rounded-[4px] border border-destructive/40 px-2 py-1 text-[11px] text-destructive hover:bg-destructive/10"
 														onClick={() =>
 															void handleRemoveOrgMember(m.user_id)
 														}
@@ -1448,7 +1448,7 @@ export const AccountPage = () => {
 												</div>
 												{orgTenantAdmin && !row.accepted_at ? (
 													<button
-														className="rounded border border-border px-2 py-0.5 text-[10px] hover:bg-muted"
+														className="rounded-[4px] border border-border px-2 py-0.5 text-[10px] hover:bg-muted"
 														onClick={() => void handleCancelOrgInvite(row.id)}
 														type="button"
 													>

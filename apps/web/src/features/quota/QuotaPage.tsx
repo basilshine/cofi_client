@@ -70,7 +70,7 @@ export const QuotaPage = () => {
 				<h1 className="text-xl font-semibold">Quota</h1>
 				<p className="text-sm text-muted-foreground">
 					Tenant entitlements and capture allowance. Optional{" "}
-					<code className="rounded bg-muted px-1 font-mono text-xs">
+					<code className="rounded-[4px] bg-muted px-1 font-mono text-xs">
 						space_id
 					</code>{" "}
 					resolves the tenant via your membership.

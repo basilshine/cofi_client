@@ -304,7 +304,7 @@ export const ExpenseSplitDialog = ({
 																</button>
 																<input
 																	aria-label={`Percent for ${row.label}`}
-																	className="w-16 rounded border border-border bg-background px-1 py-1 text-center font-mono text-xs"
+																	className="w-16 rounded-[4px] border border-border bg-background px-1 py-1 text-center font-mono text-xs"
 																	inputMode="decimal"
 																	onChange={(e) =>
 																		setPercentChange(

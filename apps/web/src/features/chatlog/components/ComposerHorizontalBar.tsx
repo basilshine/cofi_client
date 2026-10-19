@@ -180,7 +180,7 @@ export const ComposerHorizontalBar = ({
 
 	return (
 		<div
-			className="flex w-full min-w-0 items-end gap-0.5 rounded-lg border border-border bg-background py-1 pl-1 pr-1 shadow-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring"
+			className="flex w-full min-w-0 items-end gap-0.5 rounded-lg border border-border bg-background py-1 pl-1 pr-1 shadow-xs ring-offset-background focus-within:ring-2 focus-within:ring-ring"
 			ref={rootRef}
 		>
 			<div className="relative flex shrink-0 flex-col justify-end pb-0.5">
@@ -188,7 +188,7 @@ export const ComposerHorizontalBar = ({
 					aria-expanded={plusOpen}
 					aria-haspopup="menu"
 					aria-label="Add photo or voice"
-					className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent text-base font-medium leading-none text-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
+					className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent text-base font-medium leading-none text-foreground transition hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
 					disabled={disabled}
 					onClick={() => {
 						setMoreOpen(false);
@@ -241,7 +241,7 @@ export const ComposerHorizontalBar = ({
 				<span className="sr-only">{ariaLabel}</span>
 				<textarea
 					aria-label={ariaLabel}
-					className="min-h-9 w-full resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 text-sm leading-snug text-foreground shadow-none outline-none ring-0 placeholder:text-muted-foreground focus-visible:ring-0"
+					className="min-h-9 w-full resize-none overflow-y-auto border-0 bg-transparent px-1 py-1.5 text-sm leading-snug text-foreground shadow-none outline-hidden ring-0 placeholder:text-muted-foreground focus-visible:ring-0"
 					disabled={disabled}
 					onChange={(e) => onChange(e.target.value)}
 					onKeyDown={onKeyDown}
@@ -257,7 +257,7 @@ export const ComposerHorizontalBar = ({
 					aria-expanded={moreOpen}
 					aria-haspopup="menu"
 					aria-label={trailingLabel}
-					className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent bg-primary/10 text-primary transition hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 dark:bg-primary/15 dark:hover:bg-primary/25"
+					className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-transparent bg-primary/10 text-primary transition hover:bg-primary/15 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 dark:bg-primary/15 dark:hover:bg-primary/25"
 					disabled={disabled}
 					onContextMenu={(e) => e.preventDefault()}
 					onPointerCancel={handleTrailingPointerCancel}

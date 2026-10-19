@@ -194,7 +194,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 						<button
 							aria-expanded={expanded}
 							aria-label="Collapse sidebar"
-							className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:inline-flex"
+							className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring lg:inline-flex"
 							onClick={() => onExpandedChange(false)}
 							type="button"
 						>
@@ -253,7 +253,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 										/>
 									</label>
 									<button
-										className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-95 disabled:opacity-50"
+										className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-opacity hover:opacity-95 disabled:opacity-50"
 										disabled={isLoading || !newSpaceName.trim()}
 										onClick={() => onCreateSpace()}
 										type="button"
@@ -321,7 +321,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 													{unread ? (
 														<span
 															aria-hidden
-															className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary shadow-sm shadow-primary/40"
+															className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary shadow-xs shadow-primary/40"
 															title="Unread messages"
 														/>
 													) : null}
@@ -357,14 +357,14 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 				<>
 					<button
 						aria-label="Expand sidebar"
-						className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/50 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/50 text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => onExpandedChange(true)}
 						type="button"
 					>
 						<PanelLeftOpen aria-hidden className="h-4 w-4" />
 					</button>
 
-					<div className="h-px w-8 shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
+					<div className="h-px w-8 shrink-0 bg-linear-to-r from-transparent via-border to-transparent" />
 				</>
 			)}
 
@@ -381,7 +381,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 										aria-label={`${s.name}${unread ? ", unread" : ""}`}
 										aria-pressed={isActive}
 										className={[
-											"relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+											"relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 											isActive
 												? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
 												: "border border-border/70 bg-background text-muted-foreground hover:border-primary/40 hover:bg-muted/80 hover:text-foreground",
@@ -422,7 +422,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 					<div className="flex -space-x-2">
 						{(members ?? []).slice(0, 3).map((m) => (
 							<div
-								className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-gradient-to-br from-muted to-muted/60 text-[11px] font-semibold text-foreground shadow-sm"
+								className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-card bg-linear-to-br from-muted to-muted/60 text-[11px] font-semibold text-foreground shadow-xs"
 								key={m.user_id}
 							>
 								{memberInitial(m)}
@@ -442,7 +442,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 					<Link
 						aria-label="Members and invites — open in space settings"
 						className={[
-							"inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+							"inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-xs transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 							selectedSpaceId == null ? "pointer-events-none opacity-50" : "",
 						].join(" ")}
 						onClick={(e) => {
@@ -456,7 +456,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 				) : (
 					<button
 						aria-label="Invite someone — opens sidebar to invite"
-						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-xs transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => expandTo("chat-sidebar-invite-space")}
 						type="button"
 					>
@@ -471,7 +471,7 @@ export const ChatSpacesSidebar = (props: ChatSpacesSidebarProps) => {
 								? "Organization spaces — opens sidebar"
 								: "Create a space — opens sidebar"
 						}
-						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-xs transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => expandTo("chat-sidebar-create")}
 						type="button"
 					>

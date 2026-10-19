@@ -146,7 +146,7 @@ export const MyIncomingInvitesBlock = (props: MyIncomingInvitesBlockProps) => {
 								<div className="mt-2 flex flex-wrap gap-2">
 									<button
 										aria-label={`Accept invite to ${title}`}
-										className="inline-flex h-8 min-w-[5.5rem] items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-95 disabled:opacity-50"
+										className="inline-flex h-8 min-w-[5.5rem] items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-xs transition-opacity hover:opacity-95 disabled:opacity-50"
 										disabled={disabled || busy}
 										onClick={() => void handleAccept(inv)}
 										type="button"

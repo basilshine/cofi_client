@@ -138,7 +138,7 @@ export const SwitchOrganizationDialog = ({
 			<Dialog.Portal>
 				<Dialog.Overlay className="fixed inset-0 z-[100] bg-black/40" />
 				<Dialog.Content
-					className="fixed left-1/2 top-1/2 z-[100] grid w-[min(100vw-2rem,24rem)] max-h-[min(80vh,28rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border border-border bg-popover p-6 text-popover-foreground shadow-lg focus:outline-none"
+					className="fixed left-1/2 top-1/2 z-[100] grid w-[min(100vw-2rem,24rem)] max-h-[min(80vh,28rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border border-border bg-popover p-6 text-popover-foreground shadow-lg focus:outline-hidden"
 					onOpenAutoFocus={(e) => e.preventDefault()}
 				>
 					<div className="space-y-1.5">
@@ -184,7 +184,7 @@ export const SwitchOrganizationDialog = ({
 										<button
 											aria-current={selected ? "true" : undefined}
 											className={[
-												"w-full rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+												"w-full rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
 												selected
 													? "border-primary bg-primary/10 text-foreground"
 													: "border-border bg-background hover:bg-accent",
@@ -203,7 +203,7 @@ export const SwitchOrganizationDialog = ({
 					<div className="flex justify-end">
 						<Dialog.Close asChild>
 							<button
-								className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								type="button"
 							>
 								Cancel

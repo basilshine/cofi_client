@@ -100,7 +100,7 @@ const CopyButton = ({
 	onCopied: (label: string) => void;
 }) => (
 	<button
-		className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 shadow-sm transition hover:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-700"
+		className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 shadow-xs transition hover:border-stone-500 focus:outline-hidden focus:ring-2 focus:ring-stone-700"
 		onClick={() => {
 			void navigator.clipboard?.writeText(value);
 			onCopied(label);
@@ -370,7 +370,7 @@ export const PaymentResolutionPage = () => {
 					<div className="mt-5 grid gap-2">
 						{eligibleParticipants.map((participant) => (
 							<button
-								className="flex min-h-14 items-center justify-between rounded-2xl border border-stone-200 bg-[#fbfaf6] px-4 text-left transition hover:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
+								className="flex min-h-14 items-center justify-between rounded-2xl border border-stone-200 bg-[#fbfaf6] px-4 text-left transition hover:border-stone-500 focus:outline-hidden focus:ring-2 focus:ring-stone-700 disabled:cursor-not-allowed disabled:opacity-60"
 								disabled={claimingParticipantId != null}
 								key={participant.id}
 								onClick={() => void claimParticipant(participant.id)}
@@ -541,7 +541,7 @@ const PaymentHeader = ({
 			</p>
 			<h1 className="text-lg font-semibold tracking-normal">{spaceName}</h1>
 		</div>
-		<div className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white/80 px-3 py-2 text-xs font-semibold text-stone-700 shadow-sm">
+		<div className="inline-flex items-center gap-2 rounded-full border border-stone-300 bg-white/80 px-3 py-2 text-xs font-semibold text-stone-700 shadow-xs">
 			<ShieldCheck className="h-4 w-4 text-emerald-700" />
 			{tokenStatus === "active" ? "Scoped link" : tokenStatus}
 		</div>
@@ -630,7 +630,7 @@ const ResolveSheet = ({
 			<div className="mt-4 flex gap-2 overflow-x-auto pb-1">
 				{methods.map((candidate) => (
 					<button
-						className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-stone-700 ${
+						className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition focus:outline-hidden focus:ring-2 focus:ring-stone-700 ${
 							selectedMethodType === candidate.type
 								? "border-stone-900 bg-stone-900 text-white"
 								: "border-stone-300 bg-white text-stone-800"
@@ -653,7 +653,7 @@ const ResolveSheet = ({
 						</div>
 						{method.url ? (
 							<a
-								className="inline-flex min-h-10 items-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-stone-900 shadow-sm"
+								className="inline-flex min-h-10 items-center gap-2 rounded-full bg-white px-3 text-xs font-semibold text-stone-900 shadow-xs"
 								href={method.url}
 								rel="noreferrer"
 								target="_blank"
@@ -708,7 +708,7 @@ const ResolveSheet = ({
 							{payerProofs.length > 0 ? "Proof attached" : "No proof"}
 						</span>
 					</div>
-					<label className="mt-3 inline-flex min-h-10 cursor-pointer items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 shadow-sm transition hover:border-stone-500">
+					<label className="mt-3 inline-flex min-h-10 cursor-pointer items-center rounded-full border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 shadow-xs transition hover:border-stone-500">
 						<input
 							accept="image/*,application/pdf"
 							className="sr-only"
@@ -740,7 +740,7 @@ const ResolveSheet = ({
 			) : null}
 
 			<button
-				className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-stone-950 px-5 text-sm font-semibold text-white transition hover:bg-stone-800 focus:outline-none focus:ring-2 focus:ring-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300"
+				className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-stone-950 px-5 text-sm font-semibold text-white transition hover:bg-stone-800 focus:outline-hidden focus:ring-2 focus:ring-stone-700 disabled:cursor-not-allowed disabled:bg-stone-300"
 				disabled={primaryActionDisabled}
 				onClick={handlePrimaryAction}
 				type="button"
@@ -786,7 +786,7 @@ const ObligationGroup = ({
 			) : (
 				obligations.map((obligation) => (
 					<button
-						className={`min-h-20 rounded-2xl border bg-white p-4 text-left shadow-sm transition hover:border-stone-500 focus:outline-none focus:ring-2 focus:ring-stone-700 ${
+						className={`min-h-20 rounded-2xl border bg-white p-4 text-left shadow-xs transition hover:border-stone-500 focus:outline-hidden focus:ring-2 focus:ring-stone-700 ${
 							selectedId === obligation.id
 								? "border-stone-900"
 								: "border-stone-200"

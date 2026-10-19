@@ -225,7 +225,7 @@ export const NativeChatMessageList = ({
 										: "max-w-[min(700px,92%)]",
 								hasExpenseAttachment
 									? "space-y-1 px-0 py-0"
-									: "space-y-2 rounded-xl border px-4 py-3 shadow-sm",
+									: "space-y-2 rounded-xl border px-4 py-3 shadow-xs",
 								hasExpenseAttachment
 									? ""
 									: isUser
@@ -268,7 +268,7 @@ export const NativeChatMessageList = ({
 									{canEditMessage(m) && !hasCaptureContext ? (
 										<button
 											aria-label="Edit message"
-											className="rounded px-1.5 py-0.5 text-[10px] font-medium text-primary opacity-0 transition-opacity hover:bg-primary/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											className="rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium text-primary opacity-0 transition-opacity hover:bg-primary/10 group-hover:opacity-100 focus:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 											onClick={() => onStartEditMessage(m)}
 											title="Edit message"
 											type="button"
@@ -279,7 +279,7 @@ export const NativeChatMessageList = ({
 									{canDeleteMessage(m) && !hasCaptureContext ? (
 										<button
 											aria-label="Delete message"
-											className="rounded px-1.5 py-0.5 text-[10px] font-medium text-destructive opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											className="rounded-[4px] px-1.5 py-0.5 text-[10px] font-medium text-destructive opacity-0 transition-opacity hover:bg-destructive/10 group-hover:opacity-100 focus:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 											onClick={() => onDeleteMessageRequest(m)}
 											title="Delete message"
 											type="button"

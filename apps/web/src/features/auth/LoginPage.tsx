@@ -18,7 +18,7 @@ import type { AuthSocialProvider } from "./authSocialTypes";
 import { authUserFacingError } from "./authUserFacingError";
 
 const inputClassName =
-	"h-12 w-full rounded-xl border border-[#D4CEC6] bg-[#FFFCF8] px-3.5 text-sm text-[#122032] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] outline-none transition placeholder:text-[#6B7280]/65 focus-visible:border-[#8B9F8E] focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/25";
+	"h-12 w-full rounded-xl border border-[#D4CEC6] bg-[#FFFCF8] px-3.5 text-sm text-[#122032] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] outline-hidden transition placeholder:text-[#6B7280]/65 focus-visible:border-[#8B9F8E] focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/25";
 
 const labelClassName =
 	"text-xs font-medium uppercase tracking-[0.12em] text-[#3D4F5C]";
@@ -246,7 +246,7 @@ export const LoginPage = () => {
 
 							<div className="space-y-5 pt-1">
 								<button
-									className="flex h-12 w-full items-center justify-center rounded-xl bg-[#6B8574] text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition hover:bg-[#5F7868] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCFA] disabled:cursor-not-allowed disabled:opacity-55"
+									className="flex h-12 w-full items-center justify-center rounded-xl bg-[#6B8574] text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition hover:bg-[#5F7868] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCFA] disabled:cursor-not-allowed disabled:opacity-55"
 									disabled={isSubmitting}
 									type="submit"
 								>

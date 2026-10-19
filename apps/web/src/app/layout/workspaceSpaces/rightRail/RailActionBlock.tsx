@@ -37,8 +37,8 @@ export const RailActionBlock = ({
 		: "rounded-2xl border border-[rgba(189,143,64,0.34)] bg-[linear-gradient(180deg,rgba(255,251,244,0.98)_0%,rgba(255,242,223,0.94)_100%)] p-6 shadow-[0_20px_30px_-24px_rgba(143,104,43,0.85)] transition-shadow duration-150";
 
 	const ctaClass = elevated
-		? "mt-4 inline-flex w-full items-center justify-center rounded-xl bg-foreground px-4 py-3.5 text-sm font-semibold tracking-wide text-background shadow-[0_14px_28px_-18px_rgba(22,24,23,0.42)] transition-all duration-150 ease-out hover:bg-foreground/92 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-		: "mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow-[0_12px_24px_-16px_rgba(31,37,35,0.95)] transition-all duration-150 ease-out hover:-translate-y-px hover:bg-primary/92 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+		? "mt-4 inline-flex w-full items-center justify-center rounded-xl bg-foreground px-4 py-3.5 text-sm font-semibold tracking-wide text-background shadow-[0_14px_28px_-18px_rgba(22,24,23,0.42)] transition-all duration-150 ease-out hover:bg-foreground/92 active:translate-y-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+		: "mt-4 inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-primary-foreground shadow-[0_12px_24px_-16px_rgba(31,37,35,0.95)] transition-all duration-150 ease-out hover:-translate-y-px hover:bg-primary/92 active:translate-y-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 	return (
 		<section aria-labelledby="rail-action" className="space-y-3">

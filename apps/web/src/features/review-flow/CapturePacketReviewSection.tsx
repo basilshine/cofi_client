@@ -632,7 +632,7 @@ export const CapturePacketReviewSection = ({
 							<button
 								aria-pressed={active}
 								className={[
-									"inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									"inline-flex min-h-7 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 									active
 										? "bg-[rgba(68,58,42,0.92)] text-[#fffaf0] shadow-[0_8px_18px_-14px_rgba(44,32,18,0.58)]"
 										: "text-muted-foreground hover:bg-card hover:text-foreground",
@@ -1102,7 +1102,7 @@ const PacketFinishReviewBar = ({
 					</span>
 				) : canSaveAll ? (
 					<button
-						className="inline-flex min-h-9 items-center rounded-full bg-[rgba(68,58,42,0.94)] px-3.5 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition hover:bg-[rgba(50,43,32,0.98)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+						className="inline-flex min-h-9 items-center rounded-full bg-[rgba(68,58,42,0.94)] px-3.5 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition hover:bg-[rgba(50,43,32,0.98)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 						disabled={finishing}
 						onClick={() =>
 							void onFinishReview(
@@ -1123,7 +1123,7 @@ const PacketFinishReviewBar = ({
 					</span>
 				)}
 				<button
-					className="inline-flex min-h-9 items-center rounded-full border border-destructive/20 bg-white/70 px-3.5 text-xs font-semibold text-destructive transition hover:border-destructive/35 hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30 disabled:opacity-50"
+					className="inline-flex min-h-9 items-center rounded-full border border-destructive/20 bg-white/70 px-3.5 text-xs font-semibold text-destructive transition hover:border-destructive/35 hover:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-destructive/30 disabled:opacity-50"
 					disabled={isDeletingCapture}
 					onClick={() => onDeleteCapture(packet.sourceDocumentId)}
 					type="button"
@@ -1333,7 +1333,7 @@ type CaptureReviewWizardProps = {
 };
 
 const editableFieldClass =
-	"h-9 min-w-0 rounded-lg border border-[rgba(120,100,80,0.16)] bg-white/86 px-2.5 text-xs font-medium text-foreground outline-none transition focus:border-[rgba(181,131,52,0.5)] focus:ring-2 focus:ring-[rgba(181,131,52,0.12)]";
+	"h-9 min-w-0 rounded-lg border border-[rgba(120,100,80,0.16)] bg-white/86 px-2.5 text-xs font-medium text-foreground outline-hidden transition focus:border-[rgba(181,131,52,0.5)] focus:ring-2 focus:ring-[rgba(181,131,52,0.12)]";
 
 const wizardValueClass =
 	"min-h-9 min-w-0 rounded-lg border border-[rgba(120,100,80,0.1)] bg-white/52 px-2.5 py-2 text-xs font-medium text-foreground";
@@ -2614,7 +2614,7 @@ const CaptureCandidateRow = ({
 					</label>
 					{splitTargetOptions.length > 0 ? (
 						<select
-							className="mt-1 h-9 w-full rounded-md border border-[rgba(120,100,80,0.18)] bg-white px-2 text-xs font-medium text-foreground shadow-sm outline-none transition focus:border-[rgba(181,131,52,0.48)]"
+							className="mt-1 h-9 w-full rounded-md border border-[rgba(120,100,80,0.18)] bg-white px-2 text-xs font-medium text-foreground shadow-xs outline-hidden transition focus:border-[rgba(181,131,52,0.48)]"
 							disabled={isActing || splitApplyBlocked}
 							id={`split-target-${candidate.id}`}
 							onChange={(event) =>

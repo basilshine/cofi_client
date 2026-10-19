@@ -1398,7 +1398,7 @@ const SpacePaymentLinksPanel = ({
 						Split candidate
 					</label>
 					<select
-						className="mt-2 min-h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+						className="mt-2 min-h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-hidden focus:ring-2 focus:ring-ring"
 						id="payment-link-participant"
 						onChange={(event) => onSelectParticipant(event.target.value)}
 						value={selectedParticipantId}

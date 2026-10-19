@@ -528,7 +528,7 @@ export const WorkspaceSpaceListNav = ({
 		<div className="flex min-h-0 flex-1 flex-col items-center gap-3 py-2">
 			<button
 				aria-label="Expand sidebar"
-				className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/50 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/50 text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 				onClick={() => setSidebarExpanded(true)}
 				type="button"
 			>
@@ -539,7 +539,7 @@ export const WorkspaceSpaceListNav = ({
 				aria-current={isHomeActive ? "page" : undefined}
 				aria-label="Dashboard — all spaces overview"
 				className={[
-					"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+					"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 					isHomeActive
 						? "border-foreground/20 bg-foreground text-background"
 						: "border-border/80 bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -553,7 +553,7 @@ export const WorkspaceSpaceListNav = ({
 				aria-current={isSearchActive ? "page" : undefined}
 				aria-label="Search — find expenses, promos, items, and spaces"
 				className={[
-					"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+					"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 					isSearchActive
 						? "border-foreground/20 bg-foreground text-background"
 						: "border-border/80 bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -563,7 +563,7 @@ export const WorkspaceSpaceListNav = ({
 				<IconSearch className="h-4 w-4" />
 			</Link>
 
-			<div className="h-px w-8 shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
+			<div className="h-px w-8 shrink-0 bg-linear-to-r from-transparent via-border to-transparent" />
 
 			<div className="flex min-h-0 w-full flex-1 flex-col items-center gap-1.5 overflow-y-auto overflow-x-hidden py-1">
 				{inSettingsShell
@@ -578,7 +578,7 @@ export const WorkspaceSpaceListNav = ({
 									aria-current={active ? "page" : undefined}
 									aria-label={item.label}
 									className={[
-										"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-[10px] font-bold uppercase tracking-tight shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+										"inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-[10px] font-bold uppercase tracking-tight shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 										active
 											? "border-foreground/20 bg-foreground text-background"
 											: "border-border/80 bg-background text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -602,7 +602,7 @@ export const WorkspaceSpaceListNav = ({
 										aria-label={`${s.name}${unread ? ", unread" : ""}`}
 										aria-pressed={isActive}
 										className={[
-											"relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+											"relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 											isActive
 												? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
 												: "border border-border/70 bg-background text-muted-foreground hover:border-primary/40 hover:bg-muted/80 hover:text-foreground",
@@ -626,7 +626,7 @@ export const WorkspaceSpaceListNav = ({
 				{inSettingsShell ? (
 					<Link
 						aria-label="Settings account"
-						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						to="/console/settings/account"
 					>
 						<IconCog className="h-4 w-4" />
@@ -634,7 +634,7 @@ export const WorkspaceSpaceListNav = ({
 				) : workspaceScope.kind === "organization" ? (
 					<Link
 						aria-label="Manage spaces"
-						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-xs transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						to="/console/spaces"
 					>
 						<IconPlusSquare className="h-4 w-4" />
@@ -642,7 +642,7 @@ export const WorkspaceSpaceListNav = ({
 				) : (
 					<button
 						aria-label="Add a new space"
-						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-xs transition-colors hover:border-primary/35 hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => setCreateSpaceDialogOpen(true)}
 						type="button"
 					>
@@ -651,7 +651,7 @@ export const WorkspaceSpaceListNav = ({
 				)}
 				<Link
 					aria-label="Settings"
-					className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border/80 bg-background text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 					to="/console/settings/account"
 				>
 					<IconShield className="h-4 w-4" />
@@ -660,16 +660,16 @@ export const WorkspaceSpaceListNav = ({
 					<button
 						aria-expanded={accountMenuOpen}
 						aria-label="Account menu"
-						className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-foreground text-[11px] font-bold text-background shadow-sm transition-colors hover:bg-foreground/88 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-foreground text-[11px] font-bold text-background shadow-xs transition-colors hover:bg-foreground/88 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => setAccountMenuOpen((open) => !open)}
 						type="button"
 					>
 						{accountInitials}
 					</button>
 					{accountMenuOpen ? (
-						<div className="absolute bottom-0 left-[calc(100%+0.5rem)] z-40 w-48 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur">
+						<div className="absolute bottom-0 left-[calc(100%+0.5rem)] z-40 w-48 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur-sm">
 							<Link
-								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={() => setAccountMenuOpen(false)}
 								to="/console/settings/account"
 							>
@@ -677,7 +677,7 @@ export const WorkspaceSpaceListNav = ({
 								Account
 							</Link>
 							<button
-								className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={handleLogout}
 								type="button"
 							>
@@ -693,7 +693,7 @@ export const WorkspaceSpaceListNav = ({
 
 	const navLinkClass = (isActive: boolean) =>
 		[
-			"group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm tracking-tight transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+			"group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm tracking-tight transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 			isActive
 				? "soft-shadow bg-muted text-foreground font-bold"
 				: "text-muted-foreground hover:bg-muted/40 hover:text-foreground font-medium",
@@ -719,7 +719,7 @@ export const WorkspaceSpaceListNav = ({
 				>
 					<span
 						aria-hidden
-						className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-sm"
+						className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs"
 					>
 						<CeitsLogoMark size={34} variant="auto" />
 					</span>
@@ -732,7 +732,7 @@ export const WorkspaceSpaceListNav = ({
 				<button
 					aria-expanded={sidebarExpanded}
 					aria-label="Collapse sidebar"
-					className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:inline-flex"
+					className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring lg:inline-flex"
 					onClick={() => setSidebarExpanded(false)}
 					type="button"
 				>
@@ -837,7 +837,7 @@ export const WorkspaceSpaceListNav = ({
 													className={[
 														"flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left",
 														isSelected ? "font-bold" : "font-medium",
-														"rounded-l-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+														"rounded-l-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
 													].join(" ")}
 													onClick={() => handleSelectSpace(s.id)}
 													type="button"
@@ -872,9 +872,9 @@ export const WorkspaceSpaceListNav = ({
 													aria-label={`More actions for ${s.name}`}
 													className={[
 														"mr-1 my-1 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted-foreground",
-														"transition-colors hover:bg-background/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+														"transition-colors hover:bg-background/80 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 														menuOpen
-															? "bg-background text-foreground shadow-sm"
+															? "bg-background text-foreground shadow-xs"
 															: "",
 													].join(" ")}
 													onClick={(event) => {
@@ -888,9 +888,9 @@ export const WorkspaceSpaceListNav = ({
 												</button>
 											</div>
 											{menuOpen ? (
-												<div className="absolute right-1 top-[calc(100%+0.25rem)] z-30 w-52 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur">
+												<div className="absolute right-1 top-[calc(100%+0.25rem)] z-30 w-52 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur-sm">
 													<Link
-														className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 														onClick={() => setOpenSpaceMenuId(null)}
 														to={settingsHref}
 													>
@@ -898,7 +898,7 @@ export const WorkspaceSpaceListNav = ({
 														Space settings
 													</Link>
 													<button
-														className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+														className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 														onClick={() => {
 															setPendingSpaceDestructive({
 																kind: isYours ? "delete" : "leave",
@@ -945,7 +945,7 @@ export const WorkspaceSpaceListNav = ({
 						</p>
 					) : (
 						<button
-							className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border bg-transparent px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-all hover:border-foreground/40 hover:bg-muted/30 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							className="flex w-full items-center gap-3 rounded-xl border border-dashed border-border bg-transparent px-3 py-2.5 text-left text-sm font-medium text-muted-foreground transition-all hover:border-foreground/40 hover:bg-muted/30 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 							onClick={() => setCreateSpaceDialogOpen(true)}
 							type="button"
 						>
@@ -958,14 +958,14 @@ export const WorkspaceSpaceListNav = ({
 
 			<div className="mt-4 shrink-0 space-y-1 border-t border-border/60 pt-4">
 				<Link
-					className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 					to="/console/settings"
 				>
 					<IconShield className="h-4 w-4 shrink-0" />
 					<span>Settings</span>
 				</Link>
 				<a
-					className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 					href="mailto:support@ceits.app"
 					rel="noopener noreferrer"
 				>
@@ -977,11 +977,11 @@ export const WorkspaceSpaceListNav = ({
 					<button
 						aria-expanded={accountMenuOpen}
 						aria-label="Account menu"
-						className="flex w-full min-w-0 items-center gap-3 rounded-xl border border-border/70 bg-card/55 px-2.5 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="flex w-full min-w-0 items-center gap-3 rounded-xl border border-border/70 bg-card/55 px-2.5 py-2 text-left transition-colors hover:bg-muted/45 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => setAccountMenuOpen((open) => !open)}
 						type="button"
 					>
-						<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-bold uppercase text-background shadow-sm">
+						<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-bold uppercase text-background shadow-xs">
 							{accountInitials}
 						</span>
 						<span className="min-w-0 flex-1">
@@ -994,9 +994,9 @@ export const WorkspaceSpaceListNav = ({
 						</span>
 					</button>
 					{accountMenuOpen ? (
-						<div className="absolute bottom-[calc(100%+0.35rem)] left-0 right-0 z-40 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur">
+						<div className="absolute bottom-[calc(100%+0.35rem)] left-0 right-0 z-40 overflow-hidden rounded-xl border border-border/70 bg-background/98 p-1.5 shadow-[0_18px_48px_-28px_rgba(40,30,20,0.55)] backdrop-blur-sm">
 							<div className="flex min-w-0 items-center gap-3 border-b border-border/60 px-3 py-2.5">
-								<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-bold uppercase text-background shadow-sm">
+								<span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-[11px] font-bold uppercase text-background shadow-xs">
 									{accountInitials}
 								</span>
 								<span className="min-w-0">
@@ -1009,7 +1009,7 @@ export const WorkspaceSpaceListNav = ({
 								</span>
 							</div>
 							<Link
-								className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={() => setAccountMenuOpen(false)}
 								to="/console/settings/account"
 							>
@@ -1017,7 +1017,7 @@ export const WorkspaceSpaceListNav = ({
 								Account settings
 							</Link>
 							<Link
-								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={() => setAccountMenuOpen(false)}
 								to="/console/settings"
 							>
@@ -1025,7 +1025,7 @@ export const WorkspaceSpaceListNav = ({
 								Settings
 							</Link>
 							<a
-								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								href="mailto:support@ceits.app"
 								rel="noopener noreferrer"
 							>
@@ -1033,7 +1033,7 @@ export const WorkspaceSpaceListNav = ({
 								Support
 							</a>
 							<button
-								className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={handleLogout}
 								type="button"
 							>
@@ -1090,9 +1090,9 @@ export const WorkspaceSpaceListNav = ({
 				open={pendingSpaceDestructive != null}
 			>
 				<Dialog.Portal>
-					<Dialog.Overlay className="fixed inset-0 z-[100] bg-[rgba(38,30,22,0.38)] backdrop-blur-sm" />
+					<Dialog.Overlay className="fixed inset-0 z-[100] bg-[rgba(38,30,22,0.38)] backdrop-blur-xs" />
 					<Dialog.Content
-						className="fixed left-1/2 top-1/2 z-[101] w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background p-5 shadow-[0_24px_80px_-36px_rgba(40,30,20,0.6)] outline-none"
+						className="fixed left-1/2 top-1/2 z-[101] w-[min(calc(100vw-2rem),28rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-background p-5 shadow-[0_24px_80px_-36px_rgba(40,30,20,0.6)] outline-hidden"
 						onOpenAutoFocus={(event) => event.preventDefault()}
 					>
 						<Dialog.Title className="font-display text-xl font-bold tracking-tight text-foreground">
@@ -1113,7 +1113,7 @@ export const WorkspaceSpaceListNav = ({
 						<div className="mt-5 flex justify-end gap-2">
 							<Dialog.Close asChild>
 								<button
-									className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-muted disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 									disabled={destructiveBusy}
 									type="button"
 								>
@@ -1121,7 +1121,7 @@ export const WorkspaceSpaceListNav = ({
 								</button>
 							</Dialog.Close>
 							<button
-								className="inline-flex h-10 items-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-95 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="inline-flex h-10 items-center rounded-lg bg-destructive px-4 text-sm font-medium text-destructive-foreground transition-opacity hover:opacity-95 disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								disabled={pendingSpaceDestructive == null || destructiveBusy}
 								onClick={() => void handleConfirmSpaceDestructive()}
 								type="button"

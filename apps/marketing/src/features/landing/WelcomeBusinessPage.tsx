@@ -20,20 +20,20 @@ const scrollReveal = {
 export const WelcomeBusinessPage = () => {
 	return (
 		<div className="min-h-screen bg-[hsl(var(--bg))] text-[hsl(var(--text-primary))]">
-			<header className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))]/95 backdrop-blur">
+			<header className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))]/95 backdrop-blur-sm">
 				<div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 lg:px-8">
 					<Link className="text-lg font-semibold tracking-tight" to="/">
 						Ceits
 					</Link>
 					<div className="flex items-center gap-2">
 						<a
-							className="rounded-md px-3 py-2 text-sm font-medium text-[hsl(var(--text-secondary))] transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+							className="rounded-md px-3 py-2 text-sm font-medium text-[hsl(var(--text-secondary))] transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 							href={authLoginHref}
 						>
 							Sign in
 						</a>
 						<a
-							className="rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] px-4 py-2 text-sm font-medium transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+							className="rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] px-4 py-2 text-sm font-medium transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 							href={authRegisterHref}
 						>
 							Create account
@@ -124,13 +124,13 @@ export const WelcomeBusinessPage = () => {
 					viewport={scrollReveal}
 				>
 					<a
-						className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+						className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 						href={authRegisterHref}
 					>
 						Start with Ceits
 					</a>
 					<Link
-						className="inline-flex h-11 items-center justify-center rounded-md border border-[hsl(var(--border-subtle))] px-6 text-sm font-medium transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+						className="inline-flex h-11 items-center justify-center rounded-md border border-[hsl(var(--border-subtle))] px-6 text-sm font-medium transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 						to="/welcome/personal"
 					>
 						Compare personal and family path

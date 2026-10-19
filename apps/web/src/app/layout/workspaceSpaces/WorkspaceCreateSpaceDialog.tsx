@@ -41,7 +41,7 @@ export const WorkspaceCreateSpaceDialog = () => {
 			<Dialog.Portal>
 				<Dialog.Overlay className="fixed inset-0 z-[100] bg-black/40" />
 				<Dialog.Content
-					className="fixed left-1/2 top-1/2 z-[101] w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background p-5 shadow-lg outline-none"
+					className="fixed left-1/2 top-1/2 z-[101] w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border bg-background p-5 shadow-lg outline-hidden"
 					onOpenAutoFocus={(e) => e.preventDefault()}
 				>
 					<Dialog.Title className="text-lg font-semibold leading-none tracking-tight">
@@ -96,14 +96,14 @@ export const WorkspaceCreateSpaceDialog = () => {
 						<div className="mt-2 flex justify-end gap-2">
 							<Dialog.Close asChild>
 								<button
-									className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									className="inline-flex h-10 items-center rounded-lg border border-border px-4 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 									type="button"
 								>
 									Cancel
 								</button>
 							</Dialog.Close>
 							<button
-								className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-95 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-opacity hover:opacity-95 disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								disabled={isLoading || isCreatingSpace || !newSpaceName.trim()}
 								onClick={handleCreate}
 								type="button"

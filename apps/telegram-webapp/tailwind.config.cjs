@@ -1,4 +1,4 @@
-const shared = require("../../tailwind.config.js");
+const shared = require("../../tailwind.config.cjs");
 
 module.exports = {
 	...shared,

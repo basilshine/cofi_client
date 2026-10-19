@@ -34,7 +34,7 @@ export const RailAttentionBlock = ({
 						{items.map((item, index) => (
 							<li key={item.key}>
 								<Link
-									className={`group flex items-start gap-3 rounded-xl px-3 py-2.5 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+									className={`group flex items-start gap-3 rounded-xl px-3 py-2.5 transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
 										index === 0
 											? "border border-[rgba(142,159,136,0.32)] bg-[rgba(142,159,136,0.09)] shadow-[0_12px_20px_-18px_rgba(31,37,35,0.5)] hover:bg-[rgba(142,159,136,0.14)]"
 											: "hover:bg-background/60"

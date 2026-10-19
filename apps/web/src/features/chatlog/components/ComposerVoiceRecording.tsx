@@ -14,7 +14,7 @@ export const ComposerVoiceRecording = ({ disabled = false, onStop }: Props) => {
 	return (
 		<motion.div
 			animate={{ opacity: 1, y: 0 }}
-			className="overflow-hidden rounded-xl border border-destructive/30 bg-destructive/[0.07] p-4 shadow-sm"
+			className="overflow-hidden rounded-xl border border-destructive/30 bg-destructive/[0.07] p-4 shadow-xs"
 			initial={reduceMotion ? false : { opacity: 0.85, y: 6 }}
 			transition={spring}
 		>
@@ -51,7 +51,7 @@ export const ComposerVoiceRecording = ({ disabled = false, onStop }: Props) => {
 				</div>
 				<button
 					aria-label="Stop recording"
-					className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border-2 border-destructive bg-background px-6 text-sm font-semibold text-destructive transition hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+					className="inline-flex h-11 shrink-0 items-center justify-center rounded-lg border-2 border-destructive bg-background px-6 text-sm font-semibold text-destructive transition hover:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					disabled={disabled}
 					onClick={() => void onStop()}
 					type="button"

@@ -200,7 +200,7 @@ export const WorkspaceRightSidebar = ({
 						aria-valuemax={maxVal}
 						aria-valuemin={MIN_WIDTH_PX}
 						aria-valuenow={expandedWidthPx}
-						className="group absolute left-0 top-0 z-30 flex h-full w-5 -translate-x-1/2 cursor-col-resize touch-none select-none items-center justify-center bg-gradient-to-r from-transparent via-muted/35 to-transparent hover:via-muted/55 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:via-primary/15"
+						className="group absolute left-0 top-0 z-30 flex h-full w-5 -translate-x-1/2 cursor-col-resize touch-none select-none items-center justify-center bg-linear-to-r from-transparent via-muted/35 to-transparent hover:via-muted/55 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:via-primary/15"
 						onKeyDown={(e) => {
 							const step = e.shiftKey ? 40 : 16;
 							if (e.key === "ArrowLeft") {
@@ -246,7 +246,7 @@ export const WorkspaceRightSidebar = ({
 							<button
 								aria-expanded={expanded}
 								aria-label="Collapse expenses panel"
-								className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-muted/40 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={() => onExpandedChange(false)}
 								type="button"
 							>
@@ -262,16 +262,16 @@ export const WorkspaceRightSidebar = ({
 				<div className="flex min-h-0 flex-1 flex-col items-center gap-3 py-2">
 					<button
 						aria-label={`Expand ${title}`}
-						className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/50 text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/50 text-muted-foreground shadow-xs transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => onExpandedChange(true)}
 						type="button"
 					>
 						<IconPanelOpen className="h-4 w-4" />
 					</button>
-					<div className="h-px w-8 shrink-0 bg-gradient-to-r from-transparent via-border to-transparent" />
+					<div className="h-px w-8 shrink-0 bg-linear-to-r from-transparent via-border to-transparent" />
 					<button
 						aria-label={`${title} — expand to browse`}
-						className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground shadow-sm transition-colors hover:border-primary/40 hover:bg-muted/80 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/70 bg-background text-muted-foreground shadow-xs transition-colors hover:border-primary/40 hover:bg-muted/80 hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => onExpandedChange(true)}
 						title={title}
 						type="button"

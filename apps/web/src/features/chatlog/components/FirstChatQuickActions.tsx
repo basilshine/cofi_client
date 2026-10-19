@@ -19,7 +19,7 @@ export const FirstChatQuickActions = ({
 			<div className="flex flex-wrap gap-2">
 				{actions.map((a) => (
 					<button
-						className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-xs transition hover:bg-accent/60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						key={a.id}
 						onClick={() => onAction(a.id)}
 						type="button"

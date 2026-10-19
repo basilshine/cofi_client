@@ -311,7 +311,7 @@ export const SpaceSidebarActivity = ({
 				<button
 					aria-label={activityAriaLabel}
 					className={[
-						"relative flex w-full items-center justify-between gap-3 rounded-lg border border-border/60 bg-card/50 px-2 py-1.5 text-left text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+						"relative flex w-full items-center justify-between gap-3 rounded-lg border border-border/60 bg-card/50 px-2 py-1.5 text-left text-[12px] font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 						disabled
 							? "cursor-not-allowed opacity-50"
 							: "text-muted-foreground hover:text-foreground",
@@ -337,7 +337,7 @@ export const SpaceSidebarActivity = ({
 			<Popover.Portal>
 				<Popover.Content
 					align="start"
-					className="z-[80] w-[min(calc(100vw-2rem),288px)] max-h-[min(50vh,22rem)] overflow-y-auto rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg outline-none"
+					className="z-[80] w-[min(calc(100vw-2rem),288px)] max-h-[min(50vh,22rem)] overflow-y-auto rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg outline-hidden"
 					collisionPadding={12}
 					side="top"
 					sideOffset={8}
@@ -367,7 +367,7 @@ export const SpaceSidebarActivity = ({
 								<li key={String(item.id)}>
 									<div
 										className={[
-											"flex gap-2 rounded-xl border px-2.5 py-2 text-[12px] leading-snug shadow-sm",
+											"flex gap-2 rounded-xl border px-2.5 py-2 text-[12px] leading-snug shadow-xs",
 											pending
 												? "border-[rgba(172,124,35,0.26)] bg-[rgba(255,247,229,0.82)]"
 												: "border-border/50 bg-card/35",
@@ -400,7 +400,7 @@ export const SpaceSidebarActivity = ({
 											</p>
 											{reviewHref != null ? (
 												<Link
-													className="mt-2 inline-flex h-7 items-center rounded-full border border-[rgba(82,72,57,0.16)] bg-background/70 px-2 text-[10px] font-bold uppercase tracking-wide text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+													className="mt-2 inline-flex h-7 items-center rounded-full border border-[rgba(82,72,57,0.16)] bg-background/70 px-2 text-[10px] font-bold uppercase tracking-wide text-foreground transition-colors hover:bg-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 													to={reviewHref}
 												>
 													Review capture

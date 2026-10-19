@@ -26,7 +26,7 @@ const buildAuthChildHref = (path: "/login" | "/register", search: string) =>
 const AuthEntryProductPreview = () => (
 	<div
 		aria-hidden
-		className="pointer-events-none my-5 select-none rounded-2xl border border-[#E0D9D0]/70 bg-gradient-to-b from-[#FAF8F5]/95 to-[#F3F0EA]/80 p-4 shadow-[0_16px_44px_-28px_rgba(18,32,50,0.22)] ring-1 ring-[#FDFCFA]/80 backdrop-blur-[1.5px]"
+		className="pointer-events-none my-5 select-none rounded-2xl border border-[#E0D9D0]/70 bg-linear-to-b from-[#FAF8F5]/95 to-[#F3F0EA]/80 p-4 shadow-[0_16px_44px_-28px_rgba(18,32,50,0.22)] ring-1 ring-[#FDFCFA]/80 backdrop-blur-[1.5px]"
 	>
 		<div className="space-y-3.5 opacity-[0.78]">
 			<div className="flex items-center gap-2 border-b border-[#D4CEC6]/50 pb-2.5">
@@ -200,7 +200,7 @@ export const AuthEntryPage = () => {
 						<AuthDivider>or</AuthDivider>
 
 						<Link
-							className="flex h-12 w-full items-center justify-center rounded-xl bg-[#6B8574] text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition hover:bg-[#5F7868] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCFA]"
+							className="flex h-12 w-full items-center justify-center rounded-xl bg-[#6B8574] text-sm font-semibold text-white shadow-[0_1px_0_rgba(255,255,255,0.12)_inset] transition hover:bg-[#5F7868] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCFA]"
 							to={registerHref}
 						>
 							Continue with email
@@ -209,7 +209,7 @@ export const AuthEntryPage = () => {
 						<AuthEntryProductPreview />
 
 						<Link
-							className="flex h-12 w-full items-center justify-center rounded-xl border border-[#D4CEC6] bg-[#FFFCF8] text-sm font-semibold text-[#122032] transition hover:border-[#C4BDB2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCFA]"
+							className="flex h-12 w-full items-center justify-center rounded-xl border border-[#D4CEC6] bg-[#FFFCF8] text-sm font-semibold text-[#122032] transition hover:border-[#C4BDB2] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCFA]"
 							to={loginHref}
 						>
 							Sign in

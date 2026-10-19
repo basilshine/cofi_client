@@ -44,7 +44,7 @@ export const ChatMediaAttachment = ({
 	if (mediaKind !== "image" && !contentType?.startsWith("image/")) return null;
 
 	return (
-		<div className="overflow-hidden rounded-xl border border-[rgba(64,91,118,0.16)] bg-[rgba(246,251,253,0.86)] shadow-sm">
+		<div className="overflow-hidden rounded-xl border border-[rgba(64,91,118,0.16)] bg-[rgba(246,251,253,0.86)] shadow-xs">
 			<div className="relative aspect-[16/9] max-h-64 w-full bg-[rgba(236,244,249,0.72)]">
 				{objectUrl ? (
 					<img

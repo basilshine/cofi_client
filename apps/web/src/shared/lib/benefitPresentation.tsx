@@ -245,7 +245,7 @@ export const PromoBenefitDetailHeader = ({
 }: {
 	promo: PromoBenefit;
 }) => (
-	<div className="flex flex-wrap items-start gap-4 rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.8)] p-4 shadow-sm">
+	<div className="flex flex-wrap items-start gap-4 rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.8)] p-4 shadow-xs">
 		<EntityDetailHeader
 			entity={toPromoBenefitEntity(promo)}
 			trailing={

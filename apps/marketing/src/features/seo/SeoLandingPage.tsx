@@ -57,7 +57,7 @@ export const SeoLandingPage = ({ page }: { page: LandingPageConfig }) => {
 			initial="initial"
 			variants={pageVariants}
 		>
-			<header className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))]/95 backdrop-blur">
+			<header className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))]/95 backdrop-blur-sm">
 				<div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
 					<Link className="font-serif text-xl tracking-[0.01em]" to="/">
 						Ceits

@@ -286,7 +286,7 @@ export const ChatCaptureReviewEvents = ({
 					<button
 						aria-controls={detailsRegionId}
 						aria-expanded={detailsOpen}
-						className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.18)] bg-white/72 px-3 text-[11px] font-bold text-muted-foreground shadow-sm transition hover:bg-white hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.18)] bg-white/72 px-3 text-[11px] font-bold text-muted-foreground shadow-xs transition hover:bg-white hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => setDetailsOpen((open) => !open)}
 						type="button"
 					>
@@ -300,7 +300,7 @@ export const ChatCaptureReviewEvents = ({
 						/>
 					</button>
 					<Link
-						className="inline-flex min-h-8 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-bold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(50,43,32,0.96)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex min-h-8 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-bold text-[#fffaf0] shadow-xs transition hover:bg-[rgba(50,43,32,0.96)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						to={reviewHref}
 					>
 						{primaryActionLabel}

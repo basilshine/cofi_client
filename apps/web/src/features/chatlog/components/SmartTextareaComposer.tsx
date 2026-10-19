@@ -183,7 +183,7 @@ const ComposerChip = ({
 	<button
 		aria-pressed={selected}
 		className={[
-			"min-h-10 rounded-full px-3.5 py-1.5 text-xs font-medium shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,color,transform] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+			"min-h-10 rounded-full px-3.5 py-1.5 text-xs font-medium shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,color,transform] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
 			selected
 				? "bg-[rgba(70,110,70,0.12)] text-[hsl(140_35%_20%)] shadow-[0_0_0_1px_rgba(70,110,70,0.34),0_10px_20px_-16px_rgba(44,32,18,0.44)] dark:text-[hsl(140_40%_72%)]"
 				: "bg-[rgba(255,248,235,0.88)] text-[hsl(220_40%_22%)] hover:bg-[rgba(255,252,248,0.96)] hover:shadow-[0_0_0_1px_rgba(120,100,80,0.18),0_10px_20px_-16px_rgba(44,32,18,0.5)] dark:bg-[rgba(255,248,235,0.07)] dark:text-foreground dark:hover:bg-[rgba(215,185,135,0.12)]",
@@ -550,7 +550,7 @@ export const SmartTextareaComposer = forwardRef<
 			<div className="mb-2.5 flex min-h-[1.5rem] items-center justify-between">
 				<button
 					aria-label="Go back"
-					className="flex items-center gap-1 rounded px-1 py-0.5 text-xs font-medium text-[hsl(220_40%_42%)] transition-colors hover:text-[hsl(220_40%_22%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:text-[hsl(220_40%_64%)] dark:hover:text-[hsl(220_40%_84%)]"
+					className="flex items-center gap-1 rounded-[4px] px-1 py-0.5 text-xs font-medium text-[hsl(220_40%_42%)] transition-colors hover:text-[hsl(220_40%_22%)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:text-[hsl(220_40%_64%)] dark:hover:text-[hsl(220_40%_84%)]"
 					disabled={disabled}
 					onClick={goBack}
 					tabIndex={0}
@@ -564,7 +564,7 @@ export const SmartTextareaComposer = forwardRef<
 				{showCancel && (
 					<button
 						aria-label="Cancel and return to main"
-						className="rounded px-1 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="rounded-[4px] px-1 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={cancelToIdle}
 						tabIndex={0}
 						type="button"
@@ -585,7 +585,7 @@ export const SmartTextareaComposer = forwardRef<
 			<textarea
 				ref={textareaRef}
 				aria-label="Text input"
-				className="min-h-[2.75rem] w-full resize-none bg-transparent text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground/56 focus-visible:ring-0"
+				className="min-h-[2.75rem] w-full resize-none bg-transparent text-sm leading-6 text-foreground outline-hidden placeholder:text-muted-foreground/56 focus-visible:ring-0"
 				disabled={disabled}
 				onChange={(e) => setTextInput(e.target.value)}
 				onKeyDown={(e) => handleTextKeyDown(e, onSubmit)}
@@ -604,7 +604,7 @@ export const SmartTextareaComposer = forwardRef<
 			<div className="mt-2.5 flex justify-end">
 				<button
 					aria-label={label}
-					className="min-h-10 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] hover:shadow-[0_12px_26px_-16px_rgba(20,24,34,0.78)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 dark:bg-[hsl(220_40%_52%)] dark:hover:bg-[hsl(220_40%_60%)]"
+					className="min-h-10 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] hover:shadow-[0_12px_26px_-16px_rgba(20,24,34,0.78)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40 dark:bg-[hsl(220_40%_52%)] dark:hover:bg-[hsl(220_40%_60%)]"
 					disabled={disabled || !canSubmit}
 					onClick={onSubmit}
 					tabIndex={0}
@@ -745,7 +745,7 @@ export const SmartTextareaComposer = forwardRef<
 							<div className="mt-3 flex flex-wrap justify-end gap-2">
 								<button
 									aria-label="Discard voice recording"
-									className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-3.5 text-xs font-semibold text-muted-foreground shadow-sm transition-[background-color,box-shadow,transform] hover:bg-white hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/70 px-3.5 text-xs font-semibold text-muted-foreground shadow-xs transition-[background-color,box-shadow,transform] hover:bg-white hover:text-foreground active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
 									disabled={disabled || isStoppingVoice}
 									onClick={cancelToIdle}
 									tabIndex={0}
@@ -756,7 +756,7 @@ export const SmartTextareaComposer = forwardRef<
 								</button>
 								<button
 									aria-label="Stop voice recording"
-									className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[rgba(145,78,56,0.12)] px-4 text-xs font-semibold text-[#7b3f2e] shadow-[0_0_0_1px_rgba(145,78,56,0.22),0_10px_22px_-16px_rgba(127,29,29,0.45)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(145,78,56,0.16)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[rgba(145,78,56,0.12)] px-4 text-xs font-semibold text-[#7b3f2e] shadow-[0_0_0_1px_rgba(145,78,56,0.22),0_10px_22px_-16px_rgba(127,29,29,0.45)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(145,78,56,0.16)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
 									disabled={disabled || isStoppingVoice}
 									onClick={() => void handleVoiceToggle()}
 									tabIndex={0}
@@ -780,7 +780,7 @@ export const SmartTextareaComposer = forwardRef<
 								</div>
 								<button
 									aria-label="Start voice recording"
-									className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
 									disabled={disabled}
 									onClick={() => void handleVoiceToggle()}
 									tabIndex={0}
@@ -816,7 +816,7 @@ export const SmartTextareaComposer = forwardRef<
 					</div>
 					{photoDraft ? (
 						<div className="space-y-3">
-							<div className="overflow-hidden rounded-xl border border-[rgba(64,91,118,0.18)] bg-white/78 shadow-sm">
+							<div className="overflow-hidden rounded-xl border border-[rgba(64,91,118,0.18)] bg-white/78 shadow-xs">
 								<div className="relative aspect-[16/9] max-h-48 w-full bg-[rgba(236,244,249,0.72)]">
 									<img
 										alt="Selected receipt preview"
@@ -838,7 +838,7 @@ export const SmartTextareaComposer = forwardRef<
 									</div>
 									<button
 										aria-label="Remove selected receipt image"
-										className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/80 px-2.5 text-[11px] font-semibold text-muted-foreground shadow-sm transition hover:bg-white hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[rgba(120,100,80,0.16)] bg-white/80 px-2.5 text-[11px] font-semibold text-muted-foreground shadow-xs transition hover:bg-white hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 										disabled={disabled}
 										onClick={clearPhotoDraft}
 										type="button"
@@ -851,7 +851,7 @@ export const SmartTextareaComposer = forwardRef<
 							<div className="flex flex-wrap justify-between gap-2">
 								<button
 									aria-label="Choose another receipt image"
-									className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(64,91,118,0.18)] bg-white/80 px-3.5 text-xs font-semibold text-[#34556f] shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									className="inline-flex min-h-10 items-center gap-2 rounded-full border border-[rgba(64,91,118,0.18)] bg-white/80 px-3.5 text-xs font-semibold text-[#34556f] shadow-xs transition hover:bg-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
 									disabled={disabled}
 									onClick={() => photoInputRef.current?.click()}
 									type="button"
@@ -861,7 +861,7 @@ export const SmartTextareaComposer = forwardRef<
 								</button>
 								<button
 									aria-label="Send receipt image to review"
-									className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+									className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
 									disabled={disabled}
 									onClick={handlePhotoSubmit}
 									type="button"
@@ -875,7 +875,7 @@ export const SmartTextareaComposer = forwardRef<
 						<div className="flex flex-wrap gap-2">
 							<button
 								aria-label="Upload receipt photo"
-								className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+								className="inline-flex min-h-10 items-center gap-2 rounded-full bg-[hsl(220_40%_22%)] px-4 text-xs font-semibold text-white shadow-[0_10px_24px_-16px_rgba(20,24,34,0.72)] transition-[background-color,box-shadow,transform] hover:bg-[hsl(220_40%_30%)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
 								disabled={disabled}
 								onClick={() => photoInputRef.current?.click()}
 								tabIndex={0}
@@ -1112,7 +1112,7 @@ export const SmartTextareaComposer = forwardRef<
 				className={
 					surface === "dock"
 						? "relative shrink-0 overflow-hidden bg-transparent"
-						: "relative shrink-0 overflow-hidden border-t border-[rgba(120,100,80,0.2)] bg-gradient-to-b from-card/98 via-card/96 to-background/92 shadow-[0_-10px_26px_-18px_rgba(0,0,0,0.2)] backdrop-blur-md dark:from-background/95 dark:via-background/90 dark:to-background/85"
+						: "relative shrink-0 overflow-hidden border-t border-[rgba(120,100,80,0.2)] bg-linear-to-b from-card/98 via-card/96 to-background/92 shadow-[0_-10px_26px_-18px_rgba(0,0,0,0.2)] backdrop-blur-md dark:from-background/95 dark:via-background/90 dark:to-background/85"
 				}
 				initial={reduceMotion ? false : { opacity: 0.92, y: 10 }}
 				transition={spring}
@@ -1145,7 +1145,7 @@ export const SmartTextareaComposer = forwardRef<
 						className={
 							surface === "dock"
 								? "rounded-[1rem] bg-card/96 p-3 shadow-[inset_0_0_0_1px_rgba(87,70,49,0.08),inset_0_1px_2px_rgba(44,32,18,0.04)] ring-1 ring-white/25 dark:bg-card/95 dark:ring-white/5"
-								: "rounded-[0.9rem] border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,248,0.97)] p-3 shadow-sm ring-1 ring-white/25 dark:bg-card/95 dark:ring-white/5"
+								: "rounded-[0.9rem] border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,248,0.97)] p-3 shadow-xs ring-1 ring-white/25 dark:bg-card/95 dark:ring-white/5"
 						}
 					>
 						<AnimatePresence initial={false} mode="wait">

@@ -4,7 +4,7 @@ import { useWorkspaceSpaces } from "./WorkspaceSpacesContext";
 
 const tabClass = (isActive: boolean) =>
 	[
-		"inline-flex h-9 shrink-0 items-center rounded-xl px-3.5 text-xs tracking-tight transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[13px]",
+		"inline-flex h-9 shrink-0 items-center rounded-xl px-3.5 text-xs tracking-tight transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:text-[13px]",
 		isActive
 			? "soft-shadow bg-card text-foreground font-bold"
 			: "font-medium text-muted-foreground hover:bg-card/60 hover:text-foreground",

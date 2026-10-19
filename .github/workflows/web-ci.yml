@@ -9,6 +9,10 @@ on:
       - "apps/telegram-webapp/**"
       - "apps/marketing/**"
       - "packages/api/**"
+      - "packages/ui/**"
+      - "tests/styles/**"
+      - "playwright.styles.config.ts"
+      - "tailwind.config.cjs"
       - "scripts/check-boundaries.mjs"
       - "package.json"
       - "package-lock.json"
@@ -21,6 +25,10 @@ on:
       - "apps/telegram-webapp/**"
       - "apps/marketing/**"
       - "packages/api/**"
+      - "packages/ui/**"
+      - "tests/styles/**"
+      - "playwright.styles.config.ts"
+      - "tailwind.config.cjs"
       - "scripts/check-boundaries.mjs"
       - "package.json"
       - "package-lock.json"
@@ -48,8 +56,14 @@ jobs:
       - name: Architecture boundaries (strict)
         run: npm run lint:boundaries
 
-      - name: Production build (tsc + vite)
-        run: npm run build:web
+      - name: Production builds (tsc + vite)
+        run: npm run build:all
         env:
           # Vite may read env at build time; CI does not need a real API
           VITE_API_URL: "http://127.0.0.1:8000"
+
+      - name: Install test browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Legacy stylesheet regression checks
+        run: npm run test:styles -- --workers=2

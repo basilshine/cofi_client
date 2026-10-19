@@ -71,7 +71,7 @@ export const SettingsSpacesPage = () => {
 									{spaces.map((space) => (
 										<li key={String(space.id)}>
 											<Link
-												className="group flex min-h-[8.5rem] flex-col justify-between rounded-2xl border border-border/70 bg-background p-4 shadow-sm transition-[background-color,border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-accent/25 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]"
+												className="group flex min-h-[8.5rem] flex-col justify-between rounded-2xl border border-border/70 bg-background p-4 shadow-xs transition-[background-color,border-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-accent/25 hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.96]"
 												to={`/console/settings/spaces/${encodeURIComponent(String(space.id))}`}
 											>
 												<div className="flex items-start gap-3">

@@ -2,7 +2,7 @@ import LogRocket from "logrocket";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
-import "./index.css";
+import "./index.pcss";
 
 if (import.meta.env.VITE_LOGROCKET_ID) {
 	LogRocket.init(import.meta.env.VITE_LOGROCKET_ID);

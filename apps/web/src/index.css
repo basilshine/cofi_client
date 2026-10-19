@@ -1,5 +1,0 @@
-/*
- * Web app style entrypoint.
- * Shared Ceits tokens live in packages/ui so active apps do not depend on the retired root client.
- */
-@import "../../../packages/ui/src/global.css";

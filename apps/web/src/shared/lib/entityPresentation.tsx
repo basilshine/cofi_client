@@ -93,7 +93,7 @@ export const EntityMini = ({
 	const body = (
 		<span
 			className={[
-				"flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm shadow-sm transition-[background-color,border-color,box-shadow,transform]",
+				"flex min-w-0 items-center gap-2 rounded-xl border px-3 py-2 text-sm shadow-xs transition-[background-color,border-color,box-shadow,transform]",
 				visual.surfaceClass,
 			].join(" ")}
 		>
@@ -126,7 +126,7 @@ export const EntityMini = ({
 	if (entity.href) {
 		return (
 			<Link
-				className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+				className="block rounded-xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 				to={entity.href}
 			>
 				{body}
@@ -155,7 +155,7 @@ export const EntityListItem = ({
 				"group flex min-w-0 items-start border transition-[background-color,border-color,box-shadow,transform]",
 				density === "compact"
 					? "gap-2 rounded-xl p-2 shadow-none"
-					: "gap-3 rounded-2xl p-3.5 shadow-sm",
+					: "gap-3 rounded-2xl p-3.5 shadow-xs",
 				entity.selected ? visual.selectedSurfaceClass : visual.surfaceClass,
 			].join(" ")}
 		>
@@ -239,7 +239,7 @@ export const EntityCard = ({
 	return (
 		<div
 			className={[
-				"rounded-2xl border p-4 shadow-sm transition-[background-color,border-color,box-shadow]",
+				"rounded-2xl border p-4 shadow-xs transition-[background-color,border-color,box-shadow]",
 				entity.selected ? visual.selectedSurfaceClass : visual.surfaceClass,
 			].join(" ")}
 		>

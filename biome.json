@@ -20,6 +20,9 @@
 			"node_modules",
 			"dist",
 			"build",
+			".tmp",
+			"test-results",
+			"playwright-report",
 			"packages/api/src/openapi-types.ts"
 		]
 	}

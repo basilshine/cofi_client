@@ -84,7 +84,7 @@ export const AuthProviderButton = ({
 
 	return (
 		<button
-			className="flex h-12 w-full items-center gap-3 rounded-xl border border-[#D4CEC6] bg-[#FFFCF8] px-3.5 text-left text-sm font-semibold text-[#122032] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] outline-none transition hover:border-[#C4BDB2] hover:bg-[#FAF8F5] focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCFA] active:scale-[0.998]"
+			className="flex h-12 w-full items-center gap-3 rounded-xl border border-[#D4CEC6] bg-[#FFFCF8] px-3.5 text-left text-sm font-semibold text-[#122032] shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] outline-hidden transition hover:border-[#C4BDB2] hover:bg-[#FAF8F5] focus-visible:ring-2 focus-visible:ring-[#8B9F8E]/25 focus-visible:ring-offset-2 focus-visible:ring-offset-[#FDFCFA] active:scale-[0.998]"
 			type="button"
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}

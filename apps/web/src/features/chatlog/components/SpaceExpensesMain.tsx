@@ -443,7 +443,7 @@ export const SpaceExpensesMain = ({
 							<input
 								aria-label="Recurring expenses only"
 								checked={recurringOnly}
-								className="h-4 w-4 rounded border-border"
+								className="h-4 w-4 rounded-[4px] border-border"
 								onChange={(e) => setRecurringOnly(e.target.checked)}
 								type="checkbox"
 							/>
@@ -534,7 +534,7 @@ export const SpaceExpensesMain = ({
 				</select>
 				<button
 					aria-expanded={moreFiltersOpen}
-					className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+					className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-all duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
 						moreFiltersOpen
 							? "border-[rgba(160,120,70,0.45)] bg-[rgba(255,240,215,0.55)] text-foreground"
 							: "border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.85)] text-foreground/85 hover:border-[rgba(120,100,80,0.35)]"
@@ -558,7 +558,7 @@ export const SpaceExpensesMain = ({
 				) : null}
 
 				{!listLoading && expenseRecords && expenseRecords.length === 0 ? (
-					<div className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.72)] px-4 py-5 shadow-sm">
+					<div className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-[rgba(255,252,246,0.72)] px-4 py-5 shadow-xs">
 						<p className="text-sm font-semibold text-foreground">
 							No saved expense records yet
 						</p>
@@ -568,14 +568,14 @@ export const SpaceExpensesMain = ({
 						</p>
 						<div className="mt-4 flex flex-wrap gap-2">
 							<Link
-								className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3.5 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+								className="inline-flex h-9 items-center rounded-lg bg-[rgba(55,45,30,0.92)] px-3.5 text-sm font-semibold text-[#fffaf0] shadow-xs transition hover:bg-[rgba(45,38,28,0.95)]"
 								to={chatSpaceHref}
 							>
 								Add expense
 							</Link>
 							{spaceId != null ? (
 								<Link
-									className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-sm transition hover:bg-white"
+									className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-xs transition hover:bg-white"
 									to={`/console/review?spaceId=${encodeURIComponent(String(spaceId))}`}
 								>
 									Open captures
@@ -927,7 +927,7 @@ export const SpaceExpensesMain = ({
 									Keep expense
 								</button>
 								<button
-									className="inline-flex h-10 items-center rounded-lg bg-[rgba(130,70,70,0.92)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[rgba(110,55,55,0.98)] disabled:opacity-50"
+									className="inline-flex h-10 items-center rounded-lg bg-[rgba(130,70,70,0.92)] px-4 text-sm font-semibold text-white shadow-xs transition hover:bg-[rgba(110,55,55,0.98)] disabled:opacity-50"
 									disabled={deletingId != null}
 									onClick={() => void handleDeleteExpense(pendingDeleteExpense)}
 									type="button"

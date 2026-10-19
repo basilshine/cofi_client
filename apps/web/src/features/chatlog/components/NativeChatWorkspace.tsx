@@ -38,7 +38,7 @@ export const NativeChatWorkspace = ({
 
 				<div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
 					<main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-card">
-						<div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-muted/30 to-background">
+						<div className="flex min-h-0 flex-1 flex-col bg-linear-to-b from-muted/30 to-background">
 							{children}
 						</div>
 					</main>

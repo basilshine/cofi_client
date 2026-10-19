@@ -579,7 +579,7 @@ export const SpaceParticipantsPanel = ({
 								</span>
 							) : null}
 							<button
-								className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/70 bg-background/70 text-muted-foreground transition hover:bg-card hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={() => startEditing(participant)}
 								title="Edit participant"
 								type="button"
@@ -589,7 +589,7 @@ export const SpaceParticipantsPanel = ({
 							{canAlias ? (
 								aliasTarget ? (
 									<button
-										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(100,118,160,0.24)] bg-[rgba(100,118,160,0.1)] text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(100,118,160,0.24)] bg-[rgba(100,118,160,0.1)] text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.18)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 										disabled={isSavingLink}
 										onClick={() => void unlinkParticipantAlias(participant)}
 										title="Unlink participant alias"
@@ -599,7 +599,7 @@ export const SpaceParticipantsPanel = ({
 									</button>
 								) : (
 									<button
-										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(100,118,160,0.24)] bg-[rgba(100,118,160,0.1)] text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(100,118,160,0.24)] bg-[rgba(100,118,160,0.1)] text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.18)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 										disabled={isSavingLink || aliasTargets.length === 0}
 										onClick={() => startLinking(participant)}
 										title="Link participant alias"
@@ -610,7 +610,7 @@ export const SpaceParticipantsPanel = ({
 								)
 							) : null}
 							<button
-								className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(90,130,98,0.28)] bg-[rgba(120,154,124,0.14)] text-[#24452b] transition hover:bg-[rgba(120,154,124,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45"
+								className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(90,130,98,0.28)] bg-[rgba(120,154,124,0.14)] text-[#24452b] transition hover:bg-[rgba(120,154,124,0.22)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-45"
 								disabled={isInviting || !canInvite}
 								onClick={() => void inviteParticipant(participant)}
 								title={
@@ -630,7 +630,7 @@ export const SpaceParticipantsPanel = ({
 								isConfirmingDelete ? (
 									<span className="inline-flex items-center gap-1 rounded-full border border-[rgba(150,70,45,0.28)] bg-[rgba(150,70,45,0.08)] px-1.5 py-1">
 										<button
-											className="inline-flex h-7 items-center rounded-full px-2 text-[11px] font-bold text-[#74341f] transition hover:bg-[rgba(150,70,45,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+											className="inline-flex h-7 items-center rounded-full px-2 text-[11px] font-bold text-[#74341f] transition hover:bg-[rgba(150,70,45,0.12)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
 											disabled={isDeleting}
 											onClick={() => void deleteParticipant(participant)}
 											type="button"
@@ -638,7 +638,7 @@ export const SpaceParticipantsPanel = ({
 											{isDeleting ? "Removing..." : "Remove"}
 										</button>
 										<button
-											className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											className="inline-flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition hover:bg-background hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 											disabled={isDeleting}
 											onClick={() => setConfirmDeleteId(null)}
 											title="Cancel remove"
@@ -649,7 +649,7 @@ export const SpaceParticipantsPanel = ({
 									</span>
 								) : (
 									<button
-										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(150,70,45,0.22)] bg-[rgba(150,70,45,0.08)] text-[#74341f] transition hover:bg-[rgba(150,70,45,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgba(150,70,45,0.22)] bg-[rgba(150,70,45,0.08)] text-[#74341f] transition hover:bg-[rgba(150,70,45,0.14)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 										onClick={() => setConfirmDeleteId(participant.id)}
 										title="Remove participant"
 										type="button"
@@ -682,7 +682,7 @@ export const SpaceParticipantsPanel = ({
 									<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
 										Name
 										<input
-											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 											onChange={(event) =>
 												setFormState((current) =>
 													current
@@ -699,7 +699,7 @@ export const SpaceParticipantsPanel = ({
 									<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
 										Email
 										<input
-											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 											onChange={(event) =>
 												setFormState((current) =>
 													current
@@ -714,7 +714,7 @@ export const SpaceParticipantsPanel = ({
 									<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
 										Telegram
 										<input
-											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+											className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 											onChange={(event) =>
 												setFormState((current) =>
 													current
@@ -733,7 +733,7 @@ export const SpaceParticipantsPanel = ({
 										<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
 											Phone
 											<input
-												className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+												className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 												onChange={(event) =>
 													setFormState((current) =>
 														current
@@ -748,7 +748,7 @@ export const SpaceParticipantsPanel = ({
 										<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
 											WhatsApp
 											<input
-												className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+												className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 												onChange={(event) =>
 													setFormState((current) =>
 														current
@@ -764,7 +764,7 @@ export const SpaceParticipantsPanel = ({
 									<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
 										Contact notes
 										<textarea
-											className="min-h-16 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+											className="min-h-16 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 											onChange={(event) =>
 												setFormState((current) =>
 													current
@@ -777,7 +777,7 @@ export const SpaceParticipantsPanel = ({
 									</label>
 									<div className="flex items-center justify-end gap-2 pt-1">
 										<button
-											className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 											disabled={isSaving}
 											onClick={stopEditing}
 											title="Cancel"
@@ -786,7 +786,7 @@ export const SpaceParticipantsPanel = ({
 											<X className="h-4 w-4" />
 										</button>
 										<button
-											className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+											className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-foreground text-background transition hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
 											disabled={isSaving}
 											onClick={() => void saveParticipant(participant)}
 											title="Save"
@@ -963,7 +963,7 @@ export const SpaceParticipantsPanel = ({
 																		{alias.display_name}
 																		{canLinkParticipants && !readOnly ? (
 																			<button
-																				className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+																				className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[#2f426b] transition hover:bg-[rgba(100,118,160,0.14)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 																				disabled={isAliasUnlinking}
 																				onClick={() =>
 																					void unlinkParticipantAlias(alias)
@@ -985,7 +985,7 @@ export const SpaceParticipantsPanel = ({
 														<label className="grid gap-1 text-xs font-semibold text-muted-foreground">
 															Resolve this name to
 															<select
-																className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20"
+																className="h-9 rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/20"
 																onChange={(event) =>
 																	setLinkTargetId(Number(event.target.value))
 																}
@@ -1006,7 +1006,7 @@ export const SpaceParticipantsPanel = ({
 														</p>
 														<div className="mt-3 flex justify-end gap-2">
 															<button
-																className="inline-flex h-8 items-center rounded-full border border-border bg-background px-3 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+																className="inline-flex h-8 items-center rounded-full border border-border bg-background px-3 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 																disabled={isSavingLink}
 																onClick={stopLinking}
 																type="button"
@@ -1014,7 +1014,7 @@ export const SpaceParticipantsPanel = ({
 																Cancel
 															</button>
 															<button
-																className="inline-flex h-8 items-center rounded-full bg-foreground px-3 text-xs font-bold text-background transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+																className="inline-flex h-8 items-center rounded-full bg-foreground px-3 text-xs font-bold text-background transition hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
 																disabled={isSavingLink || !linkTargetId}
 																onClick={() =>
 																	void saveParticipantAlias(participant)

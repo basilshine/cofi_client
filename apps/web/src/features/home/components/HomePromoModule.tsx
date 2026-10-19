@@ -35,7 +35,7 @@ export const HomePromoModule = ({
 	return (
 		<section
 			aria-labelledby="home-promos"
-			className="rounded-2xl border border-[rgba(95,125,102,0.2)] bg-gradient-to-br from-[#f3f9f4] via-[#fffdf8] to-[#f8f1e4] p-5 shadow-[0_18px_46px_-34px_rgba(60,82,52,0.42)]"
+			className="rounded-2xl border border-[rgba(95,125,102,0.2)] bg-linear-to-br from-[#f3f9f4] via-[#fffdf8] to-[#f8f1e4] p-5 shadow-[0_18px_46px_-34px_rgba(60,82,52,0.42)]"
 		>
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="min-w-0">

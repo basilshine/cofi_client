@@ -170,9 +170,9 @@ const CrumbLabel = ({
 	return (
 		<Link
 			className={[
-				"min-w-0 truncate transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+				"min-w-0 truncate transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
 				isWorkspace
-					? "rounded-md border border-border/60 bg-gradient-to-b from-muted/90 to-muted/50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground shadow-sm hover:border-primary/30 hover:text-foreground sm:text-[11px]"
+					? "rounded-md border border-border/60 bg-linear-to-b from-muted/90 to-muted/50 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground shadow-xs hover:border-primary/30 hover:text-foreground sm:text-[11px]"
 					: "text-muted-foreground hover:text-foreground",
 			].join(" ")}
 			to={crumb.to}
@@ -226,7 +226,7 @@ export const ConsoleBreadcrumbs = ({
 			{isInline ? null : (
 				<div
 					aria-hidden
-					className="pointer-events-none mt-3 h-px w-full max-w-md bg-gradient-to-r from-transparent via-border to-transparent opacity-80"
+					className="pointer-events-none mt-3 h-px w-full max-w-md bg-linear-to-r from-transparent via-border to-transparent opacity-80"
 				/>
 			)}
 		</nav>

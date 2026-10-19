@@ -191,7 +191,7 @@ export const ExpenseMessageCard = ({
 		return (
 			<div className="w-full min-w-0 max-w-full">
 				<div
-					className={`space-y-1.5 rounded-xl border px-2.5 py-2 shadow-sm ${
+					className={`space-y-1.5 rounded-xl border px-2.5 py-2 shadow-xs ${
 						isSelected
 							? "border-[rgba(120,98,62,0.42)] bg-[linear-gradient(180deg,#fffbf3_0%,#f8efe2_100%)] shadow-[0_4px_12px_-10px_rgba(70,55,30,0.42)]"
 							: "border-emerald-300/35 bg-[linear-gradient(180deg,#f7fcf8_0%,#f1f9f2_100%)]"
@@ -327,7 +327,7 @@ export const ExpenseMessageCard = ({
 							entity={itemEntity}
 							key={`${idx}-${it.name}`}
 							trailing={
-								<span className="rounded-xl border border-[rgba(110,104,92,0.14)] bg-white/70 px-3 py-2 text-xs font-semibold tabular-nums text-foreground shadow-sm">
+								<span className="rounded-xl border border-[rgba(110,104,92,0.14)] bg-white/70 px-3 py-2 text-xs font-semibold tabular-nums text-foreground shadow-xs">
 									{formatMoney(
 										it.space_amount ?? it.amount,
 										it.space_currency ?? expenseCurrency,

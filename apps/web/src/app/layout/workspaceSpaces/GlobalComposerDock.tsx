@@ -519,7 +519,7 @@ const ComposerFlowInfographic = ({
 				</div>
 				{showReviewLink ? (
 					<Link
-						className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[rgba(68,58,42,0.94)] px-4 text-xs font-bold text-[#fffaf0] shadow-[0_12px_26px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.98)] hover:shadow-[0_14px_30px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full bg-[rgba(68,58,42,0.94)] px-4 text-xs font-bold text-[#fffaf0] shadow-[0_12px_26px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.98)] hover:shadow-[0_14px_30px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						to={reviewHref}
 					>
 						Review capture
@@ -651,7 +651,7 @@ const DockReviewDrawer = ({
 					</span>
 				) : (
 					<Link
-						className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-xs font-bold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						to={finalExpenseHref}
 					>
 						<CheckCircle2 className="h-3.5 w-3.5" size={14} />
@@ -708,7 +708,7 @@ const DockReviewDrawer = ({
 							</div>
 							<Link
 								className={[
-									"mt-2 inline-flex min-h-8 w-full items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold transition-[background-color,box-shadow,transform] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									"mt-2 inline-flex min-h-8 w-full items-center justify-center gap-1.5 rounded-lg px-2 text-[11px] font-bold transition-[background-color,box-shadow,transform] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
 									hasCandidate
 										? "bg-white/78 text-[#355a3c] shadow-[0_0_0_1px_rgba(72,112,76,0.14)] hover:bg-white"
 										: "bg-[rgba(68,58,42,0.06)] text-foreground/78 shadow-[0_0_0_1px_rgba(87,70,49,0.08)] hover:bg-[rgba(68,58,42,0.1)]",
@@ -809,7 +809,7 @@ const CandidateBundlePanel = ({
 				</div>
 				<div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
 					<button
-						className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-semibold text-[#fffaf0] shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex min-h-8 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3 text-[11px] font-semibold text-[#fffaf0] shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() => setIsReviewDrawerOpen((current) => !current)}
 						type="button"
 					>
@@ -832,7 +832,7 @@ const CandidateBundlePanel = ({
 };
 
 const clarificationActionClass =
-	"inline-flex min-h-10 shrink-0 items-center rounded-full bg-background px-3.5 text-xs font-semibold text-foreground/82 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
+	"inline-flex min-h-10 shrink-0 items-center rounded-full bg-background px-3.5 text-xs font-semibold text-foreground/82 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_18px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_22px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
 
 const ClarificationActionsPanel = ({
 	benefitsHref,
@@ -1338,13 +1338,13 @@ export const GlobalComposerDock = ({
 	if (hasNativeComposer) return null;
 
 	const actionButtonClass =
-		"inline-flex min-h-9 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3.5 text-xs font-semibold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_12px_28px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
+		"inline-flex min-h-9 shrink-0 items-center rounded-full bg-[rgba(68,58,42,0.92)] px-3.5 text-xs font-semibold text-[#fffaf0] shadow-[0_10px_24px_-18px_rgba(44,32,18,0.58)] transition-[background-color,box-shadow,transform] hover:bg-[rgba(50,43,32,0.96)] hover:shadow-[0_12px_28px_-18px_rgba(44,32,18,0.64)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45";
 	const utilityButtonClass =
-		"inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold text-muted-foreground transition-[background-color,color,transform] hover:bg-card hover:text-foreground active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+		"inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11px] font-semibold text-muted-foreground transition-[background-color,color,transform] hover:bg-card hover:text-foreground active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 	const userLinkClass =
-		"inline-flex min-h-10 min-w-0 shrink-0 items-center gap-2 rounded-full bg-background px-3 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+		"inline-flex min-h-10 min-w-0 shrink-0 items-center gap-2 rounded-full bg-background px-3 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.42)] transition-[background-color,box-shadow,transform] hover:bg-card hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.48)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 	const settingsActionClass =
-		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.44)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+		"inline-flex min-h-10 shrink-0 items-center rounded-full bg-card/92 px-3.5 text-xs font-semibold text-foreground/85 shadow-[0_0_0_1px_rgba(87,70,49,0.1),0_8px_20px_-16px_rgba(44,32,18,0.44)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[0_0_0_1px_rgba(87,70,49,0.16),0_10px_24px_-16px_rgba(44,32,18,0.5)] active:scale-[0.96] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring";
 	if (settingsActionDock) {
 		return (
 			<div className={dockShellClass} data-testid="global-composer-dock">
@@ -1417,7 +1417,7 @@ export const GlobalComposerDock = ({
 					<div className="grid gap-2 p-2.5 xl:grid-cols-[minmax(18rem,1fr)_auto] xl:items-center">
 						<button
 							aria-label="Expand global composer"
-							className="flex min-h-12 min-w-0 items-center justify-between gap-3 rounded-[1rem] bg-card/95 px-4 py-2 text-left shadow-[inset_0_0_0_1px_rgba(87,70,49,0.12),0_12px_28px_-24px_rgba(44,32,18,0.56)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[inset_0_0_0_1px_rgba(87,70,49,0.2),0_14px_32px_-24px_rgba(44,32,18,0.62)] active:scale-[0.995] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
+							className="flex min-h-12 min-w-0 items-center justify-between gap-3 rounded-[1rem] bg-card/95 px-4 py-2 text-left shadow-[inset_0_0_0_1px_rgba(87,70,49,0.12),0_12px_28px_-24px_rgba(44,32,18,0.56)] transition-[background-color,box-shadow,transform] hover:bg-background hover:shadow-[inset_0_0_0_1px_rgba(87,70,49,0.2),0_14px_32px_-24px_rgba(44,32,18,0.62)] active:scale-[0.995] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-45"
 							disabled={disabled}
 							onClick={() => expandTo("message_text")}
 							type="button"

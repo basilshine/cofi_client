@@ -75,7 +75,7 @@ export const WorkspaceSummaryChip = ({
 	};
 
 	return (
-		<div className="inline-flex min-w-0 items-center gap-2 rounded-xl border border-[rgba(120,100,80,0.15)] bg-[rgba(255,252,246,0.65)] px-3 py-2 text-sm shadow-sm">
+		<div className="inline-flex min-w-0 items-center gap-2 rounded-xl border border-[rgba(120,100,80,0.15)] bg-[rgba(255,252,246,0.65)] px-3 py-2 text-sm shadow-xs">
 			<span
 				className={`text-xs font-semibold uppercase tracking-wide ${accentClass[accent]}`}
 			>
@@ -106,7 +106,7 @@ export const WorkspaceFilterBar = ({
 	sort,
 }: WorkspaceFilterBarProps) => (
 	<div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 pt-4 sm:px-5">
-		<div className="flex flex-col gap-2 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/70 p-3 shadow-sm sm:p-3.5">
+		<div className="flex flex-col gap-2 rounded-xl border border-[rgba(120,100,80,0.14)] bg-white/70 p-3 shadow-xs sm:p-3.5">
 			<div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:gap-3">
 				{search ? <div className="min-w-0 flex-1">{search}</div> : null}
 				<div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -132,10 +132,10 @@ export const WorkspaceFilterBar = ({
 );
 
 export const workspaceControlClass =
-	"h-9 rounded-lg border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.85)] px-2.5 text-sm text-foreground shadow-sm transition-colors duration-150 hover:border-[rgba(120,100,80,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+	"h-9 rounded-lg border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.85)] px-2.5 text-sm text-foreground shadow-xs transition-colors duration-150 hover:border-[rgba(120,100,80,0.35)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 export const workspaceSearchInputClass =
-	"h-10 w-full rounded-lg border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.95)] px-3.5 text-sm text-foreground shadow-inner transition-colors duration-150 placeholder:text-muted-foreground focus-visible:border-[rgba(160,120,70,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+	"h-10 w-full rounded-lg border border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.95)] px-3.5 text-sm text-foreground shadow-inner transition-colors duration-150 placeholder:text-muted-foreground focus-visible:border-[rgba(160,120,70,0.45)] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 type WorkspaceListBodyProps = {
 	children: ReactNode;
@@ -192,7 +192,7 @@ export const WorkspaceIncrementalList = <T,>({
 			{remainingCount > 0 ? (
 				<div className="flex justify-center pt-1">
 					<button
-						className="inline-flex min-h-9 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-white/76 px-3.5 text-xs font-semibold text-foreground transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+						className="inline-flex min-h-9 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-white/76 px-3.5 text-xs font-semibold text-foreground transition hover:bg-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
 						onClick={() =>
 							setVisibleCount((current) =>
 								Math.min(items.length, current + step),
@@ -237,7 +237,7 @@ export const WorkspacePagedList = <T,>({
 			{hasMore && onLoadMore ? (
 				<div className="flex justify-center pt-1">
 					<button
-						className="inline-flex min-h-9 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-white/76 px-3.5 text-xs font-semibold text-foreground transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-55"
+						className="inline-flex min-h-9 items-center rounded-full border border-[rgba(120,100,80,0.18)] bg-white/76 px-3.5 text-xs font-semibold text-foreground transition hover:bg-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-55"
 						disabled={isLoadingMore}
 						onClick={onLoadMore}
 						type="button"
@@ -316,7 +316,7 @@ export const WorkspaceEntityCard = ({
 				: "border-[rgba(160,120,70,0.42)] bg-[rgba(255,252,246,0.98)] shadow-[0_14px_38px_-28px_rgba(70,48,24,0.28)] ring-2 ring-[rgba(200,155,95,0.16)]"
 		: toneClass.body;
 	const summaryClass = [
-		"block w-full px-4 py-3 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+		"block w-full px-4 py-3 text-left outline-hidden transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
 		onClick ? toneClass.interactive : "",
 		contentClassName ?? "",
 	]

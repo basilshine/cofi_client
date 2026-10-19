@@ -18,18 +18,18 @@ const scrollReveal = {
 export const LandingPage = () => {
 	return (
 		<div className="min-h-screen bg-[hsl(var(--bg))] text-[hsl(var(--text-primary))]">
-			<header className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))]/95 backdrop-blur">
+			<header className="border-b border-[hsl(var(--border-subtle))] bg-[hsl(var(--bg))]/95 backdrop-blur-sm">
 				<div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 lg:px-8">
 					<span className="text-lg font-semibold tracking-tight">Ceits</span>
 					<div className="flex items-center gap-2">
 						<a
-							className="rounded-md px-3 py-2 text-sm font-medium text-[hsl(var(--text-secondary))] transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+							className="rounded-md px-3 py-2 text-sm font-medium text-[hsl(var(--text-secondary))] transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 							href={workspaceUrl("/login")}
 						>
 							Sign in
 						</a>
 						<a
-							className="rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] px-4 py-2 text-sm font-medium text-[hsl(var(--text-primary))] transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+							className="rounded-md border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] px-4 py-2 text-sm font-medium text-[hsl(var(--text-primary))] transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 							href={workspaceUrl("/register")}
 						>
 							Create account
@@ -71,13 +71,13 @@ export const LandingPage = () => {
 							variants={staggerItem}
 						>
 							<a
-								className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								href={workspaceUrl("/register")}
 							>
 								Start with Ceits
 							</a>
 							<a
-								className="inline-flex h-11 items-center justify-center rounded-md border border-[hsl(var(--border-subtle))] px-6 text-sm font-medium text-[hsl(var(--text-primary))] transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="inline-flex h-11 items-center justify-center rounded-md border border-[hsl(var(--border-subtle))] px-6 text-sm font-medium text-[hsl(var(--text-primary))] transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								href="#how-it-works"
 							>
 								Explore how it works
@@ -92,7 +92,7 @@ export const LandingPage = () => {
 						>
 							<MotionLink
 								aria-label="Continue with personal and household path"
-								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition-colors hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition-colors hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								to="/welcome/personal"
 								variants={staggerItem}
 								whileHover={{ y: -3, transition: { duration: 0.2 } }}
@@ -108,7 +108,7 @@ export const LandingPage = () => {
 							</MotionLink>
 							<MotionLink
 								aria-label="Continue with team and business path"
-								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition-colors hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition-colors hover:border-[hsl(var(--accent))]/40 hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								to="/welcome/business"
 								variants={staggerItem}
 								whileHover={{ y: -3, transition: { duration: 0.2 } }}
@@ -131,7 +131,7 @@ export const LandingPage = () => {
 						whileInView="visible"
 						viewport={scrollReveal}
 					>
-						<div className="rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 shadow-sm">
+						<div className="rounded-2xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-6 shadow-xs">
 							<p className="text-xs font-medium uppercase tracking-[0.14em] text-[hsl(var(--text-secondary))]">
 								Narrative preview
 							</p>
@@ -325,13 +325,13 @@ export const LandingPage = () => {
 						</p>
 						<div className="grid gap-3 sm:grid-cols-2">
 							<Link
-								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								to="/welcome/personal"
 							>
 								<p className="text-sm font-medium">For me and my household</p>
 							</Link>
 							<Link
-								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="rounded-xl border border-[hsl(var(--border-subtle))] bg-[hsl(var(--surface))] p-5 transition hover:bg-[hsl(var(--surface-muted))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								to="/welcome/business"
 							>
 								<p className="text-sm font-medium">For my team or business</p>
@@ -339,13 +339,13 @@ export const LandingPage = () => {
 						</div>
 						<div className="flex flex-col gap-3 sm:flex-row">
 							<a
-								className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="inline-flex h-11 items-center justify-center rounded-md bg-[hsl(var(--accent))] px-6 text-sm font-medium text-[hsl(var(--accent-contrast))] transition hover:brightness-95 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								href={workspaceUrl("/register")}
 							>
 								Start with Ceits
 							</a>
 							<a
-								className="inline-flex h-11 items-center justify-center rounded-md px-2 text-sm font-medium text-[hsl(var(--text-secondary))] transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+								className="inline-flex h-11 items-center justify-center rounded-md px-2 text-sm font-medium text-[hsl(var(--text-secondary))] transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 								href={workspaceUrl("/login")}
 							>
 								Sign in
@@ -359,13 +359,13 @@ export const LandingPage = () => {
 					<p>Ceits</p>
 					<div className="flex items-center gap-5">
 						<a
-							className="transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+							className="transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 							href={workspaceUrl("/login")}
 						>
 							Support
 						</a>
 						<a
-							className="transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
+							className="transition hover:text-[hsl(var(--text-primary))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))]"
 							href={workspaceUrl("/register")}
 						>
 							Get started

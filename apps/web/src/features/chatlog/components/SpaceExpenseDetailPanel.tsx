@@ -134,7 +134,7 @@ export const SpaceExpenseDetailPanel = ({
 
 				{expense ? (
 					<div className="space-y-4">
-						<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.88)] p-4 shadow-sm">
+						<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.88)] p-4 shadow-xs">
 							<div className="flex items-start justify-between gap-3">
 								<div className="min-w-0">
 									<EntityMicro
@@ -177,7 +177,7 @@ export const SpaceExpenseDetailPanel = ({
 							) : null}
 						</section>
 
-						<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/72 p-4 shadow-sm">
+						<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/72 p-4 shadow-xs">
 							<div className="flex items-center justify-between gap-2">
 								<h3 className="inline-flex items-center gap-2 text-sm font-bold text-foreground">
 									<ReceiptText className="h-4 w-4 text-muted-foreground" />
@@ -221,7 +221,7 @@ export const SpaceExpenseDetailPanel = ({
 							</ul>
 						</section>
 
-						<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/72 p-4 shadow-sm">
+						<section className="rounded-2xl border border-[rgba(120,100,80,0.14)] bg-white/72 p-4 shadow-xs">
 							<div className="flex items-center justify-between gap-2">
 								<h3 className="inline-flex items-center gap-2 text-sm font-bold text-foreground">
 									<Split className="h-4 w-4 text-muted-foreground" />

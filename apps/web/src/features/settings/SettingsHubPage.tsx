@@ -863,7 +863,7 @@ export const SettingsHubPage = ({
 														<label className="flex cursor-pointer items-start gap-3 text-sm">
 															<input
 																checked={notifChannels[key]}
-																className="mt-1 h-4 w-4 shrink-0 rounded border border-border"
+																className="mt-1 h-4 w-4 shrink-0 rounded-[4px] border border-border"
 																disabled={notifLoading || notifSaving}
 																onChange={(e) =>
 																	void handleNotificationChannelToggle(
@@ -956,7 +956,7 @@ export const SettingsHubPage = ({
 																				{p.label}
 																			</div>
 																			{isActive ? (
-																				<span className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+																				<span className="rounded-[4px] bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
 																					ACTIVE
 																				</span>
 																			) : null}

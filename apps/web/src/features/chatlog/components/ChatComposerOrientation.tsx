@@ -47,7 +47,7 @@ const buildPurposeOptions = (isSharedSpace: boolean): PurposeOption[] => [
 
 const modeButtonClass = (selected: boolean) =>
 	[
-		"inline-flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-left transition-[background-color,box-shadow,color,transform] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:justify-start sm:px-3",
+		"inline-flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-left transition-[background-color,box-shadow,color,transform] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 sm:justify-start sm:px-3",
 		selected
 			? "bg-[rgba(68,58,42,0.94)] text-[#fffaf0] shadow-[0_8px_18px_-14px_rgba(44,32,18,0.58)]"
 			: "text-muted-foreground hover:bg-white/78 hover:text-foreground",

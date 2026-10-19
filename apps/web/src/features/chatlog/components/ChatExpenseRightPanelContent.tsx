@@ -232,7 +232,7 @@ export const ChatExpenseRightPanelContent = ({
 
 					<section
 						aria-labelledby="capture-rail-summary"
-						className="rounded-2xl border border-[rgba(172,124,35,0.18)] bg-[rgba(255,252,246,0.88)] p-4 shadow-sm"
+						className="rounded-2xl border border-[rgba(172,124,35,0.18)] bg-[rgba(255,252,246,0.88)] p-4 shadow-xs"
 					>
 						<div className="flex items-start justify-between gap-3">
 							<div>
@@ -249,7 +249,7 @@ export const ChatExpenseRightPanelContent = ({
 								</p>
 							</div>
 							<Link
-								className="inline-flex h-9 shrink-0 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-3 text-xs font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+								className="inline-flex h-9 shrink-0 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-3 text-xs font-semibold text-[#fffaf0] shadow-xs transition hover:bg-[rgba(45,38,28,0.95)]"
 								to={reviewHref}
 							>
 								Open review
@@ -381,7 +381,7 @@ export const ChatExpenseRightPanelContent = ({
 				{spaceExpenseRecords && spaceExpenseRecords.length > 0 ? (
 					<section
 						aria-labelledby="exp-rail-summary"
-						className="rounded-2xl border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.85)] p-4 shadow-sm"
+						className="rounded-2xl border border-[rgba(120,100,80,0.18)] bg-[rgba(255,252,246,0.85)] p-4 shadow-xs"
 					>
 						<h3
 							className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
@@ -484,7 +484,7 @@ export const ChatExpenseRightPanelContent = ({
 								</Link>
 							) : (
 								<Link
-									className="inline-flex h-10 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+									className="inline-flex h-10 items-center rounded-lg bg-[rgba(55,45,30,0.9)] px-4 text-sm font-semibold text-[#fffaf0] shadow-xs transition hover:bg-[rgba(45,38,28,0.95)]"
 									to={reviewHref}
 								>
 									Review captures

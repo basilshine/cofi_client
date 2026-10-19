@@ -234,7 +234,7 @@ const EmptyPanel = ({
 	title: string;
 	body: string;
 }) => (
-	<div className="rounded-2xl border border-dashed border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.58)] px-5 py-7 text-center shadow-sm">
+	<div className="rounded-2xl border border-dashed border-[rgba(120,100,80,0.22)] bg-[rgba(255,252,246,0.58)] px-5 py-7 text-center shadow-xs">
 		<p className="font-display text-lg font-bold tracking-tight text-foreground">
 			{title}
 		</p>
@@ -255,7 +255,7 @@ const CandidateCard = ({
 	onIgnore: (candidate: CandidateView) => void;
 	onSavePromo: (candidate: CandidateView) => void;
 }) => (
-	<li className="rounded-xl border border-[rgba(200,160,95,0.2)] bg-white/62 p-3 shadow-sm">
+	<li className="rounded-xl border border-[rgba(200,160,95,0.2)] bg-white/62 p-3 shadow-xs">
 		<div className="flex flex-wrap items-start justify-between gap-2">
 			<div className="min-w-0">
 				<p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
@@ -685,7 +685,7 @@ export const SpaceBenefitsPage = () => {
 
 	const benefitsRightRail = (
 		<div className="space-y-5">
-			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.82)] p-5 shadow-sm">
+			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.82)] p-5 shadow-xs">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 					This space
 				</p>
@@ -697,7 +697,7 @@ export const SpaceBenefitsPage = () => {
 					this space context.
 				</p>
 			</section>
-			<section className="rounded-2xl border border-[rgba(95,125,102,0.22)] bg-[rgba(240,248,242,0.78)] p-5 shadow-sm">
+			<section className="rounded-2xl border border-[rgba(95,125,102,0.22)] bg-[rgba(240,248,242,0.78)] p-5 shadow-xs">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d6651]">
 					Summary
 				</p>
@@ -729,7 +729,7 @@ export const SpaceBenefitsPage = () => {
 				</dl>
 			</section>
 			{expiringPromos.length ? (
-				<section className="rounded-2xl border border-[rgba(200,160,95,0.22)] bg-[rgba(255,248,235,0.72)] p-5 shadow-sm">
+				<section className="rounded-2xl border border-[rgba(200,160,95,0.22)] bg-[rgba(255,248,235,0.72)] p-5 shadow-xs">
 					<div className="flex items-start justify-between gap-3">
 						<div>
 							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
@@ -750,7 +750,7 @@ export const SpaceBenefitsPage = () => {
 					</div>
 				</section>
 			) : null}
-			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
+			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-xs">
 				<div className="flex items-start justify-between gap-3">
 					<div>
 						<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -791,7 +791,7 @@ export const SpaceBenefitsPage = () => {
 										Title
 									</span>
 									<input
-										className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+										className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-hidden transition focus:border-[rgba(120,92,52,0.45)]"
 										onChange={(event) =>
 											setPromoEditForm((current) =>
 												current
@@ -807,7 +807,7 @@ export const SpaceBenefitsPage = () => {
 										Description
 									</span>
 									<textarea
-										className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+										className="min-h-20 w-full resize-none rounded-lg border border-border/70 bg-white px-3 py-2 text-sm text-foreground outline-hidden transition focus:border-[rgba(120,92,52,0.45)]"
 										onChange={(event) =>
 											setPromoEditForm((current) =>
 												current
@@ -824,7 +824,7 @@ export const SpaceBenefitsPage = () => {
 											Status
 										</span>
 										<select
-											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-hidden transition focus:border-[rgba(120,92,52,0.45)]"
 											onChange={(event) =>
 												setPromoEditForm((current) =>
 													current
@@ -846,7 +846,7 @@ export const SpaceBenefitsPage = () => {
 											Reminder
 										</span>
 										<input
-											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+											className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-hidden transition focus:border-[rgba(120,92,52,0.45)]"
 											onChange={(event) =>
 												setPromoEditForm((current) =>
 													current
@@ -949,7 +949,7 @@ export const SpaceBenefitsPage = () => {
 				)}
 			</section>
 
-			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-sm">
+			<section className="rounded-2xl border border-[rgba(120,100,80,0.16)] bg-[rgba(255,252,246,0.78)] p-5 shadow-xs">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
 					Capture queue
 				</p>
@@ -975,7 +975,7 @@ export const SpaceBenefitsPage = () => {
 					</ul>
 				) : (
 					<Link
-						className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[rgba(55,45,30,0.92)] px-4 text-sm font-semibold text-[#fffaf0] shadow-sm transition hover:bg-[rgba(45,38,28,0.95)]"
+						className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-lg bg-[rgba(55,45,30,0.92)] px-4 text-sm font-semibold text-[#fffaf0] shadow-xs transition hover:bg-[rgba(45,38,28,0.95)]"
 						to={`/console/review?spaceId=${encodeURIComponent(String(numericSpaceId))}`}
 					>
 						Open captures
@@ -983,7 +983,7 @@ export const SpaceBenefitsPage = () => {
 				)}
 			</section>
 
-			<section className="rounded-2xl border border-[rgba(200,160,95,0.22)] bg-[rgba(255,248,235,0.7)] p-5 shadow-sm">
+			<section className="rounded-2xl border border-[rgba(200,160,95,0.22)] bg-[rgba(255,248,235,0.7)] p-5 shadow-xs">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
 					Sources
 				</p>
@@ -1018,7 +1018,7 @@ export const SpaceBenefitsPage = () => {
 			rightRailLabel={`${spaceName} benefits rail`}
 		>
 			{deletePromoTarget ? (
-				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(42,34,24,0.28)] px-4 backdrop-blur-sm">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(42,34,24,0.28)] px-4 backdrop-blur-xs">
 					<div className="w-full max-w-md rounded-2xl border border-red-200 bg-[#fffdf9] p-5 shadow-[0_24px_80px_-36px_rgba(60,40,20,0.55)]">
 						<p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-red-700">
 							Delete benefit
@@ -1163,7 +1163,7 @@ export const SpaceBenefitsPage = () => {
 				<section className="mx-auto max-w-5xl space-y-6 overflow-y-auto px-4 py-4 sm:px-5">
 					<section
 						aria-labelledby="space-promos"
-						className="rounded-2xl border border-[rgba(200,160,95,0.26)] bg-gradient-to-b from-[#fffdfb] via-[#fffaf4] to-[#f8f3eb] shadow-[0_10px_32px_-28px_rgba(120,88,48,0.16)]"
+						className="rounded-2xl border border-[rgba(200,160,95,0.26)] bg-linear-to-b from-[#fffdfb] via-[#fffaf4] to-[#f8f3eb] shadow-[0_10px_32px_-28px_rgba(120,88,48,0.16)]"
 					>
 						<div className="flex flex-wrap items-start justify-between gap-3 border-b border-[rgba(200,160,95,0.18)] bg-[rgba(255,255,255,0.36)] px-5 py-4">
 							<div className="min-w-0">
@@ -1178,7 +1178,7 @@ export const SpaceBenefitsPage = () => {
 								</h2>
 							</div>
 							<button
-								className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-sm transition-all duration-150 hover:bg-white disabled:opacity-50"
+								className="inline-flex h-9 items-center rounded-lg border border-[rgba(120,100,80,0.2)] bg-white/80 px-3 text-sm font-medium text-foreground/85 shadow-xs transition-all duration-150 hover:bg-white disabled:opacity-50"
 								onClick={() => setManualOpen((open) => !open)}
 								type="button"
 							>
@@ -1194,7 +1194,7 @@ export const SpaceBenefitsPage = () => {
 												Title
 											</span>
 											<input
-												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-hidden transition focus:border-[rgba(120,92,52,0.45)]"
 												onChange={(event) => setManualTitle(event.target.value)}
 												placeholder="Yandex Food discount"
 												value={manualTitle}
@@ -1205,7 +1205,7 @@ export const SpaceBenefitsPage = () => {
 												Code
 											</span>
 											<input
-												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 font-mono text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 font-mono text-sm text-foreground outline-hidden transition focus:border-[rgba(120,92,52,0.45)]"
 												onChange={(event) => setManualCode(event.target.value)}
 												placeholder="MINUS400"
 												value={manualCode}
@@ -1216,7 +1216,7 @@ export const SpaceBenefitsPage = () => {
 												Redeem at
 											</span>
 											<input
-												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-hidden transition focus:border-[rgba(120,92,52,0.45)]"
 												onChange={(event) =>
 													setManualRedeemAt(event.target.value)
 												}
@@ -1229,7 +1229,7 @@ export const SpaceBenefitsPage = () => {
 												Valid until
 											</span>
 											<input
-												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-none transition focus:border-[rgba(120,92,52,0.45)]"
+												className="h-10 w-full rounded-lg border border-border/70 bg-white px-3 text-sm text-foreground outline-hidden transition focus:border-[rgba(120,92,52,0.45)]"
 												onChange={(event) =>
 													setManualValidUntil(event.target.value)
 												}
@@ -1322,7 +1322,7 @@ export const SpaceBenefitsPage = () => {
 
 					<section
 						aria-labelledby="space-loyalty"
-						className="rounded-2xl border border-[rgba(95,125,102,0.24)] bg-gradient-to-br from-[#f0f8f2] via-[#fefdfb] to-[#e8f2ea] shadow-[0_20px_48px_-28px_rgba(48,72,52,0.2)]"
+						className="rounded-2xl border border-[rgba(95,125,102,0.24)] bg-linear-to-br from-[#f0f8f2] via-[#fefdfb] to-[#e8f2ea] shadow-[0_20px_48px_-28px_rgba(48,72,52,0.2)]"
 					>
 						<div className="border-b border-[rgba(105,135,112,0.15)] bg-[rgba(255,255,255,0.35)] px-5 py-4">
 							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d6651]">

@@ -120,7 +120,7 @@ const PrimaryCta = ({
 	className?: string;
 }) => (
 	<a
-		className={`inline-flex items-center justify-center rounded-lg bg-[hsl(var(--accent))] px-6 py-3 text-sm font-semibold tracking-wide text-[hsl(var(--accent-contrast))] shadow-md transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))] active:scale-[0.99] ${className}`}
+		className={`inline-flex items-center justify-center rounded-lg bg-[hsl(var(--accent))] px-6 py-3 text-sm font-semibold tracking-wide text-[hsl(var(--accent-contrast))] shadow-md transition hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))] active:scale-[0.99] ${className}`}
 		href={appUrl("/register")}
 	>
 		{children}
@@ -137,7 +137,7 @@ const SecondaryCta = ({
 	className?: string;
 }) => (
 	<a
-		className={`inline-flex items-center justify-center rounded-lg bg-[hsl(var(--surface-muted))] px-6 py-3 text-sm font-semibold tracking-wide text-[hsl(var(--text-primary))] transition hover:bg-[hsl(var(--surface))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))] ${className}`}
+		className={`inline-flex items-center justify-center rounded-lg bg-[hsl(var(--surface-muted))] px-6 py-3 text-sm font-semibold tracking-wide text-[hsl(var(--text-primary))] transition hover:bg-[hsl(var(--surface))] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--bg))] ${className}`}
 		href={href}
 	>
 		{children}
@@ -231,11 +231,11 @@ export const SeoEditorialHome = ({
 						viewport={viewportScroll}
 						whileInView="visible"
 					>
-						<h1 className="mb-6 font-serif text-4xl leading-[1.1] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+						<h1 className="mb-6 font-serif text-4xl leading-[1.1] tracking-tight sm:text-5xl sm:leading-none md:text-6xl lg:text-7xl">
 							Money feels different when you&apos;re{" "}
 							<span className="italic">on the same page.</span>
 						</h1>
-						<p className="mb-8 max-w-xl text-lg font-light leading-relaxed text-[hsl(var(--text-secondary))] md:text-xl">
+						<p className="mb-8 max-w-xl text-lg font-light leading-relaxed text-[hsl(var(--text-secondary))] md:text-xl md:leading-7">
 							Capture shared expenses by text, voice, or receipt photo — and
 							keep everything in one shared place.
 						</p>
@@ -632,12 +632,10 @@ export const SeoEditorialHome = ({
 						household spending together.
 					</p>
 					<div className="flex flex-wrap justify-center gap-4">
-						<PrimaryCta className="px-10 py-4 text-base">
-							Get started
-						</PrimaryCta>
+						<PrimaryCta className="px-6 py-4 text-base">Get started</PrimaryCta>
 						<SecondaryCta
 							href={appUrl("/login")}
-							className="px-10 py-4 text-base"
+							className="px-6 py-4 text-base"
 						>
 							Sign in
 						</SecondaryCta>

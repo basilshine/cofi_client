@@ -29,7 +29,7 @@ const sectionHeading =
 	"flex items-center justify-between gap-3 border-b border-[rgba(95,105,125,0.12)] px-6 py-4";
 
 const ghostButton =
-	"inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 bg-background/40 backdrop-blur-sm px-3.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-all duration-150 ease-out hover:-translate-y-px hover:bg-card hover:text-foreground hover:shadow-sm active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+	"inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 bg-background/40 backdrop-blur-xs px-3.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-all duration-150 ease-out hover:-translate-y-px hover:bg-card hover:text-foreground hover:shadow-xs active:translate-y-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 const capturePacketRecordCount = (packet: ApiCapturePacket): number => {
 	const records = packet.records;
@@ -412,7 +412,7 @@ export const SpaceOverviewPage = () => {
 				<div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start lg:gap-7">
 					<section
 						aria-label="Your position in this space"
-						className="lg:col-span-2 rounded-2xl border border-[rgba(95,125,102,0.32)] bg-gradient-to-br from-[#f0f8f2] via-[#fefdfb] to-[#e8f2ea] text-card-foreground shadow-[0_20px_48px_-28px_rgba(48,72,52,0.26)] ring-1 ring-inset ring-white/55 transition-[box-shadow,transform] duration-150 ease-out hover:-translate-y-px hover:shadow-[0_24px_52px_-26px_rgba(48,72,52,0.22)]"
+						className="lg:col-span-2 rounded-2xl border border-[rgba(95,125,102,0.32)] bg-linear-to-br from-[#f0f8f2] via-[#fefdfb] to-[#e8f2ea] text-card-foreground shadow-[0_20px_48px_-28px_rgba(48,72,52,0.26)] ring-1 ring-inset ring-white/55 transition-[box-shadow,transform] duration-150 ease-out hover:-translate-y-px hover:shadow-[0_24px_52px_-26px_rgba(48,72,52,0.22)]"
 					>
 						<div className="border-b border-[rgba(105,135,112,0.15)] bg-[rgba(255,255,255,0.35)] px-6 py-4">
 							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4d6651]">
@@ -488,7 +488,7 @@ export const SpaceOverviewPage = () => {
 
 					<section
 						aria-label="What needs attention in this space"
-						className="rounded-2xl border border-[rgba(200,160,95,0.32)] bg-gradient-to-b from-[#fffdfb] via-[#fffaf4] to-[#f8f3eb] text-card-foreground shadow-[0_10px_32px_-28px_rgba(120,88,48,0.16)] ring-1 ring-inset ring-white/45 transition-[box-shadow,transform] duration-150 ease-out hover:-translate-y-px hover:shadow-[0_14px_36px_-26px_rgba(120,88,48,0.18)]"
+						className="rounded-2xl border border-[rgba(200,160,95,0.32)] bg-linear-to-b from-[#fffdfb] via-[#fffaf4] to-[#f8f3eb] text-card-foreground shadow-[0_10px_32px_-28px_rgba(120,88,48,0.16)] ring-1 ring-inset ring-white/45 transition-[box-shadow,transform] duration-150 ease-out hover:-translate-y-px hover:shadow-[0_14px_36px_-26px_rgba(120,88,48,0.18)]"
 					>
 						<div className="border-b border-[rgba(200,160,95,0.18)] bg-[rgba(255,255,255,0.38)] px-6 py-4">
 							<p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(120,82,28,0.88)]">
@@ -634,7 +634,7 @@ export const SpaceOverviewPage = () => {
 
 					<section
 						aria-labelledby="space-members"
-						className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-gradient-to-b from-[#faf8f5] to-[#f0ece6] text-card-foreground shadow-[0_8px_26px_-22px_rgba(45,48,58,0.1)] ring-1 ring-inset ring-white/50 transition-[box-shadow] duration-150 hover:shadow-[0_12px_30px_-20px_rgba(45,48,58,0.12)]"
+						className="rounded-2xl border border-[rgba(95,105,125,0.12)] bg-linear-to-b from-[#faf8f5] to-[#f0ece6] text-card-foreground shadow-[0_8px_26px_-22px_rgba(45,48,58,0.1)] ring-1 ring-inset ring-white/50 transition-[box-shadow] duration-150 hover:shadow-[0_12px_30px_-20px_rgba(45,48,58,0.12)]"
 					>
 						<div className={sectionHeading}>
 							<div className="min-w-0">
