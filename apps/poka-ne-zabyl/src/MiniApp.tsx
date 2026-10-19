@@ -1203,7 +1203,7 @@ type DeveloperDashboard = {
 		pwa_installed_users: number;
 		pwa_active_30_days: number;
 		average_inputs_per_active_user: number;
-		recent_users: DeveloperUserSummary[];
+		recent_users: DeveloperUserSummary[] | null;
 	};
 	incomplete_registrations: {
 		id: number;
@@ -1213,14 +1213,14 @@ type DeveloperDashboard = {
 		created_at: string;
 		expires_at: string;
 		can_resend: boolean;
-	}[];
+	}[] | null;
 	breakdown: {
 		module: string;
 		input_kind: string;
 		processing_jobs: number;
 		confirmed_results: number;
 		total_cost_usd: number;
-	}[];
+	}[] | null;
 	recent_failures: {
 		source_document_id: number;
 		module: string;
@@ -1228,7 +1228,7 @@ type DeveloperDashboard = {
 		attempts: number;
 		error: string;
 		created_at: string;
-	}[];
+	}[] | null;
 };
 
 type DeveloperUserDetail = {
@@ -4422,6 +4422,40 @@ export const MiniApp = ({
 			setError(
 				err instanceof Error ? err.message : "Не удалось обновить подписку",
 			);
+		} finally {
+			setBillingLoading(false);
+		}
+	};
+
+	const extendOwnerPlus = async () => {
+		if (!user || !accountQuota?.system_admin_enabled || billingLoading) return;
+		if (previewMode) {
+			await updateDeveloperQuota({
+				plan: "plus",
+				plan_expires_at: new Date(
+					Math.max(
+						Date.now(),
+						Date.parse(accountQuota.plan_expires_at || "") || 0,
+					) +
+						30 * 86_400_000,
+				).toISOString(),
+			});
+			return;
+		}
+		setBillingLoading(true);
+		setError("");
+		try {
+			await apiRequest<DeveloperUserDetail>(
+				`/quota/developer-users/${user.id}/plus`,
+				token,
+				{ method: "POST" },
+			);
+			const updated = await apiRequest<Quota>("/quota", token);
+			setAccountQuota(updated);
+			if (activeSpace?.is_personal) setQuota(updated);
+			setNotice("Плюс продлён на 30 дней");
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Не удалось продлить Плюс");
 		} finally {
 			setBillingLoading(false);
 		}
@@ -10347,6 +10381,8 @@ export const MiniApp = ({
 								onInstall={installOnHomeScreen}
 								onManageVendors={() => setView("vendors")}
 								onManageSpaces={() => setView("spaces")}
+								onManageSubscription={() => setView("subscription")}
+								onOwnerExtendPlus={() => void extendOwnerPlus()}
 								onManageDeveloperUsers={() => setView("developer-users")}
 								onLinkPhone={() =>
 									user?.phone
@@ -10407,6 +10443,7 @@ export const MiniApp = ({
 								billingLoading={billingLoading}
 								onBack={() => setView("profile")}
 								onStartPlus={() => void startCheckout("plus_30d")}
+								onOwnerExtendPlus={() => void extendOwnerPlus()}
 								onToggleAutoRenew={(enabled) =>
 									void updateSubscriptionAutoRenew(enabled)
 								}
@@ -18910,6 +18947,7 @@ const SubscriptionView = ({
 	billingLoading,
 	onBack,
 	onStartPlus,
+	onOwnerExtendPlus,
 	onToggleAutoRenew,
 	onBuyPack,
 	onRedeemCode,
@@ -18920,6 +18958,7 @@ const SubscriptionView = ({
 	billingLoading: boolean;
 	onBack: () => void;
 	onStartPlus: () => void;
+	onOwnerExtendPlus: () => void;
 	onToggleAutoRenew: (enabled: boolean) => void;
 	onBuyPack: () => void;
 	onRedeemCode: (code: string) => Promise<ActivationCodeResponse>;
@@ -19262,6 +19301,24 @@ const SubscriptionView = ({
 						{uiText(language, "buyPack")}
 					</button>
 				</div>
+				{quota?.system_admin_enabled && (
+					<button
+						className="mini-dev-users-link"
+						type="button"
+						disabled={billingLoading}
+						aria-label="Плюс на 30 дней бесплатно"
+						onClick={onOwnerExtendPlus}
+					>
+						<span>
+							<Star size={18} />
+							<span>
+								<strong>Плюс на 30 дней бесплатно</strong>
+								<small>Личный доступ владельца сервиса</small>
+							</span>
+						</span>
+						<ArrowRight size={17} />
+					</button>
+				)}
 			</section>
 
 			<section className="subscription-compare">
@@ -19428,6 +19485,8 @@ const ProfileView = ({
 	onShowDeveloperPromo,
 	onManageVendors,
 	onManageSpaces,
+	onManageSubscription,
+	onOwnerExtendPlus,
 	onManageDeveloperUsers,
 	onLinkPhone,
 	onLinkEmail,
@@ -19477,6 +19536,8 @@ const ProfileView = ({
 	onShowDeveloperPromo: () => void;
 	onManageVendors: () => void;
 	onManageSpaces: () => void;
+	onManageSubscription: () => void;
+	onOwnerExtendPlus: () => void;
 	onManageDeveloperUsers: () => void;
 	onLinkPhone: () => void;
 	onLinkEmail: () => void;
@@ -19690,6 +19751,40 @@ const ProfileView = ({
 								<PencilSimple size={15} />
 							</b>
 						</button>
+					</div>
+				</section>
+
+				<section className="mini-profile-group is-subscription">
+					<h2>{uiText(language, "manageSubscription")}</h2>
+					<div className="mini-profile-list">
+						<button type="button" onClick={onManageSubscription}>
+							<span>
+								<Star size={18} />
+								{uiText(
+									language,
+									["plus", "medium"].includes(quota?.plan || "")
+										? "plus"
+										: "basic",
+								)}
+							</span>
+							<b>
+								{uiText(language, "parsesLimit")}: {quota?.remaining ?? 0}
+								<ArrowRight size={15} />
+							</b>
+						</button>
+						{quota?.system_admin_enabled && (
+							<button
+								type="button"
+								disabled={billingLoading}
+								onClick={onOwnerExtendPlus}
+							>
+								<span>
+									<Star size={18} />
+									Плюс на 30 дней бесплатно
+								</span>
+								<ArrowRight size={17} />
+							</button>
+						)}
 					</div>
 				</section>
 
@@ -21351,10 +21446,10 @@ const BillingDeveloperTools = ({
 								</span>
 								<ArrowRight size={17} />
 							</button>
-							{dashboard.product.recent_users.length > 0 && (
+							{(dashboard.product.recent_users || []).length > 0 && (
 								<div className="mini-dev-users">
 									<strong>Последние регистрации</strong>
-									{dashboard.product.recent_users.map((recentUser) => (
+									{(dashboard.product.recent_users || []).map((recentUser) => (
 										<DeveloperUserRow
 											key={recentUser.id}
 											recentUser={recentUser}
@@ -21371,8 +21466,8 @@ const BillingDeveloperTools = ({
 							<span>
 								<b>Незавершённые регистрации</b>
 								<small>
-									{dashboard.incomplete_registrations.length > 0
-										? `${dashboard.incomplete_registrations.length} за последние 7 дней`
+									{(dashboard.incomplete_registrations || []).length > 0
+										? `${dashboard.incomplete_registrations?.length} за последние 7 дней`
 										: "Нет ожидающих попыток за 7 дней"}
 								</small>
 							</span>
@@ -21383,13 +21478,13 @@ const BillingDeveloperTools = ({
 								Здесь видны только люди, которым уже был выдан код или
 								проверочный звонок, но регистрация не завершилась.
 							</p>
-							{dashboard.incomplete_registrations.length === 0 ? (
+							{(dashboard.incomplete_registrations || []).length === 0 ? (
 								<p className="mini-dev-empty">
 									Незавершённых регистраций сейчас нет.
 								</p>
 							) : (
 								<div className="mini-dev-recovery-list">
-									{dashboard.incomplete_registrations.map((attempt) => {
+									{(dashboard.incomplete_registrations || []).map((attempt) => {
 										const expired =
 											new Date(attempt.expires_at).getTime() <= Date.now();
 										const sending =
@@ -21479,10 +21574,10 @@ const BillingDeveloperTools = ({
 									<small>на один ввод</small>
 								</p>
 							</div>
-							{dashboard.breakdown.length > 0 && (
+							{(dashboard.breakdown || []).length > 0 && (
 								<div className="mini-dev-breakdown">
 									<strong>По типам ввода</strong>
-									{dashboard.breakdown.map((row) => (
+									{(dashboard.breakdown || []).map((row) => (
 										<p key={`${row.module}-${row.input_kind}`}>
 											<span>
 												{developerModuleLabel(row.module)} ·{" "}
@@ -21493,10 +21588,10 @@ const BillingDeveloperTools = ({
 									))}
 								</div>
 							)}
-							{dashboard.recent_failures.length > 0 && (
+							{(dashboard.recent_failures || []).length > 0 && (
 								<div className="mini-dev-failures">
 									<strong>Последние ошибки</strong>
-									{dashboard.recent_failures.map((failure) => (
+									{(dashboard.recent_failures || []).map((failure) => (
 										<p key={failure.source_document_id}>
 											<span>
 												#{failure.source_document_id} ·{" "}

@@ -31,11 +31,7 @@ self.addEventListener("activate", (event) => {
 						.map((key) => caches.delete(key)),
 				),
 			)
-			.then(async () => {
-				await self.clients.claim();
-				const clients = await self.clients.matchAll({ type: "window" });
-				await Promise.all(clients.map((client) => client.navigate(client.url)));
-			}),
+			.then(() => self.clients.claim()),
 	);
 });
 

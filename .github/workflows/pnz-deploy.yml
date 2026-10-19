@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "apps/poka-ne-zabyl/**"
+      - "tests/pnz/**"
+      - "playwright.pnz.config.ts"
       - "package.json"
       - "package-lock.json"
       - ".dockerignore"
@@ -19,7 +21,30 @@ permissions:
   contents: read
 
 jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run lint:boundaries
+      - run: npm run test:money --workspace apps/poka-ne-zabyl
+      - run: npm run build:pnz
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --config playwright.pnz.config.ts --workers=1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: failure()
+        with:
+          name: pnz-browser-failures
+          path: test-results/
+          retention-days: 7
+
   deploy:
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -28,7 +53,7 @@ jobs:
       DEPLOY_SSH_KEY: ${{ secrets.PNZ_DEPLOY_SSH_KEY }}
       DEPLOY_KNOWN_HOSTS: ${{ secrets.PNZ_DEPLOY_KNOWN_HOSTS }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Build image
         run: docker build -f apps/poka-ne-zabyl/Dockerfile -t pnz-landing:latest .
