@@ -1205,30 +1205,36 @@ type DeveloperDashboard = {
 		average_inputs_per_active_user: number;
 		recent_users: DeveloperUserSummary[] | null;
 	};
-	incomplete_registrations: {
-		id: number;
-		channel: "email" | "phone";
-		masked_contact: string;
-		attempts: number;
-		created_at: string;
-		expires_at: string;
-		can_resend: boolean;
-	}[] | null;
-	breakdown: {
-		module: string;
-		input_kind: string;
-		processing_jobs: number;
-		confirmed_results: number;
-		total_cost_usd: number;
-	}[] | null;
-	recent_failures: {
-		source_document_id: number;
-		module: string;
-		input_kind: string;
-		attempts: number;
-		error: string;
-		created_at: string;
-	}[] | null;
+	incomplete_registrations:
+		| {
+				id: number;
+				channel: "email" | "phone";
+				masked_contact: string;
+				attempts: number;
+				created_at: string;
+				expires_at: string;
+				can_resend: boolean;
+		  }[]
+		| null;
+	breakdown:
+		| {
+				module: string;
+				input_kind: string;
+				processing_jobs: number;
+				confirmed_results: number;
+				total_cost_usd: number;
+		  }[]
+		| null;
+	recent_failures:
+		| {
+				source_document_id: number;
+				module: string;
+				input_kind: string;
+				attempts: number;
+				error: string;
+				created_at: string;
+		  }[]
+		| null;
 };
 
 type DeveloperUserDetail = {
