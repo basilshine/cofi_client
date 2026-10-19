@@ -128,6 +128,21 @@ rounding below 0.2px. Input geometry, heading line height and CTA padding also
 have explicit assertions. This is not a claim of exact pixel equality on every
 browser or coverage of every authenticated legacy screen.
 
+## GitHub Actions Runtime Maintenance
+
+On 2026-10-20, replace the Node 20-based action pins with checkout 7.0.1,
+setup-node 7.1.0 and upload-artifact 7.0.2, each pinned to its verified release
+commit. Their action manifests declare Node 24. Both CI workflows now also use
+Node 24 for npm commands; hosted Ubuntu runners support the required runtime.
+Existing cache settings, tests, deployment commands and artifact retention stay
+unchanged. No authentication, registry publishing or cross-workflow artifact
+consumers depend on the changed major-version behavior.
+
+Verify both workflow runs and their complete logs, including post-job cleanup,
+for the absence of the Node 20 action-runtime deprecation warning. Then check
+the deployed health/readiness endpoints and the authenticated app screens.
+Application dependencies and Docker build runtimes are outside this change.
+
 ## Known Pre-Existing Legacy Issues
 
 `apps/telegram-webapp/src/main.tsx` mounts the shared `WebApp` without a
