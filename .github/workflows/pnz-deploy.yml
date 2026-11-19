@@ -53,4 +53,6 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
           trap 'rm -f ~/.ssh/id_ed25519 "$RUNNER_TEMP/image.tar.gz"' EXIT
+          ssh-keygen -y -P '' -f ~/.ssh/id_ed25519 > /dev/null
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "root@$DEPLOY_HOST" status
           ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "root@$DEPLOY_HOST" "deploy landing $GITHUB_SHA" < "$RUNNER_TEMP/image.tar.gz"
