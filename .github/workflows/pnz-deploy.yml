@@ -1,32 +1,24 @@
-name: PNZ Landing Deploy
+name: PNZ Client AdminVPS Deploy
 
 on:
   push:
     branches: [main]
-    paths:
-      - "apps/poka-ne-zabyl/**"
-      - "tests/pnz/**"
-      - "playwright.pnz.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - ".dockerignore"
-      - ".github/workflows/pnz-deploy.yml"
   workflow_dispatch:
-
-concurrency:
-  group: pnz-landing-production
-  cancel-in-progress: true
 
 permissions:
   contents: read
 
+concurrency:
+  group: adminvps-landing
+  cancel-in-progress: false
+
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 24
           cache: npm
@@ -36,44 +28,29 @@ jobs:
       - run: npm run build:pnz
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --config playwright.pnz.config.ts --workers=1
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: pnz-browser-failures
-          path: test-results/
-          retention-days: 7
-
   deploy:
     needs: verify
+    if: github.ref == 'refs/heads/main' && vars.ADMINVPS_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      DEPLOY_HOST: ${{ secrets.PNZ_DEPLOY_HOST }}
-      DEPLOY_USER: ${{ secrets.PNZ_DEPLOY_USER }}
-      DEPLOY_SSH_KEY: ${{ secrets.PNZ_DEPLOY_SSH_KEY }}
-      DEPLOY_KNOWN_HOSTS: ${{ secrets.PNZ_DEPLOY_KNOWN_HOSTS }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Build image
-        run: docker build -f apps/poka-ne-zabyl/Dockerfile -t pnz-landing:latest .
-
-      - name: Configure SSH
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Build immutable application image
         run: |
+          docker build -f apps/poka-ne-zabyl/Dockerfile -t pnz-landing:$GITHUB_SHA .
+          docker save pnz-landing:$GITHUB_SHA | gzip -1 > "$RUNNER_TEMP/image.tar.gz"
+      - name: Deploy only landing
+        env:
+          DEPLOY_HOST: ${{ secrets.ADMINVPS_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.ADMINVPS_KNOWN_HOSTS }}
+          DEPLOY_SSH_KEY: ${{ secrets.ADMINVPS_DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_KNOWN_HOSTS" && test -n "$DEPLOY_SSH_KEY"
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
-
-      - name: Deploy landing
-        run: |
-          docker save pnz-landing:latest | gzip > pnz-landing.tar.gz
-          scp pnz-landing.tar.gz "$DEPLOY_USER@$DEPLOY_HOST:/tmp/pnz-landing.tar.gz"
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" "/opt/pnz/deploy-image.sh landing /tmp/pnz-landing.tar.gz"
-
-      - name: Notify IndexNow
-        run: |
-          curl --fail-with-body --silent --show-error \
-            -H "Content-Type: application/json" \
-            -d '{"host":"poka-ne-zabyl.ru","key":"ebe337c9485b49f59bdd0be15c612624","keyLocation":"https://poka-ne-zabyl.ru/ebe337c9485b49f59bdd0be15c612624.txt","urlList":["https://poka-ne-zabyl.ru/","https://poka-ne-zabyl.ru/en/","https://poka-ne-zabyl.ru/es/","https://poka-ne-zabyl.ru/family","https://poka-ne-zabyl.ru/repair","https://poka-ne-zabyl.ru/crew","https://poka-ne-zabyl.ru/events"]}' \
-            https://api.indexnow.org/indexnow
+          trap 'rm -f ~/.ssh/id_ed25519 "$RUNNER_TEMP/image.tar.gz"' EXIT
+          ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 "root@$DEPLOY_HOST" "deploy landing $GITHUB_SHA" < "$RUNNER_TEMP/image.tar.gz"
