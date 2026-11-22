@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { browserAuthCopy } from "../src/browser-auth-copy.ts";
+import {
+	browserAuthConfirmError,
+	browserAuthCopy,
+} from "../src/browser-auth-copy.ts";
 import {
 	type UIMessage,
 	linkedIdentityErrorText,
@@ -51,6 +54,32 @@ test("browser authentication does not leak Russian copy into other locales", () 
 		assert.doesNotMatch(
 			JSON.stringify(browserAuthCopy(language)),
 			/[А-Яа-яЁё]/,
+		);
+	}
+});
+
+test("browser authentication distinguishes an unlinked phone, an expired call and an email code", () => {
+	for (const language of ["ru", "en", "es"] as const) {
+		const copy = browserAuthCopy(language);
+		assert.equal(
+			browserAuthConfirmError(
+				language,
+				"phone",
+				"verified phone is not linked to an account",
+			),
+			copy.phoneNotLinked,
+		);
+		assert.equal(
+			browserAuthConfirmError(language, "phone", "verification call expired"),
+			copy.phoneExpired,
+		);
+		assert.equal(
+			browserAuthConfirmError(language, "phone", "invalid or expired code"),
+			copy.invalidCall,
+		);
+		assert.equal(
+			browserAuthConfirmError(language, "email", "invalid or expired code"),
+			copy.invalidCode,
 		);
 	}
 });

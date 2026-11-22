@@ -106,6 +106,10 @@ const copy = {
 		dailyCode: "Суточный лимит кодов исчерпан. Попробуйте завтра.",
 		tooMany: "Слишком много попыток. Подождите и попробуйте снова.",
 		invalidCode: "Неверный код или срок его действия истёк.",
+		invalidCall:
+			"Не удалось подтвердить звонок. Получите новый номер или войдите по почте.",
+		phoneNotLinked:
+			"Звонок подтверждён, но номер не привязан к аккаунту. Войдите по почте и подтвердите номер в профиле или создайте аккаунт, если его ещё нет.",
 		clipboardMissing: (length: number) => `В буфере нет кода из ${length} цифр`,
 		codePasted: "Код вставлен",
 		pasteManually: "Зажмите поле и выберите «Вставить»",
@@ -217,6 +221,10 @@ const copy = {
 		dailyCode: "The daily code limit has been reached. Try again tomorrow.",
 		tooMany: "Too many attempts. Wait and try again.",
 		invalidCode: "The code is invalid or has expired.",
+		invalidCall:
+			"Could not verify the call. Request a new number or sign in by email.",
+		phoneNotLinked:
+			"Call confirmed, but your phone is not linked to an account. Sign in by email and verify your phone in your profile, or create an account if you don't have one.",
 		clipboardMissing: (length: number) =>
 			`The clipboard does not contain a ${length}-digit code`,
 		codePasted: "Code pasted",
@@ -331,6 +339,10 @@ const copy = {
 		dailyCode: "Se alcanzó el límite diario de códigos. Inténtalo mañana.",
 		tooMany: "Demasiados intentos. Espera e inténtalo de nuevo.",
 		invalidCode: "El código no es válido o ha caducado.",
+		invalidCall:
+			"No se pudo verificar la llamada. Solicita otro número o accede por correo.",
+		phoneNotLinked:
+			"Llamada confirmada, pero el teléfono no está vinculado a una cuenta. Accede por correo y verifica tu número en el perfil, o crea una cuenta si aún no tienes una.",
 		clipboardMissing: (length: number) =>
 			`El portapapeles no contiene un código de ${length} dígitos`,
 		codePasted: "Código pegado",
@@ -339,3 +351,24 @@ const copy = {
 } as const;
 
 export const browserAuthCopy = (language: UILanguage) => copy[language];
+
+export function browserAuthConfirmError(
+	language: UILanguage,
+	method: "phone" | "email",
+	message: string,
+): string {
+	const text = browserAuthCopy(language);
+	if (method === "phone") {
+		if (message === "verified phone is not linked to an account")
+			return text.phoneNotLinked;
+		if (message === "verification call expired") return text.phoneExpired;
+		if (
+			message === "invalid or expired call" ||
+			message === "invalid or expired code"
+		)
+			return text.invalidCall;
+	} else if (message.includes("invalid or expired code")) {
+		return text.invalidCode;
+	}
+	return message;
+}

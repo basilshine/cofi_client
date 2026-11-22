@@ -76,7 +76,7 @@ import {
 	avatarFileFromCanvas,
 } from "./avatar-crop";
 import { compactBottomNavigation } from "./bottom-navigation";
-import { browserAuthCopy } from "./browser-auth-copy";
+import { browserAuthConfirmError, browserAuthCopy } from "./browser-auth-copy";
 import {
 	businessAppHref,
 	isBusinessSpace,
@@ -29310,12 +29310,16 @@ const BrowserEntry = ({
 				acquisitionFunnel: registrationExperience,
 			});
 		} catch (requestError) {
-			const message =
-				requestError instanceof Error ? requestError.message : copy.invalidCode;
 			setLocalError(
-				message.includes("invalid or expired code")
-					? copy.invalidCode
-					: message,
+				requestError instanceof Error
+					? browserAuthConfirmError(
+						language,
+						isPhone ? "phone" : "email",
+						requestError.message,
+					)
+					: isPhone
+						? copy.invalidCall
+						: copy.invalidCode,
 			);
 		} finally {
 			setLoading(false);
